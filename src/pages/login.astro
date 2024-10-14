@@ -1,0 +1,23 @@
+---
+import Layout from "../layouts/Layout.astro";
+
+const { cookies, redirect } = Astro;
+
+// cookies.set("sb-access-token",'sb-access-token texto',{path: "/"});
+// cookies.set("sb-refresh-token",'sb-refresh-token texto',{path: "/"});
+
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+
+if(accessToken && refreshToken){
+	return redirect("/");
+}
+---
+
+<Layout title="Login in MyPlayground">
+  <p style="color: white;">Página de login</p>
+  <a style="padding: 1rem; border: 1px solid white; color: aliceblue;" href="../">Volver a inicio</a>
+  <form action="/api/auth/signin" method="post">
+    <button value="google" name="provider" type="submit">Sign in with Google</button>
+  </form>
+</Layout>
