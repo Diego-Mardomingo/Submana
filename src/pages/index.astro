@@ -43,12 +43,43 @@ function resetCookies(){
 
 
 <Layout title="MyPlayground">
-	<div style="color: white;">
-		<h1>Bienvenido, {email}.</h1>
-		<p>Estamos contentos de verte de nuevo.</p>
+	<section>
+		<p>Bienvenido, {email}.</p>
 		<form action="/api/auth/signout">
-			<button type="submit">Sign out</button>
+			<button type="submit">
+				<svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-door-exit"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M13 12v.01" /><path d="M3 21h18" /><path d="M5 21v-16a2 2 0 0 1 2 -2h7.5m2.5 10.5v7.5" /><path d="M14 7h7m-3 -3l3 3l-3 3" /></svg> 
+				Cerrar sesión</button>
 		</form>
-	</div>
+	</sectio>
 </Layout>
+
+<style>
+	section{
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 100dvh;
+	}
+	button{
+    border: 3px solid var(--gris-oscuro);
+    padding: .7rem 2.2rem;
+    margin: .5rem;
+    border-radius: 10px;
+    font-size: 1rem ;
+    font-weight: 500;
+    color: var(--blanco);
+    background-color: var(--negro);
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  button:hover{
+    background-color: var(--gris-oscuro);
+  }
+</style>
 
