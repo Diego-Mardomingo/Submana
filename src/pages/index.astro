@@ -1,4 +1,5 @@
 ---
+import CleanURL from '../components/CleanURL.astro';
 import Layout from '../layouts/Layout.astro';
 import { supabase } from '../lib/supabase';
 
@@ -44,6 +45,7 @@ function resetCookies(){
 
 <Layout title="MyPlayground">
 	<section>
+		<CleanURL/>
 		<p>Bienvenido, {email}.</p>
 		<form action="/api/auth/signout">
 			<button type="submit">
@@ -82,13 +84,3 @@ function resetCookies(){
     background-color: var(--gris-oscuro);
   }
 </style>
-
-
-<script>
-  if (window.location.search) {
-    const url = new URL(window.location.href);
-    url.search = ''; // Elimina todos los parámetros
-    window.history.replaceState({}, document.title, url.pathname);
-  }
-</script>
-
