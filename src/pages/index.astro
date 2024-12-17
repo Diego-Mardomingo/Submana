@@ -83,3 +83,12 @@ function resetCookies(){
   }
 </style>
 
+
+<script>
+  if (window.location.search) {
+    const url = new URL(window.location.href);
+    url.search = ''; // Elimina todos los parámetros
+    window.history.replaceState({}, document.title, url.pathname);
+  }
+</script>
+
