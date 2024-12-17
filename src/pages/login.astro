@@ -10,6 +10,13 @@ const refreshToken = cookies.get("sb-refresh-token");
 if(accessToken && refreshToken){
 	return redirect("/");
 }
+
+if (window.location.search) {
+  const url = new URL(window.location.href);
+  url.search = ''; // Elimina todos los parámetros
+  window.history.replaceState({}, document.title, url.pathname);
+}
+
 ---
 
 <Layout title="Submana Login">
