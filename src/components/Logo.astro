@@ -1,0 +1,41 @@
+---
+import submanaLogo from "../images/submanaLogo.webp"
+const { className } = Astro.props;
+---
+<a href="/">
+  <div class="logo" id={className}>
+    <img src={submanaLogo.src} alt="Submana logo">
+    <h1 class="submana">Submana</h1>
+  </div>
+</a>
+
+<style>
+  a{
+    text-decoration: none;
+  }
+  #small-logo img{
+		width: 4rem;
+		height: auto;
+	}
+  #small-logo .submana{
+    font-size: 1.3rem;
+    margin-top: -.3rem;
+  }
+  .logo{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+  .submana{
+    color: var(--verde);
+    font-weight: 900;
+    font-size: 3rem;
+    margin-bottom: 0;
+    margin-top: -1.2rem;
+    text-shadow: 0px 0px 50px var(--verde);
+  }
+  .logo > img{
+    width: 10rem;
+  }
+</style>
