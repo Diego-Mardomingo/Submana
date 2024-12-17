@@ -11,12 +11,6 @@ if(accessToken && refreshToken){
 	return redirect("/");
 }
 
-if (window.location.search) {
-  const url = new URL(window.location.href);
-  url.search = ''; // Elimina todos los parámetros
-  window.history.replaceState({}, document.title, url.pathname);
-}
-
 ---
 
 <Layout title="Submana Login">
@@ -82,3 +76,11 @@ if (window.location.search) {
     height: 2rem;
   }
 </style>
+
+<script>
+  if (window.location.search) {
+    const url = new URL(window.location.href);
+    url.search = ''; // Elimina todos los parámetros
+    window.history.replaceState({}, document.title, url.pathname);
+  }
+</script>
