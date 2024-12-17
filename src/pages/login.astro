@@ -1,4 +1,5 @@
 ---
+import Logo from "../components/Logo.astro";
 import Layout from "../layouts/Layout.astro";
 import googleLogo from "../images/googleLogo.png"
 
@@ -15,7 +16,7 @@ if(accessToken && refreshToken){
 
 <Layout title="Submana Login">
   <section>
-    <h2>Login</h2>
+    <Logo/>
     <div class="separator"></div>
     <form action="/api/auth/signin" method="post">
       <button value="google" name="provider" type="submit"><img src={googleLogo.src} alt="Logo de Google"></img> Continuar con Google</button>

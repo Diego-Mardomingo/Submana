@@ -1,5 +1,6 @@
 ---
 import CleanURL from '../components/CleanURL.astro';
+import Logo from '../components/Logo.astro';
 import Layout from '../layouts/Layout.astro';
 import { supabase } from '../lib/supabase';
 
@@ -31,6 +32,8 @@ try {
 }
 
 const email = session.data.user?.email;
+const name = session.data.user?.user_metadata.name;
+const avatar = session.data.user.user_metadata.avatar_url;
 
 
 function resetCookies(){
@@ -43,32 +46,33 @@ function resetCookies(){
 ---
 
 
-<Layout title="MyPlayground">
+<Layout title="Submana">
+	<CleanURL/>
 	<section>
-		<CleanURL/>
-		<p>Bienvenido, {email}.</p>
+		<Logo className="small-logo"/>
+		<p class="userData"><img class="avatar" src={avatar} alt="User avatar"> <b>{name}</b></p>
 		<form action="/api/auth/signout">
 			<button type="submit">
 				<svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round"  class="icon icon-tabler icons-tabler-outline icon-tabler-door-exit"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M13 12v.01" /><path d="M3 21h18" /><path d="M5 21v-16a2 2 0 0 1 2 -2h7.5m2.5 10.5v7.5" /><path d="M14 7h7m-3 -3l3 3l-3 3" /></svg> 
 				Cerrar sesión</button>
 		</form>
-	</sectio>
+	</section>
 </Layout>
 
 <style>
 	section{
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		align-items: center;
-		justify-content: center;
-		height: 100dvh;
+		justify-content: space-between;
+		padding: 2rem;
 	}
 	button{
     border: 3px solid var(--gris-oscuro);
-    padding: .7rem 2.2rem;
+    padding: .7rem 1.2rem;
     margin: .5rem;
     border-radius: 10px;
-    font-size: 1rem ;
+    font-size: .9rem ;
     font-weight: 500;
     color: var(--blanco);
     background-color: var(--negro);
@@ -83,4 +87,20 @@ function resetCookies(){
   button:hover{
     background-color: var(--gris-oscuro);
   }
+	button svg{
+		width: 1.5rem;
+		height: auto;
+	}
+	.userData{
+		display: flex;
+		flex-direction: row;
+		justify-content: center;
+		align-items: center;
+		gap: .5rem;
+		font-size: 1.2rem;
+	}
+	.avatar{
+		width: 3rem;
+		height: auto;
+	}
 </style>
