@@ -1,0 +1,35 @@
+---
+const {dayNumber, style} = Astro.props;
+---
+
+<div class={`dia ${dayNumber === new Date().getDate() ? "diaActual" : ""}`} style={style}>
+  <div class="number">{dayNumber}</div>
+</div>
+
+<style>
+  .dia{
+    padding: .5rem;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background-color: var(--gris-oscuro);
+    border-radius: 18%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+  }
+  .number{
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--gris);
+  }
+  .diaActual{
+    border: 2px solid var(--blanco);
+  }
+  .diaActual > .number{
+    color: var(--negro);
+    background-color: var(--blanco);
+    padding: 0.1rem .6rem;
+    border-radius: 8px;
+  }
+</style>
