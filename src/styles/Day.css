@@ -1,0 +1,25 @@
+.dia{
+  padding: .5rem;
+  width: min(100%, 6rem);
+  aspect-ratio: 1 / 1;
+  background-color: var(--gris-oscuro);
+  border-radius: 18%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+.number{
+  font-size: .8rem;
+  font-weight: 500;
+  color: var(--blanco);
+}
+.diaActual{
+  border: 2px solid var(--blanco);
+}
+.diaActual > .number{
+  color: var(--negro);
+  background-color: var(--blanco);
+  padding: 0.1rem .6rem;
+  border-radius: 8px;
+}
