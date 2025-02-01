@@ -15,6 +15,8 @@ aside{
 }
 .diaSemana{
   background-color: var(--gris-oscuro);
+  width: 100%;
+  text-align: center;
   padding: .5rem 1rem;
   border-radius: 15px;
   font-weight: 600;
@@ -25,14 +27,14 @@ aside{
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem;
 }
 .header_text{
   display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 1rem;
+  gap: .2rem;
 }
 .nombre_mes{
   font-weight: 600;
@@ -40,7 +42,8 @@ aside{
 }
 .año{
   color: var(--gris);
-  font-size: 2rem;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 .buttonsMonth{
   display: flex;
@@ -51,7 +54,7 @@ aside{
 }
 .buttonsMonth > button{
   color: var(--blanco);
-  border-radius: 40%;
+  border-radius: 50%;
   background-color: var(--gris-oscuro);
   border: none;
   cursor: pointer;
@@ -70,13 +73,56 @@ aside{
   height: 1.5rem;
 }
 .buttonsMonth > button:last-child:hover{
-  background-color: var(--gris);
-  color: var(--blanco);
+  background-color: var(--blanco);
+  color: var(--negro);
+}
+
+.spent_container{
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+.spent_title{
+  color: var(--gris);
+}
+.spent_value{
+  font-weight:700;
+  font-size: 1.5rem;
+  color: var(--naranja);
+}
+
+.options_btn{
+  display: flex;
+  justify-content: flex-end;
+}
+.options_btn > ul{
+  list-style-type: none;
+  display: flex;
+  gap: .4rem;
+}
+.options_btn > ul > li{
+  padding: .4rem;
+  display: grid;
+  place-content: center;
+  border-radius: 8px;
+  color: var(--negro);
+}
+.options_btn > ul > li:hover{
+  cursor: pointer;
+}
+.dashboard_btn{
+  background-color: var(--azul);
+}
+.new_btn{
+  background-color: var(--verde);
+}
+.mySubs_btn{
+  background-color: var(--azul);
 }
 
 .calendar_body{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: .4rem;
+  gap: .5rem;
   justify-items: center;
 }
