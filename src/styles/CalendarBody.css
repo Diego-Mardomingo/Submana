@@ -41,7 +41,7 @@ aside{
   font-size: 2.5rem;
 }
 .año{
-  color: var(--gris);
+  color: var(--gris-claro);
   font-size: 1.5rem;
   font-weight: 600;
 }
@@ -83,7 +83,8 @@ aside{
   text-align: center;
 }
 .spent_title{
-  color: var(--gris);
+  color: var(--gris-claro);
+  font-weight: 500;
 }
 .spent_value{
   font-weight:700;
