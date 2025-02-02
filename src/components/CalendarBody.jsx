@@ -109,7 +109,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
         <ul>
           <li className="mySubs_btn">{mySubsIcon()}</li>
           {/* <li className="dashboard_btn" title="My Dashboard">{dashboardIcon()}</li> */}
-          <li className="new_btn" onClick={ () =>{window.location.href = '/NewSub';}} title="New sub">{newIcon()}</li>
+          <li className="new_btn" onClick={ () =>{window.location.href = '/newsub';}} title="New sub">{newIcon()}</li>
         </ul>
       </nav>
       <header className="calendar_header">
