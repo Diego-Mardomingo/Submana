@@ -5,7 +5,7 @@ import Layout from "../layouts/Layout.astro";
 <Layout title="Submana">
   <div class="container">
     <h1>New Subscription</h1>
-    <form>
+    <form method="post" action="/api/crud/insertNewSub">
       <!-- Name -->
       <label for="nombre">Name</label>
       <input 
@@ -56,10 +56,10 @@ import Layout from "../layouts/Layout.astro";
       /> -->
 
       <!-- Frecuencia -->
-      <label for="frecuency">Frecuency</label>
+      <label for="frequency">Frequency</label>
       <select 
-        id="frecuency" 
-        name="frecuency"
+        id="frequency" 
+        name="frequency"
       >
         <option value="weekly">Weekly</option>
         <option value="monthly" selected>Monthly</option>
@@ -68,11 +68,11 @@ import Layout from "../layouts/Layout.astro";
       </select>
 
       <!-- Cantidad de Frecuencia -->
-      <label for="frecuency_value">Frecuency value</label>
+      <label for="frequency_value">frequency value</label>
       <input 
         type="number" 
-        id="frecuency_value" 
-        name="frecuency_value" 
+        id="frequency_value" 
+        name="frequency_value" 
         placeholder="2 -> (every 2 months)" 
         min="1"
       />
