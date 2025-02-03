@@ -1,3 +1,4 @@
+import { toast } from "@pheralb/toast";
 import { supabase } from "../../../lib/supabase";
 import type { APIRoute } from "astro";
 
@@ -11,7 +12,7 @@ export const POST: APIRoute = async ({ request }) => {
     if (!user || userError) {
       return new Response(
         JSON.stringify({ success: false, error: "User not authenticated" }),
-        { status: 401 }
+        { status: 401, headers: {Location: "/?success=false"} }
       );
     }
     // Leer los datos enviados en el form
@@ -41,18 +42,18 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (error) {
       return new Response(JSON.stringify({ success: false, error }), {
-        status: 400,
+        status: 400, headers: {Location: "/?success=false"}
       });
     }
 
     return new Response(
       JSON.stringify({ success: true, data }),
-      { status: 200 }
+      { status: 303, headers: {Location: "/?success=true&method=insert"} }
     );
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
-      { status: 500 }
+      { status: 303, headers: {Location: "/?success=false"} }
     );
   }
 };

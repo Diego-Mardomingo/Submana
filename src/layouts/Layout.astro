@@ -1,5 +1,6 @@
 ---
 import '@fontsource-variable/inter';
+import { Toaster } from "@pheralb/toast";
 interface Props {
 	title: string;
 }
@@ -19,6 +20,7 @@ const { title } = Astro.props;
 	</head>
 	<body>
 		<slot />
+		<Toaster position="top-center" theme="dark" client:load/>
 	</body>
 </html>
 <style is:global>
