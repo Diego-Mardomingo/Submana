@@ -1,7 +1,8 @@
 ---
-import Calendar from '../components/Calendar.astro';
+import CalendarBody from '../components/CalendarBody';
 import CleanURL from '../components/CleanURL.astro';
 import Logo from '../components/Logo.astro';
+import ShowToast from '../components/ShowToast';
 import Layout from '../layouts/Layout.astro';
 import { supabase } from '../lib/supabase';
 
@@ -16,6 +17,8 @@ if(!accessToken || !refreshToken){
 	return redirect("/login");
 }
 
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth();
 
 let session;
 try {
@@ -48,7 +51,7 @@ function resetCookies(){
 
 
 <Layout title="Submana">
-	<CleanURL/>
+	<!-- <CleanURL/> -->
 	<header>
 		<Logo className="small-logo"/>
 		<p class="userData"><img class="avatar" src={avatar}> <b>{name}</b></p>
@@ -58,7 +61,8 @@ function resetCookies(){
 			</button>
 		</form>
 	</header>
-	<Calendar/>
+	<CalendarBody initialYear={currentYear} initialMonth={currentMonth} client:load/>
+	<ShowToast client:only/>
 </Layout>
 
 <style>
