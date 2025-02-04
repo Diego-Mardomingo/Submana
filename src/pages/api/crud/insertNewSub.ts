@@ -18,6 +18,7 @@ export const POST: APIRoute = async ({ request }) => {
     // Leer los datos enviados en el form
     const formData = await request.formData();
     const service_name = formData.get("name") as string;
+    const icon = formData.get("icon") as string;
     const cost = formData.get("cost") as string;
     const startDate = formData.get("startDate") as string;
     const endDate = formData.get("endDate") as string;
@@ -31,6 +32,7 @@ export const POST: APIRoute = async ({ request }) => {
         {
           user_id: user.id,
           service_name,
+          icon,
           cost: cost ? parseFloat(cost) : 0,
           start_date: startDate,
           end_date: endDate || null,

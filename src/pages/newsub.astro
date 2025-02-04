@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import Icon from "../components/Icon.tsx";
 ---
 
 <Layout title="Submana">
@@ -17,6 +18,11 @@ import Layout from "../layouts/Layout.astro";
         required
       />
 
+      <!-- Campo oculto para guardar el icono seleccionado -->
+      <input type="hidden" id="icon_value" name="icon" />
+      <!-- Icon -->
+      <Icon client:visible/>
+
       <!-- Cost (máximo 2 decimales) -->
       <label for="cost">Cost</label>
       <input 
@@ -29,22 +35,22 @@ import Layout from "../layouts/Layout.astro";
         required
       />
 
-      <!-- Fecha de inicio (requerida) -->
-      <label for="startDate">Start Date</label>
-      <input 
-        type="date" 
-        id="startDate" 
-        name="startDate" 
-        required
-      />
-
-      <!-- Fecha de fin (opcional) -->
-      <label for="endDate">End Date (optional)</label>
-      <input 
-        type="date" 
-        id="endDate" 
-        name="endDate"
-      />
+          <!-- Fecha de inicio (requerida) -->
+          <label for="startDate">Start Date</label>
+          <input 
+            type="date" 
+            id="startDate" 
+            name="startDate" 
+            required
+          />
+        
+          <!-- Fecha de fin (opcional) -->
+          <label for="endDate">End Date (optional)</label>
+          <input 
+            type="date" 
+            id="endDate" 
+            name="endDate"
+          />
 
       <!-- Ícono (archivo) -->
       <!-- <label for="icon">Ícono</label>
@@ -55,27 +61,27 @@ import Layout from "../layouts/Layout.astro";
         accept="image/*"
       /> -->
 
-      <!-- Frecuencia -->
-      <label for="frequency">Frequency</label>
-      <select 
-        id="frequency" 
-        name="frequency"
-      >
-        <option value="weekly">Weekly</option>
-        <option value="monthly" selected>Monthly</option>
-        <option value="yearly">Yearly</option>
-        <!-- <option value="one-shot">One Shot</option> -->
-      </select>
+          <!-- Frecuencia -->
+          <label for="frequency">Frequency</label>
+          <select 
+            id="frequency" 
+            name="frequency"
+          >
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="yearly">Yearly</option>
+            <!-- <option value="one-shot">One Shot</option> -->
+          </select>
 
-      <!-- Cantidad de Frecuencia -->
-      <label for="frequency_value">Frequency Value</label>
-      <input 
-        type="number" 
-        id="frequency_value" 
-        name="frequency_value" 
-        placeholder="2 -> (every 2 months)" 
-        min="1"
-      />
+          <!-- Cantidad de Frecuencia -->
+          <label for="frequency_value">Frequency Value</label>
+          <input 
+            type="number" 
+            id="frequency_value" 
+            name="frequency_value" 
+            placeholder="2 -> (every 2 months)" 
+            min="1"
+          />
 
       <!-- Botones -->
       <div class="btn-group">
@@ -96,15 +102,16 @@ import Layout from "../layouts/Layout.astro";
 
 <style>
   body {
-    margin: 0;
+    margin: 0rem;
     padding: 1rem;
     background-color: var(--negro);
     color: var(--blanco);
+    height: auto;
   }
 
   .container {
     max-width: 400px;
-    margin: 40px auto;
+    margin: 20px auto;
     background-color: var(--gris-oscuro);
     padding: 1rem;
     border-radius: 6px;
