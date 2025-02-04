@@ -37,7 +37,7 @@ try {
 
 const email = session.data.user?.email;
 const name = session.data.user?.user_metadata.name;
-const avatar = session.data.user.user_metadata.avatar_url;
+const avatar = session.data.user?.user_metadata.avatar_url;
 
 
 function resetCookies(){
