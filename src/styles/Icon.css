@@ -1,0 +1,190 @@
+section{
+  margin-bottom: 1rem;
+}
+
+label{
+  display: block;
+    margin-bottom: 0.25rem;
+    font-weight: bold;
+}
+
+.icon_container{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.buscador{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+.search_input{
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 1rem;
+  background-color: var(--gris);
+  border: none;
+  border-radius: 6px;
+  color: var(--blanco);
+  font-size: 1rem;
+}
+.search_input:focus{
+  outline: 2px solid var(--verde);
+}
+.icon_displayer{
+  background-color: var(--gris);
+  border-radius: 6px;
+  width: 50%;
+  height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .3rem;
+  padding-top: .3rem;
+}
+span{
+  font-size: .8rem;
+  color: var(--gris-claro);
+}
+.icon_selected{
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+}
+.icon_selected > img{
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+}
+.icon_selector{
+  background-color: var(--gris);
+  border-radius: 6px;
+  width: 100%;
+  height: 90px;
+  display: grid;
+  place-content: center;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.icon_selector > img{
+  width: 35px;
+  margin: .2rem;
+  cursor: pointer;
+}
+.icon_selector > p{
+  font-size: .8rem;
+  color: var(--gris-claro);
+  text-align: center;
+}
+
+.iconToBeSelected{
+  cursor: pointer;
+  width: 20px;
+  margin: .2rem;
+}
+.random_btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 2px solid var(--gris);
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--gris-claro);
+  /* background-color: var(--negro); */
+}
+.random_btn:hover{
+  background-color: var(--gris);
+  color: var(--blanco);
+}
+
+footer{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: .4rem;
+}
+
+.enlace_logo{
+  text-decoration: none;
+  color: var(--gris-claro);
+  font-size: .7rem;
+}
+.enlace_logo:hover{
+  text-decoration: underline;
+}
+
+/*? ======================================= */
+.checkbox-container {
+  /* Para ubicar correctamente la "cajita" */
+  display: inline-block;
+  position: relative;
+  padding-left: 30px;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  font-size: 1rem;
+  /* Mismo color de texto general */
+  color: var(--blanco);
+  user-select: none; /* Evita seleccionar el texto al hacer click */
+}
+
+/* Ocultar el checkbox original */
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* La "cajita" custom */
+.checkmark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background-color: var(--gris);
+  border-radius: 4px; /* Esquinas redondeadas */
+  transition: background-color 0.2s ease;
+}
+
+/* Cambiar el fondo al pasar el mouse */
+.checkbox-container:hover input ~ .checkmark {
+  background-color: #707070; /* un gris intermedio, o puedes usar otra variable */
+}
+
+/* Cuando el checkbox está marcado, cambia el color de fondo */
+.checkbox-container input:checked ~ .checkmark {
+  background-color: var(--verde);
+}
+
+/* Crear la marca de verificación (por defecto oculta) */
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+/* Mostrar la marca cuando esté checkeado */
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+/* Estilo de la marca (✓) */
+.checkbox-container .checkmark:after {
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 10px;
+  border: solid var(--negro);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+
