@@ -18,14 +18,12 @@ export const GET: APIRoute = async ({ request }) => {
         Authorization: `Bearer ${import.meta.env.LOGODEV_KEY}`, 
       },
     });
-    console.log('LOGORESPONSE',logoResponse);
     if (!logoResponse.ok) {
       return new Response(
         JSON.stringify({ error: "Error fetching data from logo.dev" }),
         { status: logoResponse.status }
       );
     }
-    return logoResponse;
     const data = await logoResponse.json();
 
     // 3. Retornar los resultados al cliente en JSON

@@ -30,10 +30,8 @@ export default function Icon({ onIconSelected }: IconProps) {
       // Llamada a la API después de 1 segundo sin cambios
       const fetchIcons = async () => {
         try {
-          const response = await fetch("../pages/api/logo/getLogos.ts?searchTerm=" + searchTerm);
-          console.log('RESPONSE :', response);
+          const response = await fetch("/api/logo/getLogos?searchTerm=" + searchTerm);
           const data = await response.json();
-          console.log('DATA :', data);
           setIcons(data || []);
         } catch (error) {
           console.error("Error fetching icons:", error);
