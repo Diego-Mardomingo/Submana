@@ -39,12 +39,11 @@ label{
   background-color: var(--gris);
   border-radius: 6px;
   width: 50%;
-  height: 140px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: .3rem;
-  padding-top: .3rem;
+  padding: .3rem .3rem .1rem .3rem;
 }
 span{
   font-size: .8rem;
@@ -120,71 +119,4 @@ footer{
 }
 
 /*? ======================================= */
-.checkbox-container {
-  /* Para ubicar correctamente la "cajita" */
-  display: inline-block;
-  position: relative;
-  padding-left: 30px;
-  margin-bottom: 1rem;
-  cursor: pointer;
-  font-size: 1rem;
-  /* Mismo color de texto general */
-  color: var(--blanco);
-  user-select: none; /* Evita seleccionar el texto al hacer click */
-}
-
-/* Ocultar el checkbox original */
-.checkbox-container input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
-
-/* La "cajita" custom */
-.checkmark {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 20px;
-  width: 20px;
-  background-color: var(--gris);
-  border-radius: 4px; /* Esquinas redondeadas */
-  transition: background-color 0.2s ease;
-}
-
-/* Cambiar el fondo al pasar el mouse */
-.checkbox-container:hover input ~ .checkmark {
-  background-color: #707070; /* un gris intermedio, o puedes usar otra variable */
-}
-
-/* Cuando el checkbox está marcado, cambia el color de fondo */
-.checkbox-container input:checked ~ .checkmark {
-  background-color: var(--verde);
-}
-
-/* Crear la marca de verificación (por defecto oculta) */
-.checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
-}
-
-/* Mostrar la marca cuando esté checkeado */
-.checkbox-container input:checked ~ .checkmark:after {
-  display: block;
-}
-
-/* Estilo de la marca (✓) */
-.checkbox-container .checkmark:after {
-  left: 7px;
-  top: 3px;
-  width: 6px;
-  height: 10px;
-  border: solid var(--negro);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
 

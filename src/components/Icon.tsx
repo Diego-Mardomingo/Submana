@@ -87,7 +87,7 @@ export default function Icon({ onIconSelected }: IconProps) {
   return (
     <section>
       {/* Etiqueta del icon/logo */}
-      <label htmlFor="icon_container">Icon/Logo</label>
+      <label htmlFor="icon_container">Icon</label>
 
       <div className="icon_container" id="icon_container">
         <aside className="icon_displayer">
@@ -133,12 +133,7 @@ export default function Icon({ onIconSelected }: IconProps) {
 
       {/* Footer con enlace y checkbox */}
       <footer>
-        <label className="checkbox-container">
-          {/* Random Icon
-          <input type="checkbox" checked={randomIcon} onChange={handleRandomChange} />
-          <span className="checkmark"></span> */}
           <div className='random_btn' onClick={handleRandomChange}>Random Icon</div>
-        </label>
       </footer>
     </section>
   );
