@@ -13,9 +13,9 @@ export const GET: APIRoute = async ({ request }) => {
       );
     }
 
-    const logoResponse = await fetch(`https://api.logo.dev/search?q=${searchTerm}`, {
+    const logoResponse = await fetch(`https://api.brandfetch.io/v2/search/${searchTerm}`, {
       headers: {
-        Authorization: `Bearer ${import.meta.env.LOGODEV_KEY}`, 
+        Authorization: `Bearer ${import.meta.env.LOGOS_KEY}`, 
       },
     });
     if (!logoResponse.ok) {

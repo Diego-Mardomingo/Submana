@@ -4,7 +4,7 @@ interface ImportMetaEnv {
   readonly SUPABASE_URL: string
   readonly SUPABASE_KEY: string
   readonly REDIRECT_URL: string
-  readonly LOGODEV_KEY: string
+  readonly LOGOS_KEY: string
 }
 
 interface ImportMeta {

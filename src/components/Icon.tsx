@@ -115,10 +115,10 @@ export default function Icon({ onIconSelected }: IconProps) {
               icons.map((iconItem, idx) => (
                 <img
                   key={idx}
-                  src={iconItem.logo_url}
+                  src={iconItem.icon}
                   alt={iconItem.name || "Icon"}
                   className="iconToBeSelected"
-                  onClick={() => handleIconClick(iconItem.logo_url)}
+                  onClick={() => handleIconClick(iconItem.icon)}
                 />
               ))
             ) : (
@@ -133,14 +133,6 @@ export default function Icon({ onIconSelected }: IconProps) {
 
       {/* Footer con enlace y checkbox */}
       <footer>
-        <a
-          className="enlace_logo"
-          href="https://logo.dev"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Logos provided by Logo.dev
-        </a>
         <label className="checkbox-container">
           {/* Random Icon
           <input type="checkbox" checked={randomIcon} onChange={handleRandomChange} />
