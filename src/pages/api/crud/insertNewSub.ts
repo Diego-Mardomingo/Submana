@@ -1,4 +1,3 @@
-import { toast } from "@pheralb/toast";
 import { supabase } from "../../../lib/supabase";
 import type { APIRoute } from "astro";
 

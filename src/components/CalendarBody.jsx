@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 import "../styles/CalendarBody.css";
 import Day from "./Day";
@@ -7,6 +7,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
   // Estado local para el año y mes actuales
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
+  const [subscriptions, setSubscriptions] = useState([]);
 
   // Arrays estáticos
   const diasSemana = ["MON","TUE","WED","THU","FRY","SAT","SUN"];
@@ -72,6 +73,115 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     setYear(currentYear);
   }
 
+  useEffect(() => {
+    const fetchSubs = async () => {
+      try {
+        const response = await fetch("/api/crud/getAllSubs");
+        if (!response.ok) {
+          throw new Error(`Error fetching subs: ${response.statusText}`);
+        }
+        const data = await response.json();
+        if (data.success && data.subscriptions) {
+          setSubscriptions(data.subscriptions);
+        } else {
+          console.error("No subscriptions in data:", data);
+        }
+      } catch (error) {
+        console.error("Error fetching subs:", error);
+      }
+    };
+    fetchSubs();
+  }, []);
+
+  function isPaymentDay(sub, year, month, dayNumber) {
+
+    const current = new Date(year, month, dayNumber);
+    // Parsear la fecha de inicio
+    const start = new Date(sub.start_date);  // Ojo: "2025-02-13" => mes 1 en JS
+    const startYear = start.getFullYear();
+    const startMonth = start.getMonth();
+    const startDay = start.getDate();
+
+    // Si hay end_date, verificar si la suscripción ya acabó
+    if (sub.end_date) {
+      const end = new Date(sub.end_date);
+      // Si la fecha (year,month) es posterior al fin, no se paga
+      if (year > end.getFullYear() || (year === end.getFullYear() && month > end.getMonth())) {
+        return null;
+      }
+    }
+
+    // Calcular diferencia en meses desde el start_date hasta (year,month)
+    const diffMonths = (year - startYear) * 12 + (month - startMonth);
+
+    // Si diffMonths < 0 => este mes es antes del start => no se paga
+    if (diffMonths < 0) {
+      return null;
+    }
+
+    const msInDay = 1000 * 60 * 60 * 24;
+    const diffDays = Math.floor((current - start) / msInDay);
+
+    // Dependiendo de la frecuencia...
+    switch (sub.frequency) {
+      case "weekly": {
+        // Cada 'frequency_value' semanas => 7 * frequency_value días
+        const interval = 7 * (sub.frequency_value || 1);
+        return diffDays % interval === 0;
+      }
+      case "monthly": {
+
+        const diffMonths = (year - startYear) * 12 + (month - startMonth);
+        if (diffMonths < 0) return false; // antes de empezar
+        // Solo paga si diffMonths es múltiplo de frequency_value
+        if (diffMonths % (sub.frequency_value || 1) === 0) {
+          // Y si el 'dayNumber' coincide con el 'startDay'
+          return dayNumber === startDay;
+        }
+        return false;
+      }
+      case "yearly": {
+
+        const diffYears = year - startYear;
+        if (diffYears < 0) return false; // antes de empezar
+        // Comprobamos si es múltiplo de frequency_value
+        if (diffYears % (sub.frequency_value || 1) === 0) {
+          // Y si este mes y día coinciden con el start
+          if (month === startMonth && dayNumber === startDay) {
+            return true;
+          }
+        }
+        return false;
+      }
+      default:
+        // Si hay otras frecuencias (ej. "one-shot"), implementa aquí.
+        return false;
+    }
+  }
+
+  /**
+   * Retorna un array de icon URLs para las suscripciones que se pagan en (dayNumber).
+   */
+  function getSubsIconsForDay(dayNumber) {
+    return subscriptions.flatMap((sub) => {
+      if (isPaymentDay(sub, year, month, dayNumber)) {
+        return [sub.icon]; // sub.icon es la URL de la imagen
+      }
+      return [];
+    });
+  }
+
+  function getSpentValue(){
+    let spent = 0;
+    subscriptions.forEach(sub => {
+      const payDay = isPaymentDay(sub, year, month);
+      if(payDay !== null){
+        spent += sub.cost;
+      }
+    });
+    return spent;
+  }
+
   function todayIcon(){
     return (
       <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-home"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
@@ -130,7 +240,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
         </div>
           <div className="spent_container">
             <p className="spent_title">Monthly spend</p>
-            <p className="spent_value">298.43€</p>
+            <p className="spent_value">{getSpentValue()}€</p>
           </div>
       </header>
 
@@ -150,6 +260,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
             <Day
               key={dayNumber}
               isToday={getIsToday(dayNumber)}
+              icons={getSubsIconsForDay(dayNumber)}
               dayNumber={dayNumber}
               dayStyle={styleObj}
             />

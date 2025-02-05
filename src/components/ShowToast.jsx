@@ -12,6 +12,10 @@ export default function ShowToast() {
       toast.success({
         text: 'New subscription created successfully! 🎉'
       });
+    }else if(method === 'get'){
+      toast.success({
+        text: 'Subscriptions retrieved successfully! 🎉'
+      });
     }
   }else if(success === 'false'){
     toast.error({

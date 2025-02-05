@@ -9,7 +9,7 @@ import "../styles/Day.css";
  * @param {object} [props.dayStyle]        - Objeto de estilos en React (opcional)
  *                                          Por ejemplo: { gridColumnStart: 3 }
  */
-export default function Day({ dayNumber, dayStyle, isToday }) {
+export default function Day({ dayNumber, dayStyle, isToday, icons = [] }) {
   // Asegúrate de convertir a número si `dayNumber` viene como string
   const dayNum = Number(dayNumber);
 
@@ -21,6 +21,16 @@ export default function Day({ dayNumber, dayStyle, isToday }) {
       className={`dia ${isToday ? "diaActual" : ""}`}
       style={dayStyle}
     >
+      <div className="icons_container">
+        {icons.map((iconUrl, idx) => (
+          <img
+            key={idx}
+            src={iconUrl}
+            alt="Subscription icon"
+            className="subscription_icon"
+          />
+        ))}
+      </div>
       <div className="number">{dayNum}</div>
     </div>
   );
