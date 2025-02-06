@@ -93,44 +93,46 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     fetchSubs();
   }, []);
 
+  function setToNoon(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+  }
+
   function isPaymentDay(sub, year, month, dayNumber) {
 
-    const current = new Date(year, month, dayNumber);
+    const current = setToNoon(new Date(year, month, dayNumber));
     // Parsear la fecha de inicio
-    const start = new Date(sub.start_date);  // Ojo: "2025-02-13" => mes 1 en JS
+    const start = setToNoon(new Date(sub.start_date));
     const startYear = start.getFullYear();
     const startMonth = start.getMonth();
     const startDay = start.getDate();
-
-    // Si hay end_date, verificar si la suscripción ya acabó
-    if (sub.end_date) {
-      const end = new Date(sub.end_date);
-      // Si la fecha (year,month) es posterior al fin, no se paga
-      if (year > end.getFullYear() || (year === end.getFullYear() && month > end.getMonth())) {
-        return null;
-      }
-    }
-
-    // Calcular diferencia en meses desde el start_date hasta (year,month)
-    const diffMonths = (year - startYear) * 12 + (month - startMonth);
-
-    // Si diffMonths < 0 => este mes es antes del start => no se paga
-    if (diffMonths < 0) {
+    // start = new Date(startYear, startMonth, startDay);
+    if(start > current){
       return null;
     }
 
-    const msInDay = 1000 * 60 * 60 * 24;
-    const diffDays = Math.floor((current - start) / msInDay);
+    if(sub.end_date){
+      const end = setToNoon(new Date(sub.end_date));
+      // const endYear = end.getFullYear();
+      // const endMonth = end.getMonth();
+      // const endDay = end.getDate();
+      // end = new Date(endYear, endMonth, endDay);
+      if(end < current){
+        return null;
+      }
+    }
+    
 
+    
     // Dependiendo de la frecuencia...
     switch (sub.frequency) {
       case "weekly": {
+        const msInDay = 1000 * 60 * 60 * 24;
+        const diffDays = Math.round((current - start) / msInDay);
         // Cada 'frequency_value' semanas => 7 * frequency_value días
         const interval = 7 * (sub.frequency_value || 1);
         return diffDays % interval === 0;
       }
       case "monthly": {
-
         const diffMonths = (year - startYear) * 12 + (month - startMonth);
         if (diffMonths < 0) return false; // antes de empezar
         // Solo paga si diffMonths es múltiplo de frequency_value
@@ -173,11 +175,12 @@ export default function CalendarBody({ initialYear, initialMonth }) {
 
   function getSpentValue(){
     let spent = 0;
-    subscriptions.forEach(sub => {
-      const payDay = isPaymentDay(sub, year, month);
-      if(payDay !== null){
-        spent += sub.cost;
-      }
+    daysArray.map((dayNumber) => {
+      subscriptions.forEach(sub => {
+        if(isPaymentDay(sub, year, month, dayNumber)){
+          spent = parseFloat((spent + sub.cost).toFixed(2));
+        }
+      });
     });
     return spent;
   }

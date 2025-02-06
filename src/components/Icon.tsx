@@ -30,7 +30,7 @@ export default function Icon({ onIconSelected }: IconProps) {
       // Llamada a la API después de 1 segundo sin cambios
       const fetchIcons = async () => {
         try {
-          const response = await fetch("/api/logo/getLogos?searchTerm=" + searchTerm);
+          const response = await fetch("https://api.brandfetch.io/v2/search/"+searchTerm+"?c=1id-tf6xJEAcHu0Tio1");
           const data = await response.json();
           setIcons(data || []);
         } catch (error) {
