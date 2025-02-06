@@ -94,19 +94,24 @@ aside{
 
 .options_btn{
   display: flex;
+  align-items: center;
   justify-content: flex-end;
 }
 .options_btn > ul{
   list-style-type: none;
   display: flex;
+  flex-direction: column;
   gap: .4rem;
 }
 .options_btn > ul > li{
-  padding: .4rem;
-  display: grid;
-  place-content: center;
+  padding: .6rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .5rem;
   border-radius: 8px;
   color: var(--negro);
+  font-weight: 700;
 }
 .options_btn > ul > li:hover{
   cursor: pointer;
@@ -117,8 +122,14 @@ aside{
 .new_btn{
   background-color: var(--verde);
 }
+.new_btn:hover{
+  background-color: #27ae60;
+}
 .mySubs_btn{
   background-color: var(--azul);
+}
+.mySubs_btn:hover{
+  background-color: #3287bf;
 }
 
 .calendar_body{
