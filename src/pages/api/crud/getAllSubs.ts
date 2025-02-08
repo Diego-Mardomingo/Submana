@@ -11,7 +11,7 @@ export const GET: APIRoute = async () => {
     if (!user || userError) {
       return new Response(
         JSON.stringify({ success: false, error: "User not authenticated" }),
-        { status: 401, headers: {Location: "/?success=false"} }
+        { status: 401 }
       );
     }
     
@@ -22,7 +22,7 @@ export const GET: APIRoute = async () => {
 
     if (error) {
       return new Response(JSON.stringify({ success: false, error }), {
-        status: 400, headers: {Location: "/?success=false"}
+        status: 400
       });
     }
 
@@ -33,7 +33,7 @@ export const GET: APIRoute = async () => {
   } catch (err: any) {
     return new Response(
       JSON.stringify({ success: false, error: err.message }),
-      { status: 303, headers: {Location: "/?success=false"} }
+      { status: 303 }
     );
   }
 };
