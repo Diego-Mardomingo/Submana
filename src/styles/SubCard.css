@@ -1,0 +1,135 @@
+
+.title{
+  text-align: center;
+  margin-bottom: 1rem;
+  color: var(--verde);
+}
+.subscriptions{
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--gris);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 1rem auto;
+  max-width: 600px;
+  position: relative;
+}
+.subCard{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1rem;
+  background-color: var(--gris-oscuro);
+  padding: 1rem;
+  border-radius: 5px;
+  width: 100%;
+}
+.sub_icon{
+  width: 5rem;
+  min-width: 5rem;
+  height: auto;
+  border-radius: 5px;
+}
+.card_body{
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  gap: .2rem;
+}
+.card_header{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+}
+.card_active{
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: .3rem;
+}
+.inactiveIcon{
+  color: var(--rojo);
+}
+.activeIcon{
+  color: var(--verde);
+}
+.sub_cost{
+  color: var(--negro);
+  font-weight: 700;
+  font-size: 1.3rem;
+  padding: .2rem .6rem;
+  background-color: var(--blanco);
+  border-radius: 5px;
+  height: fit-content;
+}
+.totalCost{
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--naranja);
+}
+.sub_frequency{
+  color: var(--gris-claro);
+}
+.sub_startDate{
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.card_footer{
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-top: .5rem;
+}
+.btn{
+  padding: .3rem .7rem;
+  border-radius: 5px;
+  gap: .3rem;
+  cursor: pointer;
+}
+.edit_btn{
+  background-color: var(--azul);
+  color: var(--negro);
+  font-weight: bold;
+}
+.edit_btn:hover{
+  background-color: #3287bf;
+}
+.cancel_btn{
+  color: var(--negro);
+  background-color: var(--naranja);
+}
+.delete_btn{
+  background-color: var(--rojo);
+}
+.delete_btn:hover{
+  background-color: var(--rojo-oscuro);
+}
+.title_container{
+  display: flex;
+}
+.back_btn{
+  position: absolute;
+  cursor: pointer;
+  padding: .4rem .8rem;
+  /* background-color: var(--gris-claro); */
+  color: var(--blanco);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  top: 10px;
+  left: 10px;
+  border: 2px solid var(--gris-claro);
+}
+.back_btn:hover{
+  background-color: var(--gris);
+  background-color: var(--gris-claro);
+}

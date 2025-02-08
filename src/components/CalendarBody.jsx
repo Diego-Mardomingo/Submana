@@ -224,7 +224,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     <div className="calendar_container">
       <nav className="options_btn">
         <ul>
-          <li className="mySubs_btn">{mySubsIcon()} My Subscriptions {arrowRightIcon()}</li>
+          <li className="mySubs_btn" onClick={ () =>{window.location.href = '/mysubs';}}>{mySubsIcon()} My Subscriptions {arrowRightIcon()}</li>
           {/* <li className="dashboard_btn" title="My Dashboard">{dashboardIcon()}</li> */}
           <li className="new_btn" onClick={ () =>{window.location.href = '/newsub';}} title="New sub">{newIcon()} New Subscription {arrowRightIcon()}</li>
         </ul>
