@@ -10,11 +10,36 @@ import "../styles/Day.css";
  *                                          Por ejemplo: { gridColumnStart: 3 }
  */
 export default function Day({ dayNumber, dayStyle, isToday, icons = [] }) {
-  // Asegúrate de convertir a número si `dayNumber` viene como string
-  const dayNum = Number(dayNumber);
+  const dayNum = dayNumber.toString().padStart(2, '0');
 
-  // Comprueba si es el día actual
-  // const isToday = dayNum === new Date().getDate();
+  const renderIcons = () => {
+    if (icons.length > 4) {
+      return (
+        <>
+          {icons.slice(0, 3).map((iconUrl, idx) => (
+            <img
+              key={idx}
+              src={iconUrl}
+              alt="subscription icon"
+              className="subscription_icon"
+            />
+          ))}
+          <div className="subscription_overflow">
+            +{icons.length - 3}
+          </div>
+        </>
+      );
+    } else {
+      return icons.map((iconUrl, idx) => (
+        <img
+          key={idx}
+          src={iconUrl}
+          alt="subscription icon"
+          className="subscription_icon"
+        />
+      ));
+    }
+  };
 
   return (
     <div
@@ -22,14 +47,7 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [] }) {
       style={dayStyle}
     >
       <div className="icons_container">
-        {icons.map((iconUrl, idx) => (
-          <img
-            key={idx}
-            src={iconUrl}
-            alt="Subscription icon"
-            className="subscription_icon"
-          />
-        ))}
+        {renderIcons()}
       </div>
       <div className="number">{dayNum}</div>
     </div>

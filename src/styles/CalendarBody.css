@@ -35,6 +35,7 @@ aside{
   justify-content: center;
   align-items: center;
   gap: .2rem;
+  cursor: pointer;
 }
 .nombre_mes{
   font-weight: 600;
@@ -68,14 +69,14 @@ aside{
   width: 1.8rem;
   height: 1.8rem;
 }
-.buttonsMonth > button:last-child > svg{
+/* .buttonsMonth > button:last-child > svg{
   width: 1.5rem;
   height: 1.5rem;
 }
 .buttonsMonth > button:last-child:hover{
   background-color: var(--blanco);
   color: var(--negro);
-}
+} */
 
 .spent_container{
   display: flex;
@@ -112,8 +113,7 @@ aside{
   border-radius: 8px;
   color: var(--negro);
   font-weight: 700;
-}
-.options_btn > ul > li:hover{
+  font-size: .9rem;
   cursor: pointer;
 }
 .dashboard_btn{

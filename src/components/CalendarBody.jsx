@@ -237,11 +237,11 @@ export default function CalendarBody({ initialYear, initialMonth }) {
           <button onClick={handleNextMonth} className="siguiente">
             {siguienteIcon()}
           </button>
-          <button onClick={handleToday}>
+          {/* <button onClick={handleToday}>
             {todayIcon()}
-          </button>
+          </button> */}
         </div>
-        <div className="header_text">
+        <div className="header_text" onClick={handleToday}>
           <p className="nombre_mes">{meses[month]}</p>
           <p className="año">{year}</p>
         </div>
