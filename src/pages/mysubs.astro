@@ -36,7 +36,6 @@ const avatar = session.data.user?.user_metadata.avatar_url;
 function resetCookies(){
 	cookies.delete("sb-access-token",{path: "/"});
 	cookies.delete("sb-refresh-token",{path: "/"});
-	console.log('Cookies reseteadas');
 	return redirect("/login")
 }
 
