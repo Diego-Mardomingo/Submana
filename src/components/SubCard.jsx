@@ -1,33 +1,34 @@
 import React, { useState, useEffect } from "react";
 import '../styles/SubCard.css';
 import LoadingSpinner from "./LoadingSpinner";
+import { toast } from "@pheralb/toast";
 
 export default function SubCard() {
 
   const [subs, setSubs] = useState([]);
   const [isLoading, setLoading] = useState([]);
 
-  useEffect(() => {
+  const fetchSubs = async () => {
     setLoading(true);
-    const fetchSubs = async () => {
-      try {
-        const response = await fetch("/api/crud/getAllSubs");
-        if (!response.ok) {
-          throw new Error(`Error fetching subs: ${response.statusText}`);
-        }
-        const data = await response.json();
-        if (data.success && data.subscriptions) {
-          setSubs(data.subscriptions);
-          setLoading(false);
-        } else {
-          console.error("No subscriptions in data:", data);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Error fetching subs:", error);
-        setLoading(false);
+    try {
+      const response = await fetch("/api/crud/getAllSubs");
+      if (!response.ok) {
+        throw new Error(`Error fetching subs: ${response.statusText}`);
       }
-    };
+      const data = await response.json();
+      if (data.success && data.subscriptions) {
+        setSubs(data.subscriptions);
+      } else {
+        console.error("No subscriptions in data:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching subs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchSubs();
   }, []);
 
@@ -100,7 +101,6 @@ export default function SubCard() {
             diffYears--;
           }
           periods = Math.round(diffYears / (sub.frequency_value || 1)) + 1;
-          console.log(diffYears);
           break;
         }
         default:
@@ -108,6 +108,30 @@ export default function SubCard() {
       }
       
       return parseFloat((sub.cost * periods).toFixed(2));
+    }
+
+    function handleDelete(identificator){
+      fetch('/api/crud/deleteSub', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: identificator
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Respuesta:', data);
+          toast.success({
+            text: 'Subscription deleted successfully! 🎉',
+            delayDuration: 8000
+          });
+          fetchSubs();
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
     }
 
     function activeIcon(){
@@ -183,7 +207,7 @@ export default function SubCard() {
               <div className='card_footer'>
                 <div className='edit_btn btn'>{editIcon()}Edit</div>
                 <div className='cancel_btn btn'>{cancelIcon()}Cancel Sub</div>
-                <div className='delete_btn btn'>{deleteIcon()}</div>
+                <div className='delete_btn btn' onClick={() => handleDelete(sub.id)}>{deleteIcon()}</div>
               </div>
             </div>
           </div>

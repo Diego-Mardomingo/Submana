@@ -10,11 +10,18 @@ export default function ShowToast() {
   if(success === 'true'){
     if(method === 'insert'){
       toast.success({
-        text: 'New subscription created successfully! 🎉'
+        text: 'New subscription created successfully! 🎉',
+        delayDuration: 8000
       });
     }else if(method === 'get'){
       toast.success({
-        text: 'Subscriptions retrieved successfully! 🎉'
+        text: 'Subscriptions retrieved successfully! 🎉',
+        delayDuration: 8000
+      });
+    }else if(method === 'delete'){
+      toast.success({
+        text: 'Subscription deleted successfully! 🎉',
+        delayDuration: 8000
       });
     }
   }else if(success === 'false'){
