@@ -91,6 +91,10 @@ aside{
   font-weight:700;
   font-size: 1.5rem;
   color: var(--naranja);
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  align-self: center;
 }
 
 .options_btn{

@@ -42,96 +42,94 @@ function resetCookies(){
 ---
 
 <Layout title="New Subscription">
-  <div class="container">
-    <h1>New Subscription</h1>
-    <form method="post" action="/api/crud/insertNewSub">
-      <!-- Name -->
-      <label for="nombre">Name</label>
-      <input 
-        type="text" 
-        id="name" 
-        name="name" 
-        placeholder="Subscription name" 
-        autocomplete="off"
-        required
-      />
-
-      <!-- Campo oculto para guardar el icono seleccionado -->
-      <input type="hidden" id="icon_value" name="icon" />
-      <!-- Icon -->
-      <Icon client:visible/>
-
-      <!-- Cost (máximo 2 decimales) -->
-      <label for="cost">Cost</label>
-      <input 
-        type="number" 
-        id="cost" 
-        name="cost" 
-        placeholder="0.00" 
-        step="0.01" 
-        min="0" 
-        required
-      />
-
-          <!-- Fecha de inicio (requerida) -->
-          <label for="startDate">Start Date</label>
-          <input 
-            type="date" 
-            id="startDate" 
-            name="startDate" 
-            required
-          />
-        
-          <!-- Fecha de fin (opcional) -->
-          <label for="endDate">End Date (optional)</label>
-          <input 
-            type="date" 
-            id="endDate" 
-            name="endDate"
-          />
-
-      <!-- Ícono (archivo) -->
-      <!-- <label for="icon">Ícono</label>
-      <input 
-        type="file" 
-        id="icon" 
-        name="icon" 
-        accept="image/*"
-      /> -->
-
-          <!-- Frecuencia -->
-          <label for="frequency">Frequency</label>
-          <select 
-            id="frequency" 
-            name="frequency"
-          >
-            <option value="weekly">Weekly</option>
-            <option value="monthly" selected>Monthly</option>
-            <option value="yearly">Yearly</option>
-            <!-- <option value="one-shot">One Shot</option> -->
-          </select>
-
-          <!-- Cantidad de Frecuencia -->
-          <label for="frequency_value">Frequency Value</label>
-          <input 
-            type="number" 
-            id="frequency_value" 
-            name="frequency_value" 
-            placeholder="2 -> (every 2 months)" 
-            min="1"
-          />
-
-      <!-- Botones -->
-      <div class="btn-group">
-        <button type="button" class="btn-cancel">Cancel</button>
-        <button type="submit" class="btn-create">Create</button>
-      </div>
-    </form>
+  <div class="body">
+    <div class="back_btn">
+      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round" ><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 14l-4 -4l4 -4" /><path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg>
+      Back
+      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M16 2c.183 0 .355 .05 .502 .135l.033 .02c.28 .177 .465 .49 .465 .845v1h1a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h1v-1a1 1 0 0 1 .514 -.874l.093 -.046l.066 -.025l.1 -.029l.107 -.019l.12 -.007q .083 0 .161 .013l.122 .029l.04 .012l.06 .023c.328 .135 .568 .44 .61 .806l.007 .117v1h6v-1a1 1 0 0 1 1 -1m3 7h-14v9.625c0 .705 .386 1.286 .883 1.366l.117 .009h12c.513 0 .936 -.53 .993 -1.215l.007 -.16z" /><path d="M9.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /><path d="M13.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /><path d="M17.02 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /><path d="M12.02 15a1 1 0 0 1 0 2a1.001 1.001 0 1 1 -.005 -2z" /><path d="M9.015 16a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /></svg>
+    </div>
+    <div class="container">
+      <h1>New Subscription</h1>
+      <form method="post" action="/api/crud/insertNewSub">
+        <!-- Name -->
+        <label for="nombre">Name</label>
+        <input 
+          type="text" 
+          id="name" 
+          name="name" 
+          placeholder="Subscription name" 
+          autocomplete="off"
+          required
+        />
+  
+        <!-- Campo oculto para guardar el icono seleccionado -->
+        <input type="hidden" id="icon_value" name="icon" />
+        <!-- Icon -->
+        <Icon client:visible/>
+  
+        <!-- Cost (máximo 2 decimales) -->
+        <label for="cost">Cost</label>
+        <input 
+          type="number" 
+          id="cost" 
+          name="cost" 
+          placeholder="0.00" 
+          step="0.01" 
+          min="0" 
+          required
+        />
+  
+            <!-- Fecha de inicio (requerida) -->
+            <label for="startDate">Start Date</label>
+            <input 
+              type="date" 
+              id="startDate" 
+              name="startDate" 
+              required
+            />
+          
+            <!-- Fecha de fin (opcional) -->
+            <label for="endDate">End Date (optional)</label>
+            <input 
+              type="date" 
+              id="endDate" 
+              name="endDate"
+            />
+  
+            <!-- Frecuencia -->
+            <label for="frequency">Frequency</label>
+            <select 
+              id="frequency" 
+              name="frequency"
+            >
+              <option value="weekly">Weekly</option>
+              <option value="monthly" selected>Monthly</option>
+              <option value="yearly">Yearly</option>
+              <!-- <option value="one-shot">One Shot</option> -->
+            </select>
+  
+            <!-- Cantidad de Frecuencia -->
+            <label for="frequency_value">Frequency Value</label>
+            <input 
+              type="number" 
+              id="frequency_value" 
+              name="frequency_value" 
+              placeholder="2 -> (every 2 months)" 
+              min="1"
+            />
+  
+        <!-- Botones -->
+        <div class="btn-group">
+          <!-- <button type="button" class="btn-cancel">Cancel</button> -->
+          <button type="submit" class="btn-create">Create</button>
+        </div>
+      </form>
+    </div>
   </div>
 </Layout>
 
 <script>
-  const btn = document.querySelector('.btn-cancel');
+  const btn = document.querySelector('.back_btn');
   btn.addEventListener('click', () => {
     window.location.href = '/';
   });
@@ -184,7 +182,7 @@ function resetCookies(){
 
   .btn-group {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
   }
 
   button {
@@ -195,14 +193,14 @@ function resetCookies(){
     font-size: 1rem;
   }
 
-  .btn-cancel {
+  /* .btn-cancel {
     background-color: var(--rojo);
     color: var(--blanco);
   }
 
   .btn-cancel:hover {
     background-color: var(--rojo-oscuro);
-  }
+  } */
 
   .btn-create {
     background-color: var(--verde);
@@ -212,4 +210,28 @@ function resetCookies(){
   .btn-create:hover {
     background-color: #27ae60;
   }
+  .back_btn{
+    width: fit-content;
+  cursor: pointer;
+  padding: .4rem .8rem;
+  color: var(--gris-claro);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border: 2px solid var(--gris);
+  align-self: flex-start;
+}
+.back_btn:hover{
+  background-color: var(--gris);
+}
+.body{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  max-width: 360px;
+  margin: auto;
+}
 </style>

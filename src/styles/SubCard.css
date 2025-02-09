@@ -64,13 +64,18 @@
   font-size: 1.3rem;
   padding: .2rem .6rem;
   background-color: var(--blanco);
-  border-radius: 5px;
+  border-radius: 15px;
   height: fit-content;
+  display: flex;
+  align-items: center;
 }
 .totalCost{
   font-weight: 600;
   font-size: 1rem;
   color: var(--naranja);
+  display: flex;
+  align-items: center;
+  gap: .2rem;
 }
 .sub_frequency{
   color: var(--gris-claro);
@@ -91,18 +96,28 @@
   border-radius: 5px;
   gap: .3rem;
   cursor: pointer;
+  align-self: center;
+  text-align: center;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
 }
 .edit_btn{
   background-color: var(--azul);
   color: var(--negro);
-  font-weight: bold;
 }
 .edit_btn:hover{
   background-color: #3287bf;
 }
 .cancel_btn{
+  color: var(--blanco);
+  border: 1px solid var(--blanco);
+  backdrop-filter: blur(6px);
+  
+}
+.cancel_btn:hover{
+  background-color: var(--blanco);
   color: var(--negro);
-  background-color: var(--naranja);
 }
 .delete_btn{
   background-color: var(--rojo);
@@ -122,10 +137,8 @@
   align-items: center;
   justify-content: center;
   gap: .5rem;
-  top: 10px;
-  left: 10px;
   border: 2px solid var(--gris);
-  margin: 1rem;
+  margin: 1rem 1rem 0 1rem;
   align-self: flex-start;
 }
 .back_btn:hover{
