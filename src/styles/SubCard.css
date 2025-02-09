@@ -101,6 +101,7 @@
   font-weight: bold;
   display: flex;
   align-items: center;
+  transition: background-color 0.2s ease;
 }
 .edit_btn{
   background-color: var(--azul);
@@ -140,6 +141,7 @@
   border: 2px solid var(--gris);
   margin: 1rem 1rem 0 1rem;
   align-self: flex-start;
+  transition: background-color 0.2s ease;
 }
 .back_btn:hover{
   background-color: var(--gris);

@@ -60,6 +60,7 @@ aside{
   border: none;
   cursor: pointer;
   padding: .2rem;
+  transition: background-color 0.2s ease;
 }
 .buttonsMonth > button:hover{
   background-color: var(--blanco);
@@ -119,6 +120,7 @@ aside{
   font-weight: 700;
   font-size: .9rem;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 .dashboard_btn{
   background-color: var(--azul);
