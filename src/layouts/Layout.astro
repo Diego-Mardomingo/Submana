@@ -66,10 +66,17 @@ const { title } = Astro.props;
 		color: var(--blanco);
 	}
 	*{
-		font-family: 'Inter Variable', sans-serif;
+		font-family: 'Sora','Inter Variable', sans-serif;
 		box-sizing: border-box;
 		margin: 0;
     padding: 0;
 		-webkit-tap-highlight-color: transparent;
+	}
+	@font-face {
+		font-family: 'Sora';
+		src: url('/fonts/Sora-VariableFont_wght.ttf') format('truetype');
+		font-weight: 100 900;
+		font-style: normal;
+		font-display: swap;
 	}
 </style>
