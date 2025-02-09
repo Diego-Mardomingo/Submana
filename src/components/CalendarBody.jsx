@@ -10,6 +10,60 @@ export default function CalendarBody({ initialYear, initialMonth }) {
   const [subscriptions, setSubscriptions] = useState([]);
   const [isLoading, setLoading] = useState([]);
 
+
+  // ? SWIPE FUNCIONALITY
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [touchStartY, setTouchStartY] = useState(null);
+  const [touchEndX, setTouchEndX] = useState(null);
+  const [touchEndY, setTouchEndY] = useState(null);
+
+  const minSwipeDistance = 50; // distancia mínima en píxeles para considerar el swipe
+
+  const onTouchStart = (e) => {
+    setTouchEndX(null); // reiniciamos el final
+    setTouchEndY(null);
+    setTouchStartX(e.targetTouches[0].clientX);
+    setTouchStartY(e.targetTouches[0].clientY);
+  };
+  
+  const onTouchMove = (e) => {
+    setTouchEndX(e.targetTouches[0].clientX);
+    setTouchEndY(e.targetTouches[0].clientY);
+  };
+  
+  const onTouchEnd = () => {
+    if (touchStartX === null || touchStartY === null || touchEndX === null || touchEndY === null) return;
+    const deltaX = touchStartX - touchEndX;
+    const deltaY = touchStartY - touchEndY;
+  
+    // Determinar si el swipe es mayor en horizontal o vertical
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      // Swipe horizontal
+      if (deltaX > minSwipeDistance) {
+        // Desliza a la izquierda: avanzar mes
+        handleNextMonth();
+      } else if (deltaX < -minSwipeDistance) {
+        // Desliza a la derecha: retroceder mes
+        handlePrevMonth();
+      }
+    } else {
+      // Swipe vertical
+      // Si se desliza de abajo hacia arriba, deltaY será positivo
+      if (deltaY > minSwipeDistance) {
+        // Swipe vertical (bottom-to-top): ir a hoy
+        handleToday();
+      }
+    }
+    // Reiniciamos las coordenadas para el próximo toque
+    setTouchStartX(null);
+    setTouchStartY(null);
+    setTouchEndX(null);
+    setTouchEndY(null);
+  };
+  
+  
+  // ? END SWIPE FUNCIONALITY
+
   // Arrays estáticos
   const diasSemana = ["MON","TUE","WED","THU","FRY","SAT","SUN"];
   const meses = [
@@ -249,7 +303,12 @@ export default function CalendarBody({ initialYear, initialMonth }) {
       </header>
 
       {/* Sección del calendario */}
-      <section className="calendar_body">
+      <section 
+        className="calendar_body"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         {/* Días de la semana */}
         {diasSemana.map((dia) => (
           <div key={dia} className="diaSemana">
