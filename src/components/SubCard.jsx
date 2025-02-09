@@ -1,29 +1,35 @@
 import React, { useState, useEffect } from "react";
 import '../styles/SubCard.css';
+import LoadingSpinner from "./LoadingSpinner";
 
 export default function SubCard() {
 
   const [subs, setSubs] = useState([]);
+  const [isLoading, setLoading] = useState([]);
 
   useEffect(() => {
-      const fetchSubs = async () => {
-        try {
-          const response = await fetch("/api/crud/getAllSubs");
-          if (!response.ok) {
-            throw new Error(`Error fetching subs: ${response.statusText}`);
-          }
-          const data = await response.json();
-          if (data.success && data.subscriptions) {
-            setSubs(data.subscriptions);
-          } else {
-            console.error("No subscriptions in data:", data);
-          }
-        } catch (error) {
-          console.error("Error fetching subs:", error);
+    setLoading(true);
+    const fetchSubs = async () => {
+      try {
+        const response = await fetch("/api/crud/getAllSubs");
+        if (!response.ok) {
+          throw new Error(`Error fetching subs: ${response.statusText}`);
         }
-      };
-      fetchSubs();
-    }, []);
+        const data = await response.json();
+        if (data.success && data.subscriptions) {
+          setSubs(data.subscriptions);
+          setLoading(false);
+        } else {
+          console.error("No subscriptions in data:", data);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching subs:", error);
+        setLoading(false);
+      }
+    };
+    fetchSubs();
+  }, []);
 
     function setToNoon(date) {
       return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
@@ -59,7 +65,7 @@ export default function SubCard() {
 
     function getTotalCost(sub) {
       const start = setToNoon(new Date(sub.start_date));
-      const current = setToNoon(new Date(2025,2,15));
+      const current = setToNoon(new Date());
       
       if (current < start) return 0;
       
@@ -126,35 +132,39 @@ export default function SubCard() {
     }
 
   return (
-    <div className="subscriptions">
+    <div className='body'>
       <div className='back_btn' onClick={ () =>{window.location.href = '/';}}>{backIcon()} Back</div>
-      <h1 className="title">My Subscriptions</h1>
-      {subs.map((sub, index) => (
-        <div key={index} className="subCard">
-          <img src={sub.icon} alt="subscription icon" className="sub_icon" />
-          <div className='card_body'>
-            <div className='card_header'>
-              <h2 className="sub_name">{sub.service_name}</h2>
-              <div className="card_header-columnRight"></div>
-              <div className="sub_cost">{sub.cost}€</div>
-            </div>
-            <div className="sub_startDate">Total since {sub.start_date} {arrowIcon()}  <span className="totalCost">{getTotalCost(sub)}€</span></div>
-            <div className="sub_endDate">{sub.end_date ? 'End date: '+sub.end_date: null}</div>
-            <div className="sub_frequency">Every {sub.frequency_value} {getFrequencyText(sub.frequency)}</div>
-            <div className="card_active">
-                <div className="card_active_icon">
-                  {isActive(sub) ? activeIcon() : inactiveIcon()}
-                </div>
-                {isActive(sub) ? 'Active' : 'Inactive'}
+      <div className="subscriptions">
+        <h1 className="title">My Subscriptions</h1>
+        {isLoading ? <LoadingSpinner/> : null}
+        {subs.map((sub, index) => (
+          <div key={index} className="subCard">
+            <img src={sub.icon} alt="subscription icon" className="sub_icon" />
+            <div className='card_body'>
+              <div className='card_header'>
+                <h2 className="sub_name">{sub.service_name}</h2>
+                <div className="card_header-columnRight"></div>
+                <div className="sub_cost">{sub.cost}€</div>
               </div>
-            {/* <div className='card_footer'>
-              <div className='edit_btn btn'>Edit</div>
-              <div className='cancel_btn btn'>Cancel</div>
-              <div className='delete_btn btn'>Delete</div>
-            </div> */}
+              <div className="sub_startDate">Total since {sub.start_date} {arrowIcon()}  <span className="totalCost">{getTotalCost(sub)}€</span></div>
+              <div className="sub_endDate">{sub.end_date ? 'End date: '+sub.end_date: null}</div>
+              <div className="sub_frequency">Every {sub.frequency_value} {getFrequencyText(sub.frequency)}</div>
+              <div className="card_active">
+                  <div className="card_active_icon">
+                    {isActive(sub) ? activeIcon() : inactiveIcon()}
+                  </div>
+                  {isActive(sub) ? 'Active' : 'Inactive'}
+                </div>
+              {/* <div className='card_footer'>
+                <div className='edit_btn btn'>Edit</div>
+                <div className='cancel_btn btn'>Cancel</div>
+                <div className='delete_btn btn'>Delete</div>
+              </div> */}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+
     </div>
   );
 

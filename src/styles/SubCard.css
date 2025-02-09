@@ -13,9 +13,8 @@
   background-color: var(--gris);
   border-radius: 10px;
   padding: 1rem;
-  margin: 1rem auto;
+  margin: 1rem;
   max-width: 600px;
-  position: relative;
 }
 .subCard{
   display: flex;
@@ -115,11 +114,9 @@
   display: flex;
 }
 .back_btn{
-  position: absolute;
   cursor: pointer;
   padding: .4rem .8rem;
-  /* background-color: var(--gris-claro); */
-  color: var(--blanco);
+  color: var(--gris-claro);
   border-radius: 5px;
   display: flex;
   align-items: center;
@@ -127,9 +124,23 @@
   gap: .5rem;
   top: 10px;
   left: 10px;
-  border: 2px solid var(--gris-claro);
+  border: 2px solid var(--gris);
+  margin: 1rem;
+  align-self: flex-start;
 }
 .back_btn:hover{
   background-color: var(--gris);
-  background-color: var(--gris-claro);
+}
+.body{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  max-width: 600px;
+  margin: auto;
+}
+
+.spinner{
+  width: 4rem;
+  fill: var(--verde);
 }

@@ -137,4 +137,22 @@ aside{
   grid-template-columns: repeat(7, 1fr);
   gap: .5rem;
   justify-items: center;
+  position: relative;
+}
+.calendar_body > .spinner_container{
+  position: absolute;
+  top: 100px;
+}
+.calendar_body > .spinner_container > .spinner{
+  width: 4rem;
+  fill: var(--verde);
+}
+.spent_value > .spinner_container{
+  position: static;
+  top: 0;
+}
+.spent_value > .spinner_container > .spinner{
+  width: 1.5rem;
+  margin-top: 8px;
+  fill: var(--verde);
 }

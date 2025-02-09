@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-
+import LoadingSpinner from "./LoadingSpinner";
 import "../styles/CalendarBody.css";
 import Day from "./Day";
 
@@ -8,6 +8,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [subscriptions, setSubscriptions] = useState([]);
+  const [isLoading, setLoading] = useState([]);
 
   // Arrays estáticos
   const diasSemana = ["MON","TUE","WED","THU","FRY","SAT","SUN"];
@@ -74,6 +75,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
   }
 
   useEffect(() => {
+    setLoading(true);
     const fetchSubs = async () => {
       try {
         const response = await fetch("/api/crud/getAllSubs");
@@ -83,11 +85,14 @@ export default function CalendarBody({ initialYear, initialMonth }) {
         const data = await response.json();
         if (data.success && data.subscriptions) {
           setSubscriptions(data.subscriptions);
+          setLoading(false);
         } else {
           console.error("No subscriptions in data:", data);
+          setLoading(false);
         }
       } catch (error) {
         console.error("Error fetching subs:", error);
+        setLoading(false);
       }
     };
     fetchSubs();
@@ -185,11 +190,6 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     return spent;
   }
 
-  function todayIcon(){
-    return (
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-home"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
-    );
-  }
   function anteriorIcon(){
     return (
       <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-chevron-left"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 6l-6 6l6 6" /></svg> 
@@ -237,9 +237,6 @@ export default function CalendarBody({ initialYear, initialMonth }) {
           <button onClick={handleNextMonth} className="siguiente">
             {siguienteIcon()}
           </button>
-          {/* <button onClick={handleToday}>
-            {todayIcon()}
-          </button> */}
         </div>
         <div className="header_text" onClick={handleToday}>
           <p className="nombre_mes">{meses[month]}</p>
@@ -247,7 +244,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
         </div>
           <div className="spent_container">
             <p className="spent_title">Monthly spend</p>
-            <p className="spent_value">{getSpentValue()}€</p>
+            <div className="spent_value">{isLoading ? <LoadingSpinner/> : getSpentValue()+'€'}</div>
           </div>
       </header>
 
@@ -261,7 +258,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
         ))}
 
         {/* Días del mes */}
-        {daysArray.map((dayNumber, index) => {
+        {isLoading ? <LoadingSpinner/> : daysArray.map((dayNumber, index) => {
           const styleObj = index === 0 ? { gridColumnStart: startColumn } : {};
           return (
             <Day
