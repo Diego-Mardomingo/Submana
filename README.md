@@ -6,6 +6,9 @@
 
 #### **Submana** es una **aplicación de gestión de suscripciones** diseñada para ayudarte a organizar y administrar tus servicios de streaming, software y cualquier otro servicio basado en suscripción. ¡Olvídate del caos y toma el control de tus gastos recurrentes de manera sencilla y eficiente!
 
+<div align="center" style="text-align: center;">
+  <img style="width: 8rem" src="/src/images/submanaLogo.webp" alt="Submana logo">
+</div>
 <div align="center" style="margin: 2rem 0;"> <a href="https://submana.netlify.app"> <img src="https://img.shields.io/badge/Visitar_Submana-41B883?style=for-the-badge&logo=window-restore&logoColor=black" alt="Explorar Submana"> </a> </div>
 
 ---
