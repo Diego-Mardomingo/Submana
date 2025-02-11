@@ -188,28 +188,30 @@ export default function SubCard() {
         {isLoading ? <LoadingSpinner/> : null}
         {subs.map((sub, index) => (
           <div key={index} className="subCard">
-            <img src={sub.icon} alt="subscription icon" className="sub_icon" />
-            <div className='card_body'>
-              <div className='card_header'>
-                <h2 className="sub_name">{sub.service_name}</h2>
-                <div className="card_header-columnRight"></div>
-                <div className="sub_cost">{sub.cost} {euroIcon()}</div>
-              </div>
-              <div className="sub_startDate">Total since {sub.start_date} {arrowIcon()}  <span className="totalCost">{getTotalCost(sub)} {euroIcon()}</span></div>
-              <div className="sub_endDate">{sub.end_date ? 'End date: '+sub.end_date: null}</div>
-              <div className="sub_frequency">Every {sub.frequency_value} {getFrequencyText(sub.frequency)}</div>
-              <div className="card_active">
+            <div className='sub_container'>
+              <img src={sub.icon} alt="subscription icon" className="sub_icon" />
+              <div className='card_body'>
+                <div className='card_header'>
+                  <h2 className="sub_name">{sub.service_name}</h2>
+                  <div className="card_header-columnRight"></div>
+                  <div className="sub_cost">{sub.cost} {euroIcon()}</div>
+                </div>
+                <div className="sub_startDate">Total since {sub.start_date} {arrowIcon()}  <span className="totalCost">{getTotalCost(sub)} {euroIcon()}</span></div>
+                <div className="sub_endDate">{sub.end_date ? 'End date: '+sub.end_date: null}</div>
+                <div className="sub_frequency">Every {sub.frequency_value} {getFrequencyText(sub.frequency)}</div>
+                <div className="card_active">
                   <div className="card_active_icon">
                     {isActive(sub) ? activeIcon() : inactiveIcon()}
                   </div>
                   {isActive(sub) ? 'Active' : 'Inactive'}
                 </div>
+              </div>
+            </div>
               <div className='card_footer'>
                 <div className='edit_btn btn'>{editIcon()}Edit</div>
                 <div className='cancel_btn btn'>{cancelIcon()}Cancel Sub</div>
                 <div className='delete_btn btn' onClick={() => handleDelete(sub.id)}>{deleteIcon()}</div>
               </div>
-            </div>
           </div>
         ))}
       </div>
