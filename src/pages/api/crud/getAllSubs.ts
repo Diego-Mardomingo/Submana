@@ -19,6 +19,7 @@ export const GET: APIRoute = async () => {
     .from('subscriptions')
     .select('*')
     .eq('user_id', user.id)
+    .order('id', { ascending: true });
 
     if (error) {
       return new Response(JSON.stringify({ success: false, error }), {
