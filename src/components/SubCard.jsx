@@ -133,6 +133,29 @@ export default function SubCard() {
           console.error('Error:', error);
         });
     }
+    function handleCancelSub(identificator){
+      fetch('/api/crud/cancelSub', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          id: identificator
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Respuesta:', data);
+          toast.success({
+            text: 'Subscription canceled successfully! 🎉',
+            delayDuration: 8000
+          });
+          fetchSubs();
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
+    }
 
     function activeIcon(){
       return (
@@ -209,7 +232,7 @@ export default function SubCard() {
             </div>
               <div className='card_footer'>
                 <div className='edit_btn btn'>{editIcon()}Edit</div>
-                <div className='cancel_btn btn'>{cancelIcon()}Cancel Sub</div>
+                <div className='cancel_btn btn' onClick={() => handleCancelSub(sub.id)}>{cancelIcon()}Cancel Sub</div>
                 <div className='delete_btn btn' onClick={() => handleDelete(sub.id)}>{deleteIcon()}</div>
               </div>
           </div>
