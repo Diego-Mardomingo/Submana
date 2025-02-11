@@ -2,6 +2,7 @@
 import Logo from "../components/Logo.astro";
 import Layout from "../layouts/Layout.astro";
 import googleLogo from "../images/googleLogo.png"
+import LoadingSpinner from "../components/LoadingSpinner";
 
 const { cookies, redirect } = Astro;
 
@@ -19,10 +20,27 @@ if(accessToken && refreshToken){
     <Logo/>
     <div class="separator"></div>
     <form action="/api/auth/signin" method="post">
-      <button value="google" name="provider" type="submit"><img src={googleLogo.src} alt="Logo de Google"></img> Continuar con Google</button>
+      <button id="login_btn" value="google" name="provider" type="submit"><img src={googleLogo.src} alt="Logo de Google"></img> 
+        Continuar con Google
+        <span id="spinner" style="display: none;">
+          <LoadingSpinner />
+        </span>
+      </button>
     </form>
   </section>
 </Layout>
+
+<script>
+  const loginBtn = document.getElementById('login_btn');
+  const spinner = document.getElementById('spinner');
+  if (loginBtn && spinner) {
+    loginBtn.addEventListener('click', () => {
+      spinner.style.display = 'inline-block';
+      spinner.style.fill = 'var(--verde)';
+      spinner.style.width = '1.5rem';
+    });
+  }
+</script>
 
 <style>
 

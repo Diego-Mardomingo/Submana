@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Icon from "../components/Icon.tsx";
+import LoadingSpinner from "../components/LoadingSpinner";
 
 import { supabase } from '../lib/supabase';
 
@@ -120,7 +121,10 @@ function resetCookies(){
         <!-- Botones -->
         <div class="btn-group">
           <!-- <button type="button" class="btn-cancel">Cancel</button> -->
-          <button type="submit" class="btn-create">Create</button>
+          <button id="create_btn" type="submit" class="btn-create">
+            Create
+            <span id="spinner_btn" style="display: none;"><LoadingSpinner/></span>
+          </button>
         </div>
       </form>
     </div>
@@ -132,6 +136,13 @@ function resetCookies(){
   btn.addEventListener('click', () => {
     window.location.href = '/';
   });
+
+  const createbtn = document.getElementById('create_btn');
+  const spinnerbtn = document.getElementById('spinner_btn');
+  createbtn.addEventListener('click', () => {
+    spinnerbtn.style.display = 'inline-block';
+    spinnerbtn.style.width = '1rem';
+  })
 </script>
 
 
@@ -205,6 +216,9 @@ function resetCookies(){
   .btn-create {
     background-color: var(--verde);
     color: var(--negro);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
   }
 
   .btn-create:hover {
