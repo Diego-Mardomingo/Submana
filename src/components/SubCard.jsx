@@ -9,6 +9,9 @@ export default function SubCard() {
   const [isLoading, setLoading] = useState([]);
   const [noSubs, setNoSubs] = useState([]);
 
+  const [isModalOpen, setModalOpen] = useState(false);
+  const [subToDelete, setSubToDelete] = useState(null);
+
   const fetchSubs = async () => {
     setLoading(true);
     try {
@@ -112,14 +115,24 @@ export default function SubCard() {
       return parseFloat((sub.cost * periods).toFixed(2));
     }
 
-    function handleDelete(identificator){
+    function handleDeleteOpenModal(identificator){
+      setModalOpen(true);
+      setSubToDelete(identificator);
+    }
+    function handleDeleteCancel(){
+      setModalOpen(false);
+      setSubToDelete(null);
+    }
+
+    function handleDelete(){
+      setLoading(true);
       fetch('/api/crud/deleteSub', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          id: identificator
+          id: subToDelete
         })
       })
         .then(response => response.json())
@@ -127,11 +140,17 @@ export default function SubCard() {
           console.log('Respuesta:', data);
           toast.success({
             text: 'Subscription deleted successfully! 🎉',
-            delayDuration: 8000
+            delayDuration: 4000
           });
+          setModalOpen(false);
+          setSubToDelete(null);
+          setLoading(false);
           fetchSubs();
         })
         .catch(error => {
+          setModalOpen(false);
+          setSubToDelete(null);
+          setLoading(false);
           console.error('Error:', error);
         });
     }
@@ -210,7 +229,7 @@ export default function SubCard() {
       <div className='back_btn' onClick={ () =>{window.location.href = '/';}}>{backIcon()} Back {backCalendarIcon()}</div>
       <div className="subscriptions">
         <h1 className="title">My Subscriptions</h1>
-        {isLoading ? <LoadingSpinner/> : null}
+        {isLoading && !isModalOpen ? <LoadingSpinner/> : null}
         {subs.length === 0 ? noSubs : subs.map((sub, index) => (
           <div key={index} className="subCard">
             <div className='sub_container'>
@@ -235,12 +254,23 @@ export default function SubCard() {
               <div className='card_footer'>
                 <div className='edit_btn btn'>{editIcon()}Edit</div>
                 <div className='cancel_btn btn' onClick={() => handleCancelSub(sub.id)}>{cancelIcon()}Cancel Sub</div>
-                <div className='delete_btn btn' onClick={() => handleDelete(sub.id)}>{deleteIcon()}</div>
+                <div className='delete_btn btn' onClick={() => handleDeleteOpenModal(sub.id)}>{deleteIcon()}</div>
               </div>
           </div>
         ))}
       </div>
-
+      {isModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Confirm Deletion</h2>
+            <p>Are you sure you want to delete this subscription?</p>
+            <div className="modal-actions">
+              <button className="modal-delete_btn" onClick={handleDelete}>{isLoading && isModalOpen ? <LoadingSpinner/> : 'Yes, Delete'}</button>
+              <button className="modal-cancel_btn" onClick={handleDeleteCancel}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

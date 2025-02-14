@@ -183,6 +183,74 @@
   background-color: #27ae60;
 }
 
+/** MODAL */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--negro);
+  padding: 1rem;
+  border-radius: 5px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+
+.modal > h2{
+  color: var(--verde);
+}
+
+.modal-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.modal-actions button {
+  padding: 10px 15px;
+  cursor: pointer;
+  border-radius: 5px;
+  font-weight: 500;
+  color: var(--blanco);
+}
+
+.modal-delete_btn{
+  background-color: var(--rojo);
+  border: none;
+}
+.modal-delete_btn:hover{
+  background-color: var(--rojo-oscuro);
+}
+.modal-cancel_btn{
+  border: 2px solid var(--gris);
+  background-color: var(--negro);
+}
+.modal-cancel_btn:hover{
+  background-color: var(--gris);
+}
+.modal-delete_btn > .spinner_container{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-delete_btn > .spinner_container > .spinner{
+  width: 21px;
+  fill: var(--negro);
+}
+
+
 @media (max-width:417px) {
   .sub_container{
     flex-direction: column;
