@@ -1,6 +1,6 @@
 .dia{
   padding: .2rem;
-  width: min(100%, 6rem);
+  width: min(100%, 7rem);
   aspect-ratio: 1 / 1.15;
   background-color: var(--gris-oscuro);
   border-radius: 10px;
@@ -34,7 +34,7 @@
 
 .icons_container {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex-grow: 1;
   justify-content: center;
   align-items: center;
@@ -47,31 +47,8 @@
 }
 
 .subscription_icon:nth-child(2){
-  margin-left: -8px;
+  margin-left: -5px;
 }
-.subscription_icon:nth-child(3){
-  margin-top: -12px;
-  margin-left: 0;
-}
-.subscription_icon:nth-child(4){
-  margin-top: -12px;
-  margin-left: -8px;
-}
-
-/* .icons_container {
-  display: flex;
-  align-items: center;
-  position: relative;
-  height: 24px;
-} */
-
-/* .subscription_icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 4px;
-  object-fit: cover;
-  border: 1px solid #fff;
-} */
 
 .subscription_overflow {
   width: 30px;
@@ -84,6 +61,36 @@
   justify-content: center;
   font-size: 0.75rem;
   font-weight: bold;
-  margin-top: -12px;
-  margin-left: -8px;
+  margin-left: -5px;
 }
+
+@media (max-width:570px) {
+  .dia{
+    width: 100%;
+    padding: 0rem;
+  }
+  .number{
+    font-size: smaller;
+  }
+  .diaActual{
+    border: 1px solid var(--blanco);
+  }
+  .diaActual .number{
+    padding: 0rem .5rem;
+    margin-bottom: .1rem;
+  }
+  .subscription_icon{
+    width: 50%;
+    height: auto;
+  }
+  .subscription_overflow{
+    width: 50%;
+    height: 57%;
+  }
+}
+/* 
+@media (max-width:570px) {
+  .subscription_overflow{
+    height: 26.23px;
+  }
+} */

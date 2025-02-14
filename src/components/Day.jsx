@@ -13,10 +13,10 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [] }) {
   const dayNum = dayNumber.toString().padStart(2, '0');
 
   const renderIcons = () => {
-    if (icons.length > 4) {
+    if (icons.length > 2) {
       return (
         <>
-          {icons.slice(0, 3).map((iconUrl, idx) => (
+          {icons.slice(0, 1).map((iconUrl, idx) => (
             <img
               key={idx}
               src={iconUrl}
@@ -25,7 +25,7 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [] }) {
             />
           ))}
           <div className="subscription_overflow">
-            +{icons.length - 3}
+            +{icons.length - 1}
           </div>
         </>
       );

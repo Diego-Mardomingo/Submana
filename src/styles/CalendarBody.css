@@ -1,6 +1,7 @@
 .calendar_container{
   padding: 2rem;
   max-width: 600px;
+  width: 100%;
   margin: auto;
   display: flex;
   flex-direction: column;
@@ -70,14 +71,6 @@ aside{
   width: 1.8rem;
   height: 1.8rem;
 }
-/* .buttonsMonth > button:last-child > svg{
-  width: 1.5rem;
-  height: 1.5rem;
-}
-.buttonsMonth > button:last-child:hover{
-  background-color: var(--blanco);
-  color: var(--negro);
-} */
 
 .spent_container{
   display: flex;
@@ -112,7 +105,7 @@ aside{
 .options_btn > ul > li{
   padding: .6rem;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   align-items: center;
   gap: .5rem;
   border-radius: 8px;
@@ -141,8 +134,9 @@ aside{
 .calendar_body{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: .5rem;
+  gap: .35rem;
   justify-items: center;
+  align-items: center;
   position: relative;
 }
 .calendar_body > .spinner_container{
@@ -161,4 +155,40 @@ aside{
   width: 1.5rem;
   margin-top: 8px;
   fill: var(--verde);
+}
+
+/* ? ======================================================= */
+
+@media (max-width:570px) {
+  .calendar_header{
+    justify-content: center;
+  }
+  .header_text{
+    flex-direction: column;
+    gap: 0;
+  }
+  .nombre_mes{
+    font-size: 2rem;
+  }
+  .año{
+    font-size: 1.3rem;
+  }
+  .calendar_container{
+    padding: .8rem;
+    width: 100%;
+  }
+  .buttonsMonth{
+    display: none;
+  }
+  .calendar_body{
+    gap: .2rem;
+  }
+  .diaSemana{
+    padding: .2rem .5rem;
+  }
+  .options_btn > ul > li{
+    font-size: .8rem;
+    padding: .3rem;
+    gap: .2rem;
+  }
 }
