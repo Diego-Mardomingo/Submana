@@ -2,15 +2,20 @@ import React, { useState, useEffect } from "react";
 import '../styles/SubCard.css';
 import LoadingSpinner from "./LoadingSpinner";
 import { toast } from "@pheralb/toast";
+import EditForm from "./EditForm";
 
 export default function SubCard() {
 
   const [subs, setSubs] = useState([]);
   const [isLoading, setLoading] = useState([]);
   const [noSubs, setNoSubs] = useState([]);
-
+  
+  const [isLoadingCancel, setLoadingCancel] = useState(false);
   const [isModalOpen, setModalOpen] = useState(false);
   const [subToDelete, setSubToDelete] = useState(null);
+  const [subToCancel, setSubToCancel] = useState(null);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
+  const [subToEdit, setSubToEdit] = useState(null);
 
   const fetchSubs = async () => {
     setLoading(true);
@@ -155,6 +160,8 @@ export default function SubCard() {
         });
     }
     function handleCancelSub(identificator){
+      setSubToCancel(identificator);
+      setLoadingCancel(true);
       fetch('/api/crud/cancelSub', {
         method: 'POST',
         headers: {
@@ -169,13 +176,30 @@ export default function SubCard() {
           console.log('Respuesta:', data);
           toast.success({
             text: 'Subscription canceled successfully! 🎉',
-            delayDuration: 8000
+            delayDuration: 4000
           });
+          setLoadingCancel(false);
           fetchSubs();
         })
         .catch(error => {
           console.error('Error:', error);
+          setLoadingCancel(false);
         });
+    }
+
+    function handleEditSub(sub){
+      setEditModalOpen(true);
+      setSubToEdit(sub);
+    }
+    function handleChildEvent(value){
+      if(value){
+        toast.success({
+          text: 'Changes saved successfully! 🎉',
+          delayDuration: 4000
+        });
+      }
+      fetchSubs();
+      setEditModalOpen(false);
     }
 
     function activeIcon(){
@@ -229,7 +253,7 @@ export default function SubCard() {
       <div className='back_btn' onClick={ () =>{window.location.href = '/';}}>{backIcon()} Back {backCalendarIcon()}</div>
       <div className="subscriptions">
         <h1 className="title">My Subscriptions</h1>
-        {isLoading && !isModalOpen ? <LoadingSpinner/> : null}
+        {isLoading && !isModalOpen && subs.length === 0 ? <LoadingSpinner/> : null}
         {subs.length === 0 ? noSubs : subs.map((sub, index) => (
           <div key={index} className="subCard">
             <div className='sub_container'>
@@ -252,8 +276,8 @@ export default function SubCard() {
               </div>
             </div>
               <div className='card_footer'>
-                <div className='edit_btn btn'>{editIcon()}Edit</div>
-                <div className='cancel_btn btn' onClick={() => handleCancelSub(sub.id)}>{cancelIcon()}Cancel Sub</div>
+                <div className='edit_btn btn' onClick={() => handleEditSub(sub)}>{editIcon()}Edit</div>
+                <div className='cancel_btn btn' onClick={() => handleCancelSub(sub.id)}>{isLoadingCancel && subToCancel === sub.id ? <>{cancelIcon()} <LoadingSpinner/></> : <>{cancelIcon()}Cancel Sub</>}</div>
                 <div className='delete_btn btn' onClick={() => handleDeleteOpenModal(sub.id)}>{deleteIcon()}</div>
               </div>
           </div>
@@ -270,6 +294,9 @@ export default function SubCard() {
             </div>
           </div>
         </div>
+      )}
+      {isEditModalOpen && (
+        <EditForm onChildEvent={handleChildEvent} subscription={subToEdit}/>
       )}
     </div>
   );

@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Icon.css";
 
-type IconProps = {
-  // Función callback para comunicar al padre qué icono se seleccionó
-  onIconSelected?: (iconUrl: string) => void;
-};
-
-export default function Icon({ onIconSelected }: IconProps) {
+export default function Icon({ defaultIcon, onIconSelected }) {
   // Estado para la cadena de búsqueda
   const [searchTerm, setSearchTerm] = useState("");
   // Estado para los resultados de la API (lista de iconos)
   const [icons, setIcons] = useState<any[]>([]);
   // Estado para el icono seleccionado
-  const [selectedIcon, setSelectedIcon] = useState<string | null>(null);
+  const [selectedIcon, setSelectedIcon] = useState(defaultIcon);
 
   /**
    * useEffect para hacer "debounce" de 1 segundo.
@@ -58,9 +53,7 @@ export default function Icon({ onIconSelected }: IconProps) {
    */
   const handleIconClick = (iconUrl: string) => {
     setSelectedIcon(iconUrl);
-    if (onIconSelected) {
-      onIconSelected(iconUrl);
-    }
+    onIconSelected(iconUrl);
     const hiddenField = document.getElementById("icon_value") as HTMLInputElement;
     if (hiddenField) {
       hiddenField.value = iconUrl;

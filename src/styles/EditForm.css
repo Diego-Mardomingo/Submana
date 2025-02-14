@@ -1,0 +1,90 @@
+.modal-overlayEdit{
+  position: fixed;
+  top: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  height: 100dvh;
+  width: 100vw;
+  overflow: auto;
+}
+
+.modalEdit{
+  background: var(--negro);
+  padding: 1rem;
+  border-radius: 5px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  margin: auto;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: var(--verde);
+}
+
+label {
+  text-align: left;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 1rem;
+  background-color: var(--gris);
+  border: none;
+  border-radius: 6px;
+  color: var(--blanco);
+  font-size: 1rem;
+}
+
+input:focus,
+select:focus {
+  outline: 2px solid var(--verde);
+}
+
+.btn-group {
+  display: flex;
+  justify-content: space-between;
+}
+
+button {
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.btn-cancel {
+  background-color: var(--rojo);
+  color: var(--blanco);
+}
+
+.btn-cancel:hover {
+  background-color: var(--rojo-oscuro);
+}
+
+.btn-create {
+  background-color: var(--verde);
+  color: var(--negro);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-create:hover {
+  background-color: #27ae60;
+}
+
+.btn-create > .spinner_container > .spinner {
+  width: 16px;
+  fill: var(--negro);
+}
+

@@ -122,8 +122,15 @@
 .cancel_btn{
   color: var(--blanco);
   border: 1px solid var(--blanco);
-  
 }
+.cancel_btn > .spinner_container{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cancel_btn > .spinner_container > .spinner{
+  width: 24px;
+} 
 .cancel_btn:hover{
   background-color: var(--blanco);
   color: var(--negro);
@@ -164,6 +171,7 @@
   align-items: center;
   max-width: 600px;
   margin: auto;
+  position: relative;
 }
 
 .spinner{
@@ -190,7 +198,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.9);
   display: flex;
   align-items: center;
   justify-content: center;
