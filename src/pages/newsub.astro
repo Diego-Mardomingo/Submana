@@ -3,127 +3,145 @@ import Layout from "../layouts/Layout.astro";
 import Icon from "../components/Icon.tsx";
 import LoadingSpinner from "../components/LoadingSpinner";
 
-import { supabase } from '../lib/supabase';
+import { supabase } from "../lib/supabase";
 
 const { cookies, redirect } = Astro;
 
 const accessToken = cookies.get("sb-access-token");
 const refreshToken = cookies.get("sb-refresh-token");
 
-if(!accessToken || !refreshToken){
-	return redirect("/login");
+if (!accessToken || !refreshToken) {
+  return redirect("/login");
 }
 
 let session;
 try {
-	session = await supabase.auth.setSession(
-		{
-			refresh_token: refreshToken.value,
-			access_token: accessToken.value,
-		}
-	);
-	if(session.error){
-		resetCookies();
-	}
+  session = await supabase.auth.setSession({
+    refresh_token: refreshToken.value,
+    access_token: accessToken.value,
+  });
+  if (session.error) {
+    resetCookies();
+  }
 } catch (error) {
-	resetCookies();
+  resetCookies();
 }
 
 const email = session.data.user?.email;
 const name = session.data.user?.user_metadata.name;
 const avatar = session.data.user?.user_metadata.avatar_url;
 
-
-function resetCookies(){
-	cookies.delete("sb-access-token",{path: "/"});
-	cookies.delete("sb-refresh-token",{path: "/"});
-	return redirect("/login")
+function resetCookies() {
+  cookies.delete("sb-access-token", { path: "/" });
+  cookies.delete("sb-refresh-token", { path: "/" });
+  return redirect("/login");
 }
 ---
 
 <Layout title="New Subscription">
   <div class="body">
     <div class="back_btn">
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  stroke-width="2"  stroke-linecap="round"  stroke-linejoin="round" ><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 14l-4 -4l4 -4" /><path d="M5 10h11a4 4 0 1 1 0 8h-1" /></svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        ><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path
+          d="M9 14l-4 -4l4 -4"></path><path d="M5 10h11a4 4 0 1 1 0 8h-1"
+        ></path></svg
+      >
       Back
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M16 2c.183 0 .355 .05 .502 .135l.033 .02c.28 .177 .465 .49 .465 .845v1h1a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h1v-1a1 1 0 0 1 .514 -.874l.093 -.046l.066 -.025l.1 -.029l.107 -.019l.12 -.007q .083 0 .161 .013l.122 .029l.04 .012l.06 .023c.328 .135 .568 .44 .61 .806l.007 .117v1h6v-1a1 1 0 0 1 1 -1m3 7h-14v9.625c0 .705 .386 1.286 .883 1.366l.117 .009h12c.513 0 .936 -.53 .993 -1.215l.007 -.16z" /><path d="M9.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /><path d="M13.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /><path d="M17.02 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /><path d="M12.02 15a1 1 0 0 1 0 2a1.001 1.001 0 1 1 -.005 -2z" /><path d="M9.015 16a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1" /></svg>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        ><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path
+          d="M16 2c.183 0 .355 .05 .502 .135l.033 .02c.28 .177 .465 .49 .465 .845v1h1a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h1v-1a1 1 0 0 1 .514 -.874l.093 -.046l.066 -.025l.1 -.029l.107 -.019l.12 -.007q .083 0 .161 .013l.122 .029l.04 .012l.06 .023c.328 .135 .568 .44 .61 .806l.007 .117v1h6v-1a1 1 0 0 1 1 -1m3 7h-14v9.625c0 .705 .386 1.286 .883 1.366l.117 .009h12c.513 0 .936 -.53 .993 -1.215l.007 -.16z"
+        ></path><path
+          d="M9.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path><path
+          d="M13.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path><path
+          d="M17.02 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path><path d="M12.02 15a1 1 0 0 1 0 2a1.001 1.001 0 1 1 -.005 -2z"
+        ></path><path
+          d="M9.015 16a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path></svg
+      >
     </div>
     <div class="container">
       <h1>New Subscription</h1>
       <form method="post" action="/api/crud/insertNewSub">
         <!-- Name -->
         <label for="nombre">Name</label>
-        <input 
-          type="text" 
-          id="name" 
-          name="name" 
-          placeholder="Subscription name" 
+        <input
+          type="text"
+          id="name"
+          name="name"
+          placeholder="Subscription name"
           autocomplete="off"
           required
         />
-  
+
         <!-- Campo oculto para guardar el icono seleccionado -->
         <input type="hidden" id="icon_value" name="icon" />
         <!-- Icon -->
-        <Icon client:visible/>
-  
+        <Icon client:visible />
+
         <!-- Cost (máximo 2 decimales) -->
         <label for="cost">Cost</label>
-        <input 
-          type="number" 
-          id="cost" 
-          name="cost" 
-          placeholder="0.00" 
-          step="0.01" 
-          min="0" 
+        <input
+          type="number"
+          id="cost"
+          name="cost"
+          placeholder="0.00"
+          step="0.01"
+          min="0"
           required
         />
-  
-            <!-- Fecha de inicio (requerida) -->
-            <label for="startDate">Start Date</label>
-            <input 
-              type="date" 
-              id="startDate" 
-              name="startDate" 
-              required
-            />
-          
-            <!-- Fecha de fin (opcional) -->
-            <label for="endDate">End Date (optional)</label>
-            <input 
-              type="date" 
-              id="endDate" 
-              name="endDate"
-            />
-  
-            <!-- Frecuencia -->
-            <label for="frequency">Frequency</label>
-            <select 
-              id="frequency" 
-              name="frequency"
-            >
-              <option value="weekly">Weekly</option>
-              <option value="monthly" selected>Monthly</option>
-              <option value="yearly">Yearly</option>
-              <!-- <option value="one-shot">One Shot</option> -->
-            </select>
-  
-            <!-- Cantidad de Frecuencia -->
-            <label for="frequency_value">Frequency Value</label>
-            <input 
-              type="number" 
-              id="frequency_value" 
-              name="frequency_value" 
-              placeholder="2 -> (every 2 months)" 
-              min="1"
-            />
-  
+
+        <!-- Fecha de inicio (requerida) -->
+        <label for="startDate">Start Date</label>
+        <input type="date" id="startDate" name="startDate" required />
+
+        <!-- Fecha de fin (opcional) -->
+        <label for="endDate">End Date (optional)</label>
+        <input type="date" id="endDate" name="endDate" />
+
+        <!-- Frecuencia -->
+        <label for="frequency">Frequency</label>
+        <select id="frequency" name="frequency">
+          <option value="weekly">Weekly</option>
+          <option value="monthly" selected>Monthly</option>
+          <option value="yearly">Yearly</option>
+          <!-- <option value="one-shot">One Shot</option> -->
+        </select>
+
+        <!-- Cantidad de Frecuencia -->
+        <label for="frequency_value">Frequency Value</label>
+        <input
+          type="number"
+          id="frequency_value"
+          name="frequency_value"
+          placeholder="2 -> (every 2 months)"
+          min="1"
+        />
+
         <!-- Botones -->
         <div class="btn-group">
           <!-- <button type="button" class="btn-cancel">Cancel</button> -->
           <button id="create_btn" type="submit" class="btn-create">
             Create
-            <span id="spinner_btn" style="display: none;"><LoadingSpinner/></span>
+            <span id="spinner_btn" style="display: none;"
+              ><LoadingSpinner /></span
+            >
           </button>
         </div>
       </form>
@@ -132,19 +150,18 @@ function resetCookies(){
 </Layout>
 
 <script>
-  const btn = document.querySelector('.back_btn');
-  btn.addEventListener('click', () => {
-    window.location.href = '/';
+  const btn = document.querySelector(".back_btn");
+  btn.addEventListener("click", () => {
+    window.location.href = "/";
   });
 
-  const createbtn = document.getElementById('create_btn');
-  const spinnerbtn = document.getElementById('spinner_btn');
-  createbtn.addEventListener('click', () => {
-    spinnerbtn.style.display = 'inline-block';
-    spinnerbtn.style.width = '1rem';
-  })
+  const createbtn = document.getElementById("create_btn");
+  const spinnerbtn = document.getElementById("spinner_btn");
+  createbtn.addEventListener("click", () => {
+    spinnerbtn.style.display = "inline-block";
+    spinnerbtn.style.width = "1rem";
+  });
 </script>
-
 
 <style>
   body {
@@ -175,7 +192,8 @@ function resetCookies(){
     font-weight: bold;
   }
 
-  input, select {
+  input,
+  select {
     width: 100%;
     padding: 12px;
     margin-bottom: 1rem;
@@ -186,7 +204,8 @@ function resetCookies(){
     font-size: 1rem;
   }
 
-  input:focus, select:focus {
+  input:focus,
+  select:focus {
     outline: 2px solid var(--verde);
   }
 
@@ -218,35 +237,39 @@ function resetCookies(){
     color: var(--negro);
     display: flex;
     align-items: center;
-    gap: .5rem;
+    gap: 0.5rem;
   }
 
   .btn-create:hover {
     background-color: #27ae60;
   }
-  .back_btn{
+  .back_btn {
     width: fit-content;
-  cursor: pointer;
-  padding: .4rem .8rem;
-  color: var(--gris-claro);
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  border: 2px solid var(--gris);
-  align-self: flex-start;
-  transition: background-color 0.2s ease;
-}
-.back_btn:hover{
-  background-color: var(--gris);
-}
-.body{
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  max-width: 360px;
-  margin: auto;
-}
+    cursor: pointer;
+    padding: 0.4rem 0.8rem;
+    margin-left: 0.8rem;
+    color: var(--gris-claro);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 2px solid var(--gris);
+    align-self: flex-start;
+    transition: background-color 0.2s ease;
+    position: sticky;
+    top: 10px;
+    background-color: var(--negro);
+  }
+  .back_btn:hover {
+    background-color: var(--gris);
+  }
+  .body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    max-width: 360px;
+    margin: auto;
+  }
 </style>

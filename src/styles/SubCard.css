@@ -150,6 +150,9 @@
   margin: 1rem 1rem 0 1rem;
   align-self: flex-start;
   transition: background-color 0.2s ease;
+  position: sticky;
+  top: 10px;
+  background-color: var(--negro);
 }
 .back_btn:hover{
   background-color: var(--gris);
