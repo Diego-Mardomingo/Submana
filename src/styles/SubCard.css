@@ -171,6 +171,18 @@
   fill: var(--verde);
 }
 
+.redirectNewSub_btn{
+  background-color: var(--verde);
+  color: var(--negro);
+  font-weight: 500;
+  padding: .5rem;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.redirectNewSub_btn:hover{
+  background-color: #27ae60;
+}
+
 @media (max-width:417px) {
   .sub_container{
     flex-direction: column;

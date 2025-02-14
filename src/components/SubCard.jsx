@@ -7,6 +7,7 @@ export default function SubCard() {
 
   const [subs, setSubs] = useState([]);
   const [isLoading, setLoading] = useState([]);
+  const [noSubs, setNoSubs] = useState([]);
 
   const fetchSubs = async () => {
     setLoading(true);
@@ -17,6 +18,7 @@ export default function SubCard() {
       }
       const data = await response.json();
       if (data.success && data.subscriptions) {
+        setNoSubs(data.subscriptions.length === 0 ? <>You don´t have subscriptions. <div onClick={ () =>{window.location.href = '/newsub';}} className="redirectNewSub_btn">Create sub</div> </> : null);
         setSubs(data.subscriptions);
       } else {
         console.error("No subscriptions in data:", data);
@@ -209,7 +211,7 @@ export default function SubCard() {
       <div className="subscriptions">
         <h1 className="title">My Subscriptions</h1>
         {isLoading ? <LoadingSpinner/> : null}
-        {subs.map((sub, index) => (
+        {subs.length === 0 ? noSubs : subs.map((sub, index) => (
           <div key={index} className="subCard">
             <div className='sub_container'>
               <img src={sub.icon} alt="subscription icon" className="sub_icon" />
