@@ -260,7 +260,7 @@ export default function SubCard() {
               <img src={sub.icon} alt="subscription icon" className="sub_icon" />
               <div className='card_body'>
                 <div className='card_header'>
-                  <h2 className="sub_name">{sub.service_name}</h2>
+                  <h2 className="sub_name texto-largo">{sub.service_name}</h2>
                   <div className="card_header-columnRight"></div>
                   <div className="sub_cost">{sub.cost} {euroIcon()}</div>
                 </div>

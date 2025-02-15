@@ -9,6 +9,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
   const [month, setMonth] = useState(initialMonth);
   const [subscriptions, setSubscriptions] = useState([]);
   const [isLoading, setLoading] = useState([]);
+  const [activeDay, setActiveDay] = useState(null);
 
 
   // ? SWIPE FUNCIONALITY
@@ -231,6 +232,14 @@ export default function CalendarBody({ initialYear, initialMonth }) {
       return [];
     });
   }
+  function getSubsForDay(dayNumber) {
+    return subscriptions.flatMap((sub) => {
+      if (isPaymentDay(sub, year, month, dayNumber)) {
+        return [sub];
+      }
+      return [];
+    });
+  }
 
   function getSpentValue(){
     let spent = 0;
@@ -329,8 +338,11 @@ export default function CalendarBody({ initialYear, initialMonth }) {
               key={dayNumber}
               isToday={getIsToday(dayNumber)}
               icons={getSubsIconsForDay(dayNumber)}
+              subsForDay={getSubsForDay(dayNumber)}
               dayNumber={dayNumber}
               dayStyle={styleObj}
+              activeDay={activeDay}
+              setActiveDay={setActiveDay}
             />
           );
         })}
