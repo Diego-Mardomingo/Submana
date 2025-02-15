@@ -5,7 +5,7 @@ export default function Icon({ defaultIcon, onIconSelected }) {
   // Estado para la cadena de búsqueda
   const [searchTerm, setSearchTerm] = useState("");
   // Estado para los resultados de la API (lista de iconos)
-  const [icons, setIcons] = useState<any[]>([]);
+  const [icons, setIcons] = useState([]);
   // Estado para el icono seleccionado
   const [selectedIcon, setSelectedIcon] = useState(defaultIcon);
 
@@ -42,7 +42,7 @@ export default function Icon({ defaultIcon, onIconSelected }) {
   /**
    * Manejador de cambios en el input de búsqueda
    */
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
@@ -51,10 +51,12 @@ export default function Icon({ defaultIcon, onIconSelected }) {
    * - Guarda el icono seleccionado en el estado
    * - Notifica al padre si se pasó la prop onIconSelected
    */
-  const handleIconClick = (iconUrl: string) => {
+  const handleIconClick = (iconUrl) => {
     setSelectedIcon(iconUrl);
-    onIconSelected(iconUrl);
-    const hiddenField = document.getElementById("icon_value") as HTMLInputElement;
+    if(onIconSelected){
+      onIconSelected(iconUrl);
+    }
+    const hiddenField = document.getElementById("icon_value");
     if (hiddenField) {
       hiddenField.value = iconUrl;
     }
@@ -69,9 +71,9 @@ export default function Icon({ defaultIcon, onIconSelected }) {
    * Manejador del checkbox "Random Icon"
    */
   const handleRandomChange = () => {
-    let letter: string = searchTerm ? searchTerm : getRandomLetter();
+    let letter = searchTerm ? searchTerm : getRandomLetter();
     setSelectedIcon("https://ui-avatars.com/api/?name="+letter+"&length=2&background=random");
-    const hiddenField = document.getElementById("icon_value") as HTMLInputElement;
+    const hiddenField = document.getElementById("icon_value");
     if (hiddenField) {
       hiddenField.value = "https://ui-avatars.com/api/?name="+letter+"&length=2&background=random";
     }
