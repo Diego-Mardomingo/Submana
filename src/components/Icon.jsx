@@ -51,14 +51,15 @@ export default function Icon({ defaultIcon, onIconSelected }) {
    * - Guarda el icono seleccionado en el estado
    * - Notifica al padre si se pasó la prop onIconSelected
    */
-  const handleIconClick = (iconUrl) => {
-    setSelectedIcon(iconUrl);
+  const handleIconClick = (iconItem) => {
+    let iconFormatted = 'https://cdn.brandfetch.io/'+iconItem.domain+'/w/400/h/400?c=1id-tf6xJEAcHu0Tio1';
+    setSelectedIcon(iconFormatted);
     if(onIconSelected){
-      onIconSelected(iconUrl);
+      onIconSelected(iconFormatted);
     }
     const hiddenField = document.getElementById("icon_value");
     if (hiddenField) {
-      hiddenField.value = iconUrl;
+      hiddenField.value = iconFormatted;
     }
   };
 
@@ -113,7 +114,7 @@ export default function Icon({ defaultIcon, onIconSelected }) {
                   src={iconItem.icon}
                   alt={iconItem.name || "Icon"}
                   className="iconToBeSelected"
-                  onClick={() => handleIconClick(iconItem.icon)}
+                  onClick={() => handleIconClick(iconItem)}
                 />
               ))
             ) : (
