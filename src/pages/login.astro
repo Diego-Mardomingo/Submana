@@ -1,7 +1,7 @@
 ---
 import Logo from "../components/Logo.astro";
 import Layout from "../layouts/Layout.astro";
-import googleLogo from "../images/googleLogo.png"
+import googleLogo from "../images/googleLogo.png";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 const { cookies, redirect } = Astro;
@@ -9,20 +9,20 @@ const { cookies, redirect } = Astro;
 const accessToken = cookies.get("sb-access-token");
 const refreshToken = cookies.get("sb-refresh-token");
 
-if(accessToken && refreshToken){
-	return redirect("/");
+if (accessToken && refreshToken) {
+  return redirect("/");
 }
-
 ---
 
 <Layout title="Submana Login">
   <section>
-    <Logo/>
+    <Logo />
     <div class="separator"></div>
     <form action="/api/auth/signin" method="post">
-      <button id="login_btn" value="google" name="provider" type="submit"><img src={googleLogo.src} alt="Logo de Google"></img> 
-        Continuar con Google
-        <span id="spinner" style="display: none;">
+      <button id="login_btn" value="google" name="provider" type="submit">
+        <img src={googleLogo.src} alt="Logo de Google" />
+        <span id="login_text">Continue with Google</span>
+        <span id="spinner">
           <LoadingSpinner />
         </span>
       </button>
@@ -31,27 +31,26 @@ if(accessToken && refreshToken){
 </Layout>
 
 <script>
-  const loginBtn = document.getElementById('login_btn');
-  const spinner = document.getElementById('spinner');
+  const loginBtn = document.getElementById("login_btn");
+  const login_text = document.getElementById("login_text");
+  const spinner = document.getElementById("spinner");
   if (loginBtn && spinner) {
-    loginBtn.addEventListener('click', () => {
-      spinner.style.display = 'inline-block';
-      spinner.style.fill = 'var(--verde)';
-      spinner.style.width = '1.5rem';
+    loginBtn.addEventListener("click", () => {
+      spinner.style.display = "inline-block";
+      login_text.innerText = "";
     });
   }
 </script>
 
 <style>
-
-  body{
+  body {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 100dvh;
     padding: 1.5rem;
   }
-  section{
+  section {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -61,38 +60,76 @@ if(accessToken && refreshToken){
     padding: 6rem;
     border-radius: 15px;
     text-align: center;
+    max-width: 100vw;
+    box-sizing: border-box;
   }
-  h2{
+  h2 {
     font-size: 3rem;
     margin: 0;
   }
-  .separator{
+  .separator {
     background-color: var(--blanco);
     height: 2px;
     width: 80%;
   }
-  button{
+  button {
     border: 3px solid var(--gris-oscuro);
-    padding: .7rem 2.2rem;
-    margin: .5rem;
+    padding: 0.7rem 2.2rem;
+    margin: 0.5rem;
     border-radius: 10px;
-    font-size: 1rem ;
+    font-size: 1rem;
     font-weight: 500;
     color: var(--blanco);
     background-color: var(--negro);
     display: flex;
     flex-direction: row;
     gap: 1rem;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: center;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    width: 20rem;
+    max-width: 100%;
+    box-sizing: border-box;
   }
-  button:hover{
+  button:hover {
     background-color: var(--gris-oscuro);
   }
-  button > img{
+  #spinner {
+    display: none;
+    fill: var(--verde);
+    width: 1.5rem;
+    margin-left: 4rem;
+  }
+  button > img {
     width: 2rem;
     height: 2rem;
+  }
+  @media (max-width: 600px) {
+    section {
+      padding: 2rem 1rem;
+      gap: 2rem;
+      border-width: 1.5px;
+      min-width: 0;
+      width: 95%;
+    }
+    button {
+      width: 16rem;
+      font-size: 0.95rem;
+      padding: 0.7rem 1rem;
+      gap: 0.7rem;
+    }
+    .separator {
+      width: 90%;
+    }
+    h2 {
+      font-size: 2rem;
+    }
+    body {
+      padding: 0.5rem;
+    }
+    #spinner {
+      margin-left: 3.5rem;
+    }
   }
 </style>
