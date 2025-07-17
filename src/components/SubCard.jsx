@@ -250,9 +250,7 @@ export default function SubCard() {
 
   return (
     <div className='body'>
-      <div className='back_btn' onClick={ () =>{window.location.href = '/';}}>{backIcon()} Back {backCalendarIcon()}</div>
       <div className="subscriptions">
-        <h1 className="title">My Subscriptions</h1>
         {isLoading && !isModalOpen && subs.length === 0 ? <LoadingSpinner/> : null}
         {subs.length === 0 ? noSubs : subs.map((sub, index) => (
           <div key={index} className="subCard">
