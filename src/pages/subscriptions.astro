@@ -1,0 +1,140 @@
+---
+import SubCard from "../components/SubCard";
+import Layout from "../layouts/Layout.astro";
+import { supabase } from "../lib/supabase";
+
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+
+if (!accessToken || !refreshToken) {
+  return redirect("/login");
+}
+
+let session;
+try {
+  session = await supabase.auth.setSession({
+    refresh_token: refreshToken.value,
+    access_token: accessToken.value,
+  });
+  if (session.error) {
+    resetCookies();
+  }
+} catch (error) {
+  resetCookies();
+}
+
+const email = session.data.user?.email;
+const name = session.data.user?.user_metadata.name;
+const avatar = session.data.user?.user_metadata.avatar_url;
+
+function resetCookies() {
+  cookies.delete("sb-access-token", { path: "/" });
+  cookies.delete("sb-refresh-token", { path: "/" });
+  return redirect("/login");
+}
+---
+
+<Layout title="Subscriptions">
+  <div class="subscriptions-container">
+    <div class="header">
+      <h1>My Subscriptions</h1>
+      <a href="/newSubscription" class="new-sub-btn">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <path d="M12 5l0 14"></path>
+          <path d="M5 12l14 0"></path>
+        </svg>
+        New Subscription
+      </a>
+    </div>
+
+    <div class="subscriptions-content">
+      <SubCard client:visible />
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .subscriptions-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gris-oscuro);
+  }
+
+  .header h1 {
+    margin: 0;
+    color: var(--blanco);
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .new-sub-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--verde);
+    color: var(--negro);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+
+  .new-sub-btn:hover {
+    background-color: #22c55e;
+    transform: translateY(-2px);
+  }
+
+  .new-sub-btn svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .subscriptions-content {
+    min-height: 400px;
+  }
+
+  @media (max-width: 768px) {
+    .subscriptions-container {
+      padding: 1rem;
+    }
+
+    .header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: stretch;
+    }
+
+    .header h1 {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .new-sub-btn {
+      justify-content: center;
+    }
+  }
+</style>

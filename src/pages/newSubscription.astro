@@ -93,7 +93,7 @@ function resetCookies() {
         <!-- Campo oculto para guardar el icono seleccionado -->
         <input type="hidden" id="icon_value" name="icon" />
         <!-- Icon -->
-        <Icon client:visible />
+        <Icon defaultIcon="" onIconSelected={() => {}} client:visible />
 
         <!-- Cost (máximo 2 decimales) -->
         <label for="cost">Cost</label>
@@ -152,7 +152,7 @@ function resetCookies() {
 <script>
   const btn = document.querySelector(".back_btn");
   btn.addEventListener("click", () => {
-    window.location.href = "/";
+    window.location.href = "/subscriptions";
   });
 
   const createbtn = document.getElementById("create_btn");
@@ -272,4 +272,4 @@ function resetCookies() {
     max-width: 360px;
     margin: auto;
   }
-</style>
+</style> 

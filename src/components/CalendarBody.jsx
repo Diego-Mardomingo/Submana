@@ -11,7 +11,6 @@ export default function CalendarBody({ initialYear, initialMonth }) {
   const [isLoading, setLoading] = useState([]);
   const [activeDay, setActiveDay] = useState(null);
 
-
   // ? SWIPE FUNCIONALITY
   const [touchStartX, setTouchStartX] = useState(null);
   const [touchStartY, setTouchStartY] = useState(null);
@@ -26,17 +25,23 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     setTouchStartX(e.targetTouches[0].clientX);
     setTouchStartY(e.targetTouches[0].clientY);
   };
-  
+
   const onTouchMove = (e) => {
     setTouchEndX(e.targetTouches[0].clientX);
     setTouchEndY(e.targetTouches[0].clientY);
   };
-  
+
   const onTouchEnd = () => {
-    if (touchStartX === null || touchStartY === null || touchEndX === null || touchEndY === null) return;
+    if (
+      touchStartX === null ||
+      touchStartY === null ||
+      touchEndX === null ||
+      touchEndY === null
+    )
+      return;
     const deltaX = touchStartX - touchEndX;
     const deltaY = touchStartY - touchEndY;
-  
+
     // Determinar si el swipe es mayor en horizontal o vertical
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
       // Swipe horizontal
@@ -61,15 +66,24 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     setTouchEndX(null);
     setTouchEndY(null);
   };
-  
-  
+
   // ? END SWIPE FUNCIONALITY
 
   // Arrays estáticos
-  const diasSemana = ["MON","TUE","WED","THU","FRY","SAT","SUN"];
+  const diasSemana = ["MON", "TUE", "WED", "THU", "FRY", "SAT", "SUN"];
   const meses = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
   // Función que nos da el número de días en un mes dado
@@ -79,10 +93,14 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     return new Date(y, m + 1, 0).getDate();
   }
 
-  function getIsToday(actualDay){
+  function getIsToday(actualDay) {
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth();
-    if(year === currentYear && month === currentMonth && actualDay === new Date().getDate()){
+    if (
+      year === currentYear &&
+      month === currentMonth &&
+      actualDay === new Date().getDate()
+    ) {
       return true;
     }
     return false;
@@ -122,7 +140,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     setYear(newYear);
   }
 
-  function handleToday(){
+  function handleToday() {
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth();
     setMonth(currentMonth);
@@ -154,11 +172,17 @@ export default function CalendarBody({ initialYear, initialMonth }) {
   }, []);
 
   function setToNoon(date) {
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+    return new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      12,
+      0,
+      0
+    );
   }
 
   function isPaymentDay(sub, year, month, dayNumber) {
-
     const current = setToNoon(new Date(year, month, dayNumber));
     // Parsear la fecha de inicio
     const start = setToNoon(new Date(sub.start_date));
@@ -166,23 +190,21 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     const startMonth = start.getMonth();
     const startDay = start.getDate();
     // start = new Date(startYear, startMonth, startDay);
-    if(start > current){
+    if (start > current) {
       return null;
     }
 
-    if(sub.end_date){
+    if (sub.end_date) {
       const end = setToNoon(new Date(sub.end_date));
       // const endYear = end.getFullYear();
       // const endMonth = end.getMonth();
       // const endDay = end.getDate();
       // end = new Date(endYear, endMonth, endDay);
-      if(end < current){
+      if (end < current) {
         return null;
       }
     }
-    
 
-    
     // Dependiendo de la frecuencia...
     switch (sub.frequency) {
       case "weekly": {
@@ -203,7 +225,6 @@ export default function CalendarBody({ initialYear, initialMonth }) {
         return false;
       }
       case "yearly": {
-
         const diffYears = year - startYear;
         if (diffYears < 0) return false; // antes de empezar
         // Comprobamos si es múltiplo de frequency_value
@@ -241,11 +262,11 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     });
   }
 
-  function getSpentValue(){
+  function getSpentValue() {
     let spent = 0;
     daysArray.map((dayNumber) => {
-      subscriptions.forEach(sub => {
-        if(isPaymentDay(sub, year, month, dayNumber)){
+      subscriptions.forEach((sub) => {
+        if (isPaymentDay(sub, year, month, dayNumber)) {
           spent = parseFloat((spent + sub.cost).toFixed(2));
         }
       });
@@ -253,50 +274,62 @@ export default function CalendarBody({ initialYear, initialMonth }) {
     return spent;
   }
 
-  function anteriorIcon(){
+  function anteriorIcon() {
     return (
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-chevron-left"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 6l-6 6l6 6" /></svg> 
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="icon icon-tabler icons-tabler-outline icon-tabler-chevron-left"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M15 6l-6 6l6 6" />
+      </svg>
     );
   }
-  function siguienteIcon(){
-    return(
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-chevron-right"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>
+  function siguienteIcon() {
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="icon icon-tabler icons-tabler-outline icon-tabler-chevron-right"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M9 6l6 6l-6 6" />
+      </svg>
     );
   }
-  function newIcon(){
-    return(
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-cloud-plus"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 18.004h-5.343c-2.572 -.004 -4.657 -2.011 -4.657 -4.487c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99a3.46 3.46 0 0 1 3.085 1.9" /><path d="M16 19h6" /><path d="M19 16v6" /></svg>
+
+  function euroIcon() {
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+        <path d="M17 3.34a10 10 0 1 1 -15 8.66l.005 -.324a10 10 0 0 1 14.995 -8.336zm-5 2.66c-2.052 0 -3.768 1.449 -4.549 3.5h-.451a1 1 0 0 0 -.117 1.993l.134 .007a7.298 7.298 0 0 0 0 1h-.017a1 1 0 0 0 0 2h.452c.78 2.053 2.496 3.5 4.548 3.5c1.141 0 2.217 -.457 3.084 -1.27a1 1 0 0 0 -1.368 -1.46c-.509 .478 -1.102 .73 -1.716 .73c-.922 0 -1.776 -.578 -2.335 -1.499l1.335 -.001a1 1 0 0 0 0 -2h-1.977a5.342 5.342 0 0 1 0 -1h1.977a1 1 0 0 0 0 -2h-1.336c.56 -.921 1.414 -1.5 2.336 -1.5c.615 0 1.208 .252 1.717 .73a1 1 0 0 0 1.368 -1.46c-.867 -.812 -1.943 -1.27 -3.085 -1.27z" />
+      </svg>
     );
-  }
-  function dashboardIcon(){
-    return (
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-presentation-analytics"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 12v-4" /><path d="M15 12v-2" /><path d="M12 12v-1" /><path d="M3 4h18" /><path d="M4 4v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-10" /><path d="M12 16v4" /><path d="M9 20h6" /></svg>
-    );
-  }
-  function mySubsIcon(){
-    return (
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-menu-3"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 6h10" /><path d="M4 12h16" /><path d="M7 12h13" /><path d="M4 18h10" /></svg>
-    );
-  }
-  function arrowRightIcon(){
-    return (
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="none"  stroke="currentColor"  strokeWidth="2"  strokeLinecap="round"  strokeLinejoin="round"  className="icon icon-tabler icons-tabler-outline icon-tabler-chevron-right"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6l6 6l-6 6" /></svg>    );
-  }
-  function euroIcon(){
-    return (
-      <svg  xmlns="http://www.w3.org/2000/svg"  width="24"  height="24"  viewBox="0 0 24 24"  fill="currentColor"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 3.34a10 10 0 1 1 -15 8.66l.005 -.324a10 10 0 0 1 14.995 -8.336zm-5 2.66c-2.052 0 -3.768 1.449 -4.549 3.5h-.451a1 1 0 0 0 -.117 1.993l.134 .007a7.298 7.298 0 0 0 0 1h-.017a1 1 0 0 0 0 2h.452c.78 2.053 2.496 3.5 4.548 3.5c1.141 0 2.217 -.457 3.084 -1.27a1 1 0 0 0 -1.368 -1.46c-.509 .478 -1.102 .73 -1.716 .73c-.922 0 -1.776 -.578 -2.335 -1.499l1.335 -.001a1 1 0 0 0 0 -2h-1.977a5.342 5.342 0 0 1 0 -1h1.977a1 1 0 0 0 0 -2h-1.336c.56 -.921 1.414 -1.5 2.336 -1.5c.615 0 1.208 .252 1.717 .73a1 1 0 0 0 1.368 -1.46c-.867 -.812 -1.943 -1.27 -3.085 -1.27z" /></svg>
-    )
   }
 
   return (
     <div className="calendar_container">
-      <nav className="options_btn">
-        <ul>
-          <li className="mySubs_btn" onClick={ () =>{window.location.href = '/mysubs';}}>{mySubsIcon()} My Subscriptions {arrowRightIcon()}</li>
-          {/* <li className="dashboard_btn" title="My Dashboard">{dashboardIcon()}</li> */}
-          <li className="new_btn" onClick={ () =>{window.location.href = '/newsub';}} title="New sub">{newIcon()} New Subscription {arrowRightIcon()}</li>
-        </ul>
-      </nav>
       <header className="calendar_header">
         <div className="buttonsMonth">
           <button onClick={handlePrevMonth} className="anterior">
@@ -310,14 +343,22 @@ export default function CalendarBody({ initialYear, initialMonth }) {
           <p className="nombre_mes">{meses[month]}</p>
           <p className="año">{year}</p>
         </div>
-          <div className="spent_container">
-            <p className="spent_title">Monthly spend</p>
-            <div className="spent_value">{isLoading ? <LoadingSpinner/> : (<>{getSpentValue()} {euroIcon()}</>)}</div>
+        <div className="spent_container">
+          <p className="spent_title">Monthly spend</p>
+          <div className="spent_value">
+            {isLoading ? (
+              <LoadingSpinner />
+            ) : (
+              <>
+                {getSpentValue()} {euroIcon()}
+              </>
+            )}
           </div>
+        </div>
       </header>
 
       {/* Sección del calendario */}
-      <section 
+      <section
         className="calendar_body"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -331,21 +372,26 @@ export default function CalendarBody({ initialYear, initialMonth }) {
         ))}
 
         {/* Días del mes */}
-        {isLoading ? <LoadingSpinner/> : daysArray.map((dayNumber, index) => {
-          const styleObj = index === 0 ? { gridColumnStart: startColumn } : {};
-          return (
-            <Day
-              key={dayNumber}
-              isToday={getIsToday(dayNumber)}
-              icons={getSubsIconsForDay(dayNumber)}
-              subsForDay={getSubsForDay(dayNumber)}
-              dayNumber={dayNumber}
-              dayStyle={styleObj}
-              activeDay={activeDay}
-              setActiveDay={setActiveDay}
-            />
-          );
-        })}
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : (
+          daysArray.map((dayNumber, index) => {
+            const styleObj =
+              index === 0 ? { gridColumnStart: startColumn } : {};
+            return (
+              <Day
+                key={dayNumber}
+                isToday={getIsToday(dayNumber)}
+                icons={getSubsIconsForDay(dayNumber)}
+                subsForDay={getSubsForDay(dayNumber)}
+                dayNumber={dayNumber}
+                dayStyle={styleObj}
+                activeDay={activeDay}
+                setActiveDay={setActiveDay}
+              />
+            );
+          })
+        )}
       </section>
     </div>
   );

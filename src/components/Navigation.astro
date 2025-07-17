@@ -1,0 +1,228 @@
+---
+// Get current path to highlight active nav item
+const currentPath = Astro.url.pathname;
+---
+
+<nav class="navigation">
+  <div class="nav-container">
+    <a href="/" class={`nav-item${currentPath === "/" ? " active" : ""}`}>
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+        <path d="M5 12l-2 0l9 -9l9 9l-2 0"></path>
+        <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"></path>
+        <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"></path>
+      </svg>
+      <span>Home</span>
+    </a>
+
+    <a
+      href="/subscriptions"
+      class={`nav-item${currentPath === "/subscriptions" ? " active" : ""}`}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+        <path
+          d="M16 2c.183 0 .355 .05 .502 .135l.033 .02c.28 .177 .465 .49 .465 .845v1h1a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h1v-1a1 1 0 0 1 .514 -.874l.093 -.046l.066 -.025l.1 -.029l.107 -.019l.12 -.007q .083 0 .161 .013l.122 .029l.04 .012l.06 .023c.328 .135 .568 .44 .61 .806l.007 .117v1h6v-1a1 1 0 0 1 1 -1m3 7h-14v9.625c0 .705 .386 1.286 .883 1.366l.117 .009h12c.513 0 .936 -.53 .993 -1.215l.007 -.16z"
+        ></path>
+        <path
+          d="M9.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path>
+        <path
+          d="M13.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path>
+        <path
+          d="M17.02 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path>
+        <path d="M12.02 15a1 1 0 0 1 0 2a1.001 1.001 0 1 1 -.005 -2z"></path>
+        <path
+          d="M9.015 16a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
+        ></path>
+      </svg>
+      <span>Subscriptions</span>
+    </a>
+
+    <a
+      href="/settings"
+      class={`nav-item${currentPath === "/settings" ? " active" : ""}`}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+        <path
+          d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"
+        ></path>
+        <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"></path>
+      </svg>
+      <span>Settings</span>
+    </a>
+  </div>
+</nav>
+
+<style>
+  .navigation {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--negro);
+    border-top: 2px solid var(--gris-oscuro);
+    z-index: 1000;
+  }
+
+  .nav-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0.5rem 0;
+  }
+
+  .logo-container {
+    display: none;
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    color: var(--gris-muy-claro);
+    text-decoration: none;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    min-width: 80px;
+    position: relative;
+  }
+
+  .nav-item:hover {
+    color: var(--blanco);
+    background-color: var(--gris-oscuro);
+  }
+
+  .nav-item.active {
+    color: var(--verde);
+    background: none;
+    border: none;
+    font-weight: 700;
+  }
+
+  .nav-item.active span {
+    color: var(--verde);
+  }
+
+  .nav-item.active::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 2px;
+    background-color: var(--verde);
+    border-radius: 1px;
+    opacity: 0.7;
+  }
+
+  .nav-item svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  .nav-item span {
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  /* Desktop styles */
+  @media (min-width: 768px) {
+    .navigation {
+      position: static;
+      border-top: none;
+      border-bottom: 2px solid var(--gris-oscuro);
+      margin-bottom: 2rem;
+    }
+
+    .nav-container {
+      padding: 1rem 0;
+      justify-content: flex-start;
+      gap: 3rem;
+    }
+
+    .logo-container {
+      display: block;
+      margin-right: 3rem;
+    }
+
+    .nav-item {
+      flex-direction: row;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      min-width: auto;
+    }
+
+    .nav-container > a {
+      flex: 1;
+      justify-content: center;
+    }
+
+    .nav-item span {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .nav-item svg {
+      width: 1.2rem;
+      height: 1.2rem;
+    }
+
+    .nav-item.active {
+      border: none;
+      background: none;
+      color: var(--verde);
+    }
+
+    .nav-item.active::after {
+      bottom: -2px;
+      width: 20px;
+      height: 2px;
+    }
+  }
+
+  /* Add bottom padding to body on mobile to account for fixed nav */
+  @media (max-width: 767px) {
+    body {
+      padding-bottom: 120px;
+    }
+  }
+</style>

@@ -1,0 +1,201 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Logo from "../components/Logo.astro";
+import { supabase } from "../lib/supabase";
+
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+
+if (!accessToken || !refreshToken) {
+  return redirect("/login");
+}
+
+let session;
+try {
+  session = await supabase.auth.setSession({
+    refresh_token: refreshToken.value,
+    access_token: accessToken.value,
+  });
+  if (session.error) {
+    resetCookies();
+  }
+} catch (error) {
+  resetCookies();
+}
+
+const email = session.data.user?.email;
+const name = session.data.user?.user_metadata.name;
+const avatar = session.data.user?.user_metadata.avatar_url;
+
+function resetCookies() {
+  cookies.delete("sb-access-token", { path: "/" });
+  cookies.delete("sb-refresh-token", { path: "/" });
+  return redirect("/login");
+}
+---
+
+<Layout title="Settings">
+  <Logo style="display:block; margin: 2rem auto 1rem auto; max-width: 120px;" />
+  <div class="settings-container">
+    <div class="user-profile">
+      <img class="avatar" src={avatar} alt="User avatar" />
+      <h2>{name}</h2>
+      <p class="email">{email}</p>
+    </div>
+
+    <div class="settings-section">
+      <h3>Account Settings</h3>
+      <div class="setting-item">
+        <span>Name</span>
+        <span class="value">{name}</span>
+      </div>
+      <div class="setting-item">
+        <span>Email</span>
+        <span class="value">{email}</span>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <h3>Actions</h3>
+      <form action="/api/auth/signout" class="signout-form">
+        <button type="submit" class="signout-btn">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M13 12v.01"></path>
+            <path d="M3 21h18"></path>
+            <path d="M5 21v-16a2 2 0 0 1 2 -2h7.5m2.5 10.5v7.5"></path>
+            <path d="M14 7h7m-3 -3l3 3l-3 3"></path>
+          </svg>
+          Sign Out
+        </button>
+      </form>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .settings-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+  }
+
+  .user-profile {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem;
+    background-color: var(--gris-oscuro);
+    border-radius: 12px;
+  }
+
+  .avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+  }
+
+  .user-profile h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--blanco);
+    font-weight: 700;
+  }
+
+  .email {
+    color: var(--gris-claro);
+    margin: 0;
+  }
+
+  .settings-section {
+    background-color: var(--gris-oscuro);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .settings-section h3 {
+    margin: 0 0 1rem 0;
+    color: var(--verde);
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--gris);
+  }
+
+  .setting-item:last-child {
+    border-bottom: none;
+  }
+
+  .setting-item span:first-child {
+    color: var(--blanco);
+    font-weight: 600;
+  }
+
+  .value {
+    color: var(--gris-claro);
+    font-weight: 500;
+  }
+
+  .signout-form {
+    margin: 0;
+  }
+
+  .signout-btn {
+    width: 100%;
+    border: 2px solid #dc3545;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--blanco);
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .signout-btn:hover {
+    background-color: #dc3545;
+  }
+
+  .signout-btn svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  @media (max-width: 768px) {
+    .settings-container {
+      padding: 1rem;
+    }
+
+    .user-profile {
+      padding: 1.5rem;
+    }
+
+    .avatar {
+      width: 60px;
+      height: 60px;
+    }
+  }
+</style>
