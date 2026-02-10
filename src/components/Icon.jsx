@@ -25,7 +25,7 @@ export default function Icon({ defaultIcon, onIconSelected }) {
       // Llamada a la API después de 1 segundo sin cambios
       const fetchIcons = async () => {
         try {
-          const response = await fetch("https://api.brandfetch.io/v2/search/"+searchTerm+"?c=1id-tf6xJEAcHu0Tio1");
+          const response = await fetch("https://api.brandfetch.io/v2/search/" + searchTerm + "?c=1id-tf6xJEAcHu0Tio1");
           const data = await response.json();
           setIcons(data || []);
         } catch (error) {
@@ -52,9 +52,9 @@ export default function Icon({ defaultIcon, onIconSelected }) {
    * - Notifica al padre si se pasó la prop onIconSelected
    */
   const handleIconClick = (iconItem) => {
-    let iconFormatted = 'https://cdn.brandfetch.io/'+iconItem.domain+'/w/400/h/400?c=1id-tf6xJEAcHu0Tio1';
+    let iconFormatted = 'https://cdn.brandfetch.io/' + iconItem.domain + '/w/400/h/400?c=1id-tf6xJEAcHu0Tio1';
     setSelectedIcon(iconFormatted);
-    if(onIconSelected){
+    if (onIconSelected) {
       onIconSelected(iconFormatted);
     }
     const hiddenField = document.getElementById("icon_value");
@@ -65,7 +65,7 @@ export default function Icon({ defaultIcon, onIconSelected }) {
 
   function getRandomLetter() {
     const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    return (letters[Math.floor(Math.random() * letters.length)])+(letters[Math.floor(Math.random() * letters.length)]);
+    return (letters[Math.floor(Math.random() * letters.length)]) + (letters[Math.floor(Math.random() * letters.length)]);
   }
 
   /**
@@ -73,64 +73,64 @@ export default function Icon({ defaultIcon, onIconSelected }) {
    */
   const handleRandomChange = () => {
     let letter = searchTerm ? searchTerm : getRandomLetter();
-    setSelectedIcon("https://ui-avatars.com/api/?name="+letter+"&length=2&background=random");
+    setSelectedIcon("https://ui-avatars.com/api/?name=" + letter + "&length=2&background=random");
     const hiddenField = document.getElementById("icon_value");
     if (hiddenField) {
-      hiddenField.value = "https://ui-avatars.com/api/?name="+letter+"&length=2&background=random";
+      hiddenField.value = "https://ui-avatars.com/api/?name=" + letter + "&length=2&background=random";
     }
   };
 
   return (
-    <section>
-      {/* Etiqueta del icon/logo */}
-      <label htmlFor="icon_container">Icon</label>
-
-      <div className="icon_container" id="icon_container">
-        <aside className="icon_displayer">
-          <span>Selected:</span>
-          <div className="icon_selected">
-            {selectedIcon && (
-              <img
-                src={selectedIcon}
-                alt="Selected icon"
-              />
+    <section className="icon-component">
+      <div className="icon-grid">
+        {/* Selected Icon Preview */}
+        <div className="icon-preview-wrapper">
+          <label className="sub-label">Selected</label>
+          <div className="icon-preview">
+            {selectedIcon ? (
+              <img src={selectedIcon} alt="Selected icon" />
+            ) : (
+              <div className="icon-placeholder">?</div>
             )}
           </div>
-        </aside>
+        </div>
 
-        {/* Buscador */}
-        <div className="buscador">
+        {/* Search & Selection Area */}
+        <div className="search-area">
           <input
-            className="search_input"
-            placeholder="Search.."
+            className="search-input"
+            placeholder="Search brand (e.g. Netflix)..."
             value={searchTerm}
             onChange={handleSearchChange}
           />
-          <div className="icon_selector">
+
+          <div className="results-container">
             {icons.length > 0 ? (
-              icons.map((iconItem, idx) => (
-                <img
-                  key={idx}
-                  src={iconItem.icon}
-                  alt={iconItem.name || "Icon"}
-                  className="iconToBeSelected"
-                  onClick={() => handleIconClick(iconItem)}
-                />
-              ))
+              <div className="icons-list">
+                {icons.map((iconItem, idx) => (
+                  <img
+                    key={idx}
+                    src={iconItem.icon}
+                    alt={iconItem.name || "Icon"}
+                    className="icon-option"
+                    onClick={() => handleIconClick(iconItem)}
+                  />
+                ))}
+              </div>
             ) : (
-              // Aquí podrías mostrar un mensaje cuando no hay resultados
-              <p>
-                {searchTerm ? "Loading or no results..." : "Type something to search"}
-              </p>
+              <div className="empty-state">
+                {searchTerm ? "Searching..." : "Type to search icons"}
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Footer con enlace y checkbox */}
-      <footer>
-          <div className='random_btn' onClick={handleRandomChange}>Random Icon</div>
-      </footer>
+      <div className="icon-actions">
+        <button type="button" className="btn-random" onClick={handleRandomChange}>
+          Generate Random Icon
+        </button>
+      </div>
     </section>
   );
 }

@@ -119,7 +119,7 @@ aside{
   background-color: var(--azul);
 }
 .new_btn{
-  background-color: var(--verde);
+  background-color: var(--accent);
 }
 .new_btn:hover{
   background-color: #27ae60;
@@ -145,7 +145,7 @@ aside{
 }
 .calendar_body > .spinner_container > .spinner{
   width: 4rem;
-  fill: var(--verde);
+  fill: var(--accent);
 }
 .spent_value > .spinner_container{
   position: static;
@@ -154,7 +154,7 @@ aside{
 .spent_value > .spinner_container > .spinner{
   width: 1.5rem;
   margin-top: 8px;
-  fill: var(--verde);
+  fill: var(--accent);
 }
 
 /* ? ======================================================= */

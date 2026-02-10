@@ -2,7 +2,7 @@
 .title{
   text-align: center;
   margin-bottom: 1rem;
-  color: var(--verde);
+  color: var(--accent);
 }
 .subscriptions{
   display: flex;
@@ -64,7 +64,7 @@
   color: var(--rojo);
 }
 .activeIcon{
-  color: var(--verde);
+  color: var(--accent);
 }
 .sub_cost{
   color: var(--negro);
@@ -176,11 +176,11 @@
 
 .spinner{
   width: 4rem;
-  fill: var(--verde);
+  fill: var(--accent);
 }
 
 .redirectNewSub_btn{
-  background-color: var(--verde);
+  background-color: var(--accent);
   color: var(--negro);
   font-weight: 500;
   padding: .5rem;
@@ -215,7 +215,7 @@
 }
 
 .modal > h2{
-  color: var(--verde);
+  color: var(--accent);
 }
 
 .modal-actions {

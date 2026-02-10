@@ -131,7 +131,7 @@
   gap: .3rem;
 }
 .popup > h3{
-  color: var(--verde);
+  color: var(--accent);
 }
 .popup_header{
   display: flex;

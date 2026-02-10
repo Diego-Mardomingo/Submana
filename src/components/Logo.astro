@@ -1,42 +1,53 @@
 ---
-import submanaLogo from "../images/submanaLogo.webp"
-const { className } = Astro.props;
+interface Props {
+  class?: string;
+  style?: string;
+}
+
+const { class: className, style } = Astro.props;
 ---
-<a href="/">
-  <div class="logo" id={className}>
-    <img src={submanaLogo.src} alt="Submana logo">
+<a href="/" class:list={["logo-link", className]} style={style}>
+  <div class="logo">
+    <img src="/logo.webp" alt="Submana logo" loading="eager" />
     <h1 class="submana">Submana</h1>
   </div>
 </a>
 
 <style>
-  a{
+  .logo-link {
     text-decoration: none;
-    grid-area: 1 / 1 / 2 / 6;
+    display: inline-block;
   }
-  #small-logo img{
-		width: 4rem;
-		height: auto;
-	}
-  #small-logo .submana{
-    font-size: 1.3rem;
-    margin-top: -.3rem;
-  }
-  .logo{
+
+  .logo {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
   }
-  .submana{
-    color: var(--verde);
+
+  .logo img {
+    width: 10rem;
+    height: auto;
+    max-width: 100%;
+  }
+
+  .submana {
+    color: var(--accent);
     font-weight: 900;
     font-size: 3rem;
-    margin-bottom: 0;
-    margin-top: -1.2rem;
-    text-shadow: 0px 0px 50px var(--verde);
+    margin: -0.4rem 0 0 0;
+    line-height: 1;
+    text-shadow: 0px 0px 50px var(--accent);
   }
-  .logo > img{
-    width: 10rem;
+  
+  /* Variant: Small Logo (can be used via class="small-logo") */
+  :global(.small-logo) .logo img {
+    width: 4rem;
+  }
+  
+  :global(.small-logo) .submana {
+    font-size: 1.3rem;
+    margin-top: 0;
   }
 </style>

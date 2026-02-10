@@ -19,6 +19,13 @@ const { title } = Astro.props;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+    <script is:inline>
+      // Apply theme immediately to prevent flash
+      (function() {
+        const t = localStorage.getItem('submana-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+      })();
+    </script>
   </head>
   <body>
     {Astro.url.pathname !== "/login" && <Navigation />}
@@ -27,40 +34,39 @@ const { title } = Astro.props;
   </body>
 </html>
 <style is:global>
-  :root {
-    /* --negro: #13151a; */
-    /* --negro: #050506;
-		--blanco: #d4d4d8;
-		--verde: #4caf50;
-		--azul: #00bcd4;
-		--gris: #6a6a6c;
-		--naranja: #ff5722;
-		--gris-oscuro: #1e1e1e; */
-    /* --negro-claro: #050506; */
-    /* --accent: 136, 58, 234;
-		--accent-light: 224, 204, 250;
-		--accent-dark: 49, 10, 101;
-		--accent-gradient: linear-gradient(
-			45deg,
-			rgb(var(--accent)),
-			rgb(var(--accent-light)) 30%,
-			white 60%
-		); */
-  }
-  :root {
+  /* ── Dark theme (default) ── */
+  :root,
+  [data-theme="dark"] {
     --negro: #131313;
-    --gris-oscuro: #2c2c2c;
-    --gris: #3a3a3a;
+    --gris-oscuro: #1e1e1e;
+    --gris: #2e2e2e;
     --gris-claro: #777;
     --gris-muy-claro: #999;
-    --blanco: #fff;
-    --verde: #2ecc71;
-    --verde-claro: #27ae60;
+    --blanco: #f5f5f5;
+    --accent: #8b5cf6;
+    --accent-hover: #7c3aed;
     --naranja: #e67e22;
     --azul: #3498db;
     --rojo: #e74c3c;
     --rojo-oscuro: #c0392b;
   }
+
+  /* ── Light theme ── */
+  [data-theme="light"] {
+    --negro: #f5f5f5;
+    --gris-oscuro: #e8e8e8;
+    --gris: #d0d0d0;
+    --gris-claro: #888;
+    --gris-muy-claro: #666;
+    --blanco: #1a1a1a;
+    --accent: #7c3aed;
+    --accent-hover: #6d28d9;
+    --naranja: #d97706;
+    --azul: #2563eb;
+    --rojo: #dc2626;
+    --rojo-oscuro: #b91c1c;
+  }
+
   html,
   body {
     margin: 0;
@@ -71,6 +77,15 @@ const { title } = Astro.props;
     background: var(--negro);
     color: var(--blanco);
   }
+  
+  /* Smooth theme transition */
+  html, body, div, section, nav, a, button, input, select, h1, h2, h3, h4, h5, h6, p, span {
+    transition: background-color 0.3s ease, 
+                color 0.3s ease, 
+                border-color 0.3s ease, 
+                box-shadow 0.3s ease;
+  }
+
   * {
     font-family: "Sora", "Inter Variable", sans-serif;
     box-sizing: border-box;

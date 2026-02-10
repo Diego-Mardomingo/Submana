@@ -58,6 +58,24 @@ function resetCookies() {
     </div>
 
     <div class="settings-section">
+      <h3>Preferences</h3>
+      <div class="setting-item">
+        <span>Theme</span>
+        <div class="theme-selector" id="theme-selector">
+           <div class="theme-slider"></div>
+           <button class="theme-btn" data-set-theme="light">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              Light
+           </button>
+           <button class="theme-btn" data-set-theme="dark">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              Dark
+           </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
       <h3>Actions</h3>
       <form action="/api/auth/signout" class="signout-form">
         <button type="submit" class="signout-btn">
@@ -84,6 +102,33 @@ function resetCookies() {
     </div>
   </div>
 </Layout>
+
+<script>
+  const selector = document.getElementById('theme-selector');
+  const buttons = document.querySelectorAll('.theme-btn');
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('submana-theme', theme);
+    
+    // Update active state class on container
+    if (selector) {
+      selector.setAttribute('data-active', theme);
+    }
+  }
+
+  // Init
+  const current = localStorage.getItem('submana-theme') || 'dark';
+  applyTheme(current);
+
+  // Listeners
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+       const theme = btn.getAttribute('data-set-theme');
+       applyTheme(theme);
+    });
+  });
+</script>
 
 <style>
   .settings-container {
@@ -129,7 +174,7 @@ function resetCookies() {
 
   .settings-section h3 {
     margin: 0 0 1rem 0;
-    color: var(--verde);
+    color: var(--accent);
     font-size: 1.2rem;
     font-weight: 700;
   }
@@ -161,6 +206,81 @@ function resetCookies() {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+  }
+
+  /* Theme Selector Slider */
+  .theme-selector {
+    position: relative;
+    display: flex;
+    background: var(--negro);
+    border: 1px solid var(--gris);
+    border-radius: 10px;
+    padding: 0.25rem;
+    gap: 0;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .theme-slider {
+    position: absolute;
+    top: 0.25rem;
+    left: 0.25rem;
+    width: calc(50% - 0.25rem);
+    height: calc(100% - 0.5rem);
+    background: var(--accent);
+    border-radius: 8px;
+    z-index: -1;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  /* Horizontal Movement */
+  .theme-selector[data-active="light"] .theme-slider {
+    transform: translateX(0);
+  }
+  .theme-selector[data-active="dark"] .theme-slider {
+    transform: translateX(100%);
+  }
+
+  .theme-btn {
+    position: relative;
+    z-index: 10;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border: none;
+    background: transparent;
+    color: var(--gris-claro);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.4s ease;
+    white-space: nowrap;
+  }
+
+  .theme-btn svg {
+    width: 16px; 
+    height: 16px;
+    opacity: 0.7;
+    transition: opacity 0.4s ease;
+  }
+
+  .theme-btn:hover {
+    color: var(--blanco);
+  }
+
+  /* Active text colors inside slider */
+  .theme-selector[data-active="light"] [data-set-theme="light"],
+  .theme-selector[data-active="dark"] [data-set-theme="dark"] {
+    color: #fff;
+  }
+  
+  .theme-selector[data-active="light"] [data-set-theme="light"] svg,
+  .theme-selector[data-active="dark"] [data-set-theme="dark"] svg {
+    opacity: 1;
   }
 
   .signout-form {

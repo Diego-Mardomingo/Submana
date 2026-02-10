@@ -39,237 +39,251 @@ function resetCookies() {
 ---
 
 <Layout title="New Subscription">
-  <div class="body">
-    <div class="back_btn">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        ><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path
-          d="M9 14l-4 -4l4 -4"></path><path d="M5 10h11a4 4 0 1 1 0 8h-1"
-        ></path></svg
-      >
-      Back
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="currentColor"
-        ><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path
-          d="M16 2c.183 0 .355 .05 .502 .135l.033 .02c.28 .177 .465 .49 .465 .845v1h1a3 3 0 0 1 2.995 2.824l.005 .176v12a3 3 0 0 1 -2.824 2.995l-.176 .005h-12a3 3 0 0 1 -2.995 -2.824l-.005 -.176v-12a3 3 0 0 1 2.824 -2.995l.176 -.005h1v-1a1 1 0 0 1 .514 -.874l.093 -.046l.066 -.025l.1 -.029l.107 -.019l.12 -.007q .083 0 .161 .013l.122 .029l.04 .012l.06 .023c.328 .135 .568 .44 .61 .806l.007 .117v1h6v-1a1 1 0 0 1 1 -1m3 7h-14v9.625c0 .705 .386 1.286 .883 1.366l.117 .009h12c.513 0 .936 -.53 .993 -1.215l.007 -.16z"
-        ></path><path
-          d="M9.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
-        ></path><path
-          d="M13.015 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
-        ></path><path
-          d="M17.02 13a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
-        ></path><path d="M12.02 15a1 1 0 0 1 0 2a1.001 1.001 0 1 1 -.005 -2z"
-        ></path><path
-          d="M9.015 16a1 1 0 0 1 -1 1a1.001 1.001 0 1 1 -.005 -2c.557 0 1.005 .448 1.005 1"
-        ></path></svg
-      >
-    </div>
-    <div class="container">
-      <h1>New Subscription</h1>
-      <form method="post" action="/api/crud/insertNewSub">
-        <!-- Name -->
-        <label for="nombre">Name</label>
+  <div class="page">
+    <h1 class="page-title">New Subscription</h1>
+
+    <form method="post" action="/api/crud/insertNewSub" class="form-card">
+      <!-- Name -->
+      <div class="field">
+        <label for="name">Name</label>
         <input
           type="text"
           id="name"
           name="name"
-          placeholder="Subscription name"
+          placeholder="e.g. Netflix, Spotify…"
           autocomplete="off"
           required
         />
+      </div>
 
-        <!-- Campo oculto para guardar el icono seleccionado -->
+      <!-- Icon -->
+      <div class="field">
+        <label>Icon</label>
         <input type="hidden" id="icon_value" name="icon" />
-        <!-- Icon -->
         <Icon defaultIcon="" onIconSelected={() => {}} client:visible />
+      </div>
 
-        <!-- Cost (máximo 2 decimales) -->
-        <label for="cost">Cost</label>
-        <input
-          type="number"
-          id="cost"
-          name="cost"
-          placeholder="0.00"
-          step="0.01"
-          min="0"
-          required
-        />
-
-        <!-- Fecha de inicio (requerida) -->
-        <label for="startDate">Start Date</label>
-        <input type="date" id="startDate" name="startDate" required />
-
-        <!-- Fecha de fin (opcional) -->
-        <label for="endDate">End Date (optional)</label>
-        <input type="date" id="endDate" name="endDate" />
-
-        <!-- Frecuencia -->
-        <label for="frequency">Frequency</label>
-        <select id="frequency" name="frequency">
-          <option value="weekly">Weekly</option>
-          <option value="monthly" selected>Monthly</option>
-          <option value="yearly">Yearly</option>
-          <!-- <option value="one-shot">One Shot</option> -->
-        </select>
-
-        <!-- Cantidad de Frecuencia -->
-        <label for="frequency_value">Frequency Value</label>
-        <input
-          type="number"
-          id="frequency_value"
-          name="frequency_value"
-          placeholder="2 -> (every 2 months)"
-          min="1"
-        />
-
-        <!-- Botones -->
-        <div class="btn-group">
-          <!-- <button type="button" class="btn-cancel">Cancel</button> -->
-          <button id="create_btn" type="submit" class="btn-create">
-            Create
-            <span id="spinner_btn" style="display: none;"
-              ><LoadingSpinner /></span
-            >
-          </button>
+      <!-- Cost + Start Date -->
+      <div class="field-row">
+        <div class="field">
+          <label for="cost">Cost (€)</label>
+          <input
+            type="number"
+            id="cost"
+            name="cost"
+            placeholder="9.99"
+            step="0.01"
+            min="0"
+            required
+          />
         </div>
-      </form>
-    </div>
+        <div class="field">
+          <label for="startDate">Start Date</label>
+          <input type="date" id="startDate" name="startDate" required />
+        </div>
+      </div>
+
+      <!-- End Date -->
+      <div class="field">
+        <label for="endDate">End Date <span class="hint">(optional)</span></label>
+        <input type="date" id="endDate" name="endDate" />
+      </div>
+
+      <!-- Frequency + Value -->
+      <div class="field-row">
+        <div class="field">
+          <label for="frequency">Frequency</label>
+          <select id="frequency" name="frequency">
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="frequency_value">Every</label>
+          <input
+            type="number"
+            id="frequency_value"
+            name="frequency_value"
+            placeholder="1"
+            min="1"
+            value="1"
+          />
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button id="create_btn" type="submit" class="submit-btn">
+        Create Subscription
+        <span id="spinner_btn" style="display:none;"><LoadingSpinner /></span>
+      </button>
+    </form>
+
+    <!-- Back FAB -->
+    <a href="/subscriptions" class="back-fab" aria-label="Back">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+      </svg>
+    </a>
   </div>
 </Layout>
 
 <script>
-  const btn = document.querySelector(".back_btn");
-  btn.addEventListener("click", () => {
-    window.location.href = "/subscriptions";
-  });
-
   const createbtn = document.getElementById("create_btn");
   const spinnerbtn = document.getElementById("spinner_btn");
-  createbtn.addEventListener("click", () => {
-    spinnerbtn.style.display = "inline-block";
-    spinnerbtn.style.width = "1rem";
-  });
+  if (createbtn && spinnerbtn) {
+    createbtn.addEventListener("click", () => {
+      spinnerbtn.style.display = "inline-block";
+    });
+  }
 </script>
 
 <style>
-  body {
-    margin: 0rem;
-    padding: 1rem;
-    background-color: var(--negro);
-    color: var(--blanco);
-    height: auto;
+  /* ── Page ── */
+  .page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 9rem;
   }
 
-  .container {
-    max-width: 400px;
-    margin: 20px auto;
-    background-color: var(--gris-oscuro);
-    padding: 1rem;
-    border-radius: 6px;
+  .page-title {
+    color: var(--accent);
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 0 1.5rem;
   }
 
-  h1 {
-    text-align: center;
-    margin-bottom: 1rem;
-    color: var(--verde);
+  /* ── Form card ── */
+  .form-card {
+    background: var(--gris-oscuro);
+    border-radius: 14px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* ── Field ── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
   }
 
   label {
-    display: block;
-    margin-bottom: 0.25rem;
-    font-weight: bold;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--gris-claro);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
+  .hint {
+    text-transform: none;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--gris-muy-claro);
+    font-size: 0.78rem;
+  }
+
+  /* ── Inputs ── */
   input,
   select {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 1rem;
-    background-color: var(--gris);
-    border: none;
-    border-radius: 6px;
+    background: var(--negro);
+    border: 1px solid var(--gris);
     color: var(--blanco);
-    font-size: 1rem;
+    font-size: 0.95rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    width: 100%;
+    transition: border-color 0.15s ease;
+  }
+
+  input::placeholder {
+    color: var(--gris-claro);
   }
 
   input:focus,
   select:focus {
-    outline: 2px solid var(--verde);
+    outline: none;
+    border-color: var(--accent);
   }
 
-  .btn-group {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  button {
-    padding: 12px;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
+  /* ── Submit ── */
+  .submit-btn {
+    margin-top: 0.5rem;
+    width: 100%;
+    padding: 0.85rem;
     font-size: 1rem;
-    transition: background-color 0.2s ease;
-  }
-
-  /* .btn-cancel {
-    background-color: var(--rojo);
-    color: var(--blanco);
-  }
-
-  .btn-cancel:hover {
-    background-color: var(--rojo-oscuro);
-  } */
-
-  .btn-create {
-    background-color: var(--verde);
-    color: var(--negro);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .btn-create:hover {
-    background-color: #27ae60;
-  }
-  .back_btn {
-    width: fit-content;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
     cursor: pointer;
-    padding: 0.4rem 0.8rem;
-    margin-left: 0.8rem;
-    color: var(--gris-claro);
-    border-radius: 5px;
+    background: var(--accent);
+    color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    border: 2px solid var(--gris);
-    align-self: flex-start;
-    transition: background-color 0.2s ease;
-    position: sticky;
-    top: 10px;
-    background-color: var(--negro);
+    transition: opacity 0.15s ease;
   }
-  .back_btn:hover {
-    background-color: var(--gris);
+
+  .submit-btn:hover {
+    opacity: 0.9;
   }
-  .body {
+
+  .submit-btn:active {
+    opacity: 0.8;
+  }
+
+  /* ── Back FAB ── */
+  .back-fab {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    width: 42px;
+    height: 42px;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    max-width: 360px;
-    margin: auto;
+    justify-content: center;
+    background: var(--gris-oscuro);
+    color: var(--gris-muy-claro);
+    border: 1px solid var(--gris);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+    z-index: 900;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .back-fab:hover {
+    color: var(--blanco);
+    border-color: var(--gris-claro);
+  }
+
+  /* ── Mobile ── */
+  @media (max-width: 768px) {
+    .page {
+      padding: 1.25rem 1rem 9rem;
+    }
+
+    .page-title {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-card {
+      padding: 1.25rem;
+      gap: 1rem;
+    }
+
+    .field-row {
+      grid-template-columns: 1fr;
+    }
   }
 </style> 
