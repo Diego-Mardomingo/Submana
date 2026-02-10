@@ -116,6 +116,8 @@ function resetCookies() {
   .email {
     color: var(--gris-claro);
     margin: 0;
+    overflow-wrap: anywhere;
+    padding: 0 0.5rem;
   }
 
   .settings-section {
@@ -138,6 +140,7 @@ function resetCookies() {
     align-items: center;
     padding: 0.75rem 0;
     border-bottom: 1px solid var(--gris);
+    gap: 1rem;
   }
 
   .setting-item:last-child {
@@ -147,11 +150,17 @@ function resetCookies() {
   .setting-item span:first-child {
     color: var(--blanco);
     font-weight: 600;
+    flex-shrink: 0;
   }
 
   .value {
     color: var(--gris-claro);
     font-weight: 500;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
   }
 
   .signout-form {

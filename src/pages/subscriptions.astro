@@ -56,7 +56,7 @@ function resetCookies() {
           <path d="M12 5l0 14"></path>
           <path d="M5 12l14 0"></path>
         </svg>
-        New Subscription
+        <span>New Subscription</span>
       </a>
     </div>
 
@@ -120,22 +120,41 @@ function resetCookies() {
     .subscriptions-container {
       padding: 1rem;
       margin-bottom: 5rem;
+      padding-top: 0;
     }
 
     .header {
-      flex-direction: column;
-      gap: 1rem;
-      align-items: stretch;
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+      height: 0; /* Collapse header height */
     }
 
     .header h1 {
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: 700;
+      display: none !important;
     }
 
     .new-sub-btn {
-      justify-content: center;
+      position: fixed !important;
+      bottom: 100px !important; /* Moved up to avoid nav overlap */
+      right: 20px !important;
+      width: 56px !important;
+      height: 56px !important;
+      border-radius: 16px !important; /* Rounded square (squircle) instead of circle */
+      padding: 0 !important;
+      justify-content: center !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+      z-index: 9999 !important;
+      background-color: var(--verde) !important;
+    }
+    
+    .new-sub-btn span {
+      display: none !important;
+    }
+
+    .new-sub-btn svg {
+      width: 28px !important;
+      height: 28px !important;
     }
   }
 </style>
