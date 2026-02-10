@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
 import type { Provider } from "@supabase/supabase-js";
 
-export const POST: APIRoute = async ({ request, cookies, redirect }) => {
+export const POST: APIRoute = async ({ request, cookies, redirect, url }) => {
   const formData = await request.formData();
   const provider = formData.get("provider")?.toString();
 
@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: provider as Provider,
       options: {
-        redirectTo: import.meta.env.REDIRECT_URL + "api/auth/callback"
+        redirectTo: `${url.origin}/api/auth/callback`
       },
     });
 
