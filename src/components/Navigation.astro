@@ -71,42 +71,47 @@ const t = useTranslations(lang);
 <div class="nav-backdrop" id="nav-backdrop"></div>
 
 <script>
-  const navToggle = document.getElementById('nav-toggle');
-  const nav = document.getElementById('main-nav');
-  const backdrop = document.getElementById('nav-backdrop');
+  function initNav() {
+    const navToggle = document.getElementById('nav-toggle');
+    const nav = document.getElementById('main-nav');
+    const backdrop = document.getElementById('nav-backdrop');
 
-  if (navToggle && nav) {
-    navToggle.addEventListener('click', () => {
-      const isExpanded = nav.classList.toggle('expanded');
-      
-      // Toggle Menu/Close text dynamically
-      const menuText = navToggle.querySelector('.menu-text');
-      if (menuText) {
-        menuText.textContent = isExpanded 
-          ? menuText.getAttribute('data-close') 
-          : menuText.getAttribute('data-menu');
-      }
-    });
-
-    if (backdrop) {
-      backdrop.addEventListener('click', () => {
-        nav.classList.remove('expanded');
-        // Reset text
+    if (navToggle && nav) {
+      navToggle.addEventListener('click', () => {
+        const isExpanded = nav.classList.toggle('expanded');
+        
+        // Toggle Menu/Close text dynamically
         const menuText = navToggle.querySelector('.menu-text');
         if (menuText) {
-          menuText.textContent = menuText.getAttribute('data-menu');
+          menuText.textContent = isExpanded 
+            ? menuText.getAttribute('data-close') 
+            : menuText.getAttribute('data-menu');
         }
       });
+
+      if (backdrop) {
+        backdrop.addEventListener('click', () => {
+          nav.classList.remove('expanded');
+          // Reset text
+          const menuText = navToggle.querySelector('.menu-text');
+          if (menuText) {
+            menuText.textContent = menuText.getAttribute('data-menu');
+          }
+        });
+      }
     }
-  }
-  
-  // Close when clicking a link
-  const navLinks = nav?.querySelectorAll('.nav-item:not(.more-btn)');
-  navLinks?.forEach(link => {
-    link.addEventListener('click', () => {
-      nav?.classList.remove('expanded');
+    
+    // Close when clicking a link
+    const navLinks = nav?.querySelectorAll('.nav-item:not(.more-btn)');
+    navLinks?.forEach(link => {
+      link.addEventListener('click', () => {
+        nav?.classList.remove('expanded');
+      });
     });
-  });
+  }
+
+  // Support ViewTransitions
+  document.addEventListener('astro:page-load', initNav);
 </script>
 
 <style>

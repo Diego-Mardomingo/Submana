@@ -12,13 +12,14 @@ interface Props {
 const { title } = Astro.props;
 const lang = getLangFromCookie(Astro.cookies);
 const t = useTranslations(lang);
+const theme = Astro.cookies.get("submana-theme")?.value || "dark";
 
 // Format title: Submana | TranslatedTitle
 const pageTitle = `Submana | ${title}`;
 ---
 
 <!doctype html>
-<html lang={lang}>
+<html lang={lang} data-theme={theme}>
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content="Astro description" />
@@ -35,11 +36,21 @@ const pageTitle = `Submana | ${title}`;
     <ClientRouter />
     <title>{pageTitle}</title>
     <script is:inline>
-      // Apply theme immediately to prevent flash
       (function() {
-        const theme = localStorage.getItem('submana-theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
+        const getTheme = () => localStorage.getItem('submana-theme') || 'dark';
         
+        const applyTheme = (doc) => {
+          const theme = getTheme();
+          doc.documentElement.setAttribute('data-theme', theme);
+        };
+
+        // Initial apply to prevent any potential flash if server/client mismatch
+        applyTheme(document);
+        
+        // Re-apply on every view transition
+        document.addEventListener('astro:before-swap', (ev) => applyTheme(ev.newDocument));
+        document.addEventListener('astro:after-swap', () => applyTheme(document));
+
         // Dynamic Title Localization Helper
         window.updateDocumentTitle = (translatedPageName) => {
           document.title = `Submana | ${translatedPageName}`;
@@ -59,7 +70,7 @@ const pageTitle = `Submana | ${title}`;
   <body>
     {Astro.url.pathname !== "/login" && <Navigation />}
     <slot />
-    <Toaster position="top-center" theme="dark" client:load />
+    <Toaster position="top-center" theme={theme === "light" ? "light" : "dark"} client:load />
   </body>
 </html>
 <style is:global>
