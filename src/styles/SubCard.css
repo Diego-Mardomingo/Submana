@@ -89,7 +89,7 @@
 .totalCost {
   font-weight: 600;
   font-size: 1rem;
-  color: var(--naranja);
+  color: var(--accent);
   display: flex;
   align-items: center;
   gap: .2rem;

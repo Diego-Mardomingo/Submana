@@ -113,7 +113,7 @@ aside {
 .spent_value {
   font-weight: 800;
   font-size: 1.5rem;
-  color: var(--warning);
+  color: var(--accent);
   display: flex;
   align-items: center;
   gap: .2rem;

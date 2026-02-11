@@ -75,6 +75,8 @@ const t = useTranslations(lang);
   </div>
 </nav>
 
+<div class="nav-backdrop" id="nav-backdrop"></div>
+
 <script>
   const navToggle = document.getElementById('nav-toggle');
   const nav = document.getElementById('main-nav');
@@ -92,6 +94,17 @@ const t = useTranslations(lang);
           : menuText.getAttribute('data-menu');
       }
     });
+
+    if (backdrop) {
+      backdrop.addEventListener('click', () => {
+        nav.classList.remove('expanded');
+        // Reset text
+        const menuText = navToggle.querySelector('.menu-text');
+        if (menuText) {
+          menuText.textContent = menuText.getAttribute('data-menu');
+        }
+      });
+    }
   }
   
   // Close when clicking a link
@@ -104,6 +117,33 @@ const t = useTranslations(lang);
 </script>
 
 <style>
+  /* ─── Backdrop ─── */
+  .nav-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 999999; /* Just below navigation (1000000) */
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  /* Show backdrop when nav is expanded */
+  #main-nav.expanded ~ .nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (min-width: 768px) {
+    .nav-backdrop {
+      display: none;
+    }
+  }
+
   /* ─── Base Navigation ─── */
   .navigation {
     position: fixed;
@@ -226,10 +266,9 @@ const t = useTranslations(lang);
   }
 
   /* ─── Mobile Expanded State ─── */
-  /* ─── Mobile Expanded State ─── */
   .navigation.expanded {
     /* Expand upwards with fixed height for perfect transition symmetry */
-    height: 335px; 
+    height: 280px; 
     border-radius: 24px 24px 0 0;
     box-shadow: 0 -10px 40px rgba(0,0,0,0.6);
   }
@@ -259,33 +298,9 @@ const t = useTranslations(lang);
     border-color: var(--accent-muted);
   }
 
-  /* Transform "More" to "Close" */
+  /* Ocultar el botón de "More" cuando se expande el menú en móviles */
   .navigation.expanded .more-btn {
-    grid-column: span 3; 
-    background-color: var(--rojo-oscuro);
-    color: white;
-    margin-top: 0.5rem;
-    height: 50px;
-    flex-direction: row;
-    align-items: center; /* Ensure vertical centering */
-    justify-content: center; /* Ensure horizontal centering */
-    gap: 0.5rem;
-  }
-  
-  .navigation.expanded .more-btn span {
-    font-size: 1rem;
-    width: auto; /* Allow text to size naturally to sit next to icon */
-    padding: 0;
-  }
-
-  .navigation.expanded .more-btn .icon-menu {
-    opacity: 0;
-    transform: rotate(90deg) scale(0.5);
-  }
-
-  .navigation.expanded .more-btn .icon-close {
-    opacity: 1;
-    transform: rotate(0) scale(1);
+    display: none;
   }
 
 
