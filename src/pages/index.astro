@@ -40,6 +40,8 @@ function resetCookies() {
   cookies.delete("sb-refresh-token", { path: "/" });
   return redirect("/login");
 }
+import { getLangFromCookie } from "../i18n/utils";
+const lang = getLangFromCookie(Astro.cookies);
 ---
 
 <Layout title="Submana">
@@ -48,6 +50,7 @@ function resetCookies() {
     <CalendarBody
       initialYear={currentYear}
       initialMonth={currentMonth}
+      lang={lang}
       client:load
     />
     <ShowToast client:only />

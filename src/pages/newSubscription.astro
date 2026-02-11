@@ -36,16 +36,20 @@ function resetCookies() {
   cookies.delete("sb-refresh-token", { path: "/" });
   return redirect("/login");
 }
+
+import { getLangFromCookie, useTranslations } from "../i18n/utils";
+const lang = getLangFromCookie(Astro.cookies);
+const t = useTranslations(lang);
 ---
 
-<Layout title="New Subscription">
+<Layout title={t('sub.new')}>
   <div class="page">
-    <h1 class="page-title">New Subscription</h1>
+    <h1 class="page-title">{t('sub.new')}</h1>
 
     <form method="post" action="/api/crud/insertNewSub" class="form-card">
       <!-- Name -->
       <div class="field">
-        <label for="name">Name</label>
+        <label for="name">{t('sub.name')}</label>
         <input
           type="text"
           id="name"
@@ -58,7 +62,7 @@ function resetCookies() {
 
       <!-- Icon -->
       <div class="field">
-        <label>Icon</label>
+        <label>{t('sub.icon')}</label>
         <input type="hidden" id="icon_value" name="icon" />
         <Icon defaultIcon="" onIconSelected={() => {}} client:visible />
       </div>
@@ -66,7 +70,7 @@ function resetCookies() {
       <!-- Cost + Start Date -->
       <div class="field-row">
         <div class="field">
-          <label for="cost">Cost (€)</label>
+          <label for="cost">{t('sub.cost')} (€)</label>
           <input
             type="number"
             id="cost"
@@ -78,29 +82,29 @@ function resetCookies() {
           />
         </div>
         <div class="field">
-          <label for="startDate">Start Date</label>
+          <label for="startDate">{t('sub.startDate')}</label>
           <input type="date" id="startDate" name="startDate" required />
         </div>
       </div>
 
       <!-- End Date -->
       <div class="field">
-        <label for="endDate">End Date <span class="hint">(optional)</span></label>
+        <label for="endDate">{t('sub.endDate')} <span class="hint">({t('sub.optional')})</span></label>
         <input type="date" id="endDate" name="endDate" />
       </div>
 
       <!-- Frequency + Value -->
       <div class="field-row">
         <div class="field">
-          <label for="frequency">Frequency</label>
+          <label for="frequency">{t('sub.frequency')}</label>
           <select id="frequency" name="frequency">
-            <option value="weekly">Weekly</option>
-            <option value="monthly" selected>Monthly</option>
-            <option value="yearly">Yearly</option>
+            <option value="weekly">{t('sub.weekly')}</option>
+            <option value="monthly" selected>{t('sub.monthly')}</option>
+            <option value="yearly">{t('sub.yearly')}</option>
           </select>
         </div>
         <div class="field">
-          <label for="frequency_value">Every</label>
+          <label for="frequency_value">{t('sub.every')}</label>
           <input
             type="number"
             id="frequency_value"
@@ -114,7 +118,7 @@ function resetCookies() {
 
       <!-- Submit -->
       <button id="create_btn" type="submit" class="submit-btn">
-        Create Subscription
+        {t('sub.create')}
         <span id="spinner_btn" style="display:none;"><LoadingSpinner /></span>
       </button>
     </form>

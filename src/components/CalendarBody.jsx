@@ -2,8 +2,11 @@ import React, { useState, useEffect } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import "../styles/CalendarBody.css";
 import Day from "./Day";
+import { ui } from "../i18n/ui";
 
-export default function CalendarBody({ initialYear, initialMonth }) {
+export default function CalendarBody({ initialYear, initialMonth, lang }) {
+  const t = (key) => ui[lang]?.[key] || ui['en'][key];
+
   // Estado local para el año y mes actuales
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
@@ -69,21 +72,30 @@ export default function CalendarBody({ initialYear, initialMonth }) {
 
   // ? END SWIPE FUNCIONALITY
 
-  // Arrays estáticos
-  const diasSemana = ["MON", "TUE", "WED", "THU", "FRY", "SAT", "SUN"];
+  // Arrays estáticos (Localizados)
+  const diasSemana = [
+    t('calendar.monday'),
+    t('calendar.tuesday'),
+    t('calendar.wednesday'),
+    t('calendar.thursday'),
+    t('calendar.friday'),
+    t('calendar.saturday'),
+    t('calendar.sunday')
+  ];
+
   const meses = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    t('calendar.months.january'),
+    t('calendar.months.february'),
+    t('calendar.months.march'),
+    t('calendar.months.april'),
+    t('calendar.months.may'),
+    t('calendar.months.june'),
+    t('calendar.months.july'),
+    t('calendar.months.august'),
+    t('calendar.months.september'),
+    t('calendar.months.october'),
+    t('calendar.months.november'),
+    t('calendar.months.december'),
   ];
 
   // Función que nos da el número de días en un mes dado
@@ -344,7 +356,7 @@ export default function CalendarBody({ initialYear, initialMonth }) {
           <p className="año">{year}</p>
         </div>
         <div className="spent_container">
-          <p className="spent_title">Monthly spend</p>
+          <p className="spent_title">{t('calendar.monthly_spend')}</p>
           <div className="spent_value">
             {isLoading ? (
               <LoadingSpinner />
