@@ -34,40 +34,41 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
     setTouchEndY(e.targetTouches[0].clientY);
   };
 
-  const onTouchEnd = () => {
-    if (
-      touchStartX === null ||
-      touchStartY === null ||
-      touchEndX === null ||
-      touchEndY === null
-    )
-      return;
-    const deltaX = touchStartX - touchEndX;
-    const deltaY = touchStartY - touchEndY;
+  const onTouchEnd = (e) => {
+    if (touchStartX === null || touchStartY === null) return;
+
+    // Usar changedTouches para obtener la posición final exacta en el momento del levantamiento
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+
+    const deltaX = touchStartX - endX;
+    const deltaY = touchStartY - endY;
 
     // Determinar si el swipe es mayor en horizontal o vertical
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
       // Swipe horizontal
-      if (deltaX > minSwipeDistance) {
-        // Desliza a la izquierda: avanzar mes
-        handleNextMonth();
-      } else if (deltaX < -minSwipeDistance) {
-        // Desliza a la derecha: retroceder mes
-        handlePrevMonth();
+      if (Math.abs(deltaX) > minSwipeDistance) {
+        if (deltaX > 0) {
+          // Desliza a la izquierda: avanzar mes
+          handleNextMonth();
+        } else {
+          // Desliza a la derecha: retroceder mes
+          handlePrevMonth();
+        }
       }
     } else {
       // Swipe vertical
-      // Si se desliza de abajo hacia arriba, deltaY será positivo
-      if (deltaY > minSwipeDistance) {
-        // Swipe vertical (bottom-to-top): ir a hoy
-        handleToday();
+      if (Math.abs(deltaY) > minSwipeDistance) {
+        if (deltaY > 0) {
+          // Swipe vertical (bottom-to-top): ir a hoy
+          handleToday();
+        }
       }
     }
-    // Reiniciamos las coordenadas para el próximo toque
+
+    // Reiniciamos las coordenadas
     setTouchStartX(null);
     setTouchStartY(null);
-    setTouchEndX(null);
-    setTouchEndY(null);
   };
 
   // ? END SWIPE FUNCIONALITY
