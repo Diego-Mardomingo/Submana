@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { flushSync } from "react-dom";
 import LoadingSpinner from "./LoadingSpinner";
 import "../styles/CalendarBody.css";
 import Day from "./Day";
@@ -132,32 +133,56 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
 
   // Handlers para cambiar de mes
   function handlePrevMonth() {
-    let newMonth = month - 1;
-    let newYear = year;
-    if (newMonth < 0) {
-      newMonth = 11;
-      newYear = year - 1;
+    const changeMonth = () => {
+      let newMonth = month - 1;
+      let newYear = year;
+      if (newMonth < 0) {
+        newMonth = 11;
+        newYear = year - 1;
+      }
+      setMonth(newMonth);
+      setYear(newYear);
+    };
+
+    if (document.startViewTransition) {
+      document.startViewTransition(() => flushSync(changeMonth));
+    } else {
+      changeMonth();
     }
-    setMonth(newMonth);
-    setYear(newYear);
   }
 
   function handleNextMonth() {
-    let newMonth = month + 1;
-    let newYear = year;
-    if (newMonth > 11) {
-      newMonth = 0;
-      newYear = year + 1;
+    const changeMonth = () => {
+      let newMonth = month + 1;
+      let newYear = year;
+      if (newMonth > 11) {
+        newMonth = 0;
+        newYear = year + 1;
+      }
+      setMonth(newMonth);
+      setYear(newYear);
+    };
+
+    if (document.startViewTransition) {
+      document.startViewTransition(() => flushSync(changeMonth));
+    } else {
+      changeMonth();
     }
-    setMonth(newMonth);
-    setYear(newYear);
   }
 
   function handleToday() {
-    let currentYear = new Date().getFullYear();
-    let currentMonth = new Date().getMonth();
-    setMonth(currentMonth);
-    setYear(currentYear);
+    const goToday = () => {
+      let currentYear = new Date().getFullYear();
+      let currentMonth = new Date().getMonth();
+      setMonth(currentMonth);
+      setYear(currentYear);
+    };
+
+    if (document.startViewTransition) {
+      document.startViewTransition(() => flushSync(goToday));
+    } else {
+      goToday();
+    }
   }
 
   useEffect(() => {

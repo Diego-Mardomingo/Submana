@@ -21,6 +21,7 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
               src={iconUrl}
               alt="subscription icon"
               className="subscription_icon"
+              style={{ viewTransitionName: `sub-icon-${subsForDay[idx]?.id}` }}
             />
           ))}
           <div className="subscription_overflow">
@@ -35,6 +36,7 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
           src={iconUrl}
           alt="subscription icon"
           className="subscription_icon"
+          style={{ viewTransitionName: `sub-icon-${subsForDay[idx]?.id}` }}
         />
       ));
     }

@@ -1,6 +1,7 @@
 ---
 import "@fontsource-variable/inter";
 import { Toaster } from "@pheralb/toast";
+import { ClientRouter } from "astro:transitions";
 import Navigation from "../components/Navigation.astro";
 import { getLangFromCookie, useTranslations } from "../i18n/utils";
 
@@ -31,6 +32,7 @@ const pageTitle = `Submana | ${title}`;
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="generator" content={Astro.generator} />
+    <ClientRouter />
     <title>{pageTitle}</title>
     <script is:inline>
       // Apply theme immediately to prevent flash
