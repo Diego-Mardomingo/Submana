@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Day.css";
 
-export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForDay = [],activeDay, setActiveDay,}) {
+export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForDay = [], activeDay, setActiveDay, }) {
   const dayNum = dayNumber.toString().padStart(2, "0");
   const showPopup = activeDay === dayNumber;
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -40,12 +40,12 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
     }
   };
 
-  function getFrequencyText(frequency){
-    if(frequency === 'monthly'){
+  function getFrequencyText(frequency) {
+    if (frequency === 'monthly') {
       return 'month/s';
-    }else if(frequency === 'weekly'){
+    } else if (frequency === 'weekly') {
       return 'week/s';
-    }else if(frequency === 'yearly'){
+    } else if (frequency === 'yearly') {
       return 'year/s';
     }
   }
@@ -73,22 +73,22 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
   const handleClick = () => setActiveDay(prev => (prev === dayNumber ? null : dayNumber));
 
   return (
-      <div
-        className={`dia ${isToday ? "diaActual" : ""}${subsForDay.length > 0 ? "hasSubs" : ""}`}
-        style={dayStyle}
-        {...(!isTouchDevice ? { onMouseEnter: handleMouseEnter, onMouseLeave: handleMouseLeave } : {})}
-        onClick={handleClick}
-      >
-        <div className="icons_container">
-          {renderIcons()}
-        </div>
-        <div className="number">{dayNum}</div>
-        {showPopup && subsForDay.length > 0 && (
-          <div className="popup">
-            <h3>Subscriptions day {dayNumber}</h3>
-            {renderPopupContent()}
-          </div>
-        )}
+    <div
+      className={`dia ${isToday ? "diaActual" : ""}${subsForDay.length > 0 ? "hasSubs" : ""}`}
+      style={dayStyle}
+      {...(!isTouchDevice ? { onMouseEnter: handleMouseEnter, onMouseLeave: handleMouseLeave } : {})}
+      onClick={handleClick}
+    >
+      <div className="icons_container">
+        {renderIcons()}
       </div>
+      <div className="number">{dayNum}</div>
+      {showPopup && subsForDay.length > 0 && (
+        <div className="popup">
+          <h3>Subscriptions day {dayNumber}</h3>
+          {renderPopupContent()}
+        </div>
+      )}
+    </div>
   );
 }

@@ -147,7 +147,7 @@
 .btn-random:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background-color: rgba(139, 92, 246, 0.1);
+  background-color: var(--accent-soft);
 }
 
 @media (max-width: 480px) {

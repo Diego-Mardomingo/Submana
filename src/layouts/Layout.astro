@@ -34,37 +34,127 @@ const { title } = Astro.props;
   </body>
 </html>
 <style is:global>
+  /* ═══════════════════════════════════════════════
+     SUBMANA — Design Tokens
+     Professional • Minimal • Premium
+     ═══════════════════════════════════════════════ */
+
   /* ── Dark theme (default) ── */
   :root,
   [data-theme="dark"] {
-    --negro: #131313;
-    --gris-oscuro: #1e1e1e;
-    --gris: #2e2e2e;
-    --gris-claro: #777;
-    --gris-muy-claro: #999;
-    --blanco: #f5f5f5;
-    --accent: #8b5cf6;
-    --accent-hover: #7c3aed;
-    --naranja: #e67e22;
-    --azul: #3498db;
-    --rojo: #e74c3c;
-    --rojo-oscuro: #c0392b;
+
+    /* ── Surface & Neutrals ──
+       Base neutra con matiz frío sutil (cool undertone) 
+       para un aspecto premium y sofisticado              */
+    --negro:          #0f1012;
+    --gris-oscuro:    #18191c;
+    --gris:           #26282d;
+    --gris-claro:     #6b7280;
+    --gris-muy-claro: #9ca3af;
+    --blanco:         #f0f1f3;
+
+    /* ── Accent · Purple ──
+       Violeta como color principal de marca.
+       Variantes para hover, soft backgrounds y texto sutil */
+    --accent:         #8b5cf6;
+    --accent-hover:   #7c3aed;
+    --accent-soft:    rgba(139, 92, 246, 0.12);
+    --accent-muted:   rgba(139, 92, 246, 0.25);
+
+    /* ── Semantic · Success (Ingresos) ──
+       Verde esmeralda equilibrado, no demasiado brillante */
+    --success:        #34d399;
+    --success-hover:  #10b981;
+    --success-soft:   rgba(52, 211, 153, 0.12);
+    --success-muted:  rgba(52, 211, 153, 0.25);
+
+    /* ── Semantic · Danger (Gastos) ──
+       Rojo coral suave, premium, no agresivo             */
+    --danger:         #f87171;
+    --danger-hover:   #ef4444;
+    --danger-soft:    rgba(248, 113, 113, 0.12);
+    --danger-muted:   rgba(248, 113, 113, 0.25);
+
+    /* ── Semantic · Warning ──
+       Ámbar cálido para alertas y estados pendientes     */
+    --warning:        #fbbf24;
+    --warning-hover:  #f59e0b;
+    --warning-soft:   rgba(251, 191, 36, 0.12);
+    --warning-muted:  rgba(251, 191, 36, 0.25);
+
+    /* ── Semantic · Info ──
+       Azul sereno para información y acciones neutrales  */
+    --info:           #60a5fa;
+    --info-hover:     #3b82f6;
+    --info-soft:      rgba(96, 165, 250, 0.12);
+    --info-muted:     rgba(96, 165, 250, 0.25);
+
+    /* ── Utility · Teal ──
+       Turquesa para tags, badges o categorías extra      */
+    --teal:           #2dd4bf;
+    --teal-hover:     #14b8a6;
+    --teal-soft:      rgba(45, 212, 191, 0.12);
+
+    /* ── Legacy aliases (retrocompatibilidad) ── */
+    --naranja:        var(--warning);
+    --azul:           var(--info);
+    --rojo:           var(--danger);
+    --rojo-oscuro:    var(--danger-hover);
   }
 
   /* ── Light theme ── */
   [data-theme="light"] {
-    --negro: #f5f5f5;
-    --gris-oscuro: #e8e8e8;
-    --gris: #d0d0d0;
-    --gris-claro: #888;
-    --gris-muy-claro: #666;
-    --blanco: #1a1a1a;
-    --accent: #7c3aed;
-    --accent-hover: #6d28d9;
-    --naranja: #d97706;
-    --azul: #2563eb;
-    --rojo: #dc2626;
-    --rojo-oscuro: #b91c1c;
+
+    /* ── Surface & Neutrals ──
+       Fondo cálido con ligero matiz frío para limpieza   */
+    --negro:          #f8f9fb;
+    --gris-oscuro:    #eef0f4;
+    --gris:           #dde1e8;
+    --gris-claro:     #6b7280;
+    --gris-muy-claro: #4b5563;
+    --blanco:         #111318;
+
+    /* ── Accent · Purple ──
+       Ligeramente más oscuro para buen contraste en light */
+    --accent:         #7c3aed;
+    --accent-hover:   #6d28d9;
+    --accent-soft:    rgba(124, 58, 237, 0.08);
+    --accent-muted:   rgba(124, 58, 237, 0.18);
+
+    /* ── Semantic · Success ── */
+    --success:        #059669;
+    --success-hover:  #047857;
+    --success-soft:   rgba(5, 150, 105, 0.08);
+    --success-muted:  rgba(5, 150, 105, 0.18);
+
+    /* ── Semantic · Danger ── */
+    --danger:         #dc2626;
+    --danger-hover:   #b91c1c;
+    --danger-soft:    rgba(220, 38, 38, 0.08);
+    --danger-muted:   rgba(220, 38, 38, 0.18);
+
+    /* ── Semantic · Warning ── */
+    --warning:        #d97706;
+    --warning-hover:  #b45309;
+    --warning-soft:   rgba(217, 119, 6, 0.08);
+    --warning-muted:  rgba(217, 119, 6, 0.18);
+
+    /* ── Semantic · Info ── */
+    --info:           #2563eb;
+    --info-hover:     #1d4ed8;
+    --info-soft:      rgba(37, 99, 235, 0.08);
+    --info-muted:     rgba(37, 99, 235, 0.18);
+
+    /* ── Utility · Teal ── */
+    --teal:           #0d9488;
+    --teal-hover:     #0f766e;
+    --teal-soft:      rgba(13, 148, 136, 0.08);
+
+    /* ── Legacy aliases ── */
+    --naranja:        var(--warning);
+    --azul:           var(--info);
+    --rojo:           var(--danger);
+    --rojo-oscuro:    var(--danger-hover);
   }
 
   html,
@@ -72,6 +162,12 @@ const { title } = Astro.props;
     margin: 0;
     padding: 0;
     min-height: 100dvh;
+  }
+  
+  @media (min-width: 768px) {
+    body {
+      padding-left: 240px; /* Width of desktop sidebar */
+    }
   }
   html {
     background: var(--negro);

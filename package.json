@@ -15,8 +15,10 @@
     "@fontsource-variable/inter": "^5.1.0",
     "@pheralb/toast": "^1.0.0",
     "@supabase/supabase-js": "^2.45.4",
+    "@tailwindcss/vite": "^4.1.18",
     "astro": "^5.11.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.18"
   }
 }

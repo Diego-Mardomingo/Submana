@@ -1,28 +1,32 @@
-.dia{
+.dia {
   padding: .2rem;
-  width: min(100%, 7rem);
-  aspect-ratio: 1 / 1.15;
+  width: 100%;
+  aspect-ratio: 1 / 1;
   background-color: var(--gris-oscuro);
-  border-radius: 10px;
+  border: 1px solid var(--gris);
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
   align-items: center;
   position: relative;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
-.number{
+
+.number {
   font-size: 1rem;
   font-weight: 500;
   color: var(--blanco);
 }
-.diaActual{
-  border: 2px solid var(--blanco);
+
+.diaActual {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
 }
-.diaActual > .number{
-  color: var(--negro);
-  background-color: var(--blanco);
-  padding: 0.1rem .6rem;
-  border-radius: 8px;
+
+.diaActual>.number {
+  color: var(--accent);
+  font-weight: 800;
 }
 
 .day {
@@ -47,7 +51,7 @@
   border-radius: 50%;
 }
 
-.subscription_icon:nth-child(2){
+.subscription_icon:nth-child(2) {
   margin-left: -5px;
 }
 
@@ -66,35 +70,95 @@
 }
 
 @media (max-width:570px) {
-  .dia{
+  .dia {
     width: 100%;
-    padding: 0rem;
+    /* Reduce vertical elongation to compact view */
+    aspect-ratio: 1 / 1.1;
+    padding: 2px;
+    justify-content: flex-start;
+    align-items: stretch;
   }
-  .number{
-    font-size: smaller;
+
+  .number {
+    position: absolute;
+    top: auto;
+    bottom: 2px;
+    left: 0;
+    right: 0;
+    /* Center horizontally */
+    text-align: center;
+    font-size: 0.75rem;
+    line-height: 1;
+    font-weight: 700;
+    margin: 0;
+    z-index: 2;
+    /* Por si acaso se solapa con el icono */
   }
-  .diaActual{
-    border: 1px solid var(--blanco);
+
+  /* Ajustar iconos para que llenen el espacio */
+  .icons_container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    padding-bottom: 14px;
+    /* More space for centered number */
+    /* Dejar espacio visual para el número abajo */
   }
-  .diaActual .number{
-    padding: 0rem .5rem;
-    margin-bottom: .1rem;
-  }
-  .subscription_icon{
-    width: 50%;
+
+  /* Eliminamos la sobreescritura legacy de diaActual para mantener el diseño nuevo */
+
+  .subscription_icon {
+    width: 55%;
+    /* Totalmente responsive al ancho de la celda */
     height: auto;
+    max-width: none;
+    /* Eliminar restricción de px */
+    aspect-ratio: 1/1;
+    object-fit: cover;
   }
-  .subscription_overflow{
-    width: 50%;
-    height: 57%;
+
+  .subscription_overflow {
+    width: 24px;
+    height: 24px;
+    font-size: 0.65rem;
   }
-  .popup_header{
+
+  .popup_header {
     flex-direction: column;
   }
 }
-.hasSubs{
+
+/* ─── Ultra Small Screens (e.g. iPhone SE, 320px width) ─── */
+@media (max-width: 380px) {
+  .dia {
+    border-radius: 5px !important;
+    /* Sharper corners to reduce visual gaps */
+    padding: 1px;
+    aspect-ratio: 1/1 !important;
+    /* strictly square */
+  }
+
+  .number {
+    font-size: 0.7rem;
+    bottom: 2px;
+    right: 2px;
+  }
+
+  .subscription_overflow {
+    width: 20px;
+    height: 20px;
+    font-size: 0.6rem;
+  }
+}
+
+.hasSubs {
   cursor: pointer;
 }
+
 .popup {
   position: fixed;
   z-index: 1000;
@@ -113,6 +177,7 @@
   align-items: center;
   gap: .5rem;
 }
+
 .popup_content {
   font-size: 0.8rem;
   display: grid;
@@ -121,7 +186,8 @@
   justify-items: center;
   align-items: center;
 }
-.popup_item{
+
+.popup_item {
   display: flex;
   flex-direction: column;
   background-color: var(--gris-oscuro);
@@ -130,29 +196,33 @@
   padding: .5rem;
   gap: .3rem;
 }
-.popup > h3{
+
+.popup>h3 {
   color: var(--accent);
 }
-.popup_header{
+
+.popup_header {
   display: flex;
   justify-content: center;
   align-items: center;
   gap: .3rem;
 }
 
-.iconInfo{
+.iconInfo {
   width: 30px;
   height: 30px;
   border-radius: 50%;
   align-self: center;
 }
-.costInfo{
+
+.costInfo {
   background-color: var(--blanco);
   color: var(--negro);
   font-weight: 700;
   padding: 0.2rem;
   border-radius: 10px;
 }
-.frequencyInfo{
+
+.frequencyInfo {
   color: var(--gris-claro);
 }

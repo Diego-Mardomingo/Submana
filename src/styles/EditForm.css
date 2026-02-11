@@ -1,7 +1,7 @@
-.modal-overlayEdit{
+.modal-overlayEdit {
   position: fixed;
   top: 0;
-  background: rgba(0,0,0,0.9);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11,7 +11,7 @@
   overflow: auto;
 }
 
-.modalEdit{
+.modalEdit {
   background: var(--negro);
   padding: 1rem;
   border-radius: 5px;
@@ -80,11 +80,10 @@ button {
 }
 
 .btn-create:hover {
-  background-color: #27ae60;
+  background-color: var(--accent-hover);
 }
 
-.btn-create > .spinner_container > .spinner {
+.btn-create>.spinner_container>.spinner {
   width: 16px;
   fill: var(--negro);
 }
-
