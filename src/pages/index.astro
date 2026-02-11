@@ -40,11 +40,12 @@ function resetCookies() {
   cookies.delete("sb-refresh-token", { path: "/" });
   return redirect("/login");
 }
-import { getLangFromCookie } from "../i18n/utils";
+import { getLangFromCookie, useTranslations } from "../i18n/utils";
 const lang = getLangFromCookie(Astro.cookies);
+const t = useTranslations(lang);
 ---
 
-<Layout title="Submana">
+<Layout title={t('nav.home')}>
   <!-- <CleanURL/> -->
   <div class="home-container">
     <CalendarBody

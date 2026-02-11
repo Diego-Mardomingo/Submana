@@ -28,6 +28,7 @@ export const ui = {
         'settings.language': 'Language',
         'settings.signout': 'Sign Out',
 
+        'calendar.today': 'Today',
         'calendar.monthly_spend': 'Monthly Spend',
         'calendar.monday': 'MON',
         'calendar.tuesday': 'TUE',
@@ -86,6 +87,7 @@ export const ui = {
         'settings.language': 'Idioma',
         'settings.signout': 'Cerrar Sesión',
 
+        'calendar.today': 'Hoy',
         'calendar.monthly_spend': 'Gasto Mensual',
         'calendar.monday': 'LUN',
         'calendar.tuesday': 'MAR',

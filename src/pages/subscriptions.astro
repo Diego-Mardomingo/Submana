@@ -34,12 +34,16 @@ function resetCookies() {
   cookies.delete("sb-refresh-token", { path: "/" });
   return redirect("/login");
 }
+
+import { getLangFromCookie, useTranslations } from "../i18n/utils";
+const lang = getLangFromCookie(Astro.cookies);
+const t = useTranslations(lang);
 ---
 
-<Layout title="Subscriptions">
+<Layout title={t('nav.subscriptions')}>
   <div class="subscriptions-container">
     <div class="header">
-      <h1>My Subscriptions</h1>
+      <h1 data-i18n="nav.subscriptions">{t('nav.subscriptions')}</h1>
       <a href="/newSubscription" class="new-sub-btn">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -56,7 +60,7 @@ function resetCookies() {
           <path d="M12 5l0 14"></path>
           <path d="M5 12l14 0"></path>
         </svg>
-        <span>New Subscription</span>
+        <span data-i18n="sub.new">{t('sub.new')}</span>
       </a>
     </div>
 

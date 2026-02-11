@@ -42,8 +42,8 @@ const t = useTranslations(lang);
 const translationsJSON = JSON.stringify(ui);
 ---
 
-<Layout title="Settings">
-  <Logo style="display:block; margin: 2rem auto 1rem auto; max-width: 120px;" />
+<Layout title={t('nav.settings')}>
+  <Logo variant="small" style="display:block; margin: 2rem auto 1rem auto;" />
   <div class="settings-container">
     <div class="user-profile">
       <img class="avatar" src={avatar} alt="User avatar" />
@@ -144,16 +144,42 @@ const translationsJSON = JSON.stringify(ui);
     localStorage.setItem('submana-lang', lang);
     document.cookie = `submana-lang=${lang}; path=/; max-age=${60 * 60 * 24 * 365}`;
     if (langSelector) {
-       langSelector.setAttribute('data-active', lang);
-       const translations = JSON.parse(langSelector.getAttribute('data-translations'));
-       
-       // Instant client-side text update (ZERO RELOAD)
-       document.querySelectorAll('[data-i18n]').forEach(el => {
-         const key = el.getAttribute('data-i18n');
-         if (translations[lang] && translations[lang][key]) {
-           el.textContent = translations[lang][key];
-         }
-       });
+        langSelector.setAttribute('data-active', lang);
+        const translations = JSON.parse(langSelector.getAttribute('data-translations'));
+        
+        // Instant client-side text update (ZERO RELOAD)
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          if (translations[lang] && translations[lang][key]) {
+            el.textContent = translations[lang][key];
+          }
+        });
+
+        // Update Nav Menu/Close data attributes for Mobile Toggle
+        const navToggle = document.getElementById('nav-toggle');
+        const menuText = navToggle?.querySelector('.menu-text');
+        if (menuText) {
+          menuText.setAttribute('data-menu', translations[lang]['nav.menu']);
+          menuText.setAttribute('data-close', translations[lang]['nav.close']);
+          const isExpanded = document.getElementById('main-nav')?.classList.contains('expanded');
+          menuText.textContent = isExpanded ? translations[lang]['nav.close'] : translations[lang]['nav.menu'];
+        }
+
+        // Update Nav Link Labels (important for Sidebar on Desktop)
+        // We look for spans inside nav-items that aren't the more-btn
+        const navSpans = document.querySelectorAll('.navigation .nav-item:not(.more-btn) span');
+        const navKeys = ['nav.home', 'nav.subscriptions', 'nav.accounts', 'nav.expenses', 'nav.notifications', 'nav.settings'];
+        navSpans.forEach((span, index) => {
+           if (navKeys[index] && translations[lang][navKeys[index]]) {
+             span.textContent = translations[lang][navKeys[index]];
+           }
+        });
+
+        // Update Document Title
+        const pageKey = 'nav.settings'; 
+        if (window.updateDocumentTitle && translations[lang][pageKey]) {
+          window.updateDocumentTitle(translations[lang][pageKey]);
+        }
     }
   }
 

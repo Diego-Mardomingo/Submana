@@ -1,15 +1,22 @@
 ---
 interface Props {
+  variant?: "small" | "large";
   class?: string;
   style?: string;
 }
 
-const { class: className, style } = Astro.props;
+const { variant = "large", class: className, style } = Astro.props;
 ---
-<a href="/" class:list={["logo-link", className]} style={style}>
-  <div class="logo">
-    <img src="/logo.webp" alt="Submana logo" loading="eager" />
-    <h1 class="submana">Submana</h1>
+<a href="/" class:list={["logo-link", variant, className]} style={style}>
+  <div class:list={["logo-inner", variant]}>
+    <div class="logo-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="submana-text">Submana</span>
   </div>
 </a>
 
@@ -17,37 +24,73 @@ const { class: className, style } = Astro.props;
   .logo-link {
     text-decoration: none;
     display: inline-block;
+    color: var(--accent); /* Color for the SVG icon */
   }
 
-  .logo {
+  /* Default / Large Layout */
+  .logo-inner {
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 0.5rem;
   }
 
-  .logo img {
-    width: 10rem;
-    height: auto;
-    max-width: 100%;
+  .logo-icon {
+    width: 6rem;
+    height: 6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
   }
 
-  .submana {
-    color: var(--accent);
+  .logo-icon svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 12px var(--accent-muted));
+  }
+
+  .submana-text {
+    color: var(--blanco);
     font-weight: 900;
-    font-size: 3rem;
-    margin: -0.4rem 0 0 0;
+    font-size: 3.5rem;
+    margin: 0;
     line-height: 1;
-    text-shadow: 0px 0px 50px var(--accent);
+    letter-spacing: -0.05em;
+    white-space: nowrap;
+  }
+
+  /* Hover effect */
+  .logo-link:hover .logo-icon {
+    transform: translateY(-2px);
   }
   
-  /* Variant: Small Logo (can be used via class="small-logo") */
-  :global(.small-logo) .logo img {
-    width: 4rem;
+  /* Variant: Small Styling Overrides */
+  .logo-inner.small {
+    flex-direction: row;
+    gap: 0.75rem;
+    align-items: center;
+  }
+
+  .small .logo-icon {
+    width: 2.2rem;
+    height: 2.2rem;
   }
   
-  :global(.small-logo) .submana {
-    font-size: 1.3rem;
-    margin-top: 0;
+  .small .submana-text {
+    font-size: 1.6rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* Mobile adjustments for large variant */
+  @media (max-width: 768px) {
+    .logo-inner:not(.small) .logo-icon {
+      width: 5rem;
+      height: 5rem;
+    }
+    .logo-inner:not(.small) .submana-text {
+      font-size: 2.8rem;
+    }
   }
 </style>

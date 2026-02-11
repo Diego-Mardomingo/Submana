@@ -2,7 +2,7 @@
 import "@fontsource-variable/inter";
 import { Toaster } from "@pheralb/toast";
 import Navigation from "../components/Navigation.astro";
-import { getLangFromCookie } from "../i18n/utils";
+import { getLangFromCookie, useTranslations } from "../i18n/utils";
 
 interface Props {
   title: string;
@@ -10,6 +10,10 @@ interface Props {
 
 const { title } = Astro.props;
 const lang = getLangFromCookie(Astro.cookies);
+const t = useTranslations(lang);
+
+// Format title: Submana | TranslatedTitle
+const pageTitle = `Submana | ${title}`;
 ---
 
 <!doctype html>
@@ -20,12 +24,17 @@ const lang = getLangFromCookie(Astro.cookies);
     <meta name="viewport" content="width=device-width" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
-    <title>{title}</title>
+    <title>{pageTitle}</title>
     <script is:inline>
       // Apply theme immediately to prevent flash
       (function() {
-        const t = localStorage.getItem('submana-theme') || 'dark';
-        document.documentElement.setAttribute('data-theme', t);
+        const theme = localStorage.getItem('submana-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        
+        // Dynamic Title Localization Helper
+        window.updateDocumentTitle = (translatedPageName) => {
+          document.title = `Submana | ${translatedPageName}`;
+        };
       })();
     </script>
   </head>
