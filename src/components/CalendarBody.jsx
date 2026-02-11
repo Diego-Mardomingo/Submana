@@ -231,8 +231,9 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
         if (diffMonths < 0) return false; // antes de empezar
         // Solo paga si diffMonths es múltiplo de frequency_value
         if (diffMonths % (sub.frequency_value || 1) === 0) {
-          // Y si el 'dayNumber' coincide con el 'startDay'
-          return dayNumber === startDay;
+          // Y si el 'dayNumber' coincide con el 'startDay' (o el último día del mes si no existe)
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          return dayNumber === Math.min(startDay, daysInMonth);
         }
         return false;
       }
@@ -241,9 +242,12 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
         if (diffYears < 0) return false; // antes de empezar
         // Comprobamos si es múltiplo de frequency_value
         if (diffYears % (sub.frequency_value || 1) === 0) {
-          // Y si este mes y día coinciden con el start
-          if (month === startMonth && dayNumber === startDay) {
-            return true;
+          // Y si este mes y día coinciden con el start (o el último día del mes si no existe)
+          if (month === startMonth) {
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            if (dayNumber === Math.min(startDay, daysInMonth)) {
+              return true;
+            }
           }
         }
         return false;

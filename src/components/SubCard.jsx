@@ -96,7 +96,12 @@ export default function SubCard() {
         const currentYear = current.getFullYear();
         const currentMonth = current.getMonth();
         let diffMonths = (currentYear - startYear) * 12 + (currentMonth - startMonth);
-        if (current.getDate() < start.getDate()) {
+
+        // Calcular el día efectivo de pago para el mes actual
+        const daysInCurrentMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const effectiveDay = Math.min(start.getDate(), daysInCurrentMonth);
+
+        if (current.getDate() < effectiveDay) {
           diffMonths--;
         }
         periods = Math.round(diffMonths / (sub.frequency_value || 1)) + 1;
@@ -104,9 +109,14 @@ export default function SubCard() {
       }
       case "yearly": {
         let diffYears = current.getFullYear() - start.getFullYear();
+
+        // Calcular si ya se ha alcanzado la fecha en el año actual
+        const daysInCurrentMonth = new Date(current.getFullYear(), start.getMonth() + 1, 0).getDate();
+        const effectiveDay = Math.min(start.getDate(), daysInCurrentMonth);
+
         if (
           current.getMonth() < start.getMonth() ||
-          (current.getMonth() === start.getMonth() && current.getDate() < start.getDate())
+          (current.getMonth() === start.getMonth() && current.getDate() < effectiveDay)
         ) {
           diffYears--;
         }
@@ -281,7 +291,9 @@ export default function SubCard() {
             </div>
             <div className='card_footer'>
               <div className='edit_btn btn' onClick={() => handleEditSub(sub)}>{editIcon()}Edit</div>
-              <div className='cancel_btn btn' onClick={() => handleCancelSub(sub.id)}>{isLoadingCancel && subToCancel === sub.id ? <>{cancelIcon()} <LoadingSpinner /></> : <>{cancelIcon()}Cancel Sub</>}</div>
+              {!sub.end_date && isActive(sub) && (
+                <div className='cancel_btn btn' onClick={() => handleCancelSub(sub.id)}>{isLoadingCancel && subToCancel === sub.id ? <>{cancelIcon()} <LoadingSpinner /></> : <>{cancelIcon()}Cancel Sub</>}</div>
+              )}
               <div className='delete_btn btn' onClick={() => handleDeleteOpenModal(sub.id)}>{deleteIcon()}</div>
             </div>
           </div>
