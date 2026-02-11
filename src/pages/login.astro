@@ -18,7 +18,7 @@ if (accessToken && refreshToken) {
   <section>
     <Logo />
     <div class="separator"></div>
-    <form action="/api/auth/signin" method="post">
+    <form action="/api/auth/signin" method="post" data-astro-reload>
       <button id="login_btn" value="google" name="provider" type="submit">
         <img src={googleLogo.src} alt="Logo de Google" />
         <span id="login_text">Continue with Google</span>

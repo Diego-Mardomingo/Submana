@@ -84,7 +84,7 @@ const translationsJSON = JSON.stringify(ui);
 
     <div class="settings-section">
       <h3 data-i18n="settings.actions">{t('settings.actions')}</h3>
-      <form action="/api/auth/signout" class="signout-form">
+      <form action="/api/auth/signout" class="signout-form" data-astro-reload>
         <button type="submit" class="signout-btn">
           <svg
             xmlns="http://www.w3.org/2000/svg"
