@@ -26,5 +26,6 @@ pnpm-debug.log*
 # Local Netlify folder
 .netlify
 
-# Internal architecture guide
+# Internal architecture and notes
 ARCHITECTURE.md
+DEV_NOTES.md
