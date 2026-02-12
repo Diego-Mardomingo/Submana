@@ -116,19 +116,18 @@ const t = useTranslations(lang);
         </div>
       </div>
 
-      <!-- Submit -->
-      <button id="create_btn" type="submit" class="submit-btn">
-        {t('sub.create')}
-        <span id="spinner_btn" style="display:none;"><LoadingSpinner /></span>
-      </button>
-    </form>
+      <!-- Actions Row -->
+      <div class="form-actions">
+        <a href="/subscriptions" class="cancel-btn">
+          Cancel
+        </a>
+        <button id="create_btn" type="submit" class="submit-btn">
+          {t('sub.create')}
+          <span id="spinner_btn" style="display:none;"><LoadingSpinner /></span>
+        </button>
+      </div>
 
-    <!-- Back FAB -->
-    <a href="/subscriptions" class="back-fab" aria-label="Back">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
-      </svg>
-    </a>
+    </form>
   </div>
 </Layout>
 
@@ -147,8 +146,10 @@ const t = useTranslations(lang);
   .page {
     max-width: 480px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 9rem;
+    padding: 2rem 1.5rem 6rem; /* Adjusted padding */
   }
+
+  /* ... (rest of styles same as before until submit-btn) ... */
 
   .page-title {
     color: var(--accent);
@@ -167,128 +168,7 @@ const t = useTranslations(lang);
     flex-direction: column;
     gap: 1.25rem;
   }
+  
 
-  /* ── Field ── */
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
 
-  .field-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-  }
 
-  label {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--gris-claro);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .hint {
-    text-transform: none;
-    font-weight: 400;
-    letter-spacing: 0;
-    color: var(--gris-muy-claro);
-    font-size: 0.78rem;
-  }
-
-  /* ── Inputs ── */
-  input,
-  select {
-    background: var(--negro);
-    border: 1px solid var(--gris);
-    color: var(--blanco);
-    font-size: 0.95rem;
-    padding: 0.7rem 0.85rem;
-    border-radius: 10px;
-    width: 100%;
-    transition: border-color 0.15s ease;
-  }
-
-  input::placeholder {
-    color: var(--gris-claro);
-  }
-
-  input:focus,
-  select:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  /* ── Submit ── */
-  .submit-btn {
-    margin-top: 0.5rem;
-    width: 100%;
-    padding: 0.85rem;
-    font-size: 1rem;
-    font-weight: 700;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    background: var(--accent);
-    color: var(--blanco);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: opacity 0.15s ease;
-  }
-
-  .submit-btn:hover {
-    opacity: 0.9;
-  }
-
-  .submit-btn:active {
-    opacity: 0.8;
-  }
-
-  /* ── Back FAB ── */
-  .back-fab {
-    position: fixed;
-    bottom: 100px;
-    right: 20px;
-    width: 42px;
-    height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--gris-oscuro);
-    color: var(--gris-muy-claro);
-    border: 1px solid var(--gris);
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-    z-index: 900;
-    transition: color 0.15s ease, border-color 0.15s ease;
-  }
-
-  .back-fab:hover {
-    color: var(--blanco);
-    border-color: var(--gris-claro);
-  }
-
-  /* ── Mobile ── */
-  @media (max-width: 768px) {
-    .page {
-      padding: 1.25rem 1rem 9rem;
-    }
-
-    .page-title {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    .form-card {
-      padding: 1.25rem;
-      gap: 1rem;
-    }
-
-    .field-row {
-      grid-template-columns: 1fr;
-    }
-  }
-</style> 

@@ -1,0 +1,309 @@
+---
+import Layout from "../../../layouts/Layout.astro";
+import Icon from "../../../components/Icon.jsx";
+import LoadingSpinner from "../../../components/LoadingSpinner";
+import { supabase } from "../../../lib/supabase";
+import { getLangFromCookie, useTranslations } from "../../../i18n/utils";
+
+const { id } = Astro.params;
+const { cookies, redirect } = Astro;
+const lang = getLangFromCookie(cookies);
+const t = useTranslations(lang);
+
+// 1. Auth Check
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+
+if (!accessToken || !refreshToken) {
+  return redirect("/login");
+}
+
+let session;
+try {
+  session = await supabase.auth.setSession({
+    refresh_token: refreshToken.value,
+    access_token: accessToken.value,
+  });
+  if (session.error) {
+    return redirect("/login");
+  }
+} catch (error) {
+  return redirect("/login");
+}
+
+// 2. Fetch Subscription to Edit
+const { data: sub, error } = await supabase
+  .from('subscriptions')
+  .select('*')
+  .eq('id', id)
+  .eq('user_id', session.data.user?.id) // Security check
+  .single();
+
+if (error || !sub) {
+  return redirect("/subscriptions");
+}
+
+// Helper to format date for input type="date"
+const formatDateInput = (dateStr) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toISOString().split('T')[0];
+};
+
+---
+
+<Layout title={`${t('sub.edit')} | ${sub.service_name}`}>
+  <div class="page">
+    <h1 class="page-title">{t('sub.edit') || "Edit Subscription"}</h1>
+
+    <form method="post" action="/api/crud/updateSubAction" class="form-card">
+      <input type="hidden" name="id" value={sub.id} />
+      
+      <!-- Name -->
+      <div class="field">
+        <label for="name">{t('sub.name')}</label>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          placeholder="e.g. Netflix, Spotify…"
+          autocomplete="off"
+          value={sub.service_name}
+          required
+        />
+      </div>
+
+      <!-- Icon -->
+      <div class="field">
+        <label>{t('sub.icon')}</label>
+        <input type="hidden" id="icon_value" name="icon" value={sub.icon} />
+        <!-- Pass defaultIcon to Client Component -->
+        <Icon defaultIcon={sub.icon} onIconSelected={() => {}} client:visible />
+      </div>
+
+      <!-- Cost + Start Date -->
+      <div class="field-row">
+        <div class="field">
+          <label for="cost">{t('sub.cost')} (€)</label>
+          <input
+            type="number"
+            id="cost"
+            name="cost"
+            placeholder="9.99"
+            step="0.01"
+            min="0"
+            value={sub.cost}
+            required
+          />
+        </div>
+        <div class="field">
+          <label for="startDate">{t('sub.startDate')}</label>
+          <input 
+            type="date" 
+            id="startDate" 
+            name="startDate" 
+            value={formatDateInput(sub.start_date)}
+            required 
+          />
+        </div>
+      </div>
+
+      <!-- End Date -->
+      <div class="field">
+        <label for="endDate">{t('sub.endDate')} <span class="hint">({t('sub.optional')})</span></label>
+        <input 
+          type="date" 
+          id="endDate" 
+          name="endDate" 
+          value={formatDateInput(sub.end_date)}
+        />
+      </div>
+
+      <!-- Frequency + Value -->
+      <div class="field-row">
+        <div class="field">
+          <label for="frequency">{t('sub.frequency')}</label>
+          <select id="frequency" name="frequency">
+            <option value="weekly" selected={sub.frequency === "weekly"}>{t('sub.weekly')}</option>
+            <option value="monthly" selected={sub.frequency === "monthly"}>{t('sub.monthly')}</option>
+            <option value="yearly" selected={sub.frequency === "yearly"}>{t('sub.yearly')}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="frequency_value">{t('sub.every')}</label>
+          <input
+            type="number"
+            id="frequency_value"
+            name="frequency_value"
+            placeholder="1"
+            min="1"
+            value={sub.frequency_value}
+          />
+        </div>
+      </div>
+
+      <!-- Actions Row -->
+      <div class="form-actions">
+        <a href={`/subscription/${sub.id}`} class="cancel-btn">
+          Cancel
+        </a>
+        <button id="save_btn" type="submit" class="submit-btn" style="width: 100%;">
+          Save Changes
+          <span id="spinner_btn" style="display:none;"><LoadingSpinner /></span>
+        </button>
+      </div>
+
+    </form>
+  </div>
+</Layout>
+
+<script>
+  function initForm() {
+      const saveBtn = document.getElementById("save_btn");
+      const spinnerBtn = document.getElementById("spinner_btn");
+      if (saveBtn && spinnerBtn) {
+        saveBtn.addEventListener("click", () => {
+          spinnerBtn.style.display = "inline-block";
+        });
+      }
+  }
+  document.addEventListener('astro:page-load', initForm);
+</script>
+
+<style>
+  /* Reuse styles from newSubscription but ensure they are scoped/global if using CSS Modules or just copy. 
+     Since newSubscription uses scoped <style>, I need to copy them here or import a shared CSS (better).
+     For speed, I will copy the styles from newSubscription as they are perfect for this form.
+  */
+  
+  /* ── Page ── */
+  .page {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 9rem;
+  }
+
+  .page-title {
+    color: var(--accent);
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 0 1.5rem;
+  }
+
+  /* ── Form card ── */
+  .form-card {
+    background: var(--gris-oscuro);
+    border: 1px solid var(--gris);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* ── Field ── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--gris-claro);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .hint {
+    text-transform: none;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--gris-muy-claro);
+    font-size: 0.78rem;
+  }
+
+  /* ── Inputs ── */
+  input,
+  select {
+    background: var(--negro);
+    border: 1px solid var(--gris);
+    color: var(--blanco);
+    font-size: 0.95rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    width: 100%;
+    transition: border-color 0.15s ease;
+  }
+
+  input::placeholder {
+    color: var(--gris-claro);
+  }
+
+  input:focus,
+  select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  /* ── Actions ── */
+  .form-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .cancel-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gris-claro);
+    background: transparent;
+    border: 1px solid var(--gris);
+    border-radius: 12px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+  }
+
+  .cancel-btn:hover {
+    color: var(--blanco);
+    background: var(--gris);
+    border-color: var(--gris-claro);
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 0.85rem;
+    font-size: 1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    background: var(--success); /* Use Success color for save */
+    color: #ffffff; /* FORCE WHITE */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: opacity 0.15s ease;
+  }
+
+  .submit-btn:hover {
+    opacity: 0.9;
+  }
+
+  .submit-btn:active {
+    opacity: 0.8;
+  }
+</style>
