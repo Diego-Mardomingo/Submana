@@ -67,7 +67,7 @@ const pageTitle = `Submana | ${title}`;
       })();
     </script>
   </head>
-  <body>
+  <body data-astro-prefetch>
     {Astro.url.pathname !== "/login" && <Navigation />}
     <slot />
     <Toaster position="top-center" theme={theme === "light" ? "light" : "dark"} client:load />

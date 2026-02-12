@@ -1,4 +1,4 @@
-const CACHE_NAME = 'submana-v2';
+const CACHE_NAME = 'submana-v3';
 const ASSETS_TO_CACHE = [
     '/manifest.json',
     '/favicon.svg',
@@ -59,17 +59,26 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Network First for Navigation (Pages) to respect Auth checks
+    // Stale-While-Revalidate for Navigation (Pages) for Instant feel
     if (event.request.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request).catch(() => {
-                return caches.match(event.request);
+            caches.open(CACHE_NAME).then((cache) => {
+                return cache.match(event.request).then((cachedResponse) => {
+                    const fetchedResponse = fetch(event.request).then((networkResponse) => {
+                        if (networkResponse.status === 200) {
+                            cache.put(event.request, networkResponse.clone());
+                        }
+                        return networkResponse;
+                    }).catch(() => cachedResponse);
+
+                    return cachedResponse || fetchedResponse;
+                });
             })
         );
         return;
     }
 
-    // Cache First for other static assets
+    // Cache First for other static assets (Images, Fonts)
     event.respondWith(
         caches.match(event.request).then((response) => {
             return response || fetch(event.request);

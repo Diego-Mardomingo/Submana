@@ -18,9 +18,11 @@ export const GET: APIRoute = async ({ url, cookies, redirect }) => {
 
   cookies.set("sb-access-token", access_token, {
     path: "/",
+    maxAge: 60 * 60 * 24 * 30, // 30 days
   });
   cookies.set("sb-refresh-token", refresh_token, {
     path: "/",
+    maxAge: 60 * 60 * 24 * 30, // 30 days
   });
 
   return redirect("/", 302);
