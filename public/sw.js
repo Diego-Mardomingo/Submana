@@ -1,5 +1,9 @@
-const CACHE_NAME = 'submana-v3';
+const CACHE_NAME = 'submana-v4';
 const ASSETS_TO_CACHE = [
+    '/',
+    '/subscriptions',
+    '/settings',
+    '/newSubscription',
     '/manifest.json',
     '/favicon.svg',
     '/fonts/Sora-VariableFont_wght.ttf',
