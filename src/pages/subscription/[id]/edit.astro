@@ -148,8 +148,10 @@ const formatDateInput = (dateStr) => {
           Cancel
         </a>
         <button id="save_btn" type="submit" class="submit-btn" style="width: 100%;">
-          Save Changes
-          <span id="spinner_btn" style="display:none;"><LoadingSpinner /></span>
+          <span class="btn-text">
+            {t('sub.edit') || 'Save Changes'}
+          </span>
+          <svg class="spinner-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:none; width: 24px; height: 24px;"><path d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" fill="currentColor"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite" /></path></svg>
         </button>
       </div>
 
@@ -160,10 +162,12 @@ const formatDateInput = (dateStr) => {
 <script>
   function initForm() {
       const saveBtn = document.getElementById("save_btn");
-      const spinnerBtn = document.getElementById("spinner_btn");
-      if (saveBtn && spinnerBtn) {
+      if (saveBtn) {
         saveBtn.addEventListener("click", () => {
-          spinnerBtn.style.display = "inline-block";
+          const btnText = saveBtn.querySelector('.btn-text');
+          const spinner = saveBtn.querySelector('.spinner-icon');
+          if (btnText instanceof HTMLElement) btnText.style.display = 'none';
+          if (spinner instanceof HTMLElement) spinner.style.display = 'block';
         });
       }
   }

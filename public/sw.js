@@ -1,9 +1,5 @@
-const CACHE_NAME = 'submana-v4';
+const CACHE_NAME = 'submana-v6';
 const ASSETS_TO_CACHE = [
-    '/',
-    '/subscriptions',
-    '/settings',
-    '/newSubscription',
     '/manifest.json',
     '/favicon.svg',
     '/fonts/Sora-VariableFont_wght.ttf',
@@ -40,52 +36,51 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // Skip caching for auth-related API calls
-    if (url.pathname.startsWith('/api/auth/')) {
-        return;
-    }
-
-    // Stale-While-Revalidate for other API calls
+    // 1. API Calls -> Network Only (never cache)
     if (url.pathname.startsWith('/api/')) {
+        return;
+    }
+
+    // 2. HTML Pages (Navigation & SPA Fetch) -> Network First
+    // This covers both browser reload (mode: 'navigate') AND Astro client router fetches
+    if (event.request.mode === 'navigate' || event.request.headers.get('Accept')?.includes('text/html')) {
         event.respondWith(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.match(event.request).then((cachedResponse) => {
-                    const fetchedResponse = fetch(event.request).then((networkResponse) => {
-                        if (networkResponse.status === 200) {
-                            cache.put(event.request, networkResponse.clone());
-                        }
+            fetch(event.request).then((networkResponse) => {
+                return caches.open(CACHE_NAME).then((cache) => {
+                    // Update cache with the fresh page so offline works later
+                    if (networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                });
+            }).catch(() => {
+                // Return cached home/page if offline
+                return caches.match(event.request);
+            })
+        );
+        return;
+    }
+
+    // 3. Static Assets (Images, Fonts, CSS, JS) -> Cache First
+    // Only apply to known static extensions to be safe
+    const isStaticAsset = /\.(png|jpg|jpeg|svg|gif|webp|css|js|woff|woff2|ttf|ico|json)$/i.test(url.pathname);
+
+    if (isStaticAsset) {
+        event.respondWith(
+            caches.match(event.request).then((response) => {
+                return response || fetch(event.request).then((networkResponse) => {
+                    return caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, networkResponse.clone());
                         return networkResponse;
-                    }).catch(() => cachedResponse);
-                    return cachedResponse || fetchedResponse;
+                    });
                 });
             })
         );
         return;
     }
 
-    // Stale-While-Revalidate for Navigation (Pages) for Instant feel
-    if (event.request.mode === 'navigate') {
-        event.respondWith(
-            caches.open(CACHE_NAME).then((cache) => {
-                return cache.match(event.request).then((cachedResponse) => {
-                    const fetchedResponse = fetch(event.request).then((networkResponse) => {
-                        if (networkResponse.status === 200) {
-                            cache.put(event.request, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    }).catch(() => cachedResponse);
-
-                    return cachedResponse || fetchedResponse;
-                });
-            })
-        );
-        return;
-    }
-
-    // Cache First for other static assets (Images, Fonts)
+    // 4. Fallback for anything else -> Network First
     event.respondWith(
-        caches.match(event.request).then((response) => {
-            return response || fetch(event.request);
-        })
+        fetch(event.request).catch(() => caches.match(event.request))
     );
 });
