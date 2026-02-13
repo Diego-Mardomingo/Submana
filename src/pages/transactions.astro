@@ -1,0 +1,532 @@
+
+---
+import Layout from "../layouts/Layout.astro";
+import { supabase } from "../lib/supabase";
+import { getLangFromCookie, useTranslations } from "../i18n/utils";
+
+const { cookies, redirect } = Astro;
+const lang = getLangFromCookie(cookies);
+const t = useTranslations(lang);
+
+const accessToken = cookies.get("sb-access-token");
+const refreshToken = cookies.get("sb-refresh-token");
+
+if (!accessToken || !refreshToken) {
+  return redirect("/login");
+}
+
+let session;
+try {
+  session = await supabase.auth.setSession({
+    refresh_token: refreshToken.value,
+    access_token: accessToken.value,
+  });
+  if (session.error) {
+    return redirect("/login");
+  }
+} catch (error) {
+  return redirect("/login");
+}
+
+const user = session.data.user;
+
+// Fetch Transactions
+const { data: transactions, error } = await supabase
+  .from("transactions")
+  .select(`
+    *,
+    account:accounts(name, color),
+    category:categories(name, parent_id)
+  `)
+  .eq("user_id", user.id)
+  .order("date", { ascending: false });
+
+const transactionList = transactions || [];
+
+// Group by Date
+const groupedTransactions = transactionList.reduce((acc, transaction) => {
+  const date = transaction.date;
+  if (!acc[date]) {
+    acc[date] = [];
+  }
+  acc[date].push(transaction);
+  return acc;
+}, {});
+
+// Sort dates descending
+const sortedDates = Object.keys(groupedTransactions).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+---
+
+<Layout title={t('transactions.title')}>
+  <div class="page-container">
+    <header class="header">
+      <div class="title-with-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="title-icon"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2" /><path d="M15 7.8c-.523 -.502 -1.172 -.8 -1.875 -.8c-1.727 0 -3.125 1.791 -3.125 4s1.398 4 3.125 4c.703 0 1.352 -.298 1.874 -.8" /><path d="M9 11h4" /></svg>
+        <h1>{t('transactions.title')}</h1>
+      </div>
+      <a href="/transactions/new" class="add-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>{t('transactions.add')}</span>
+      </a>
+    </header>
+
+    <div class="transactions-list">
+      {transactionList.length === 0 && (
+        <div class="empty-state">
+             <div class="empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2" /><path d="M15 7.8c-.523 -.502 -1.172 -.8 -1.875 -.8c-1.727 0 -3.125 1.791 -3.125 4s1.398 4 3.125 4c.703 0 1.352 -.298 1.874 -.8" /><path d="M9 11h4" /></svg>
+             </div>
+             <p>{t('transactions.noTransactions')}</p>
+        </div>
+      )}
+
+      {sortedDates.map(date => (
+        <div class="day-group">
+          <h3 class="date-header">{formatDate(date)}</h3>
+          <div class="day-transactions">
+            {groupedTransactions[date].map(transaction => (
+              <div class="transaction-item">
+                <div class="tx-main">
+                    <div class={`tx-icon ${transaction.type}`}>
+                        {transaction.type === 'income' ? (
+                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                        ) : (
+                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline><polyline points="17 18 23 18 23 12"></polyline></svg>
+                        )}
+                    </div>
+                    <div class="tx-details">
+                        <span class="tx-desc">{transaction.description || transaction.category?.name || 'Utitled'}</span>
+                        <div class="tx-subtext">
+                            <span class="tx-account" style={transaction.account?.color ? `background-color: ${transaction.account.color}15; color: ${transaction.account.color}; border: 1px solid ${transaction.account.color}30;` : ''}>
+                                {transaction.account?.name}
+                            </span>
+                            {transaction.category && <span class="bullet">•</span>}
+                            {transaction.category && <span class="tx-category">{transaction.category.name}</span>}
+                        </div>
+                    </div>
+                </div>
+                <div class={`tx-amount ${transaction.type}`}>
+                    {transaction.type === 'income' ? '+' : '-'}{parseFloat(transaction.amount).toFixed(2)} €
+                </div>
+                
+                <div class="tx-actions">
+                   <a href={`/transactions/edit/${transaction.id}`} class="tx-action-btn edit-btn" aria-label="Edit">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                   </a>
+                   <button class="tx-action-btn delete-btn" data-id={transaction.id} aria-label="Delete">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                   </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="modal-backdrop hidden">
+      <div class="modal-content delete-confirm">
+        <div class="delete-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        </div>
+        <h2>{t('common.areYouSure') || 'Are you sure?'}</h2>
+        <p>{t('transactions.deleteConfirm') || 'This transaction will be permanently deleted.'}</p>
+        
+        <form id="confirm-delete-form" action="/api/crud/delete-transaction" method="POST">
+            <input type="hidden" name="id" id="confirm-delete-id">
+            <div class="modal-actions full-width">
+                <button type="button" class="btn-cancel" id="cancel-delete-btn">{t('common.cancel')}</button>
+                <button type="submit" class="btn-delete-final">{t('common.delete') || 'Delete'}</button>
+            </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  function initTransactions() {
+    const deleteModal = document.getElementById('delete-modal');
+    const confirmDeleteIdInput = document.getElementById('confirm-delete-id');
+    const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+
+    if (!deleteModal) return;
+
+    const openDeleteModal = (id) => {
+        deleteModal.classList.remove('hidden');
+        confirmDeleteIdInput.value = id;
+    };
+
+    const closeDeleteModal = () => {
+        deleteModal.classList.add('hidden');
+    };
+
+    cancelDeleteBtn?.addEventListener('click', closeDeleteModal);
+    
+    deleteModal.addEventListener('click', (e) => {
+        if(e.target === deleteModal) closeDeleteModal();
+    });
+
+    document.addEventListener('click', (e) => {
+      const target = e.target.closest('.delete-btn');
+      if (target) {
+          openDeleteModal(target.dataset.id);
+      }
+    });
+  }
+
+  document.addEventListener('astro:page-load', initTransactions);
+</script>
+
+<style>
+  .page-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem 1rem 8rem;
+  }
+
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .title-with-icon {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+  }
+  
+  .title-icon {
+      color: var(--accent);
+      flex-shrink: 0;
+      margin-top: -2px;
+  }
+
+  h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin: 0;
+  }
+
+  .add-btn {
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.2s;
+  }
+  
+  .add-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+  }
+
+  .transactions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+  }
+  
+  .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4rem 1rem;
+      color: var(--gris-claro);
+      gap: 1rem;
+  }
+  
+  .empty-icon {
+      opacity: 0.2;
+  }
+
+  .date-header {
+      font-size: 0.9rem;
+      color: var(--gris-claro);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+      padding-left: 0.5rem;
+  }
+
+  .day-transactions {
+      background: var(--gris-oscuro);
+      border: 1px solid var(--gris);
+      border-radius: 12px;
+      overflow: hidden;
+  }
+  
+  .transaction-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      transition: background 0.2s;
+      position: relative;
+  }
+  
+  .transaction-item:last-child {
+      border-bottom: none;
+  }
+  
+  .transaction-item:hover {
+      background: rgba(255,255,255,0.02);
+  }
+  
+  .tx-actions {
+      display: flex;
+      gap: 0.5rem;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+  }
+  
+  .transaction-item:hover .tx-actions {
+      opacity: 1;
+  }
+  
+  .tx-action-btn {
+      background: transparent;
+      border: none;
+      color: var(--gris-claro);
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      width: 32px;
+      height: 32px;
+  }
+  
+  .tx-action-btn:hover {
+      background: var(--gris);
+      color: var(--blanco);
+  }
+
+  .tx-action-btn.edit-btn:hover {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3b82f6;
+  }
+
+  .tx-action-btn.delete-btn:hover {
+      background: rgba(255, 68, 68, 0.15);
+      color: #ff4444;
+  }
+  
+  .tx-main {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex: 1;
+  }
+  
+  .tx-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+  }
+  
+  .tx-icon.income {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+  }
+  
+  .tx-icon.expense {
+      background: rgba(255, 68, 68, 0.2);
+      color: #ff4444;
+  }
+
+  .tx-details {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+  }
+  
+  .tx-desc {
+      font-weight: 600;
+      font-size: 0.95rem;
+  }
+  
+  .tx-subtext {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--gris-claro);
+      flex-wrap: wrap;
+  }
+  
+  .tx-account {
+      padding: 1px 6px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 0.02em;
+      background-color: var(--gris);
+      color: var(--blanco);
+  }
+  
+  .bullet {
+      opacity: 0.5;
+  }
+
+  .tx-amount {
+      font-weight: 700;
+      font-size: 1.1rem;
+      white-space: nowrap;
+      margin-left: auto;
+      margin-right: 1.5rem;
+      text-align: right;
+  }
+  
+  .tx-amount.income {
+      color: #10b981;
+  }
+  
+  .tx-amount.expense {
+      color: #ff4444;
+  }
+  
+  @media (max-width: 480px) {
+      .transaction-item {
+          padding: 0.75rem;
+          gap: 0.5rem;
+      }
+      .tx-main {
+          gap: 0.75rem;
+      }
+      .tx-icon {
+          width: 36px;
+          height: 36px;
+      }
+      .tx-amount {
+          margin-right: 0.5rem;
+          font-size: 1rem;
+      }
+      .tx-actions {
+          flex-direction: column;
+          gap: 0.25rem;
+          opacity: 1;
+      }
+      .tx-action-btn {
+          width: 28px;
+          height: 28px;
+          padding: 0.4rem;
+      }
+  }
+
+  /* Modal Generic Styles (matching accounts) */
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+    opacity: 1;
+    transition: opacity 0.2s;
+  }
+  
+  .modal-backdrop.hidden {
+      opacity: 0;
+      pointer-events: none;
+  }
+  
+  .modal-content {
+      background: var(--negro);
+      border: 1px solid var(--gris);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      color: var(--blanco);
+  }
+  
+  .delete-confirm {
+      text-align: center;
+  }
+
+  .delete-icon {
+      color: #ff4444;
+      background: rgba(255,68,68,0.1);
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+  }
+
+  .modal-content p {
+      color: var(--gris-claro);
+      margin-bottom: 2rem;
+  }
+
+  .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+  }
+
+  .full-width {
+      width: 100%;
+      justify-content: stretch !important;
+  }
+
+  .full-width button {
+      flex: 1;
+  }
+
+  .btn-cancel {
+      background: transparent;
+      border: none;
+      color: var(--gris-claro);
+      cursor: pointer;
+      font-weight: 600;
+  }
+
+  .btn-delete-final {
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+  }
+
+</style>

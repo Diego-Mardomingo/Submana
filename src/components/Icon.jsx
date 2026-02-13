@@ -13,6 +13,14 @@ export default function Icon({ defaultIcon, onIconSelected, translations }) {
   };
 
   useEffect(() => {
+    const handleSetIcon = (e) => {
+      setSelectedIcon(e.detail);
+    };
+    window.addEventListener('submana:set-icon', handleSetIcon);
+    return () => window.removeEventListener('submana:set-icon', handleSetIcon);
+  }, []);
+
+  useEffect(() => {
     if (!searchTerm) {
       setIcons([]);
       setIsSearching(false);

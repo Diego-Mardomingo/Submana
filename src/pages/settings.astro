@@ -178,7 +178,7 @@ const theme = cookies.get("submana-theme")?.value || "dark";
 
           // Update Nav Link Labels
           const navSpans = document.querySelectorAll('.navigation .nav-item:not(.more-btn) span');
-          const navKeys = ['nav.home', 'nav.subscriptions', 'nav.accounts', 'nav.expenses', 'nav.notifications', 'nav.settings'];
+          const navKeys = ['nav.home', 'nav.subscriptions', 'nav.accounts', 'nav.transactions', 'nav.categories', 'nav.notifications', 'nav.settings'];
           navSpans.forEach((span, index) => {
              if (navKeys[index] && translations[lang] && translations[lang][navKeys[index]]) {
                span.textContent = translations[lang][navKeys[index]];

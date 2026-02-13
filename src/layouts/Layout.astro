@@ -263,4 +263,49 @@ const pageTitle = `Submana | ${title}`;
   .no-view-transition::view-transition-new(*) {
     animation: none !important;
   }
+
+  /* ── Global Loading Spinner ── */
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  .loading-spinner {
+      width: 1.25em;
+      height: 1.25em;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+  }
+  
+  .btn-loading {
+      position: relative;
+      color: transparent !important;
+      pointer-events: none;
+      display: inline-flex !important;
+      justify-content: center;
+      align-items: center;
+  }
+  
+  .btn-loading::after {
+      content: "";
+      position: absolute;
+      width: 1.2em;
+      height: 1.2em;
+      border: 2px solid var(--blanco); /* Adaptive color */
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+  }
+
+  /* Force white spinner on primary buttons */
+  .submit-btn.btn-loading::after,
+  .btn-save.btn-loading::after,
+  .add-btn.btn-loading::after,
+  .is-default.btn-loading::after {
+      border-color: #ffffff;
+      border-right-color: transparent;
+  }
 </style>

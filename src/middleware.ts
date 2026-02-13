@@ -12,8 +12,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
         "/subscriptions",
         "/subscription",
         "/settings",
-        "/account",
-        "/expenses"
+        "/accounts",
+        "/transactions"
     ];
 
     const isDynamicPath = dynamicPaths.some(path => url.pathname.startsWith(path)) || url.pathname === "/";

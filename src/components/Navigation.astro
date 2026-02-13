@@ -37,9 +37,14 @@ const t = useTranslations(lang);
         <span>{t('nav.accounts')}</span>
       </a>
 
-      <a href="/expenses" class={`nav-item extra-item${currentPath === "/expenses" ? " active" : ""}`} data-astro-prefetch="load">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg>
-        <span>{t('nav.expenses')}</span>
+      <a href="/transactions" class={`nav-item extra-item${currentPath === "/transactions" ? " active" : ""}`} data-astro-prefetch="load">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2" /><path d="M15 7.8c-.523 -.502 -1.172 -.8 -1.875 -.8c-1.727 0 -3.125 1.791 -3.125 4s1.398 4 3.125 4c.703 0 1.352 -.298 1.874 -.8" /><path d="M9 11h4" /></svg>
+        <span>{t('nav.transactions')}</span>
+      </a>
+
+      <a href="/categories" class={`nav-item extra-item${currentPath === "/categories" ? " active" : ""}`} data-astro-prefetch="load">
+         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16"></path><path d="M4 15h16"></path><path d="M10 3L8 21"></path><path d="M16 3l-2 18"></path></svg>
+        <span>{t('nav.categories')}</span>
       </a>
 
       <!-- Secondary Items (Hidden in collapsed mobile view, shown in expanded/desktop) -->

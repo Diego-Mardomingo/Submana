@@ -12,7 +12,8 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [subscriptions, setSubscriptions] = useState([]);
-  const [isLoading, setLoading] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [isLoading, setLoading] = useState(true);
   const [activeDay, setActiveDay] = useState(null);
 
   // ? SWIPE FUNCIONALITY
@@ -187,26 +188,34 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
 
   useEffect(() => {
     setLoading(true);
-    const fetchSubs = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("/api/crud/get-all-subs");
-        if (!response.ok) {
-          throw new Error(`Error fetching subs: ${response.statusText}`);
+        const [subsRes, txRes] = await Promise.all([
+          fetch("/api/crud/get-all-subs"),
+          fetch("/api/crud/get-all-transactions")
+        ]);
+
+        if (subsRes.ok) {
+          const subsData = await subsRes.json();
+          if (subsData.success && subsData.subscriptions) {
+            setSubscriptions(subsData.subscriptions);
+          }
         }
-        const data = await response.json();
-        if (data.success && data.subscriptions) {
-          setSubscriptions(data.subscriptions);
-          setLoading(false);
-        } else {
-          console.error("No subscriptions in data:", data);
-          setLoading(false);
+
+        if (txRes.ok) {
+          const txData = await txRes.json();
+          if (txData.transactions) {
+            setTransactions(txData.transactions);
+          }
         }
+
       } catch (error) {
-        console.error("Error fetching subs:", error);
+        console.error("Error fetching data:", error);
+      } finally {
         setLoading(false);
       }
     };
-    fetchSubs();
+    fetchData();
   }, []);
 
   function setToNoon(date) {
@@ -301,6 +310,16 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
         return [sub];
       }
       return [];
+    });
+  }
+
+  function getTransactionsForDay(dayNumber) {
+    if (!transactions) return [];
+    return transactions.filter(tx => {
+      const txDate = new Date(tx.date);
+      return txDate.getFullYear() === year &&
+        txDate.getMonth() === month &&
+        txDate.getDate() === dayNumber;
     });
   }
 
@@ -453,6 +472,7 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
                 dayStyle={styleObj}
                 activeDay={activeDay}
                 setActiveDay={setActiveDay}
+                transactions={getTransactionsForDay(dayNumber)}
               />
             );
           })

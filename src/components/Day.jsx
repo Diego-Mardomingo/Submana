@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import "../styles/Day.css";
 
-export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForDay = [], activeDay, setActiveDay, }) {
+export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForDay = [], transactions = [], activeDay, setActiveDay, }) {
   const dayNum = dayNumber.toString().padStart(2, "0");
   const showPopup = activeDay === dayNumber;
+  const hasContent = subsForDay.length > 0 || transactions.length > 0;
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
@@ -69,6 +70,39 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
     </div>
   );
 
+  const renderTransactionDots = () => {
+    if (transactions.length === 0) return null;
+
+    const dots = transactions.map((tx, idx) => (
+      <div
+        key={`dot-${idx}`}
+        className={`tx-dot ${tx.type}`}
+        style={{
+          backgroundColor: tx.type === 'income' ? 'var(--verde)' : 'var(--rojo)',
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          margin: '0 2px'
+        }}
+      />
+    ));
+
+    return <div className="tx-dots-container" style={{ display: 'flex', justifyContent: 'center', marginTop: '4px' }}>{dots}</div>;
+  };
+
+  const renderTxPopupContent = () => (
+    <div className="popup_tx_list" style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.5rem' }}>
+      {transactions.map((tx, idx) => (
+        <div key={idx} className="tx-popup-item" style={{ fontSize: '0.75rem', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+          <span style={{ color: 'var(--gris-claro)' }}>{tx.description || 'Tx'}</span>
+          <span style={{ color: tx.type === 'income' ? 'var(--verde)' : 'var(--rojo)', fontWeight: 'bold' }}>
+            {tx.type === 'income' ? '+' : '-'}{parseFloat(tx.amount).toFixed(0)}€
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+
   // Manejadores para escritorio y móviles
   const handleMouseEnter = () => setActiveDay(prev => (prev === dayNumber ? null : dayNumber));
   const handleMouseLeave = () => setActiveDay(null);
@@ -76,7 +110,7 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
 
   return (
     <div
-      className={`dia ${isToday ? "diaActual" : ""}${subsForDay.length > 0 ? "hasSubs" : ""}`}
+      className={`dia ${isToday ? "diaActual" : ""}${hasContent ? " hasSubs" : ""}`}
       style={dayStyle}
       {...(!isTouchDevice ? { onMouseEnter: handleMouseEnter, onMouseLeave: handleMouseLeave } : {})}
       onClick={handleClick}
@@ -84,11 +118,13 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
       <div className="icons_container">
         {renderIcons()}
       </div>
+      {renderTransactionDots()}
       <div className="number">{dayNum}</div>
-      {showPopup && subsForDay.length > 0 && (
+      {showPopup && hasContent && (
         <div className="popup">
-          <h3>Subscriptions day {dayNumber}</h3>
-          {renderPopupContent()}
+          <h3>Day {dayNumber}</h3>
+          {(subsForDay.length > 0) && renderPopupContent()}
+          {(transactions.length > 0) && renderTxPopupContent()}
         </div>
       )}
     </div>
