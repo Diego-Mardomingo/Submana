@@ -64,6 +64,19 @@ const pageTitle = `Submana | ${title}`;
             });
           });
         }
+        
+        // ── Fix for Swipe-to-Back Glitch ──
+        // Disables Astro's view transition animation when the user navigates via history 
+        // (swipe back/forward), letting the browser's native preview handle it seamlessly.
+        document.addEventListener('astro:before-preparation', event => {
+          if (event.navigationType === 'traverse') {
+            document.documentElement.classList.add('no-view-transition');
+          }
+        });
+        document.addEventListener('astro:after-swap', () => {
+          document.documentElement.classList.remove('no-view-transition');
+        });
+
       })();
     </script>
   </head>
@@ -239,5 +252,15 @@ const pageTitle = `Submana | ${title}`;
   .texto-largo {
     white-space: normal;
     overflow-wrap: break-word;
+  }
+  
+  /* 
+     Disable view transitions for history navigation (Swipe Back) 
+     to prevent conflict with native browser gestures 
+  */
+  .no-view-transition::view-transition-group(*),
+  .no-view-transition::view-transition-old(*),
+  .no-view-transition::view-transition-new(*) {
+    animation: none !important;
   }
 </style>
