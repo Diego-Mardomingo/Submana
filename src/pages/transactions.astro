@@ -180,6 +180,20 @@ function formatDate(dateStr) {
           openDeleteModal(target.dataset.id);
       }
     });
+
+    const deleteForm = document.getElementById('confirm-delete-form');
+    if (deleteForm) {
+        deleteForm.addEventListener('submit', (e) => {
+            const btn = deleteForm.querySelector('button[type="submit"]');
+            if(btn) {
+                if (btn.classList.contains('btn-loading')) {
+                    e.preventDefault();
+                    return false;
+                }
+                btn.classList.add('btn-loading');
+            }
+        });
+    }
   }
 
   document.addEventListener('astro:page-load', initTransactions);
@@ -478,6 +492,8 @@ function formatDate(dateStr) {
   .delete-confirm {
       text-align: center;
   }
+  
+  .modal-content h2 { margin-top: 0; margin-bottom: 1rem; }
 
   .delete-icon {
       color: #ff4444;

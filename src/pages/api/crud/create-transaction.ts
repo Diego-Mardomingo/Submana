@@ -39,7 +39,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         date,
         description,
         account_id: account_id || null,
-        category_id: category_id || null
+        category_id: category_id && category_id !== "" ? category_id : null
     });
 
     if (error) {

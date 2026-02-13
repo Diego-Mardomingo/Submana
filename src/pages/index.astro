@@ -26,14 +26,24 @@ try {
   });
   if (session.error) {
     resetCookies();
+  } else {
+    // If we have a new session, update cookies
+    if (session.data?.session?.access_token && session.data.session.access_token !== accessToken.value) {
+      cookies.set("sb-access-token", session.data.session.access_token, {
+        path: "/",
+      });
+      cookies.set("sb-refresh-token", session.data.session.refresh_token, {
+        path: "/",
+      });
+    }
   }
 } catch (error) {
   resetCookies();
 }
 
-const email = session.data.user?.email;
-const name = session.data.user?.user_metadata.name;
-const avatar = session.data.user?.user_metadata.avatar_url;
+const email = session?.data?.user?.email;
+const name = session?.data?.user?.user_metadata?.name;
+const avatar = session?.data?.user?.user_metadata?.avatar_url;
 
 function resetCookies() {
   cookies.delete("sb-access-token", { path: "/" });

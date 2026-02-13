@@ -25,7 +25,7 @@ export const GET: APIRoute = async ({ cookies, url }) => {
         .select(`
       *,
       account:accounts(name),
-      category:categories(name, type, parent_id)
+      category:categories(name, parent_id)
     `)
         .eq("user_id", user.id)
         .order("date", { ascending: false });

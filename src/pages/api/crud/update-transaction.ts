@@ -29,11 +29,15 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const account_id = formData.get("account_id")?.toString();
     const category_id = formData.get("category_id")?.toString();
 
+    console.log("Update Transaction Inputs:", { id, amount, type, date, description, account_id, category_id });
+
     if (!id || !amount || !type || !date) {
+        console.error("Missing fields:", { id, amount, type, date });
         return redirect("/transactions?error=missing_fields");
     }
 
     try {
+        // ... (existing code, keeping indentation)
         // 1. Get old transaction to revert balance
         const { data: oldTx, error: fetchError } = await supabase
             .from('transactions')
@@ -43,6 +47,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
             .single();
 
         if (fetchError || !oldTx) {
+            console.error("Transaction not found or fetch error:", fetchError);
             return redirect("/transactions?error=transaction_not_found");
         }
 
@@ -66,7 +71,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
             date,
             description,
             account_id: account_id || null,
-            category_id: category_id || null
+            category_id: category_id && category_id !== "" ? category_id : null
         }).eq('id', id).eq('user_id', user.id);
 
         if (updateError) throw updateError;
@@ -85,7 +90,7 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     } catch (error) {
         console.error("Error updating transaction:", error);
-        return redirect(`/transactions?error=${encodeURIComponent(error.message)}`);
+        return redirect(`/transactions?error=${encodeURIComponent(error instanceof Error ? error.message : "Unknown error")}`);
     }
 
     return redirect("/transactions?success=transaction_updated");
