@@ -4,9 +4,10 @@ import Layout from "../../layouts/Layout.astro";
 import { supabase } from "../../lib/supabase";
 import { getLangFromCookie, useTranslations } from "../../i18n/utils";
 
-const { cookies, redirect } = Astro;
+const { cookies, redirect, url } = Astro;
 const lang = getLangFromCookie(cookies);
 const t = useTranslations(lang);
+const errorMsg = url.searchParams.get('error');
 
 const accessToken = cookies.get("sb-access-token");
 const refreshToken = cookies.get("sb-refresh-token");
@@ -75,6 +76,12 @@ const categoriesList = categories || [];
     </nav>
 
     <main class="content-animate">
+      {errorMsg && (
+        <div class="error-banner">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span>{errorMsg === 'missing_fields' ? t('common.missingFields') || 'Please fill all required fields' : errorMsg}</span>
+        </div>
+      )}
       <form method="post" action={editMode ? "/api/crud/update-transaction" : "/api/crud/create-transaction"} class="form-card" id="transaction-form">
         {editMode && <input type="hidden" name="id" value={id} />}
         
@@ -132,25 +139,24 @@ const categoriesList = categories || [];
             </div>
 
             <div class="field">
-                <label for="parent_category">{t('common.category')}</label>
-                <select id="parent_category">
+                <label for="category_id">{t('common.category')}</label>
+                <select id="category_id" name="category_id">
                     <option value="">Select Category</option>
                     {/* Populated by JS */}
                 </select>
             </div>
 
              <div class="field hidden" id="sub-field">
-                <label for="category_id">Subcategory</label>
-                <select id="category_id" name="category_id">
+                <label for="subcategory_id">Subcategory</label>
+                <select id="subcategory_id" name="subcategory_id">
                     <option value="">Select Subcategory</option>
                 </select>
             </div>
             
-            <input type="hidden" name="category_id" id="final_category_id">
         </div>
 
         <div class="form-actions">
-           <button type="submit" class="submit-btn">
+           <button type="submit" class="submit-btn" id="submit-btn">
              {editMode ? t('common.save') : t('transactions.add')}
            </button>
         </div>
@@ -165,121 +171,114 @@ const categoriesList = categories || [];
   const categories = categoriesList;
   
   function initForm() {
-      const parentSelect = document.getElementById('parent_category');
-      const subSelect = document.getElementById('category_id');
-      const subField = document.getElementById('sub-field');
-      const finalCategoryInput = document.getElementById('final_category_id');
+      try {
+          console.log("initForm started in new.astro");
+          const parentSelect = document.getElementById('category_id');
+          const subSelect = document.getElementById('subcategory_id');
+          const subField = document.getElementById('sub-field');
 
-      function updateParentOptions() {
-          parentSelect.innerHTML = '<option value="">Select Category</option>';
-          const parents = categories.filter(c => !c.parent_id);
-          
-          parents.forEach(p => {
-              const option = document.createElement('option');
-              option.value = p.id;
-              option.textContent = p.name;
-              parentSelect.appendChild(option);
-          });
-          
-          // Reset sub
-          subSelect.innerHTML = '<option value="">Select Subcategory</option>';
-          subField.classList.add('hidden');
-          finalCategoryInput.value = '';
-      }
+          if (!parentSelect || !subSelect || !subField) {
+              console.warn("One or more category elements not found");
+              return;
+          }
 
-      function updateSubOptions(parentId) {
-          subSelect.innerHTML = '<option value="">Select Subcategory</option>';
-          const subs = categories.filter(c => c.parent_id === parentId);
-          
-          if (subs.length > 0) {
-              subs.forEach(s => {
+          function updateParentOptions() {
+              parentSelect.innerHTML = '<option value="">Select Category</option>';
+              const parents = categories.filter(c => !c.parent_id);
+              
+              parents.forEach(p => {
                   const option = document.createElement('option');
-                  option.value = s.id;
-                  option.textContent = s.name;
-                  subSelect.appendChild(option);
+                  option.value = p.id;
+                  option.textContent = p.name;
+                  parentSelect.appendChild(option);
               });
-              subField.classList.remove('hidden');
-          } else {
+              
+              // Reset sub
+              subSelect.innerHTML = '<option value="">Select Subcategory</option>';
               subField.classList.add('hidden');
           }
-      }
 
-
-      parentSelect.addEventListener('change', (e) => {
-          const parentId = e.target.value;
-          if (parentId) {
-              updateSubOptions(parentId);
-              finalCategoryInput.value = parentId; // Default to parent if no sub selected
-          } else {
-              finalCategoryInput.value = '';
-              subField.classList.add('hidden');
-          }
-      });
-
-      subSelect.addEventListener('change', (e) => {
-          const subId = e.target.value;
-          if (subId) {
-              finalCategoryInput.value = subId;
-          } else {
-              finalCategoryInput.value = parentSelect.value; // Revert to parent
-          }
-      });
-
-      // Init
-      updateParentOptions();
-
-      // Pre-select category if editing
-      if (transactionData?.category_id) {
-          // Check if it is a parent or sub
-          const isParent = categories.some(c => c.id === transactionData.category_id && !c.parent_id);
-          
-          if (isParent) {
-              parentSelect.value = transactionData.category_id;
-              finalCategoryInput.value = transactionData.category_id;
-              updateSubOptions(transactionData.category_id);
-          } else {
-              // must be sub
-              const sub = categories.find(c => c.id === transactionData.category_id);
-              if (sub) {
-                  parentSelect.value = sub.parent_id;
-                  updateSubOptions(sub.parent_id);
-                  subSelect.value = sub.id;
+          function updateSubOptions(parentId) {
+              subSelect.innerHTML = '<option value="">Select Subcategory</option>';
+              const subs = categories.filter(c => c.parent_id === parentId);
+              
+              if (subs.length > 0) {
+                  subs.forEach(s => {
+                      const option = document.createElement('option');
+                      option.value = s.id;
+                      option.textContent = s.name;
+                      subSelect.appendChild(option);
+                  });
                   subField.classList.remove('hidden');
-                  finalCategoryInput.value = sub.id;
+              } else {
+                  subField.classList.add('hidden');
               }
           }
-      }
 
-      // Slider Logic
-      const expenseRadio = document.getElementById('type-expense');
-      const incomeRadio = document.getElementById('type-income');
-      const sliderBg = document.getElementById('type-slider-bg');
 
-      function updateSlider() {
-          if (incomeRadio.checked) {
-              sliderBg.classList.add('is-income');
-          } else {
-              sliderBg.classList.remove('is-income');
-          }
-      }
-
-      expenseRadio.addEventListener('change', updateSlider);
-      incomeRadio.addEventListener('change', updateSlider);
-      updateSlider(); // Initial state
-
-      // Handle Loading
-      const form = document.getElementById('transaction-form');
-      if (form) {
-          form.addEventListener('submit', (e) => {
-             const btn = form.querySelector('button[type="submit"]');
-             if(btn) {
-                 if (btn.classList.contains('btn-loading')) {
-                     e.preventDefault();
-                     return false;
-                 }
-                 btn.classList.add('btn-loading');
-             }
+          parentSelect.addEventListener('change', (e) => {
+              const parentId = e.target.value;
+              if (parentId) {
+                  updateSubOptions(parentId);
+              } else {
+                  subField.classList.add('hidden');
+                  subSelect.value = "";
+              }
           });
+
+          // Init
+          updateParentOptions();
+
+          // Pre-select category if editing
+          if (transactionData?.category_id) {
+              parentSelect.value = transactionData.category_id;
+              updateSubOptions(transactionData.category_id);
+              
+              if (transactionData.subcategory_id) {
+                 setTimeout(() => {
+                     subSelect.value = transactionData.subcategory_id;
+                 }, 0);
+              }
+          }
+
+          // Slider Logic
+          const expenseRadio = document.getElementById('type-expense');
+          const incomeRadio = document.getElementById('type-income');
+          const sliderBg = document.getElementById('type-slider-bg');
+
+          if (expenseRadio && incomeRadio && sliderBg) {
+              function updateSlider() {
+                  if (incomeRadio.checked) {
+                      sliderBg.classList.add('is-income');
+                  } else {
+                      sliderBg.classList.remove('is-income');
+                  }
+              }
+
+              expenseRadio.addEventListener('change', updateSlider);
+              incomeRadio.addEventListener('change', updateSlider);
+              updateSlider(); // Initial state
+          }
+
+          // Handle Loading
+          const form = document.getElementById('transaction-form');
+          if (form) {
+              form.addEventListener('submit', (e) => {
+                 console.log("Form submission started");
+                 const btn = form.querySelector('button[type="submit"]');
+                 if(btn) {
+                     if (btn.classList.contains('btn-loading')) {
+                         console.log("Already loading, preventing duplicate submission");
+                         e.preventDefault();
+                         return false;
+                     }
+                     btn.classList.add('btn-loading');
+                     console.log("btn-loading added to button");
+                 }
+              });
+          }
+      } catch (err) {
+          console.error("Error in initForm:", err);
       }
   }
 
@@ -491,6 +490,25 @@ const categoriesList = categories || [];
   .submit-btn:hover {
       background: var(--accent-hover);
       transform: translateY(-2px);
+  }
+
+  /* Error Banner */
+  .error-banner {
+      background: rgba(255, 68, 68, 0.1);
+      border: 1px solid rgba(255, 68, 68, 0.2);
+      color: #ff4444;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+  }
+  
+  .error-banner svg {
+      flex-shrink: 0;
   }
 
 </style>

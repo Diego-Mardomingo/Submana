@@ -93,11 +93,20 @@ export default function Day({ dayNumber, dayStyle, isToday, icons = [], subsForD
   const renderTxPopupContent = () => (
     <div className="popup_tx_list" style={{ marginTop: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.5rem' }}>
       {transactions.map((tx, idx) => (
-        <div key={idx} className="tx-popup-item" style={{ fontSize: '0.75rem', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ color: 'var(--gris-claro)' }}>{tx.description || 'Tx'}</span>
-          <span style={{ color: tx.type === 'income' ? 'var(--verde)' : 'var(--rojo)', fontWeight: 'bold' }}>
-            {tx.type === 'income' ? '+' : '-'}{parseFloat(tx.amount).toFixed(0)}€
-          </span>
+        <div key={idx} className="tx-popup-item" style={{ fontSize: '0.75rem', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span style={{ color: 'var(--blanco)', fontWeight: '600' }}>{tx.description || tx.category?.name || 'Tx'}</span>
+            <span style={{ color: tx.type === 'income' ? 'var(--verde)' : 'var(--rojo)', fontWeight: 'bold' }}>
+              {tx.type === 'income' ? '+' : '-'}{parseFloat(tx.amount).toFixed(2)}€
+            </span>
+          </div>
+          {(tx.category || tx.subcategory) && (
+            <div style={{ fontSize: '0.65rem', color: 'var(--gris-claro)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {tx.category && <span>{tx.category.name}</span>}
+              {tx.category && tx.subcategory && <span>•</span>}
+              {tx.subcategory && <span>{tx.subcategory.name}</span>}
+            </div>
+          )}
         </div>
       ))}
     </div>
