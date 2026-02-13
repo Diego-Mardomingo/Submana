@@ -72,9 +72,7 @@ const formatDateInput = (dateStr) => {
       </a>
     </nav>
 
-    <header class="page-header">
-      <h1 class="page-title">{t('sub.edit')}</h1>
-    </header>
+
 
     <main class="content-animate">
       <form method="post" action="/api/crud/update-sub" class="form-card" id="edit-sub-form">
@@ -194,8 +192,7 @@ const formatDateInput = (dateStr) => {
       if (form && saveBtn) {
         form.addEventListener("submit", () => {
           saveBtn.classList.add('loading');
-          const inputs = form.querySelectorAll('input, select, button');
-          inputs.forEach(i => (i as any).disabled = true);
+          (saveBtn as HTMLButtonElement).disabled = true;
         });
       }
   }
@@ -204,9 +201,9 @@ const formatDateInput = (dateStr) => {
 
 <style>
   .page-container {
-    max-width: 700px;
+    max-width: 600px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 8rem;
+    padding: 1.5rem 1.25rem 6.5rem;
   }
 
   /* ── Animations ── */
@@ -221,7 +218,7 @@ const formatDateInput = (dateStr) => {
 
   /* ── Navigation ── */
   .top-nav {
-    margin-bottom: 2rem;
+    margin-bottom: 1.25rem;
   }
 
   .back-link {
@@ -243,7 +240,7 @@ const formatDateInput = (dateStr) => {
 
   /* ── Header ── */
   .page-header {
-    margin-bottom: 2.5rem;
+    margin-bottom: 2rem;
   }
 
   .page-title {
@@ -265,11 +262,11 @@ const formatDateInput = (dateStr) => {
   .form-card {
     background: var(--gris-oscuro);
     border: 1px solid var(--gris);
-    border-radius: 16px;
-    padding: 1.5rem;
+    border-radius: 14px;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
     position: relative;
     overflow: hidden;
@@ -292,9 +289,9 @@ const formatDateInput = (dateStr) => {
     background: var(--gris);
     border: 1px solid transparent;
     color: var(--blanco);
-    padding: 0.75rem 0.9rem;
-    border-radius: 10px;
-    font-size: 0.95rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 9px;
+    font-size: 0.9rem;
     font-weight: 500;
     transition: all 0.2s ease;
     width: 100%;
@@ -318,7 +315,7 @@ const formatDateInput = (dateStr) => {
   .form-section {
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
+    gap: 1rem;
   }
 
   .divider {
@@ -331,14 +328,14 @@ const formatDateInput = (dateStr) => {
   .billing-grid, .recurrence-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+    gap: 1rem;
   }
 
   /* ── Fields ── */
   .field {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
 
   label {
@@ -397,7 +394,7 @@ const formatDateInput = (dateStr) => {
     background: var(--success);
     color: #ffffff;
     border: none;
-    padding: 0.9rem;
+    padding: 0.8rem;
     border-radius: 10px;
     font-size: 0.95rem;
     font-weight: 700;
@@ -444,24 +441,23 @@ const formatDateInput = (dateStr) => {
   /* ── Responsive ── */
   @media (max-width: 600px) {
     .page-container {
-      padding: 1.5rem 1.25rem 6rem;
+      padding: 1rem 1rem 6rem;
     }
-
+    
     .page-title {
-      font-size: 2.2rem;
+      font-size: 1.8rem;
+      margin-bottom: 0.25rem;
     }
 
     .form-card {
-      padding: 1.75rem;
-      gap: 1.75rem;
+      padding: 1.15rem;
+      gap: 1.15rem;
+      border-radius: 12px;
     }
 
     .billing-grid, .recurrence-grid {
       grid-template-columns: 1fr;
-    }
-    
-    .icon-selector-card {
-      padding: 1rem;
+      gap: 1.15rem;
     }
   }
 </style>

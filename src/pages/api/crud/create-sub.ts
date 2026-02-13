@@ -2,6 +2,8 @@ import { supabase } from "../../../lib/supabase";
 import type { APIRoute } from "astro";
 
 export const POST: APIRoute = async ({ request, redirect }) => {
+  const isJson = request.headers.get("content-type")?.includes("application/json");
+
   try {
     const {
       data: { user },
@@ -9,21 +11,36 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     } = await supabase.auth.getUser();
 
     if (!user || userError) {
-      return redirect("/login");
+      return isJson
+        ? new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+        : redirect("/login");
     }
 
-    // Leer los datos enviados en el form
-    const formData = await request.formData();
-    const service_name = formData.get("name") as string;
-    const icon = formData.get("icon") as string;
-    const cost = formData.get("cost") as string;
-    const startDate = formData.get("startDate") as string;
-    const endDate = formData.get("endDate") as string;
-    const frequency = formData.get("frequency") as string;
-    const frequencyValue = formData.get("frequency_value") as string;
+    let data: any = {};
+    if (isJson) {
+      data = await request.json();
+    } else {
+      const formData = await request.formData();
+      data = {
+        service_name: formData.get("name"),
+        icon: formData.get("icon"),
+        cost: formData.get("cost"),
+        startDate: formData.get("startDate"),
+        endDate: formData.get("endDate"),
+        frequency: formData.get("frequency"),
+        frequency_value: formData.get("frequency_value"),
+      };
+    }
 
-    // Hacer el insert en Supabase
-    const { data: insertedData, error } = await supabase
+    const service_name = (data.service_name || data.name) as string;
+    const icon = data.icon as string;
+    const cost = data.cost as string;
+    const startDate = (data.startDate || data.start_date) as string;
+    const endDate = (data.endDate || data.end_date) as string;
+    const frequency = data.frequency as string;
+    const frequencyValue = (data.frequency_value || data.frequencyValue) as string;
+
+    const { error } = await supabase
       .from("subscriptions")
       .insert([
         {
@@ -36,17 +53,22 @@ export const POST: APIRoute = async ({ request, redirect }) => {
           frequency: frequency || 'monthly',
           frequency_value: frequencyValue ? parseInt(frequencyValue) : 1,
         },
-      ])
-      .select();
+      ]);
 
     if (error) {
       console.error("Insert error:", error);
-      return redirect("/newSubscription?error=insert_failed");
+      return isJson
+        ? new Response(JSON.stringify({ error: error.message }), { status: 400 })
+        : redirect("/newSubscription?error=insert_failed");
     }
 
-    return redirect("/subscriptions?success=created");
+    return isJson
+      ? new Response(JSON.stringify({ success: true }))
+      : redirect("/subscriptions?success=created");
   } catch (err: any) {
     console.error("Server error:", err);
-    return redirect("/newSubscription?error=server_error");
+    return isJson
+      ? new Response(JSON.stringify({ error: err.message }), { status: 500 })
+      : redirect("/newSubscription?error=server_error");
   }
 };

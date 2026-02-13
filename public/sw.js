@@ -1,4 +1,4 @@
-const CACHE_NAME = 'submana-v6';
+const CACHE_NAME = 'submana-v7';
 const ASSETS_TO_CACHE = [
     '/manifest.json',
     '/favicon.svg',

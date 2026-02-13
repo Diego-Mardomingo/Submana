@@ -16,7 +16,7 @@ export default function EditForm({ onChildEvent, subscription }) {
     const form = document.getElementById("updateSubForm");
     if (!form) return;
     const formData = new FormData(form);
-    
+
     const updatedSub = {
       id: subscription.id,
       service_name: formData.get("name"),
@@ -27,8 +27,8 @@ export default function EditForm({ onChildEvent, subscription }) {
       frequency: formData.get("frequency"),
       frequency_value: parseInt(formData.get("frequency_value"), 10)
     };
-  
-    fetch("/api/crud/updateSub", {
+
+    fetch("/api/crud/update-sub", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -46,10 +46,10 @@ export default function EditForm({ onChildEvent, subscription }) {
       });
   }
 
-  function handleSelectedIcon(icon){
+  function handleSelectedIcon(icon) {
     console.log("Icon selected:", icon);
   }
-  
+
 
   return (
     <div className="modal-overlayEdit">
@@ -136,7 +136,7 @@ export default function EditForm({ onChildEvent, subscription }) {
               className="btn-create"
               onClick={handleUpdateSub}
             >
-              Update {isLoading ? <LoadingSpinner/> : ''}
+              Update {isLoading ? <LoadingSpinner /> : ''}
             </button>
           </div>
         </form>

@@ -20,7 +20,7 @@ export default function SubCard() {
   const fetchSubs = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/crud/getAllSubs");
+      const response = await fetch("/api/crud/get-all-subs");
       if (!response.ok) {
         throw new Error(`Error fetching subs: ${response.statusText}`);
       }
@@ -141,7 +141,7 @@ export default function SubCard() {
 
   function handleDelete() {
     setLoading(true);
-    fetch('/api/crud/deleteSub', {
+    fetch('/api/crud/delete-sub', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -172,7 +172,7 @@ export default function SubCard() {
   function handleCancelSub(identificator) {
     setSubToCancel(identificator);
     setLoadingCancel(true);
-    fetch('/api/crud/cancelSub', {
+    fetch('/api/crud/cancel-sub', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

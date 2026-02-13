@@ -189,7 +189,7 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
     setLoading(true);
     const fetchSubs = async () => {
       try {
-        const response = await fetch("/api/crud/getAllSubs");
+        const response = await fetch("/api/crud/get-all-subs");
         if (!response.ok) {
           throw new Error(`Error fetching subs: ${response.statusText}`);
         }
