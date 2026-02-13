@@ -1,6 +1,11 @@
 
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
+import {
+    parseRequestBody,
+    jsonResponse,
+    jsonError,
+} from "../../../lib/apiHelpers";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const accessToken = cookies.get("sb-access-token");
@@ -21,10 +26,11 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     const user = session.user;
 
-    const formData = await request.formData();
-    const id = formData.get("id")?.toString();
+    const { body, isJson } = await parseRequestBody(request);
+    const id = body.id;
 
     if (!id) {
+        if (isJson) return jsonError("missing_id");
         return redirect("/accounts?error=missing_id");
     }
 
@@ -35,8 +41,10 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
         .eq("user_id", user.id);
 
     if (error) {
+        if (isJson) return jsonError(error.message, 500);
         return redirect(`/accounts?error=${error.message}`);
     }
 
+    if (isJson) return jsonResponse({ success: true });
     return redirect("/accounts?success=account_deleted");
 };

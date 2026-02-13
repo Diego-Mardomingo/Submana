@@ -1,6 +1,11 @@
 
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
+import {
+    parseRequestBody,
+    jsonResponse,
+    jsonError,
+} from "../../../lib/apiHelpers";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const accessToken = cookies.get("sb-access-token");
@@ -21,32 +26,33 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     const user = session.user;
 
-    const formData = await request.formData();
-    const id = formData.get("id")?.toString();
-    const name = formData.get("name")?.toString();
-    const balance = parseFloat(formData.get("balance")?.toString() || "0");
-    const icon = formData.get("icon")?.toString();
-    const color = formData.get("color")?.toString();
+    const { body, isJson } = await parseRequestBody(request);
+    const id = body.id;
+    const name = body.name;
+    const balance = parseFloat(body.balance || "0");
+    const icon = body.icon;
+    const color = body.color;
 
     if (!id || !name) {
+        if (isJson) return jsonError("missing_fields");
         const referer = request.headers.get("referer") || "/accounts";
         return redirect(`${referer}?error=missing_fields`);
     }
 
-    // NOTE: Updating balance directly here overrides calculated balance from transactions.
-    // Ideally balance should be calculated or this is an "initial balance" update.
-    // For simplicity, we allow updating it.
-
-    const { error } = await supabase
+    const { data: updatedData, error } = await supabase
         .from("accounts")
         .update({ name, balance, icon, color })
         .eq("id", id)
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .select()
+        .single();
 
     if (error) {
+        if (isJson) return jsonError(error.message, 500);
         const referer = request.headers.get("referer") || "/accounts";
         return redirect(`${referer}?error=${error.message}`);
     }
 
+    if (isJson) return jsonResponse({ success: true, account: updatedData });
     return redirect("/accounts?success=account_updated");
 };

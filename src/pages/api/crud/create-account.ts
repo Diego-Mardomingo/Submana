@@ -1,6 +1,11 @@
 
 import type { APIRoute } from "astro";
 import { supabase } from "../../../lib/supabase";
+import {
+    parseRequestBody,
+    jsonResponse,
+    jsonError,
+} from "../../../lib/apiHelpers";
 
 export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     const accessToken = cookies.get("sb-access-token");
@@ -21,34 +26,44 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
 
     const user = session.user;
 
-    const formData = await request.formData();
-    const name = formData.get("name")?.toString();
-    const balanceInput = formData.get("balance")?.toString();
-    const balance = balanceInput ? parseFloat(balanceInput) : 0;
-    const icon = formData.get("icon")?.toString();
-    const color = formData.get("color")?.toString();
+    const { body, isJson } = await parseRequestBody(request);
+    const name = body.name;
+    const balance = body.balance ? parseFloat(body.balance) : 0;
+    const icon = body.icon;
+    const color = body.color;
 
     if (!name || isNaN(balance)) {
+        if (isJson) return jsonError("missing_fields");
         return redirect("/accounts?error=missing_fields");
     }
 
     try {
-        const { error } = await supabase.from("accounts").insert({
-            user_id: user.id,
-            name,
-            balance,
-            icon,
-            color
-        });
+        const { data: insertedData, error } = await supabase
+            .from("accounts")
+            .insert({
+                user_id: user.id,
+                name,
+                balance,
+                icon,
+                color,
+            })
+            .select()
+            .single();
 
         if (error) {
             console.error("Supabase error creating account:", error);
-            return redirect(`/accounts?error=${encodeURIComponent(error.message)}`);
+            if (isJson) return jsonError(error.message, 500);
+            return redirect(
+                `/accounts?error=${encodeURIComponent(error.message)}`
+            );
         }
+
+        if (isJson)
+            return jsonResponse({ success: true, account: insertedData }, 201);
+        return redirect("/accounts?success=account_created");
     } catch (err) {
         console.error("Unexpected error creating account:", err);
+        if (isJson) return jsonError("unexpected_error", 500);
         return redirect("/accounts?error=unexpected_error");
     }
-
-    return redirect("/accounts?success=account_created");
 };

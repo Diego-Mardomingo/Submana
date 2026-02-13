@@ -1,19 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { flushSync } from "react-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "../lib/queryClient";
+import { useSubscriptions } from "../hooks/useSubscriptions";
+import { useTransactions } from "../hooks/useTransactions";
 import LoadingSpinner from "./LoadingSpinner";
 import "../styles/CalendarBody.css";
 import Day from "./Day";
 import { ui } from "../i18n/ui";
 
-export default function CalendarBody({ initialYear, initialMonth, lang }) {
+export default function CalendarBody(props) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <CalendarBodyInner {...props} />
+    </QueryClientProvider>
+  );
+}
+
+function CalendarBodyInner({ initialYear, initialMonth, lang }) {
   const t = (key) => ui[lang]?.[key] || ui['en'][key];
 
   // Estado local para el año y mes actuales
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const [isLoading, setLoading] = useState(true);
+
+  // TanStack Query — data is cached and shared across all islands
+  const { data: subscriptions = [], isLoading: subsLoading } = useSubscriptions();
+  const { data: transactions = [], isLoading: txLoading } = useTransactions();
+  const isLoading = subsLoading || txLoading;
+
   const [activeDay, setActiveDay] = useState(null);
 
   // ? SWIPE FUNCIONALITY
@@ -186,37 +201,8 @@ export default function CalendarBody({ initialYear, initialMonth, lang }) {
     }
   }
 
-  useEffect(() => {
-    setLoading(true);
-    const fetchData = async () => {
-      try {
-        const [subsRes, txRes] = await Promise.all([
-          fetch("/api/crud/get-all-subs"),
-          fetch("/api/crud/get-all-transactions")
-        ]);
-
-        if (subsRes.ok) {
-          const subsData = await subsRes.json();
-          if (subsData.success && subsData.subscriptions) {
-            setSubscriptions(subsData.subscriptions);
-          }
-        }
-
-        if (txRes.ok) {
-          const txData = await txRes.json();
-          if (txData.transactions) {
-            setTransactions(txData.transactions);
-          }
-        }
-
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+  // Data fetching is now handled by TanStack Query hooks (useSubscriptions, useTransactions)
+  // above — no manual useEffect needed.
 
   function setToNoon(date) {
     return new Date(
