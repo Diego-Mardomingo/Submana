@@ -2,7 +2,6 @@
 import Layout from "../layouts/Layout.astro";
 import { supabase } from "../lib/supabase";
 import { getLangFromCookie, useTranslations } from "../i18n/utils";
-import SubscriptionListIsland from "../components/SubscriptionListIsland.jsx";
 
 const { cookies, redirect } = Astro;
 const lang = getLangFromCookie(cookies);
@@ -19,7 +18,6 @@ Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate
 Astro.response.headers.set("Pragma", "no-cache");
 Astro.response.headers.set("Expires", "0");
 
-// Only validate auth — no data fetching (React island handles that)
 let session;
 try {
   session = await supabase.auth.setSession({
@@ -37,18 +35,90 @@ try {
   return redirect("/login");
 }
 
+// Fetch Subscriptions Server-Side
+const { data: subscriptions, error } = await supabase
+  .from('subscriptions')
+  .select('*')
+  .eq('user_id', session.data.user?.id)
+  .order('cost', { ascending: false }); // Ordered by cost for impact
+
+// Helper for formatting currency
+const formatCurrency = (amount) => {
+  return new Intl.NumberFormat(lang === 'es' ? 'es-ES' : 'en-US', {
+    style: 'currency',
+    currency: 'EUR',
+  }).format(amount);
+};
+
+// Helper for frequency text
+// Helper for calculating if a sub is active
+const setToNoon = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+
+const isSubActive = (sub) => {
+  const current = setToNoon(new Date());
+  const start = setToNoon(new Date(sub.start_date));
+  if (start > current) return false;
+  if (sub.end_date) {
+    const end = setToNoon(new Date(sub.end_date));
+    if (end < current) return false;
+  }
+  return true;
+};
+
+// Process subscriptions
+const activeSubs = [];
+const inactiveSubs = [];
+
+if (subscriptions) {
+  subscriptions.forEach(sub => {
+    if (isSubActive(sub)) {
+      activeSubs.push(sub);
+    } else {
+      inactiveSubs.push(sub);
+    }
+  });
+}
+
+// Helper for frequency text
+const getFrequencyLabel = (freq, val) => {
+  if (freq === 'monthly') return val === 1 ? t('sub.monthly') : `${t('sub.every')} ${val} ${t('sub.months')}`;
+  if (freq === 'yearly') return val === 1 ? t('sub.yearly') : `${t('sub.every')} ${val} ${t('sub.years')}`;
+  if (freq === 'weekly') return val === 1 ? t('sub.weekly') : `${t('sub.every')} ${val} ${t('sub.weeks')}`;
+  return freq;
+};
+
+// Calculate total monthly (only active)
+const calculateTotalMonthly = (subs) => {
+  if (!subs) return 0;
+  return subs.reduce((acc, sub) => {
+    let monthlyCost = sub.cost;
+    if (sub.frequency === 'yearly') monthlyCost = sub.cost / 12;
+    if (sub.frequency === 'weekly') monthlyCost = sub.cost * 4;
+    // Adjust for specific values
+    if (sub.frequency_value > 1) monthlyCost = monthlyCost / sub.frequency_value;
+    return acc + monthlyCost;
+  }, 0);
+};
+
+const totalMonthly = calculateTotalMonthly(activeSubs);
 ---
 
 <Layout title={t('nav.subscriptions')}>
   <div class="page-container">
     
-    <!-- Header with Add Button -->
+    <!-- Header with Total -->
     <header class="page-header">
       <div>
         <div class="title-with-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="title-icon"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
           <h1 class="title" data-i18n="nav.subscriptions">{t('nav.subscriptions')}</h1>
         </div>
+        <p class="subtitle">
+          <span class="total-badge">
+            {formatCurrency(totalMonthly)}
+            <span class="period">/ {t('sub.month')}</span>
+          </span>
+        </p>
       </div>
       <a href="/newSubscription" class="add-btn" aria-label={t('sub.new')} data-astro-prefetch>
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
@@ -56,9 +126,78 @@ try {
       </a>
     </header>
 
-    <!-- Subscriptions List (React Island) -->
+    <!-- Subscriptions List -->
     <div class="subs-list">
-      <SubscriptionListIsland client:load lang={lang} />
+      {activeSubs.length === 0 && inactiveSubs.length === 0 ? (
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </div>
+          <p>No subscriptions found</p>
+          <a href="/newSubscription" class="create-first-btn">{t('sub.new')}</a>
+        </div>
+      ) : (
+        <>
+           {/* Active Subs */}
+           {activeSubs.length > 0 && (
+             <div class="subs-group">
+                <h2 class="group-title">{t('sub.active')}</h2>
+                {activeSubs.map((sub) => (
+                  <a href={`/subscription/${sub.id}`} class="sub-item active" data-astro-prefetch>
+                    <div class="sub-icon-wrapper">
+                      <img 
+                        src={sub.icon} 
+                        alt={sub.service_name} 
+                        class="sub-icon" 
+                        style={`view-transition-name: icon-${sub.id}`} 
+                      />
+                    </div>
+                    <div class="sub-info">
+                      <h2 class="sub-name" style={`view-transition-name: name-${sub.id}`}>{sub.service_name}</h2>
+                      <span class="sub-freq">{getFrequencyLabel(sub.frequency, sub.frequency_value)}</span>
+                    </div>
+                    <div class="sub-cost">
+                      <span class="cost-value">{formatCurrency(sub.cost)}</span>
+                      <span class="active-label">{t('sub.active')}</span>
+                    </div>
+                  </a>
+                ))}
+             </div>
+           )}
+
+           {/* Divider if both exist */}
+           {activeSubs.length > 0 && inactiveSubs.length > 0 && (
+              <div class="divider"></div>
+           )}
+
+           {/* Inactive Subs */}
+           {inactiveSubs.length > 0 && (
+             <div class="subs-group inactive-group">
+                <h2 class="group-title">{t('sub.inactive')}</h2>
+                {inactiveSubs.map((sub) => (
+                  <a href={`/subscription/${sub.id}`} class="sub-item inactive" data-astro-prefetch>
+                    <div class="sub-icon-wrapper">
+                      <img 
+                        src={sub.icon} 
+                        alt={sub.service_name} 
+                        class="sub-icon" 
+                        style={`view-transition-name: icon-${sub.id}`} 
+                      />
+                    </div>
+                    <div class="sub-info">
+                      <h2 class="sub-name" style={`view-transition-name: name-${sub.id}`}>{sub.service_name}</h2>
+                      <span class="sub-freq">{getFrequencyLabel(sub.frequency, sub.frequency_value)}</span>
+                    </div>
+                    <div class="sub-cost">
+                      <span class="cost-value">{formatCurrency(sub.cost)}</span>
+                      <span class="inactive-label">{t('sub.inactive')}</span>
+                    </div>
+                  </a>
+                ))}
+             </div>
+           )}
+        </>
+      )}
     </div>
 
   </div>
