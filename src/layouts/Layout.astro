@@ -81,7 +81,7 @@ const pageTitle = `Submana | ${title}`;
     </script>
   </head>
   <body data-astro-prefetch>
-    {Astro.url.pathname !== "/login" && <Navigation />}
+    {Astro.url.pathname !== "/login" && <Navigation transition:persist />}
     <slot />
     <Toaster position="top-center" theme={theme === "light" ? "light" : "dark"} client:load />
   </body>
@@ -300,12 +300,18 @@ const pageTitle = `Submana | ${title}`;
       animation: spin 0.75s linear infinite;
   }
 
-  /* Force white spinner on primary buttons */
   .submit-btn.btn-loading::after,
   .btn-save.btn-loading::after,
   .add-btn.btn-loading::after,
   .is-default.btn-loading::after {
       border-color: #ffffff;
       border-right-color: transparent;
+  }
+
+  /* ── Body Padding for Mobile Nav ── */
+  @media (max-width: 767px) {
+    body {
+      padding-bottom: 100px; /* Ensure space for fixed bottom nav */
+    }
   }
 </style>
