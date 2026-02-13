@@ -62,7 +62,7 @@ const t = useTranslations(lang);
       initialYear={currentYear}
       initialMonth={currentMonth}
       lang={lang}
-      client:load
+      client:only="react"
     />
     <ShowToast client:only />
   </div>

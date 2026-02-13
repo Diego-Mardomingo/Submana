@@ -264,6 +264,14 @@ const pageTitle = `Submana | ${title}`;
     animation: none !important;
   }
 
+  /* 
+     Ensure the navigation stays visually above any view-transition-group 
+     animations (e.g., subscription icon/name transitions floating on top) 
+  */
+  ::view-transition-group(nav-bar) {
+    z-index: 9999;
+  }
+
   /* ── Global Loading Spinner ── */
   @keyframes spin {
     to { transform: rotate(360deg); }
