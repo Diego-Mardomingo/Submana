@@ -1,7 +1,6 @@
 ---
 import Layout from "../../../layouts/Layout.astro";
 import Icon from "../../../components/Icon.jsx";
-import LoadingSpinner from "../../../components/LoadingSpinner";
 import { supabase } from "../../../lib/supabase";
 import { getLangFromCookie, useTranslations } from "../../../i18n/utils";
 
@@ -9,6 +8,16 @@ const { id } = Astro.params;
 const { cookies, redirect } = Astro;
 const lang = getLangFromCookie(cookies);
 const t = useTranslations(lang);
+
+const iconTranslations = {
+  'sub.selected': t('sub.selected'),
+  'sub.brandIcon': t('sub.brandIcon'),
+  'sub.searchPlaceholder': t('sub.searchPlaceholder'),
+  'sub.startTyping': t('sub.startTyping'),
+  'sub.searching': t('sub.searching'),
+  'sub.noIconsFound': t('sub.noIconsFound'),
+  'sub.randomAvatar': t('sub.randomAvatar')
+};
 
 // 1. Auth Check
 const accessToken = cookies.get("sb-access-token");
@@ -53,121 +62,140 @@ const formatDateInput = (dateStr) => {
 ---
 
 <Layout title={`${t('sub.edit')} | ${sub.service_name}`}>
-  <div class="page">
-    <h1 class="page-title">{t('sub.edit') || "Edit Subscription"}</h1>
+  <div class="page-container">
+    
+    <!-- Top Nav / Back Button -->
+    <nav class="top-nav">
+      <a href={`/subscription/${sub.id}`} class="back-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>{sub.service_name}</span>
+      </a>
+    </nav>
 
-    <form method="post" action="/api/crud/updateSubAction" class="form-card">
-      <input type="hidden" name="id" value={sub.id} />
-      
-      <!-- Name -->
-      <div class="field">
-        <label for="name">{t('sub.name')}</label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          placeholder="e.g. Netflix, Spotify…"
-          autocomplete="off"
-          value={sub.service_name}
-          required
-        />
-      </div>
+    <header class="page-header">
+      <h1 class="page-title">{t('sub.edit')}</h1>
+    </header>
 
-      <!-- Icon -->
-      <div class="field">
-        <label>{t('sub.icon')}</label>
-        <input type="hidden" id="icon_value" name="icon" value={sub.icon} />
-        <!-- Pass defaultIcon to Client Component -->
-        <Icon defaultIcon={sub.icon} onIconSelected={() => {}} client:visible />
-      </div>
+    <main class="content-animate">
+      <form method="post" action="/api/crud/update-sub" class="form-card" id="edit-sub-form">
+        <input type="hidden" name="id" value={sub.id} />
+        
+        <!-- Section: Basic Info -->
+        <div class="form-section">
+          <div class="field">
+            <label for="name">{t('sub.name')}</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              placeholder={t('sub.namePlaceholder')}
+              autocomplete="off"
+              value={sub.service_name}
+              required
+            />
+          </div>
 
-      <!-- Cost + Start Date -->
-      <div class="field-row">
-        <div class="field">
-          <label for="cost">{t('sub.cost')} (€)</label>
-          <input
-            type="number"
-            id="cost"
-            name="cost"
-            placeholder="9.99"
-            step="0.01"
-            min="0"
-            value={sub.cost}
-            required
-          />
+          <div class="field">
+            <label>{t('sub.icon')}</label>
+            <input type="hidden" id="icon_value" name="icon" value={sub.icon} />
+            <div class="icon-selector-card">
+               <Icon defaultIcon={sub.icon} onIconSelected={() => {}} translations={iconTranslations} client:visible />
+            </div>
+          </div>
         </div>
+
+        <div class="divider"></div>
+
+        <!-- Section: Billing -->
+        <div class="form-section billing-grid">
+          <div class="field">
+            <label for="cost">{t('sub.cost')} (€)</label>
+            <div class="currency-input">
+              <span class="currency-symbol">€</span>
+              <input
+                type="number"
+                id="cost"
+                name="cost"
+                placeholder="9.99"
+                step="0.01"
+                min="0"
+                value={sub.cost}
+                required
+              />
+            </div>
+          </div>
+          <div class="field">
+            <label for="startDate">{t('sub.startDate')}</label>
+            <input 
+              type="date" 
+              id="startDate" 
+              name="startDate" 
+              value={formatDateInput(sub.start_date)}
+              required 
+            />
+          </div>
+        </div>
+
         <div class="field">
-          <label for="startDate">{t('sub.startDate')}</label>
+          <label for="endDate">{t('sub.endDate')} <span class="hint">({t('sub.optional')})</span></label>
           <input 
             type="date" 
-            id="startDate" 
-            name="startDate" 
-            value={formatDateInput(sub.start_date)}
-            required 
+            id="endDate" 
+            name="endDate" 
+            value={formatDateInput(sub.end_date)}
           />
         </div>
-      </div>
 
-      <!-- End Date -->
-      <div class="field">
-        <label for="endDate">{t('sub.endDate')} <span class="hint">({t('sub.optional')})</span></label>
-        <input 
-          type="date" 
-          id="endDate" 
-          name="endDate" 
-          value={formatDateInput(sub.end_date)}
-        />
-      </div>
-
-      <!-- Frequency + Value -->
-      <div class="field-row">
-        <div class="field">
-          <label for="frequency">{t('sub.frequency')}</label>
-          <select id="frequency" name="frequency">
-            <option value="weekly" selected={sub.frequency === "weekly"}>{t('sub.weekly')}</option>
-            <option value="monthly" selected={sub.frequency === "monthly"}>{t('sub.monthly')}</option>
-            <option value="yearly" selected={sub.frequency === "yearly"}>{t('sub.yearly')}</option>
-          </select>
+        <!-- Section: Frequency -->
+        <div class="form-section recurrence-grid">
+          <div class="field">
+            <label for="frequency">{t('sub.frequency')}</label>
+            <div class="select-wrapper">
+              <select id="frequency" name="frequency">
+                <option value="weekly" selected={sub.frequency === "weekly"}>{t('sub.weekly')}</option>
+                <option value="monthly" selected={sub.frequency === "monthly"}>{t('sub.monthly')}</option>
+                <option value="yearly" selected={sub.frequency === "yearly"}>{t('sub.yearly')}</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="frequency_value">{t('sub.every')}</label>
+            <input
+              type="number"
+              id="frequency_value"
+              name="frequency_value"
+              placeholder="1"
+              min="1"
+              value={sub.frequency_value}
+            />
+          </div>
         </div>
-        <div class="field">
-          <label for="frequency_value">{t('sub.every')}</label>
-          <input
-            type="number"
-            id="frequency_value"
-            name="frequency_value"
-            placeholder="1"
-            min="1"
-            value={sub.frequency_value}
-          />
+
+        <!-- Actions Row -->
+        <div class="form-actions">
+          <button id="save_btn" type="submit" class="submit-btn">
+            <span class="btn-text">
+              {t('sub.saveChanges')}
+            </span>
+            <svg class="spinner-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" fill="currentColor"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite" /></path></svg>
+          </button>
         </div>
-      </div>
 
-      <!-- Actions Row -->
-      <div class="form-actions">
-        <a href={`/subscription/${sub.id}`} class="cancel-btn">
-          Cancel
-        </a>
-        <button id="save_btn" type="submit" class="submit-btn" style="width: 100%;">
-          <span class="btn-text">
-            {t('sub.edit') || 'Save Changes'}
-          </span>
-          <svg class="spinner-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="display:none; width: 24px; height: 24px;"><path d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" fill="currentColor"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite" /></path></svg>
-        </button>
-      </div>
-
-    </form>
+      </form>
+    </main>
   </div>
 </Layout>
 
 <script>
   function initForm() {
+      const form = document.getElementById('edit-sub-form');
       const saveBtn = document.getElementById("save_btn");
-      if (saveBtn) {
-        saveBtn.addEventListener("click", () => {
-          const btnText = saveBtn.querySelector('.btn-text');
-          const spinner = saveBtn.querySelector('.spinner-icon');
-          if (btnText instanceof HTMLElement) btnText.style.display = 'none';
-          if (spinner instanceof HTMLElement) spinner.style.display = 'block';
+      
+      if (form && saveBtn) {
+        form.addEventListener("submit", () => {
+          saveBtn.classList.add('loading');
+          const inputs = form.querySelectorAll('input, select, button');
+          inputs.forEach(i => (i as any).disabled = true);
         });
       }
   }
@@ -175,139 +203,265 @@ const formatDateInput = (dateStr) => {
 </script>
 
 <style>
-  /* Reuse styles from newSubscription but ensure they are scoped/global if using CSS Modules or just copy. 
-     Since newSubscription uses scoped <style>, I need to copy them here or import a shared CSS (better).
-     For speed, I will copy the styles from newSubscription as they are perfect for this form.
-  */
-  
-  /* ── Page ── */
-  .page {
-    max-width: 480px;
+  .page-container {
+    max-width: 700px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 9rem;
+    padding: 2rem 1.5rem 8rem;
+  }
+
+  /* ── Animations ── */
+  .content-animate {
+    animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Navigation ── */
+  .top-nav {
+    margin-bottom: 2rem;
+  }
+
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--gris-claro);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    width: fit-content;
+  }
+
+  .back-link:hover { color: var(--blanco); }
+  .back-link:hover svg {
+    transform: translateX(-3px);
+  }
+
+  /* ── Header ── */
+  .page-header {
+    margin-bottom: 2.5rem;
   }
 
   .page-title {
-    color: var(--accent);
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin: 0 0 1.5rem;
+    color: var(--blanco);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
   }
 
-  /* ── Form card ── */
+  .page-subtitle {
+    color: var(--gris-claro);
+    font-size: 1.1rem;
+    line-height: 1.5;
+    max-width: 500px;
+  }
+
+  /* ── Form Card ── */
   .form-card {
     background: var(--gris-oscuro);
     border: 1px solid var(--gris);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .form-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--accent);
+    opacity: 0.8;
   }
 
-  /* ── Field ── */
+  /* Si el tema global es dark, los inputs deben contrastar. 
+     En la referencia es light. Adaptaremos para que se vea "clean" en dark mode. */
+  input, select {
+    background: var(--gris);
+    border: 1px solid transparent;
+    color: var(--blanco);
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    width: 100%;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    background: var(--gris-oscuro);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-muted);
+    transform: none;
+  }
+
+  /* ── Icon Selector Integration ── */
+  .icon-selector-card {
+    background: transparent;
+    padding: 0;
+    border: none;
+  }
+
+  .form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gris), transparent);
+    width: 100%;
+  }
+
+  /* Grids */
+  .billing-grid, .recurrence-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  /* ── Fields ── */
   .field {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .field-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
   }
 
   label {
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 700;
     color: var(--gris-claro);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
+    padding-left: 0.15rem;
   }
 
   .hint {
     text-transform: none;
     font-weight: 400;
+    opacity: 0.6;
     letter-spacing: 0;
-    color: var(--gris-muy-claro);
-    font-size: 0.78rem;
+    font-size: 0.85rem;
   }
 
   /* ── Inputs ── */
-  input,
-  select {
-    background: var(--negro);
-    border: 1px solid var(--gris);
-    color: var(--blanco);
-    font-size: 0.95rem;
-    padding: 0.7rem 0.85rem;
-    border-radius: 10px;
-    width: 100%;
-    transition: border-color 0.15s ease;
-  }
+
 
   input::placeholder {
     color: var(--gris-claro);
+    opacity: 0.4;
   }
 
-  input:focus,
-  select:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  /* ── Actions ── */
-  .form-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-top: 0.5rem;
-  }
-
-  .cancel-btn {
+  /* Specific Input Decorations */
+  .currency-input {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0.85rem;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--gris-claro);
-    background: transparent;
-    border: 1px solid var(--gris);
-    border-radius: 12px;
-    text-decoration: none;
-    transition: all 0.15s ease;
   }
 
-  .cancel-btn:hover {
-    color: var(--blanco);
-    background: var(--gris);
-    border-color: var(--gris-claro);
+  .currency-symbol {
+    position: absolute;
+    left: 1.1rem;
+    color: var(--gris-claro);
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  .currency-input input {
+    padding-left: 2.2rem;
+  }
+
+
+
+  /* ── Button ── */
+  .form-actions {
+    padding-top: 1rem;
   }
 
   .submit-btn {
     width: 100%;
-    padding: 0.85rem;
-    font-size: 1rem;
-    font-weight: 700;
+    background: var(--success);
+    color: #ffffff;
     border: none;
-    border-radius: 12px;
+    padding: 0.9rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
     cursor: pointer;
-    background: var(--success); /* Use Success color for save */
-    color: #ffffff; /* FORCE WHITE */
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    transition: opacity 0.15s ease;
+    box-shadow: 0 4px 12px var(--success-muted);
+    color: #ffffff;
   }
 
   .submit-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px var(--success-muted);
     opacity: 0.9;
   }
 
   .submit-btn:active {
-    opacity: 0.8;
+    transform: translateY(-2px);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Spinner */
+  .spinner-icon {
+    display: none;
+    width: 28px;
+    height: 28px;
+  }
+
+  .submit-btn.loading .btn-text {
+    display: none;
+  }
+
+  .submit-btn.loading .spinner-icon {
+    display: block;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .page-container {
+      padding: 1.5rem 1.25rem 6rem;
+    }
+
+    .page-title {
+      font-size: 2.2rem;
+    }
+
+    .form-card {
+      padding: 1.75rem;
+      gap: 1.75rem;
+    }
+
+    .billing-grid, .recurrence-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .icon-selector-card {
+      padding: 1rem;
+    }
   }
 </style>

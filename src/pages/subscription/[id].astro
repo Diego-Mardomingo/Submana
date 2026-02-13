@@ -225,7 +225,7 @@ const formatCurrency = (val) => new Intl.NumberFormat(lang === 'es' ? 'es-ES' : 
 
         <!-- Cancel (Only if active/no end date) -->
         {!sub.end_date && (
-            <form method="POST" action="/api/crud/cancelSubAction" class="cancel-form" id="cancel-form">
+            <form method="POST" action="/api/crud/cancel-sub" class="cancel-form" id="cancel-form">
                 <input type="hidden" name="id" value={sub.id} />
                 <button type="submit" class="action-btn cancel" id="cancel-btn">
                     <span class="btn-content">
@@ -253,7 +253,7 @@ const formatCurrency = (val) => new Intl.NumberFormat(lang === 'es' ? 'es-ES' : 
           <h2>{t('sub.deleteTitle')}</h2>
           <div class="modal-actions">
               <button id="cancel-delete">{t('sub.cancelAction')}</button>
-              <form method="POST" action="/api/crud/deleteSubAction" id="delete-form">
+              <form method="POST" action="/api/crud/delete-sub" id="delete-form">
                  <input type="hidden" name="id" value={sub.id} />
                  <button type="submit" class="danger-btn action-btn delete" id="confirm-delete-btn">
                     <span class="btn-content">{t('sub.delete')}</span>

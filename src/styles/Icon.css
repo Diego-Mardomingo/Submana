@@ -1,180 +1,198 @@
-/* Main Container */
+/* ═══════════════════════════════════════════════
+   ICON SELECTOR COMPONENT
+   Premium • Clean • Responsive
+   ═══════════════════════════════════════════════ */
+
 .icon-component {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem;
+  width: 100%;
+  background: var(--gris);
+  padding: 1.25rem;
+  border-radius: 14px;
 }
 
-/* Grid Layout: Preview (Left) + Search (Right) */
+/* ── Layout: Preview + Search ── */
 .icon-grid {
   display: flex;
-  flex-direction: row;
-  gap: 1rem;
-  align-items: flex-end;
-  /* Align bottom to match input line */
+  gap: 1.5rem;
+  align-items: flex-start;
 }
 
-/* Sidebar: Selected Icon Preview */
+/* ── Preview Box ── */
 .icon-preview-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  /* Remove gap completely so sub-label touches box */
-  align-items: flex-start;
-  /* Align left */
-  min-width: 60px;
+  gap: 0.5rem;
 }
 
 .sub-label {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--gris-claro);
   text-transform: uppercase;
-  font-weight: 700;
-  text-align: left;
-  margin-bottom: 2px;
-  /* Tiny margin */
+  font-weight: 800;
+  letter-spacing: 0.05em;
 }
 
 .icon-preview {
-  width: 60px;
-  height: 60px;
-  background-color: var(--negro);
+  width: 64px;
+  height: 64px;
+  background: var(--negro);
   border: 1px solid var(--gris);
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .icon-preview img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  padding: 12px;
 }
 
 .icon-placeholder {
   font-size: 1.5rem;
-  font-weight: bold;
-  color: var(--gris-claro);
+  font-weight: 800;
+  color: var(--blanco);
+  opacity: 0.9;
 }
 
-/* Main Area: Search + Results */
+/* ── Search Area ── */
 .search-area {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex: 1;
+}
+
+.search-input-wrapper {
+  position: relative;
   width: 100%;
 }
 
-/* Match styles with newSubscription input */
 .search-input {
   background: var(--negro);
   border: 1px solid var(--gris);
   color: var(--blanco);
-  font-size: 0.95rem;
-  padding: 0.7rem 0.85rem;
+  font-size: 0.9rem;
+  padding: 0.75rem 1rem;
   border-radius: 10px;
   width: 100%;
-  transition: border-color 0.15s ease;
-}
-
-.search-input::placeholder {
-  color: var(--gris-claro);
+  transition: all 0.2s ease;
 }
 
 .search-input:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
-/* Results Area */
+/* ── Results Tray ── */
 .results-container {
-  min-height: 50px;
+  min-height: 0;
+  padding: 0.5rem 0;
+  background: transparent;
 }
 
 .icons-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+  gap: 0.75rem;
 }
 
 .icon-option {
-  width: 48px;
-  /* Increased size */
-  height: 48px;
-  /* Increased size */
-  border-radius: 8px;
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
   cursor: pointer;
-  background-color: #fff;
-  /* Fixed white for brand logos */
+  background-color: #ffffff;
+  /* White base for brand logos */
   border: 2px solid transparent;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1.2);
   object-fit: contain;
+  padding: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .icon-option:hover {
-  transform: scale(1.1);
+  transform: scale(1.15) rotate(2deg);
   border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.icon-option:active {
+  transform: scale(0.95);
 }
 
 .empty-state {
-  color: var(--gris-muy-claro);
-  font-size: 0.85rem;
+  color: var(--gris-claro);
+  font-size: 0.9rem;
   font-style: italic;
-  padding-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
 }
 
-/* Footer Actions */
+/* ── Footer Actions ── */
 .icon-actions {
   display: flex;
   justify-content: flex-end;
 }
 
 .btn-random {
-  background: transparent;
-  border: 1px solid var(--gris);
-  color: var(--gris-claro);
+  background: rgba(139, 92, 246, 0.15);
+  /* Accent soft manual */
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--accent);
   font-size: 0.85rem;
-  padding: 0.5rem 1rem;
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .btn-random:hover {
+  background: var(--accent);
+  color: white;
   border-color: var(--accent);
-  color: var(--accent);
-  background-color: var(--accent-soft);
+  transform: translateY(-1px);
 }
 
-@media (max-width: 480px) {
+/* ── RESPONSIVE ── */
+@media (max-width: 500px) {
   .icon-grid {
-    flex-direction: column;
-    align-items: stretch;
-    /* Full width children */
-    gap: 1.5rem;
-  }
-
-  /* Make the Selected part look like a header row */
-  .icon-preview-wrapper {
-    flex-direction: row;
-    gap: 1rem;
-    width: 100%;
+    grid-template-columns: 1fr;
     align-items: center;
-    padding: 0 0.25rem;
-    /* Align with input padding visually */
+    gap: 1.25rem;
   }
 
-  .sub-label {
-    font-size: 0.8rem;
-    margin-bottom: 0;
+  .icon-preview-wrapper {
+    flex-direction: column;
+    align-items: flex-start;
+    width: auto;
+    background: transparent;
+    padding: 0;
+    border: none;
   }
 
   .icon-preview {
-    width: 48px;
-    height: 48px;
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+  }
+
+  .icon-preview img {
+    padding: 8px;
+  }
+
+  .icon-placeholder {
+    font-size: 1.2rem;
   }
 }

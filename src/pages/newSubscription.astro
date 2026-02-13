@@ -1,11 +1,22 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import Icon from "../components/Icon.jsx";
-import LoadingSpinner from "../components/LoadingSpinner";
-
 import { supabase } from "../lib/supabase";
+import { getLangFromCookie, useTranslations } from "../i18n/utils";
 
 const { cookies, redirect } = Astro;
+const lang = getLangFromCookie(cookies);
+const t = useTranslations(lang);
+
+const iconTranslations = {
+  'sub.selected': t('sub.selected'),
+  'sub.brandIcon': t('sub.brandIcon'),
+  'sub.searchPlaceholder': t('sub.searchPlaceholder'),
+  'sub.startTyping': t('sub.startTyping'),
+  'sub.searching': t('sub.searching'),
+  'sub.noIconsFound': t('sub.noIconsFound'),
+  'sub.randomAvatar': t('sub.randomAvatar')
+};
 
 const accessToken = cookies.get("sb-access-token");
 const refreshToken = cookies.get("sb-refresh-token");
@@ -27,148 +38,400 @@ try {
   resetCookies();
 }
 
-const email = session.data.user?.email;
-const name = session.data.user?.user_metadata.name;
-const avatar = session.data.user?.user_metadata.avatar_url;
-
 function resetCookies() {
   cookies.delete("sb-access-token", { path: "/" });
   cookies.delete("sb-refresh-token", { path: "/" });
   return redirect("/login");
 }
-
-import { getLangFromCookie, useTranslations } from "../i18n/utils";
-const lang = getLangFromCookie(Astro.cookies);
-const t = useTranslations(lang);
 ---
 
 <Layout title={t('sub.new')}>
-  <div class="page">
-    <h1 class="page-title">{t('sub.new')}</h1>
+  <div class="page-container" id="new-sub-page">
+    
+    <!-- Navigation: Back Button -->
+    <nav class="top-nav">
+      <a href="/subscriptions" class="back-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>{t('nav.subscriptions')}</span>
+      </a>
+    </nav>
 
-    <form method="post" action="/api/crud/insertNewSub" class="form-card">
-      <!-- Name -->
-      <div class="field">
-        <label for="name">{t('sub.name')}</label>
-        <input
-          type="text"
-          id="name"
-          name="name"
-          placeholder="e.g. Netflix, Spotify…"
-          autocomplete="off"
-          required
-        />
-      </div>
+    <header class="page-header">
+      <h1 class="page-title">{t('sub.new')}</h1>
+    </header>
 
-      <!-- Icon -->
-      <div class="field">
-        <label>{t('sub.icon')}</label>
-        <input type="hidden" id="icon_value" name="icon" />
-        <Icon defaultIcon="" onIconSelected={() => {}} client:visible />
-      </div>
+    <main class="content-animate">
+      <form method="post" action="/api/crud/create-sub" class="form-card" id="new-sub-form">
+        
+        <!-- Section: Basic Info (Name & Icon) -->
+        <div class="form-section">
+          <div class="field">
+            <label for="name">{t('sub.name')}</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              placeholder={t('sub.namePlaceholder')}
+              autocomplete="off"
+              required
+              autofocus
+            />
+          </div>
 
-      <!-- Cost + Start Date -->
-      <div class="field-row">
-        <div class="field">
-          <label for="cost">{t('sub.cost')} (€)</label>
-          <input
-            type="number"
-            id="cost"
-            name="cost"
-            placeholder="9.99"
-            step="0.01"
-            min="0"
-            required
-          />
+          <div class="field">
+            <label>{t('sub.icon')}</label>
+            <input type="hidden" id="icon_value" name="icon" />
+            <div class="icon-selector-card">
+               <Icon defaultIcon="" onIconSelected={() => {}} translations={iconTranslations} client:visible />
+            </div>
+          </div>
         </div>
-        <div class="field">
-          <label for="startDate">{t('sub.startDate')}</label>
-          <input type="date" id="startDate" name="startDate" required />
+
+        <div class="divider"></div>
+
+        <!-- Section: Billing Details -->
+        <div class="form-section billing-grid">
+          <div class="field">
+            <label for="cost">{t('sub.cost')} (€)</label>
+            <div class="currency-input">
+              <span class="currency-symbol">€</span>
+              <input
+                type="number"
+                id="cost"
+                name="cost"
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+                required
+              />
+            </div>
+          </div>
+          
+          <div class="field">
+            <label for="startDate">{t('sub.startDate')}</label>
+            <input type="date" id="startDate" name="startDate" required />
+          </div>
         </div>
-      </div>
 
-      <!-- End Date -->
-      <div class="field">
-        <label for="endDate">{t('sub.endDate')} <span class="hint">({t('sub.optional')})</span></label>
-        <input type="date" id="endDate" name="endDate" />
-      </div>
-
-      <!-- Frequency + Value -->
-      <div class="field-row">
         <div class="field">
-          <label for="frequency">{t('sub.frequency')}</label>
-          <select id="frequency" name="frequency">
-            <option value="weekly">{t('sub.weekly')}</option>
-            <option value="monthly" selected>{t('sub.monthly')}</option>
-            <option value="yearly">{t('sub.yearly')}</option>
-          </select>
+          <label for="endDate">{t('sub.endDate')} <span class="hint">({t('sub.optional')})</span></label>
+          <input type="date" id="endDate" name="endDate" />
         </div>
-        <div class="field">
-          <label for="frequency_value">{t('sub.every')}</label>
-          <input
-            type="number"
-            id="frequency_value"
-            name="frequency_value"
-            placeholder="1"
-            min="1"
-            value="1"
-          />
+
+        <!-- Section: Recurrence -->
+        <div class="form-section recurrence-grid">
+          <div class="field">
+            <label for="frequency">{t('sub.frequency')}</label>
+            <div class="select-wrapper">
+              <select id="frequency" name="frequency">
+                <option value="weekly">{t('sub.weekly')}</option>
+                <option value="monthly" selected>{t('sub.monthly')}</option>
+                <option value="yearly">{t('sub.yearly')}</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="field">
+            <label for="frequency_value">{t('sub.every')}</label>
+            <div class="number-input">
+              <input
+                type="number"
+                id="frequency_value"
+                name="frequency_value"
+                placeholder="1"
+                min="1"
+                value="1"
+              />
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- Actions Row -->
-      <div class="form-actions">
-        <a href="/subscriptions" class="cancel-btn">
-          Cancel
-        </a>
-        <button id="create_btn" type="submit" class="submit-btn">
-          {t('sub.create')}
-          <span id="spinner_btn" style="display:none;"><LoadingSpinner /></span>
-        </button>
-      </div>
+        <div class="form-actions">
+          <button type="submit" class="submit-btn" id="submit-btn">
+            <span class="btn-text">
+              {t('sub.create')}
+            </span>
+            <svg class="spinner-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" fill="currentColor"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite" /></path></svg>
+          </button>
+        </div>
 
-    </form>
+      </form>
+    </main>
   </div>
 </Layout>
 
 <script>
-  const createbtn = document.getElementById("create_btn");
-  const spinnerbtn = document.getElementById("spinner_btn");
-  if (createbtn && spinnerbtn) {
-    createbtn.addEventListener("click", () => {
-      spinnerbtn.style.display = "inline-block";
-    });
+  function initPage() {
+    const form = document.getElementById('new-sub-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (form && submitBtn) {
+      form.addEventListener('submit', () => {
+        submitBtn.classList.add('loading');
+        // Disable individual inputs to prevent multiple submissions
+        const inputs = form.querySelectorAll('input, select, button');
+        inputs.forEach(i => (i as any).disabled = true);
+      });
+    }
   }
+
+  document.addEventListener('astro:page-load', initPage);
 </script>
 
 <style>
-  /* ── Page ── */
-  .page {
-    max-width: 480px;
+  .page-container {
+    max-width: 700px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 6rem; /* Adjusted padding */
+    padding: 2rem 1.5rem 8rem;
   }
 
-  /* ... (rest of styles same as before until submit-btn) ... */
+  /* ── Animations ── */
+  .content-animate {
+    animation: slideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Navigation ── */
+  .top-nav {
+    margin-bottom: 2rem;
+  }
+
+  .back-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--gris-claro);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    width: fit-content;
+  }
+
+  .back-link:hover { color: var(--blanco); }
+  .back-link:hover svg {
+    transform: translateX(-3px);
+  }
+
+  /* ── Header ── */
+  .page-header {
+    margin-bottom: 2.5rem;
+  }
 
   .page-title {
-    color: var(--accent);
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-weight: 800;
-    margin: 0 0 1.5rem;
+    color: var(--blanco);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
   }
 
-  /* ── Form card ── */
+
+
+  /* ── Form Card ── */
   .form-card {
     background: var(--gris-oscuro);
     border: 1px solid var(--gris);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    position: relative;
+    overflow: hidden;
   }
   
+  .form-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: var(--accent);
+    opacity: 0.8;
+  }
+
+  /* Si el tema global es dark, los inputs deben contrastar. 
+     En la referencia es light. Adaptaremos para que se vea "clean" en dark mode. */
+  input, select {
+    background: var(--gris);
+    border: 1px solid transparent;
+    color: var(--blanco);
+    padding: 0.75rem 0.9rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    width: 100%;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    background: var(--gris-oscuro);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-muted);
+    transform: none;
+  }
+
+  /* ── Icon Selector Integration ── */
+  .icon-selector-card {
+    background: transparent;
+    padding: 0;
+    border: none;
+  }
+
+  .form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gris), transparent);
+    width: 100%;
+  }
+
+  /* Grids */
+  .billing-grid, .recurrence-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+
+  /* ── Fields ── */
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--gris-claro);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-left: 0.15rem;
+  }
+
+  .hint {
+    text-transform: none;
+    font-weight: 400;
+    opacity: 0.6;
+    letter-spacing: 0;
+    font-size: 0.85rem;
+  }
+
+  /* ── Inputs ── */
+
+
+  input::placeholder {
+    color: var(--gris-claro);
+    opacity: 0.4;
+  }
+
+  /* Specific Input Decorations */
+  .currency-input {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .currency-symbol {
+    position: absolute;
+    left: 1.1rem;
+    color: var(--gris-claro);
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  .currency-input input {
+    padding-left: 2.2rem;
+  }
 
 
 
+  /* ── Actions ── */
+  .form-actions {
+    padding-top: 1rem;
+  }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    padding: 0.9rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px var(--accent-muted);
+  }
+
+  .submit-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px var(--accent-muted);
+  }
+
+  .submit-btn:active {
+    transform: translateY(-2px);
+  }
+
+  .submit-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Spinner */
+  .spinner-icon {
+    display: none;
+    width: 28px;
+    height: 28px;
+  }
+
+  .submit-btn.loading .btn-text {
+    display: none;
+  }
+
+  .submit-btn.loading .spinner-icon {
+    display: block;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .page-container {
+      padding: 1.5rem 1.25rem 6rem;
+    }
+
+    .page-title {
+      font-size: 2.2rem;
+    }
+
+    .form-card {
+      padding: 1.75rem;
+      gap: 1.75rem;
+    }
+
+    .billing-grid, .recurrence-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .icon-selector-card {
+      padding: 1rem;
+    }
+  }
+</style>

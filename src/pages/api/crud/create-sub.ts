@@ -1,19 +1,17 @@
 import { supabase } from "../../../lib/supabase";
 import type { APIRoute } from "astro";
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, redirect }) => {
   try {
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
-    
+
     if (!user || userError) {
-      return new Response(
-        JSON.stringify({ success: false, error: "User not authenticated" }),
-        { status: 401, headers: {Location: "/?success=false"} }
-      );
+      return redirect("/login");
     }
+
     // Leer los datos enviados en el form
     const formData = await request.formData();
     const service_name = formData.get("name") as string;
@@ -25,36 +23,30 @@ export const POST: APIRoute = async ({ request }) => {
     const frequencyValue = formData.get("frequency_value") as string;
 
     // Hacer el insert en Supabase
-    const { data, error } = await supabase
+    const { data: insertedData, error } = await supabase
       .from("subscriptions")
       .insert([
         {
           user_id: user.id,
           service_name,
-          icon,
+          icon: icon || `https://ui-avatars.com/api/?name=${service_name || 'Sub'}&length=2&background=random&color=fff&size=256`,
           cost: cost ? parseFloat(cost) : 0,
           start_date: startDate,
           end_date: endDate || null,
-          frequency,
+          frequency: frequency || 'monthly',
           frequency_value: frequencyValue ? parseInt(frequencyValue) : 1,
         },
       ])
       .select();
 
     if (error) {
-      return new Response(JSON.stringify({ success: false, error }), {
-        status: 400, headers: {Location: "/?success=false"}
-      });
+      console.error("Insert error:", error);
+      return redirect("/newSubscription?error=insert_failed");
     }
 
-    return new Response(
-      JSON.stringify({ success: true, data }),
-      { status: 303, headers: {Location: "/?success=true&method=insert"} }
-    );
+    return redirect("/subscriptions?success=created");
   } catch (err: any) {
-    return new Response(
-      JSON.stringify({ success: false, error: err.message }),
-      { status: 303, headers: {Location: "/?success=false"} }
-    );
+    console.error("Server error:", err);
+    return redirect("/newSubscription?error=server_error");
   }
 };
