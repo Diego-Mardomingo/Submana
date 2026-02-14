@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { flushSync } from "react-dom";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { queryClient } from "../lib/queryClient";
 import { useSubscriptions } from "../hooks/useSubscriptions";
 import { useTransactions } from "../hooks/useTransactions";
+import { queryKeys } from "../lib/queryKeys";
 import LoadingSpinner from "./LoadingSpinner";
 import "../styles/CalendarBody.css";
 import Day from "./Day";
@@ -19,6 +20,7 @@ export default function CalendarBody(props) {
 
 function CalendarBodyInner({ initialYear, initialMonth, lang }) {
   const t = (key) => ui[lang]?.[key] || ui['en'][key];
+  const queryClient = useQueryClient();
 
   // Estado local para el año y mes actuales
   const [year, setYear] = useState(initialYear);
@@ -26,7 +28,9 @@ function CalendarBodyInner({ initialYear, initialMonth, lang }) {
 
   // TanStack Query — data is cached and shared across all islands
   const { data: subscriptions = [], isLoading: subsLoading } = useSubscriptions();
-  const { data: transactions = [], isLoading: txLoading } = useTransactions();
+  const { data: transactions = [], isLoading: txLoading } = useTransactions(year, month);
+
+  // No bloqueamos la UI globalmente. Solo indicamos si cargando para partes específicas si es necesario.
   const isLoading = subsLoading || txLoading;
 
   const [activeDay, setActiveDay] = useState(null);
@@ -201,6 +205,45 @@ function CalendarBodyInner({ initialYear, initialMonth, lang }) {
     }
   }
 
+  // Prefetching logic
+  const prefetchPrevMonth = () => {
+    let newMonth = month - 1;
+    let newYear = year;
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear = year - 1;
+    }
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.transactions.list({ year: newYear, month: newMonth }),
+      queryFn: async () => {
+        const params = new URLSearchParams({ year: newYear, month: newMonth });
+        const res = await fetch(`/api/crud/get-all-transactions?${params.toString()}`);
+        if (!res.ok) throw new Error("Failed");
+        const data = await res.json();
+        return data.transactions ?? [];
+      }
+    });
+  };
+
+  const prefetchNextMonth = () => {
+    let newMonth = month + 1;
+    let newYear = year;
+    if (newMonth > 11) {
+      newMonth = 0;
+      newYear = year + 1;
+    }
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.transactions.list({ year: newYear, month: newMonth }),
+      queryFn: async () => {
+        const params = new URLSearchParams({ year: newYear, month: newMonth });
+        const res = await fetch(`/api/crud/get-all-transactions?${params.toString()}`);
+        if (!res.ok) throw new Error("Failed");
+        const data = await res.json();
+        return data.transactions ?? [];
+      }
+    });
+  };
+
   // Data fetching is now handled by TanStack Query hooks (useSubscriptions, useTransactions)
   // above — no manual useEffect needed.
 
@@ -283,6 +326,7 @@ function CalendarBodyInner({ initialYear, initialMonth, lang }) {
    * Retorna un array de icon URLs para las suscripciones que se pagan en (dayNumber).
    */
   function getSubsIconsForDay(dayNumber) {
+    if (subsLoading) return []; // Fallback seguro
     return subscriptions.flatMap((sub) => {
       if (isPaymentDay(sub, year, month, dayNumber)) {
         return [sub.icon]; // sub.icon es la URL de la imagen
@@ -291,6 +335,7 @@ function CalendarBodyInner({ initialYear, initialMonth, lang }) {
     });
   }
   function getSubsForDay(dayNumber) {
+    if (subsLoading) return [];
     return subscriptions.flatMap((sub) => {
       if (isPaymentDay(sub, year, month, dayNumber)) {
         return [sub];
@@ -300,6 +345,7 @@ function CalendarBodyInner({ initialYear, initialMonth, lang }) {
   }
 
   function getTransactionsForDay(dayNumber) {
+    // Si estamos cargando o no hay transacciones, retorna array vacío para no bloquear
     if (!transactions) return [];
     return transactions.filter(tx => {
       const txDate = new Date(tx.date);
@@ -399,13 +445,23 @@ function CalendarBodyInner({ initialYear, initialMonth, lang }) {
     <div className="calendar_container">
       <header className="calendar_header">
         <div className="buttonsMonth">
-          <button onClick={handlePrevMonth} className="anterior" aria-label="Previous Month">
+          <button
+            onClick={handlePrevMonth}
+            onMouseEnter={prefetchPrevMonth}
+            className="anterior"
+            aria-label="Previous Month"
+          >
             {anteriorIcon()}
           </button>
           <button onClick={handleToday} className="today-btn-desktop" aria-label={t('calendar.today')} title={t('calendar.today')}>
             {todayIcon()}
           </button>
-          <button onClick={handleNextMonth} className="siguiente" aria-label="Next Month">
+          <button
+            onClick={handleNextMonth}
+            onMouseEnter={prefetchNextMonth}
+            className="siguiente"
+            aria-label="Next Month"
+          >
             {siguienteIcon()}
           </button>
         </div>
@@ -442,27 +498,23 @@ function CalendarBodyInner({ initialYear, initialMonth, lang }) {
         ))}
 
         {/* Días del mes */}
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : (
-          daysArray.map((dayNumber, index) => {
-            const styleObj =
-              index === 0 ? { gridColumnStart: startColumn } : {};
-            return (
-              <Day
-                key={dayNumber}
-                isToday={getIsToday(dayNumber)}
-                icons={getSubsIconsForDay(dayNumber)}
-                subsForDay={getSubsForDay(dayNumber)}
-                dayNumber={dayNumber}
-                dayStyle={styleObj}
-                activeDay={activeDay}
-                setActiveDay={setActiveDay}
-                transactions={getTransactionsForDay(dayNumber)}
-              />
-            );
-          })
-        )}
+        {daysArray.map((dayNumber, index) => {
+          const styleObj =
+            index === 0 ? { gridColumnStart: startColumn } : {};
+          return (
+            <Day
+              key={dayNumber}
+              isToday={getIsToday(dayNumber)}
+              icons={getSubsIconsForDay(dayNumber)}
+              subsForDay={getSubsForDay(dayNumber)}
+              dayNumber={dayNumber}
+              dayStyle={styleObj}
+              activeDay={activeDay}
+              setActiveDay={setActiveDay}
+              transactions={getTransactionsForDay(dayNumber)}
+            />
+          );
+        })}
       </section>
     </div>
   );

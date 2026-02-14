@@ -20,7 +20,7 @@ export const GET: APIRoute = async ({ cookies }) => {
         .from("accounts")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: true });
 
     if (error) {
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });

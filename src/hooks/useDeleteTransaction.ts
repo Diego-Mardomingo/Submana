@@ -18,28 +18,30 @@ export function useDeleteTransaction() {
             return res.json();
         },
 
-        // Optimistic removal: instantly remove from the list
+        // Optimistic removal: instantly remove from all lists
         onMutate: async (deletedId) => {
             await queryClient.cancelQueries({
                 queryKey: queryKeys.transactions.lists(),
             });
-            const previous = queryClient.getQueryData(
-                queryKeys.transactions.lists()
-            );
-            queryClient.setQueryData(
-                queryKeys.transactions.lists(),
+
+            const previous = queryClient.getQueriesData({
+                queryKey: queryKeys.transactions.lists()
+            });
+
+            queryClient.setQueriesData(
+                { queryKey: queryKeys.transactions.lists() },
                 (old: any[] | undefined) => (old ?? []).filter((tx: any) => tx.id !== deletedId)
             );
+
             return { previous };
         },
 
         // Rollback on error
         onError: (_err, _vars, context) => {
             if (context?.previous) {
-                queryClient.setQueryData(
-                    queryKeys.transactions.lists(),
-                    context.previous
-                );
+                context.previous.forEach(([queryKey, data]) => {
+                    queryClient.setQueryData(queryKey, data);
+                });
             }
         },
 

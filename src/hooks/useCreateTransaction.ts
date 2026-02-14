@@ -30,31 +30,33 @@ export function useCreateTransaction() {
 
         // Optimistic update: instantly add to the list
         onMutate: async (newTx) => {
-            await queryClient.cancelQueries({
-                queryKey: queryKeys.transactions.lists(),
+            const dateObj = new Date(newTx.date);
+            const year = dateObj.getFullYear();
+            const month = dateObj.getMonth();
+
+            const targetKey = queryKeys.transactions.list({ year, month });
+
+            await queryClient.cancelQueries({ queryKey: targetKey });
+
+            const previous = queryClient.getQueryData(targetKey);
+
+            queryClient.setQueryData(targetKey, (old: any[] | undefined) => {
+                const optimistic = {
+                    ...newTx,
+                    id: `temp-${Date.now()}`,
+                    _optimistic: true,
+                };
+                return [optimistic, ...(old ?? [])];
             });
-            const previous = queryClient.getQueryData(
-                queryKeys.transactions.lists()
-            );
-            queryClient.setQueryData(
-                queryKeys.transactions.lists(),
-                (old: any[] | undefined) => {
-                    const optimistic = {
-                        ...newTx,
-                        id: `temp-${Date.now()}`,
-                        _optimistic: true,
-                    };
-                    return [optimistic, ...(old ?? [])];
-                }
-            );
-            return { previous };
+
+            return { previous, targetKey };
         },
 
         // Rollback on error
         onError: (_err, _vars, context) => {
-            if (context?.previous) {
+            if (context?.targetKey && context?.previous) {
                 queryClient.setQueryData(
-                    queryKeys.transactions.lists(),
+                    context.targetKey,
                     context.previous
                 );
             }

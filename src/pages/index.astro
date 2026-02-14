@@ -15,35 +15,9 @@ if (!accessToken || !refreshToken) {
   return redirect("/login");
 }
 
-let currentYear = new Date().getFullYear();
-let currentMonth = new Date().getMonth();
-
-let session;
-try {
-  session = await supabase.auth.setSession({
-    refresh_token: refreshToken.value,
-    access_token: accessToken.value,
-  });
-  if (session.error) {
-    resetCookies();
-  } else {
-    // If we have a new session, update cookies
-    if (session.data?.session?.access_token && session.data.session.access_token !== accessToken.value) {
-      cookies.set("sb-access-token", session.data.session.access_token, {
-        path: "/",
-      });
-      cookies.set("sb-refresh-token", session.data.session.refresh_token, {
-        path: "/",
-      });
-    }
-  }
-} catch (error) {
-  resetCookies();
-}
-
-const email = session?.data?.user?.email;
-const name = session?.data?.user?.user_metadata?.name;
-const avatar = session?.data?.user?.user_metadata?.avatar_url;
+Astro.response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+Astro.response.headers.set("Pragma", "no-cache");
+Astro.response.headers.set("Expires", "0");
 
 function resetCookies() {
   cookies.delete("sb-access-token", { path: "/" });
@@ -59,8 +33,9 @@ const t = useTranslations(lang);
   <!-- <CleanURL/> -->
   <div class="home-container">
     <CalendarBody
-      initialYear={currentYear}
-      initialMonth={currentMonth}
+      client:only="react"
+      initialYear={new Date().getFullYear()}
+      initialMonth={new Date().getMonth()}
       lang={lang}
       client:only="react"
     />

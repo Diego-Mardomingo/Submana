@@ -2,6 +2,7 @@
   padding: .2rem;
   width: 100%;
   aspect-ratio: 1 / 1;
+  box-sizing: border-box;
   background-color: var(--gris-oscuro);
   border: 1px solid var(--gris);
   border-radius: 12px;
@@ -20,7 +21,7 @@
 }
 
 .diaActual {
-  border-color: var(--accent);
+  border: 1px solid var(--accent);
   background-color: var(--accent-soft);
 }
 
