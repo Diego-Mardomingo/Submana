@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${sora.variable} ${inter.variable}`}>
+    <html lang="es" className={`${sora.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="antialiased font-sans">
         <script
           dangerouslySetInnerHTML={{
