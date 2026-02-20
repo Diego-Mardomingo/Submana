@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-type Variant = "small" | "large" | "login";
+type Variant = "small" | "large" | "login" | "settings";
 
 interface LogoProps {
   variant?: Variant;
@@ -13,6 +13,7 @@ const iconSizes: Record<Variant, string> = {
   small: "h-9 w-9",
   large: "h-20 w-20 sm:h-24 sm:w-24",
   login: "h-32 w-32 sm:h-36 sm:w-36",
+  settings: "h-12 w-12",
 };
 
 export function Logo({ variant = "large", className = "" }: LogoProps) {
@@ -23,7 +24,7 @@ export function Logo({ variant = "large", className = "" }: LogoProps) {
     >
       <div
         className={`flex flex-col items-center justify-center gap-2 ${
-          variant === "small" ? "flex-row gap-3" : ""
+          variant === "small" || variant === "settings" ? "flex-row gap-3" : ""
         }`}
       >
         <div
@@ -64,9 +65,11 @@ export function Logo({ variant = "large", className = "" }: LogoProps) {
           className={`text-[var(--blanco)] font-black leading-none tracking-tight whitespace-nowrap m-0 ${
             variant === "small"
               ? "text-[1.6rem] tracking-[-0.02em]"
-              : variant === "login"
-                ? "text-[2.8rem] sm:text-[4rem] tracking-[-0.05em]"
-                : "text-[2.8rem] sm:text-[3.5rem] tracking-[-0.05em]"
+              : variant === "settings"
+                ? "text-[1.75rem] tracking-[-0.02em]"
+                : variant === "login"
+                  ? "text-[2.8rem] sm:text-[4rem] tracking-[-0.05em]"
+                  : "text-[2.8rem] sm:text-[3.5rem] tracking-[-0.05em]"
           }`}
         >
           Submana

@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { flushSync } from "react-dom";
+import { ChevronLeft, ChevronRight, House } from "lucide-react";
+import { useCalendarSwipe } from "@/hooks/useCalendarSwipe";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import Day from "./Day";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -174,6 +178,13 @@ export default function CalendarBody() {
     year === new Date().getFullYear() &&
     month === new Date().getMonth() &&
     dayNumber === new Date().getDate();
+  const swipeZoneRef = useRef<HTMLDivElement>(null);
+  useCalendarSwipe(swipeZoneRef, {
+    onSwipeLeft: () => changeMonth(1),
+    onSwipeRight: () => changeMonth(-1),
+    onSwipeUp: handleToday,
+  });
+
   const getSpentValue = () => {
     let spent = 0;
     daysArray.forEach((dayNumber) => {
@@ -190,22 +201,35 @@ export default function CalendarBody() {
     <div className="calendar_container">
       <header className="calendar_header">
         <div className="buttonsMonth">
-          <button type="button" onClick={() => changeMonth(-1)} onMouseEnter={() => prefetchMonth(-1)} aria-label="Previous">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </button>
-          <button type="button" onClick={handleToday} className="today-btn-desktop" aria-label={t("calendar.today")}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12l-2 0 9 -9 9 9 -2 0" />
-              <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" />
-            </svg>
-          </button>
-          <button type="button" onClick={() => changeMonth(1)} onMouseEnter={() => prefetchMonth(1)} aria-label="Next">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 6l6 6 -6 6" />
-            </svg>
-          </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => changeMonth(-1)}
+            onMouseEnter={() => prefetchMonth(-1)}
+            aria-label="Previous"
+            className="rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ChevronLeft className="size-5" strokeWidth={1.5} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToday}
+            aria-label={t("calendar.today")}
+            className="rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <House className="size-4" strokeWidth={1.5} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => changeMonth(1)}
+            onMouseEnter={() => prefetchMonth(1)}
+            aria-label="Next"
+            className="rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ChevronRight className="size-5" strokeWidth={1.5} />
+          </Button>
         </div>
         <div className="header_text" onClick={handleToday} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleToday()}>
           <p className="nombre_mes">{meses[month]}</p>
@@ -213,21 +237,20 @@ export default function CalendarBody() {
         </div>
         <div className="spent_container">
           <p className="spent_title">{t("calendar.monthly_spend")}</p>
-          <div className="spent_value">
+          <div className={`spent_value ${isLoading ? "spent_value_loading" : ""}`}>
             {isLoading ? (
-              <span style={{ opacity: 0.6 }}>...</span>
+              <Spinner className="size-5 text-primary" />
             ) : (
-              <>
-                {getSpentValue()} €
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17 3.34a10 10 0 1 1 -15 8.66l.005 -.324a10 10 0 0 1 14.995 -8.336zm-5 2.66c-2.052 0 -3.768 1.449 -4.549 3.5h-.451a1 1 0 0 0 -.117 1.993l.134 .007a7.298 7.298 0 0 0 0 1h-.017a1 1 0 0 0 0 2h.452c.78 2.053 2.496 3.5 4.548 3.5" />
-                </svg>
-              </>
+              <span>{getSpentValue()} €</span>
             )}
           </div>
         </div>
       </header>
-      <aside style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "0.35rem" }}>
+      <div
+        ref={swipeZoneRef}
+        className="calendar_swipe_zone"
+      >
+      <aside className="calendar_weekdays">
         {diasSemana.map((dia) => (
           <div key={dia} className="diaSemana">
             {dia}
@@ -252,6 +275,7 @@ export default function CalendarBody() {
           );
         })}
       </section>
+      </div>
     </div>
   );
 }

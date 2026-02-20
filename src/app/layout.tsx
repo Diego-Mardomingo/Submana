@@ -27,6 +27,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#8b5cf6",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -37,6 +40,11 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${sora.variable} ${inter.variable}`}>
       <body className="antialiased font-sans">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t=localStorage.getItem('submana-theme');if(!t){var m=document.cookie.match(/submana-theme=([^;]+)/);t=m?m[1]:'dark';}document.documentElement.setAttribute('data-theme',t);})();`,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

@@ -133,6 +133,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 @media (min-width: 768px) {
@@ -143,7 +144,7 @@ body {
 
 @media (max-width: 767px) {
   .auth-content-shell {
-    padding-bottom: 100px;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -374,11 +375,20 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 1rem;
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
 
 @media (max-width: 768px) {
   .home-container {
+    padding: 0.75rem 0.5rem;
     margin-bottom: 5rem;
+    min-height: calc(100dvh - 180px);
+  }
+}
+
+@media (max-width: 380px) {
+  .home-container {
+    padding: 0.5rem 0.35rem;
   }
 }
 
@@ -483,6 +493,282 @@ body {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Settings (astro parity + shadcn) ── */
+.settings-page {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  min-height: calc(100dvh - 180px);
+  overflow-x: hidden;
+}
+
+.settings-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.settings-logo-link {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.settings-separator {
+  width: 80%;
+  max-width: 20rem;
+  background: var(--gris);
+}
+
+.settings-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.settings-profile-card {
+  background: var(--gris-oscuro);
+  border: 1px solid var(--gris);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.settings-profile {
+  text-align: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.settings-profile-loading {
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.settings-avatar {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1rem;
+}
+
+.settings-avatar-fallback {
+  background: var(--gris);
+  color: var(--gris-claro);
+  border: 1px solid var(--gris);
+}
+
+.settings-profile-name {
+  margin: 0 0 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--blanco);
+}
+
+.settings-profile-email {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--gris-claro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  padding: 0 1rem;
+}
+
+.settings-section-card {
+  background: var(--gris-oscuro);
+  border: 1px solid var(--gris);
+}
+
+.settings-section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0;
+}
+
+.settings-setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--gris);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.settings-setting-item-last {
+  border-bottom: none;
+}
+
+.settings-setting-label {
+  color: var(--blanco);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.settings-setting-value {
+  color: var(--gris-claro);
+  font-weight: 500;
+  text-align: right;
+  min-width: 0;
+}
+
+.settings-theme-selector {
+  position: relative;
+  display: flex;
+  background: var(--negro);
+  border: 1px solid var(--gris);
+  border-radius: 10px;
+  padding: 0.25rem;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.settings-theme-slider {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  width: calc(50% - 0.25rem);
+  height: calc(100% - 0.5rem);
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 45%, #a78bfa 100%);
+  border-radius: 8px;
+  z-index: 0;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.2);
+}
+
+.settings-theme-selector[data-active="dark"] .settings-theme-slider {
+  transform: translateX(100%);
+}
+
+.settings-theme-selector-no-transition .settings-theme-slider {
+  transition: none;
+}
+
+.settings-theme-btn {
+  position: relative;
+  z-index: 1;
+  color: var(--gris-claro);
+  font-weight: 600;
+  transition: color 0.2s ease;
+  background: transparent !important;
+}
+
+.settings-theme-btn:hover {
+  background: transparent !important;
+  color: var(--blanco);
+}
+
+.settings-theme-btn-active {
+  color: #fff !important;
+}
+
+.settings-lang-selector {
+  position: relative;
+  display: flex;
+  background: var(--negro);
+  border: 1px solid var(--gris);
+  border-radius: 10px;
+  padding: 0.25rem;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.settings-lang-slider {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  width: calc(50% - 0.25rem);
+  height: calc(100% - 0.5rem);
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 45%, #a78bfa 100%);
+  border-radius: 8px;
+  z-index: 0;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 10px rgba(139, 92, 246, 0.2);
+}
+
+.settings-lang-selector[data-active="es"] .settings-lang-slider {
+  transform: translateX(100%);
+}
+
+.settings-lang-btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--gris-claro);
+  font-weight: 600;
+  transition: color 0.2s ease, transform 0.2s ease;
+  background: transparent !important;
+}
+
+.settings-lang-flag {
+  width: 1.25rem;
+  height: 0.9rem;
+  object-fit: cover;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.settings-lang-btn:hover {
+  background: transparent !important;
+  color: var(--blanco);
+  transform: scale(1.02);
+}
+
+.settings-lang-btn-active {
+  color: #fff !important;
+  text-shadow: 0 0 8px rgba(139, 92, 246, 0.25);
+}
+
+.settings-signout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: var(--danger);
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.settings-signout-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: var(--danger);
+}
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 1rem 0.75rem;
+    margin-bottom: 5rem;
+  }
+
+  .settings-avatar {
+    width: 64px;
+    height: 64px;
+  }
+
+  .settings-setting-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .settings-setting-label {
+    margin-bottom: 0;
+  }
+
+  .settings-theme-selector,
+  .settings-lang-selector {
+    width: 100%;
+  }
 }
 
 /* ── shadcn/ui: variables semánticas mapeadas al diseño del proyecto ── */

@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface Sub {
   id: string;
@@ -49,57 +58,44 @@ export default function Day({
   setActiveDay,
 }: DayProps) {
   const dayNum = dayNumber.toString().padStart(2, "0");
-  const showPopup = activeDay === dayNumber;
-  const hasContent = subsForDay.length > 0 || transactions.length > 0;
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    setIsTouchDevice(
-      "ontouchstart" in window || navigator.maxTouchPoints > 0
-    );
-  }, []);
+  const hasSubscriptions = subsForDay.length > 0;
+  const hasContent = hasSubscriptions || transactions.length > 0;
+  const isClickable = hasContent && !hasSubscriptions;
+  const showPopup = activeDay === dayNumber && isClickable;
 
   const renderIcons = () => {
-    if (icons.length > 2) {
+    const iconList = icons ?? [];
+    if (iconList.length > 2) {
       return (
         <>
-          {icons.slice(0, 1).map((iconUrl, idx) => (
-            <img
-              key={idx}
-              src={iconUrl}
-              alt="subscription icon"
-              className="subscription_icon"
-            />
+          {iconList.slice(0, 1).map((iconUrl, idx) => (
+            <Avatar key={idx} className="subscription_icon shrink-0">
+              <AvatarImage src={iconUrl} alt="subscription" />
+            </Avatar>
           ))}
-          <div className="subscription_overflow">+{icons.length - 1}</div>
+          <Badge variant="secondary" className="subscription_overflow shrink-0">
+            +{iconList.length - 1}
+          </Badge>
         </>
       );
     }
-    return icons.map((iconUrl, idx) => (
-      <img
-        key={idx}
-        src={iconUrl}
-        alt="subscription icon"
-        className="subscription_icon"
-      />
+    return iconList.map((iconUrl, idx) => (
+      <Avatar key={idx} className="subscription_icon shrink-0">
+        <AvatarImage src={iconUrl} alt="subscription" />
+      </Avatar>
     ));
   };
 
-  const handleEnter = () =>
-    !isTouchDevice && setActiveDay(activeDay === dayNumber ? null : dayNumber);
-  const handleLeave = () => !isTouchDevice && setActiveDay(null);
-  const handleClick = () => setActiveDay(activeDay === dayNumber ? null : dayNumber);
+  const handleClick = () => isClickable && setActiveDay(activeDay === dayNumber ? null : dayNumber);
 
   return (
     <div
-      className={`dia ${isToday ? "diaActual" : ""}${hasContent ? " hasSubs" : ""}`}
+      className={cn("dia", isToday && "diaActual", isClickable && "hasSubs")}
       style={dayStyle}
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
       onClick={handleClick}
-      onKeyDown={(e) => e.key === "Enter" && handleClick()}
-      role={hasContent ? "button" : undefined}
-      tabIndex={hasContent ? 0 : undefined}
+      onKeyDown={(e) => isClickable && e.key === "Enter" && handleClick()}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
     >
       <div className="icons_container">{renderIcons()}</div>
       {transactions.length > 0 && (
@@ -118,40 +114,57 @@ export default function Day({
         </div>
       )}
       <div className="number">{dayNum}</div>
-      {showPopup && hasContent && (
-        <div className="popup">
-          <h3>Day {dayNumber}</h3>
-          {subsForDay.length > 0 && (
-            <div className="popup_content">
-              {subsForDay.map((sub) => (
-                <div key={sub.id} className="popup_item">
-                  <img src={sub.icon} alt="" className="iconInfo" style={{ width: 30, height: 30, borderRadius: "50%" }} />
-                  <div className="popup_header" style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <strong>{sub.service_name}</strong>
-                    <span>{sub.cost}€</span>
-                    <span style={{ fontSize: "0.75rem", color: "var(--gris-claro)" }}>
-                      Every {sub.frequency_value} {getFrequencyText(sub.frequency)}
+      <Sheet open={showPopup} onOpenChange={(open) => !open && setActiveDay(null)}>
+        <SheetContent
+          side="bottom"
+          className="rounded-t-2xl pb-[env(safe-area-inset-bottom)]"
+          showCloseButton={true}
+        >
+          <SheetHeader>
+            <SheetTitle className="text-primary">Day {dayNumber}</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-4 overflow-y-auto max-h-[60vh]">
+            {subsForDay.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {subsForDay.map((sub) => (
+                  <Card key={sub.id} className="bg-muted/50 border-border">
+                    <CardContent className="flex flex-row items-center gap-3 p-4">
+                      <Avatar className="size-8 shrink-0">
+                        <AvatarImage src={sub.icon} alt={sub.service_name} />
+                      </Avatar>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <strong className="text-sm truncate">{sub.service_name}</strong>
+                        <span className="font-semibold">{sub.cost}€</span>
+                        <span className="text-xs text-muted-foreground">
+                          Every {sub.frequency_value} {getFrequencyText(sub.frequency)}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+            {transactions.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-border">
+                {transactions.map((tx) => (
+                  <div key={tx.id} className="flex justify-between items-center">
+                    <span className="text-sm truncate">{tx.description || tx.category?.name || "Tx"}</span>
+                    <span
+                      className="font-bold text-sm shrink-0 ml-2"
+                      style={{
+                        color: tx.type === "income" ? "var(--success)" : "var(--danger)",
+                      }}
+                    >
+                      {tx.type === "income" ? "+" : "-"}
+                      {Number(tx.amount).toFixed(2)}€
                     </span>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {transactions.length > 0 && (
-            <div style={{ marginTop: "0.5rem", borderTop: "1px solid var(--gris)", paddingTop: "0.5rem" }}>
-              {transactions.map((tx) => (
-                <div key={tx.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span>{tx.description || tx.category?.name || "Tx"}</span>
-                  <span style={{ color: tx.type === "income" ? "var(--success)" : "var(--danger)", fontWeight: 700 }}>
-                    {tx.type === "income" ? "+" : "-"}
-                    {Number(tx.amount).toFixed(2)}€
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+                ))}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
