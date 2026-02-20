@@ -523,11 +523,16 @@ body {
   background: var(--gris);
 }
 
+.settings-scroll-area {
+  padding-right: 0.5rem;
+}
+
 .settings-content {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
+  padding-bottom: 1rem;
 }
 
 .settings-profile-card {
@@ -571,11 +576,10 @@ body {
   margin: 0;
   font-size: 0.9rem;
   color: var(--gris-claro);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   max-width: 100%;
   padding: 0 1rem;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .settings-section-card {
@@ -823,8 +827,8 @@ html[data-theme="light"] {
   --secondary-foreground: var(--blanco);
   --muted: var(--gris);
   --muted-foreground: var(--gris-claro);
-  /* --accent lo define el tema del proyecto (púrpura), no sobrescribir */
-  --accent-foreground: var(--blanco);
+  /* Texto blanco sobre fondo accent (púrpura) en hover para buen contraste */
+  --accent-foreground: #ffffff;
   --destructive: var(--danger);
   --destructive-foreground: #ffffff;
   --border: var(--gris);
@@ -843,6 +847,17 @@ html[data-theme="light"] {
   --sidebar-accent-foreground: var(--blanco);
   --sidebar-border: var(--gris);
   --sidebar-ring: var(--accent);
+}
+
+/* Fix: texto blanco en hover con fondo accent (modo claro) para buen contraste */
+html[data-theme="light"] [data-slot="button"][data-variant="ghost"]:hover,
+html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover {
+  color: #ffffff !important;
+}
+html[data-theme="light"] [data-slot="button"][data-variant="ghost"]:hover svg,
+html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 @layer base {

@@ -59,8 +59,7 @@ export default function Day({
 }: DayProps) {
   const dayNum = dayNumber.toString().padStart(2, "0");
   const hasSubscriptions = subsForDay.length > 0;
-  const hasContent = hasSubscriptions || transactions.length > 0;
-  const isClickable = hasContent && !hasSubscriptions;
+  const isClickable = hasSubscriptions;
   const showPopup = activeDay === dayNumber && isClickable;
 
   const renderIcons = () => {

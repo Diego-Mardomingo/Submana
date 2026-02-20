@@ -4,11 +4,32 @@ import { useState, useEffect, useLayoutEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import { Sun, Moon, LogOut } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useLangContext } from "@/contexts/LangContext";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
@@ -36,6 +57,7 @@ export default function SettingsBody() {
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
   const [sliderTransitionReady, setSliderTransitionReady] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
 
   useLayoutEffect(() => {
     const t = getTheme();
@@ -64,11 +86,13 @@ export default function SettingsBody() {
     setLang(newLang);
   };
 
-  const handleSignOut = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSignOutClick = () => setSignOutOpen(true);
+
+  const handleSignOutConfirm = async () => {
     await supabase.auth.signOut();
     document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    setSignOutOpen(false);
     window.location.href = "/login";
   };
 
@@ -79,6 +103,7 @@ export default function SettingsBody() {
         <Separator className="settings-separator" />
       </div>
 
+      <ScrollArea className="settings-scroll-area h-[calc(100dvh-12rem)]">
       <div className="settings-content">
         <Card className="settings-profile-card border-border">
           <CardContent className="pt-6 pb-6">
@@ -120,10 +145,15 @@ export default function SettingsBody() {
             <CardTitle className="settings-section-title text-base">
               {t("settings.preferences")}
             </CardTitle>
+            <CardDescription className="text-muted-foreground text-sm">
+              {t("settings.preferencesDesc")}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="settings-setting-item">
-              <span className="settings-setting-label">{t("settings.theme")}</span>
+              <Label className="settings-setting-label text-foreground font-semibold">
+                {t("settings.theme")}
+              </Label>
               <div
                 className={cn(
                   "settings-theme-selector",
@@ -132,75 +162,97 @@ export default function SettingsBody() {
                 data-active={theme}
               >
                 <div className="settings-theme-slider" />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "settings-theme-btn flex-1",
-                    theme === "light" && "settings-theme-btn-active"
-                  )}
-                  onClick={() => handleThemeChange("light")}
-                >
-                  <Sun className="size-4" />
-                  <span>{t("settings.theme.light")}</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "settings-theme-btn flex-1",
-                    theme === "dark" && "settings-theme-btn-active"
-                  )}
-                  onClick={() => handleThemeChange("dark")}
-                >
-                  <Moon className="size-4" />
-                  <span>{t("settings.theme.dark")}</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "settings-theme-btn flex-1",
+                        theme === "light" && "settings-theme-btn-active"
+                      )}
+                      onClick={() => handleThemeChange("light")}
+                    >
+                      <Sun className="size-4" />
+                      <span>{t("settings.theme.light")}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t("settings.theme.light")}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "settings-theme-btn flex-1",
+                        theme === "dark" && "settings-theme-btn-active"
+                      )}
+                      onClick={() => handleThemeChange("dark")}
+                    >
+                      <Moon className="size-4" />
+                      <span>{t("settings.theme.dark")}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t("settings.theme.dark")}</TooltipContent>
+                </Tooltip>
               </div>
             </div>
             <div className="settings-setting-item">
-              <span className="settings-setting-label">{t("settings.language")}</span>
+              <Label className="settings-setting-label text-foreground font-semibold">
+                {t("settings.language")}
+              </Label>
               <div
                 className="settings-lang-selector"
                 data-active={lang}
               >
                 <div className="settings-lang-slider" />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "settings-lang-btn flex-1",
-                    lang === "en" && "settings-lang-btn-active"
-                  )}
-                  onClick={() => handleLangChange("en")}
-                >
-                  <img
-                    src="https://flagcdn.com/w40/us.png"
-                    alt=""
-                    className="settings-lang-flag"
-                  />
-                  <span>English</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "settings-lang-btn flex-1",
-                    lang === "es" && "settings-lang-btn-active"
-                  )}
-                  onClick={() => handleLangChange("es")}
-                >
-                  <img
-                    src="https://flagcdn.com/w40/es.png"
-                    alt=""
-                    className="settings-lang-flag"
-                  />
-                  <span>Español</span>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "settings-lang-btn flex-1",
+                        lang === "en" && "settings-lang-btn-active"
+                      )}
+                      onClick={() => handleLangChange("en")}
+                    >
+                      <img
+                        src="https://flagcdn.com/w40/us.png"
+                        alt=""
+                        className="settings-lang-flag"
+                      />
+                      <span>English</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">English</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "settings-lang-btn flex-1",
+                        lang === "es" && "settings-lang-btn-active"
+                      )}
+                      onClick={() => handleLangChange("es")}
+                    >
+                      <img
+                        src="https://flagcdn.com/w40/es.png"
+                        alt=""
+                        className="settings-lang-flag"
+                      />
+                      <span>Español</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Español</TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </CardContent>
@@ -211,20 +263,42 @@ export default function SettingsBody() {
             <CardTitle className="settings-section-title text-base">
               {t("settings.actions")}
             </CardTitle>
+            <CardDescription className="text-muted-foreground text-sm">
+              {t("settings.actionsDesc")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
               variant="outline"
               className="settings-signout-btn w-full"
-              onClick={handleSignOut}
+              onClick={handleSignOutClick}
             >
               <LogOut className="size-4" />
               <span>{t("settings.signout")}</span>
             </Button>
           </CardContent>
         </Card>
-
       </div>
+      </ScrollArea>
+
+      <Dialog open={signOutOpen} onOpenChange={setSignOutOpen}>
+        <DialogContent showCloseButton>
+          <DialogHeader>
+            <DialogTitle>{t("settings.signoutConfirmTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("settings.signoutConfirmDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSignOutOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleSignOutConfirm}>
+              {t("settings.signout")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

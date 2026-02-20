@@ -16,6 +16,13 @@ import {
 } from "lucide-react";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import styles from "./Navigation.module.css";
 
 const iconProps = { size: 20, strokeWidth: 1.5 };
@@ -35,13 +42,15 @@ export default function Navigation() {
     href,
     children,
     extra,
+    label,
   }: {
     href: string;
     children: React.ReactNode;
     extra?: boolean;
+    label: string;
   }) => {
     const isActive = currentPath === href;
-    return (
+    const linkEl = (
       <Link
         href={href}
         className={`${styles.navItem} ${isActive ? styles.active : ""} ${extra ? styles.extraItem : ""}`}
@@ -49,6 +58,14 @@ export default function Navigation() {
       >
         {children}
       </Link>
+    );
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+        <TooltipContent side="top" sideOffset={8}>
+          {label}
+        </TooltipContent>
+      </Tooltip>
     );
   };
 
@@ -74,49 +91,57 @@ export default function Navigation() {
             </Link>
           </div>
           <div className={styles.navItemsWrapper}>
-            <NavLink href="/">
+            <NavLink href="/" label={t("nav.home")}>
               <House {...iconProps} />
               <span>{t("nav.home")}</span>
             </NavLink>
-            <NavLink href="/subscriptions">
+            <NavLink href="/subscriptions" label={t("nav.subscriptions")}>
               <Calendar {...iconProps} />
               <span>{t("nav.subscriptions")}</span>
             </NavLink>
-            <NavLink href="/accounts" extra>
+            <NavLink href="/accounts" extra label={t("nav.accounts")}>
               <CreditCard {...iconProps} />
               <span>{t("nav.accounts")}</span>
             </NavLink>
-            <NavLink href="/transactions">
+            <NavLink href="/transactions" label={t("nav.transactions")}>
               <Receipt {...iconProps} />
               <span>{t("nav.transactions")}</span>
             </NavLink>
-            <NavLink href="/categories" extra>
+            <NavLink href="/categories" extra label={t("nav.categories")}>
               <Tags {...iconProps} />
               <span>{t("nav.categories")}</span>
             </NavLink>
-            <NavLink href="/notifications" extra>
+            <NavLink href="/notifications" extra label={t("nav.notifications")}>
               <Bell {...iconProps} />
               <span>{t("nav.notifications")}</span>
             </NavLink>
-            <NavLink href="/settings" extra>
+            <NavLink href="/settings" extra label={t("nav.settings")}>
               <Settings {...iconProps} />
               <span>{t("nav.settings")}</span>
             </NavLink>
-            <button
-              type="button"
-              className={`${styles.navItem} ${styles.moreBtn}`}
-              onClick={() => setExpanded((e) => !e)}
-              aria-label={t("nav.menu")}
-            >
-              <div className={styles.iconContainer}>
-                {expanded ? (
-                  <ChevronDown {...iconProps} />
-                ) : (
-                  <ChevronUp {...iconProps} />
-                )}
-              </div>
-              <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={cn(styles.navItem, styles.moreBtn)}
+                  onClick={() => setExpanded((e) => !e)}
+                  aria-label={t("nav.menu")}
+                >
+                  <div className={styles.iconContainer}>
+                    {expanded ? (
+                      <ChevronDown {...iconProps} />
+                    ) : (
+                      <ChevronUp {...iconProps} />
+                    )}
+                  </div>
+                  <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>
+                {expanded ? t("nav.close") : t("nav.menu")}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </nav>
