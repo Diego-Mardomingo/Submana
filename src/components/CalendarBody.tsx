@@ -242,7 +242,7 @@ export default function CalendarBody() {
       if (subs.length > 0 || txs.length > 0) daysWithContent.add(d);
     });
     return Array.from(daysWithContent)
-      .sort((a, b) => b - a)
+      .sort((a, b) => a - b)
       .map((dayNumber) => ({
         dayNumber,
         isToday: getIsToday(dayNumber),
