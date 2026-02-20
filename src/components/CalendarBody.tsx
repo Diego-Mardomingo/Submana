@@ -82,10 +82,8 @@ export default function CalendarBody() {
   const queryClient = useQueryClient();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
-  const [activeDay, setActiveDay] = useState<number | null>(null);
 
   const scrollToDay = (dayNumber: number) => {
-    setActiveDay(dayNumber);
     const el = document.getElementById(`calendar-day-${dayNumber}`);
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -176,11 +174,55 @@ export default function CalendarBody() {
     );
   const getSubsForDay = (dayNumber: number) =>
     subscriptions.filter((sub: SubForCalendar) => isPaymentDay(sub, year, month, dayNumber));
-  const getTransactionsForDay = (dayNumber: number) =>
-    (transactions || []).filter((tx: TxForCalendar) => {
+  type TxWithAmount = TxForCalendar & { amount?: number; type?: string };
+  const getTransactionsForDay = (dayNumber: number): TxWithAmount[] =>
+    (transactions || []).filter((tx: TxWithAmount) => {
       const d = new Date(tx.date);
       return d.getFullYear() === year && d.getMonth() === month && d.getDate() === dayNumber;
     });
+
+  const getSpentValue = () => {
+    let spent = 0;
+    daysArray.forEach((dayNumber) => {
+      subscriptions.forEach((sub: SubForCalendar) => {
+        if (isPaymentDay(sub, year, month, dayNumber)) {
+          spent = parseFloat((spent + Number(sub.cost)).toFixed(2));
+        }
+      });
+    });
+    return spent;
+  };
+
+  const getWeightsForDay = (() => {
+    let monthIncome = 0;
+    let monthExpense = 0;
+    (transactions || []).forEach((tx: TxWithAmount) => {
+      const amt = Number(tx.amount) || 0;
+      if (tx.type === "income") monthIncome += amt;
+      else monthExpense += amt;
+    });
+    const monthSubExpense = getSpentValue();
+    const totalMonthExpense = monthExpense + monthSubExpense;
+
+    return (dayNumber: number) => {
+      const dayTxs = getTransactionsForDay(dayNumber);
+      const daySubs = getSubsForDay(dayNumber);
+      let dayIncome = 0;
+      let dayExpense = 0;
+      dayTxs.forEach((tx: TxWithAmount) => {
+        const amt = Number(tx.amount) || 0;
+        if (tx.type === "income") dayIncome += amt;
+        else dayExpense += amt;
+      });
+      daySubs.forEach((sub: SubForCalendar) => {
+        dayExpense += Number(sub.cost) || 0;
+      });
+      return {
+        incomeWeight: monthIncome > 0 ? Math.min(1, dayIncome / monthIncome) : 0,
+        expenseWeight: totalMonthExpense > 0 ? Math.min(1, dayExpense / totalMonthExpense) : 0,
+      };
+    };
+  })();
   const getIsToday = (dayNumber: number) =>
     year === new Date().getFullYear() &&
     month === new Date().getMonth() &&
@@ -208,18 +250,6 @@ export default function CalendarBody() {
         transactions: getTransactionsForDay(dayNumber) as DayEntry["transactions"],
       }));
   })();
-
-  const getSpentValue = () => {
-    let spent = 0;
-    daysArray.forEach((dayNumber) => {
-      subscriptions.forEach((sub: SubForCalendar) => {
-        if (isPaymentDay(sub, year, month, dayNumber)) {
-          spent = parseFloat((spent + Number(sub.cost)).toFixed(2));
-        }
-      });
-    });
-    return spent;
-  };
 
   return (
     <div className="calendar_container">
@@ -293,8 +323,8 @@ export default function CalendarBody() {
               icons={getSubsIconsForDay(dayNumber)}
               subsForDay={getSubsForDay(dayNumber)}
               transactions={getTransactionsForDay(dayNumber)}
-              isActive={activeDay === dayNumber}
               onDayClick={scrollToDay}
+              {...getWeightsForDay(dayNumber)}
             />
           );
         })}

@@ -29,8 +29,9 @@ interface DayProps {
   icons: string[];
   subsForDay: Sub[];
   transactions: Transaction[];
-  isActive?: boolean;
   onDayClick?: (dayNumber: number) => void;
+  incomeWeight?: number;
+  expenseWeight?: number;
 }
 
 export default function Day({
@@ -40,8 +41,9 @@ export default function Day({
   icons,
   subsForDay,
   transactions,
-  isActive,
   onDayClick,
+  incomeWeight = 0,
+  expenseWeight = 0,
 }: DayProps) {
   const dayNum = dayNumber.toString().padStart(2, "0");
   const hasSubscriptions = subsForDay.length > 0;
@@ -50,6 +52,9 @@ export default function Day({
 
   const hasIncome = transactions.some((t) => t.type === "income");
   const hasExpense = transactions.some((t) => t.type === "expense");
+
+  const incomeScale = 0.9 + incomeWeight * 0.25;
+  const expenseScale = 0.9 + expenseWeight * 0.25;
 
   const renderIcons = () => {
     const iconList = icons ?? [];
@@ -97,8 +102,7 @@ export default function Day({
       className={cn(
         "dia",
         isToday && "diaActual",
-        isClickable && "hasSubs",
-        isActive && "diaActive"
+        isClickable && "hasSubs"
       )}
       style={dayStyle}
       onClick={handleClick}
@@ -111,13 +115,31 @@ export default function Day({
           : `Day ${dayNumber}`
       }
     >
-      {hasTransactions && (
-        <div className="tx-indicator" aria-hidden>
-          {hasIncome && <span className="tx-dot tx-dot-income" />}
-          {hasExpense && <span className="tx-dot tx-dot-expense" />}
-        </div>
+      {hasIncome && (
+        <span
+          className="tx-dot tx-dot-income tx-dot-tl"
+          aria-hidden
+          style={{
+            opacity: 0.85 + incomeWeight * 0.15,
+            filter: `brightness(${0.92 + incomeWeight * 0.25})`,
+            transform: `scale(${incomeScale})`,
+          }}
+        />
       )}
-      <div className="icons_container">{renderIcons()}</div>
+      {hasExpense && (
+        <span
+          className="tx-dot tx-dot-expense tx-dot-tr"
+          aria-hidden
+          style={{
+            opacity: 0.85 + expenseWeight * 0.15,
+            filter: `brightness(${0.92 + expenseWeight * 0.25})`,
+            transform: `scale(${expenseScale})`,
+          }}
+        />
+      )}
+      <div className="dia_center">
+        <div className="icons_container">{renderIcons()}</div>
+      </div>
       <div className="number">{dayNum}</div>
     </div>
   );
