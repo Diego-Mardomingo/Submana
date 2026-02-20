@@ -144,6 +144,41 @@
   cursor: pointer;
 }
 
+.dia.diaActive {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* ─── Transaction indicator dots (minimal, corner) ─── */
+.tx-indicator {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.tx-dot {
+  width: 5px;
+  height: 5px;
+  min-width: 5px;
+  min-height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tx-dot-income {
+  background-color: var(--success);
+}
+
+.tx-dot-expense {
+  background-color: var(--danger);
+}
+
 .dia.diaActual {
   border: 1px solid var(--accent);
   background-color: var(--accent-soft);
@@ -353,6 +388,19 @@
     height: 18px;
     font-size: 0.5rem;
     margin-left: -6px;
+  }
+
+  .tx-indicator {
+    top: 0.15rem;
+    right: 0.15rem;
+    gap: 2px;
+  }
+
+  .tx-dot {
+    width: 4px;
+    height: 4px;
+    min-width: 4px;
+    min-height: 4px;
   }
 }
 
@@ -629,4 +677,257 @@
 .sub-cost {
   font-weight: 700;
   color: var(--blanco);
+}
+
+/* ─── Calendar Day List (registry below calendar) ─── */
+.calendar-day-list {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--gris);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.calendar-day-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  height: 16rem;
+  max-height: 16rem;
+  border-radius: 8px;
+  border: 1px solid var(--gris);
+  background: var(--gris-oscuro);
+  padding: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gris) transparent;
+}
+
+.calendar-day-list-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.calendar-day-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.calendar-day-list-scroll::-webkit-scrollbar-thumb {
+  background: var(--gris);
+  border-radius: 3px;
+}
+
+.calendar-day-list-empty {
+  height: 16rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--gris-claro);
+  font-size: 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--gris);
+  background: var(--gris-oscuro);
+}
+
+.calendar-day-list-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-bottom: 0.25rem;
+}
+
+.calendar-day-section {
+  scroll-margin-top: 0.5rem;
+}
+
+.calendar-day-section-today .calendar-day-header-label {
+  color: var(--accent);
+}
+
+.calendar-day-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+  text-transform: capitalize;
+}
+
+.calendar-day-header-label {
+  color: var(--blanco);
+}
+
+.calendar-day-header-badge {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+.calendar-day-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.calendar-day-card {
+  border-radius: 6px;
+  border: 1px solid var(--gris);
+  background: var(--negro);
+  overflow: hidden;
+  padding: 0 !important;
+  gap: 0 !important;
+}
+
+.calendar-day-card-sub {
+  border-left: 2px solid var(--accent);
+}
+
+.calendar-day-card-tx {
+  border-left: 2px solid transparent;
+}
+
+.calendar-day-card-content {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.2rem 0.5rem !important;
+  min-height: 2.5rem;
+}
+
+.calendar-day-avatar {
+  border-radius: 5px;
+  width: 26px !important;
+  height: 26px !important;
+  min-width: 26px;
+  min-height: 26px;
+}
+
+.calendar-day-card-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+}
+
+.calendar-day-card-title {
+  font-weight: 600;
+  color: var(--blanco);
+  font-size: 0.875rem;
+  line-height: 1.2;
+}
+
+.calendar-day-card-meta {
+  font-size: 0.75rem;
+  color: var(--gris-claro);
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.calendar-day-card-meta-icon {
+  opacity: 0.7;
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+}
+
+.calendar-day-card-amount {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.calendar-day-card-amount-income {
+  color: var(--success);
+}
+
+.calendar-day-card-amount-expense {
+  color: var(--danger);
+}
+
+.calendar-day-tx-icon {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.calendar-day-tx-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.calendar-day-tx-icon-income {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.calendar-day-tx-icon-expense {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .calendar-day-list-scroll {
+    height: 14.5rem;
+    max-height: 14.5rem;
+  }
+
+  .calendar-day-list-empty {
+    height: 14.5rem;
+    font-size: 0.75rem;
+  }
+
+  .calendar-day-header {
+    font-size: 0.72rem;
+  }
+
+  .calendar-day-card-content {
+    padding: 0.2rem 0.45rem !important;
+    gap: 0.45rem;
+    min-height: 2.25rem;
+  }
+
+  .calendar-day-card-title {
+    font-size: 0.75rem;
+  }
+
+  .calendar-day-card-meta {
+    font-size: 0.68rem;
+  }
+
+  .calendar-day-card-amount {
+    font-size: 0.75rem;
+  }
+
+  .calendar-day-avatar {
+    width: 22px !important;
+    height: 22px !important;
+    min-width: 22px;
+    min-height: 22px;
+  }
+
+  .calendar-day-tx-icon {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+  }
+
+  .calendar-day-tx-icon svg {
+    width: 11px;
+    height: 11px;
+  }
 }

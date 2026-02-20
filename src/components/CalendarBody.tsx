@@ -11,6 +11,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import Day from "./Day";
+import CalendarDayList, { type DayEntry } from "./CalendarDayList";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 
@@ -82,6 +83,12 @@ export default function CalendarBody() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
   const [activeDay, setActiveDay] = useState<number | null>(null);
+
+  const scrollToDay = (dayNumber: number) => {
+    setActiveDay(dayNumber);
+    const el = document.getElementById(`calendar-day-${dayNumber}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const { data: subscriptions = [] } = useSubscriptions();
   const { data: transactions = [], isLoading } = useTransactions(year, month);
@@ -185,6 +192,23 @@ export default function CalendarBody() {
     onSwipeUp: handleToday,
   });
 
+  const dayEntries: DayEntry[] = (() => {
+    const daysWithContent = new Set<number>();
+    daysArray.forEach((d) => {
+      const subs = getSubsForDay(d);
+      const txs = getTransactionsForDay(d);
+      if (subs.length > 0 || txs.length > 0) daysWithContent.add(d);
+    });
+    return Array.from(daysWithContent)
+      .sort((a, b) => b - a)
+      .map((dayNumber) => ({
+        dayNumber,
+        isToday: getIsToday(dayNumber),
+        subs: getSubsForDay(dayNumber) as DayEntry["subs"],
+        transactions: getTransactionsForDay(dayNumber) as DayEntry["transactions"],
+      }));
+  })();
+
   const getSpentValue = () => {
     let spent = 0;
     daysArray.forEach((dayNumber) => {
@@ -269,13 +293,14 @@ export default function CalendarBody() {
               icons={getSubsIconsForDay(dayNumber)}
               subsForDay={getSubsForDay(dayNumber)}
               transactions={getTransactionsForDay(dayNumber)}
-              activeDay={activeDay}
-              setActiveDay={setActiveDay}
+              isActive={activeDay === dayNumber}
+              onDayClick={scrollToDay}
             />
           );
         })}
       </section>
       </div>
+      <CalendarDayList dayEntries={dayEntries} year={year} month={month} />
     </div>
   );
 }
