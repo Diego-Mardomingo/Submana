@@ -67,22 +67,36 @@ export default function Day({
     if (iconList.length > 2) {
       return (
         <>
-          {iconList.slice(0, 1).map((iconUrl, idx) => (
-            <Avatar key={idx} className="subscription_icon shrink-0">
-              <AvatarImage src={iconUrl} alt="subscription" />
-            </Avatar>
-          ))}
+          {iconList.slice(0, 1).map((iconUrl, idx) => {
+            const subId = subsForDay[idx]?.id ?? idx;
+            return (
+              <Avatar
+                key={idx}
+                className="subscription_icon shrink-0"
+                style={{ viewTransitionName: `sub-icon-${subId}-day-${dayNumber}` }}
+              >
+                <AvatarImage src={iconUrl} alt="subscription" />
+              </Avatar>
+            );
+          })}
           <Badge variant="secondary" className="subscription_overflow shrink-0">
             +{iconList.length - 1}
           </Badge>
         </>
       );
     }
-    return iconList.map((iconUrl, idx) => (
-      <Avatar key={idx} className="subscription_icon shrink-0">
-        <AvatarImage src={iconUrl} alt="subscription" />
-      </Avatar>
-    ));
+    return iconList.map((iconUrl, idx) => {
+      const subId = subsForDay[idx]?.id ?? idx;
+      return (
+        <Avatar
+          key={idx}
+          className="subscription_icon shrink-0"
+          style={{ viewTransitionName: `sub-icon-${subId}-day-${dayNumber}` }}
+        >
+          <AvatarImage src={iconUrl} alt="subscription" />
+        </Avatar>
+      );
+    });
   };
 
   const handleClick = () => isClickable && setActiveDay(activeDay === dayNumber ? null : dayNumber);
