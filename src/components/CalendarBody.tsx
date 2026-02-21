@@ -180,6 +180,24 @@ export default function CalendarBody() {
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft") {
+        changeMonth(-1);
+      } else if (e.key === "ArrowRight") {
+        changeMonth(1);
+      } else if (e.key === "ArrowDown") {
+        handleToday();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [month, year]);
+
   const prefetchMonth = (delta: number) => {
     let newMonth = month + delta;
     let newYear = year;
