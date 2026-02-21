@@ -11,7 +11,9 @@ export type UIKey = keyof (typeof ui)[typeof defaultLang];
 export const ui = {
   en: {
     "nav.home": "Home",
+    "nav.dashboard": "Dashboard",
     "nav.subscriptions": "Subscriptions",
+    "nav.budgets": "Budgets",
     "nav.accounts": "Accounts",
     "nav.transactions": "Transactions",
     "nav.categories": "Categories",
@@ -131,7 +133,9 @@ export const ui = {
   },
   es: {
     "nav.home": "Inicio",
+    "nav.dashboard": "Panel",
     "nav.subscriptions": "Suscripciones",
+    "nav.budgets": "Presupuestos",
     "nav.accounts": "Cuentas",
     "nav.transactions": "Transacciones",
     "nav.categories": "Categorías",

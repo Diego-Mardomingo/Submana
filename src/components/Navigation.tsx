@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { useState, useCallback } from "react";
 import {
   House,
+  LayoutDashboard,
   Calendar,
   CreditCard,
   Receipt,
   Tags,
   Bell,
   Settings,
+  Wallet,
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
@@ -95,21 +97,29 @@ export default function Navigation() {
               <House {...iconProps} />
               <span>{t("nav.home")}</span>
             </NavLink>
-            <NavLink href="/subscriptions" label={t("nav.subscriptions")}>
-              <Calendar {...iconProps} />
-              <span>{t("nav.subscriptions")}</span>
-            </NavLink>
-            <NavLink href="/accounts" extra label={t("nav.accounts")}>
-              <CreditCard {...iconProps} />
-              <span>{t("nav.accounts")}</span>
+            <NavLink href="/dashboard" label={t("nav.dashboard")}>
+              <LayoutDashboard {...iconProps} />
+              <span>{t("nav.dashboard")}</span>
             </NavLink>
             <NavLink href="/transactions" label={t("nav.transactions")}>
               <Receipt {...iconProps} />
               <span>{t("nav.transactions")}</span>
             </NavLink>
+            <NavLink href="/accounts" extra label={t("nav.accounts")}>
+              <CreditCard {...iconProps} />
+              <span>{t("nav.accounts")}</span>
+            </NavLink>
             <NavLink href="/categories" extra label={t("nav.categories")}>
               <Tags {...iconProps} />
               <span>{t("nav.categories")}</span>
+            </NavLink>
+            <NavLink href="/subscriptions" extra label={t("nav.subscriptions")}>
+              <Calendar {...iconProps} />
+              <span>{t("nav.subscriptions")}</span>
+            </NavLink>
+            <NavLink href="/budgets" extra label={t("nav.budgets")}>
+              <Wallet {...iconProps} />
+              <span>{t("nav.budgets")}</span>
             </NavLink>
             <NavLink href="/notifications" extra label={t("nav.notifications")}>
               <Bell {...iconProps} />
