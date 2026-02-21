@@ -56,8 +56,33 @@ export default function Day({
   const incomeScale = 0.75 + incomeWeight * 0.8;
   const expenseScale = 0.75 + expenseWeight * 0.8;
 
-  const incomeGlow = `0 0 ${4 + incomeWeight * 10}px rgba(34, 197, 94, ${0.3 + incomeWeight * 0.5})`;
-  const expenseGlow = `0 0 ${4 + expenseWeight * 10}px rgba(239, 68, 68, ${0.3 + expenseWeight * 0.5})`;
+  const incomeAlpha = 0.5 + incomeWeight * 0.5;
+  const expenseAlpha = 0.5 + expenseWeight * 0.5;
+
+  const incomeGlowAlpha = 0.3 + incomeWeight * 0.5;
+  const expenseGlowAlpha = 0.3 + expenseWeight * 0.5;
+  const incomeGlowSize = 4 + incomeWeight * 10;
+  const expenseGlowSize = 4 + expenseWeight * 10;
+
+  const getBgGradient = () => {
+    if (hasIncome && hasExpense) {
+      return `linear-gradient(90deg, rgba(var(--success-rgb), 0.12) 0%, rgba(var(--success-rgb), 0) 50%, rgba(var(--danger-rgb), 0) 50%, rgba(var(--danger-rgb), 0.12) 100%)`;
+    }
+    if (hasIncome) {
+      return `linear-gradient(90deg, rgba(var(--success-rgb), 0.12) 0%, rgba(var(--success-rgb), 0) 100%)`;
+    }
+    if (hasExpense) {
+      return `linear-gradient(90deg, rgba(var(--danger-rgb), 0) 0%, rgba(var(--danger-rgb), 0.12) 100%)`;
+    }
+    return undefined;
+  };
+
+  const bgGradient = getBgGradient();
+
+  const innerShadow = (hasIncome || hasExpense) ? [
+    hasIncome ? `inset 8px 0 12px -4px rgba(var(--success-rgb), 0.08)` : null,
+    hasExpense ? `inset -8px 0 12px -4px rgba(var(--danger-rgb), 0.08)` : null,
+  ].filter(Boolean).join(", ") : undefined;
 
   const renderIcons = () => {
     const iconList = icons ?? [];
@@ -107,7 +132,13 @@ export default function Day({
         isToday && "diaActual",
         isClickable && "hasSubs"
       )}
-      style={dayStyle}
+      style={{
+        ...dayStyle,
+        background: bgGradient 
+          ? `${bgGradient}, linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%, rgba(0, 0, 0, 0.03) 100%), var(--gris-oscuro)`
+          : undefined,
+        boxShadow: innerShadow,
+      }}
       onClick={handleClick}
       onKeyDown={(e) => isClickable && e.key === "Enter" && handleClick()}
       role={isClickable ? "button" : undefined}
@@ -120,25 +151,25 @@ export default function Day({
     >
       {hasIncome && (
         <span
-          className="tx-dot tx-dot-income tx-dot-tl"
+          className="tx-dot tx-dot-tl"
           aria-hidden
           style={{
-            opacity: 0.6 + incomeWeight * 0.4,
+            backgroundColor: `rgba(var(--success-rgb), ${incomeAlpha})`,
             filter: `brightness(${0.85 + incomeWeight * 0.4})`,
             transform: `scale(${incomeScale})`,
-            boxShadow: incomeGlow,
+            boxShadow: `0 0 ${incomeGlowSize}px rgba(var(--success-rgb), ${incomeGlowAlpha})`,
           }}
         />
       )}
       {hasExpense && (
         <span
-          className="tx-dot tx-dot-expense tx-dot-tr"
+          className="tx-dot tx-dot-tr"
           aria-hidden
           style={{
-            opacity: 0.6 + expenseWeight * 0.4,
+            backgroundColor: `rgba(var(--danger-rgb), ${expenseAlpha})`,
             filter: `brightness(${0.85 + expenseWeight * 0.4})`,
             transform: `scale(${expenseScale})`,
-            boxShadow: expenseGlow,
+            boxShadow: `0 0 ${expenseGlowSize}px rgba(var(--danger-rgb), ${expenseGlowAlpha})`,
           }}
         />
       )}

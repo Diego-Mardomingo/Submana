@@ -127,7 +127,9 @@
   min-width: 0;
   aspect-ratio: 1 / 1;
   box-sizing: border-box;
-  background-color: var(--gris-oscuro);
+  background: 
+    linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%, rgba(0, 0, 0, 0.03) 100%),
+    var(--gris-oscuro);
   border: 1px solid var(--gris);
   border-radius: 12px;
   display: flex;
@@ -169,17 +171,8 @@
   right: 0.35rem;
 }
 
-.tx-dot-income {
-  background-color: var(--success);
-}
-
-.tx-dot-expense {
-  background-color: var(--danger);
-}
-
 .dia.diaActual {
   border: 1px solid var(--accent);
-  background-color: var(--accent-soft);
 }
 
 /* ─── Day content: icons + number ─── */
