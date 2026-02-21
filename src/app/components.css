@@ -122,7 +122,7 @@
 }
 
 .dia {
-  padding: 0.2rem;
+  padding: 0.25rem;
   width: 100%;
   min-width: 0;
   aspect-ratio: 1 / 1;
@@ -132,7 +132,7 @@
   border-radius: 12px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: center;
   position: relative;
   overflow: hidden;
@@ -144,28 +144,29 @@
   cursor: pointer;
 }
 
-/* ─── Transaction indicator dots (corners + magnitude) ─── */
+/* ─── Transaction indicator dots (corners) ─── */
 .tx-dot {
   position: absolute;
-  width: 6px;
-  height: 6px;
-  min-width: 6px;
-  min-height: 6px;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
   z-index: 1;
   pointer-events: none;
   transform-origin: center;
+  transition: transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
 }
 
 .tx-dot-tl {
-  top: 0.4rem;
-  left: 0.4rem;
+  top: 0.35rem;
+  left: 0.35rem;
 }
 
 .tx-dot-tr {
-  top: 0.4rem;
-  right: 0.4rem;
+  top: 0.35rem;
+  right: 0.35rem;
 }
 
 .tx-dot-income {
@@ -176,39 +177,39 @@
   background-color: var(--danger);
 }
 
-/* ─── Center area: icons + number ─── */
-.dia_center {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  gap: 0.15rem;
-}
-
 .dia.diaActual {
   border: 1px solid var(--accent);
   background-color: var(--accent-soft);
 }
 
-.dia .number {
+/* ─── Day content: icons + number ─── */
+.dia_content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  gap: 0.3rem;
+}
+
+.dia_content .icons_container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dia_content .number {
   font-size: 1rem;
   font-weight: 500;
   color: var(--blanco);
-  margin-top: auto;
-  flex-shrink: 0;
+  line-height: 1;
 }
 
-.dia.diaActual .number {
+.dia.diaActual .dia_content .number {
   color: var(--accent);
   font-weight: 800;
-}
-
-.dia_center .icons_container {
-  flex-grow: 0;
-  flex-shrink: 1;
 }
 
 .icons_container {
@@ -405,21 +406,11 @@
     margin-left: -6px;
   }
 
-  .tx-dot-tl {
-    top: 0.35rem;
-    left: 0.35rem;
-  }
-
-  .tx-dot-tr {
-    top: 0.35rem;
-    right: 0.35rem;
-  }
-
   .tx-dot {
-    width: 5px;
-    height: 5px;
-    min-width: 5px;
-    min-height: 5px;
+    width: 6px;
+    height: 6px;
+    min-width: 6px;
+    min-height: 6px;
   }
 }
 
@@ -698,14 +689,80 @@
   color: var(--blanco);
 }
 
-/* ─── Calendar Day List (registry below calendar) ─── */
-.calendar-day-list {
+/* ─── Calendar Records Panel: unified collapsible (trigger + list) ─── */
+.calendar-records-panel {
   margin-top: 1rem;
-  padding-top: 1rem;
+  width: 100%;
+  border: 1px solid var(--gris);
+  border-radius: 12px;
+  background: var(--gris-oscuro);
+  overflow: hidden;
+}
+
+.calendar-records-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--blanco);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.calendar-records-trigger:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.calendar-records-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Collapsible content: smooth height + opacity (same duration for open & close) */
+.calendar-collapsible-content {
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.calendar-collapsible-content[data-state="open"] {
+  grid-template-rows: 1fr;
+}
+
+.calendar-collapsible-inner {
+  overflow: hidden;
+  min-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  transform-origin: top center;
+  transition:
+    opacity 0.4s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  transition-delay: 0s;
+}
+
+.calendar-collapsible-content[data-state="open"] .calendar-collapsible-inner {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.1s;
+}
+
+.calendar-collapsible-inner > .calendar-day-list {
+  padding: 0.75rem 1rem 1rem;
   border-top: 1px solid var(--gris);
+}
+
+.calendar-day-list {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  margin-top: 0;
 }
 
 .calendar-day-list-scroll {

@@ -53,8 +53,11 @@ export default function Day({
   const hasIncome = transactions.some((t) => t.type === "income");
   const hasExpense = transactions.some((t) => t.type === "expense");
 
-  const incomeScale = 0.9 + incomeWeight * 0.25;
-  const expenseScale = 0.9 + expenseWeight * 0.25;
+  const incomeScale = 0.75 + incomeWeight * 0.8;
+  const expenseScale = 0.75 + expenseWeight * 0.8;
+
+  const incomeGlow = `0 0 ${4 + incomeWeight * 10}px rgba(34, 197, 94, ${0.3 + incomeWeight * 0.5})`;
+  const expenseGlow = `0 0 ${4 + expenseWeight * 10}px rgba(239, 68, 68, ${0.3 + expenseWeight * 0.5})`;
 
   const renderIcons = () => {
     const iconList = icons ?? [];
@@ -120,9 +123,10 @@ export default function Day({
           className="tx-dot tx-dot-income tx-dot-tl"
           aria-hidden
           style={{
-            opacity: 0.85 + incomeWeight * 0.15,
-            filter: `brightness(${0.92 + incomeWeight * 0.25})`,
+            opacity: 0.6 + incomeWeight * 0.4,
+            filter: `brightness(${0.85 + incomeWeight * 0.4})`,
             transform: `scale(${incomeScale})`,
+            boxShadow: incomeGlow,
           }}
         />
       )}
@@ -131,16 +135,17 @@ export default function Day({
           className="tx-dot tx-dot-expense tx-dot-tr"
           aria-hidden
           style={{
-            opacity: 0.85 + expenseWeight * 0.15,
-            filter: `brightness(${0.92 + expenseWeight * 0.25})`,
+            opacity: 0.6 + expenseWeight * 0.4,
+            filter: `brightness(${0.85 + expenseWeight * 0.4})`,
             transform: `scale(${expenseScale})`,
+            boxShadow: expenseGlow,
           }}
         />
       )}
-      <div className="dia_center">
+      <div className="dia_content">
         <div className="icons_container">{renderIcons()}</div>
+        <span className="number">{dayNum}</span>
       </div>
-      <div className="number">{dayNum}</div>
     </div>
   );
 }

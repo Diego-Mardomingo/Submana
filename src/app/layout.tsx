@@ -39,7 +39,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${sora.variable} ${inter.variable}`} suppressHydrationWarning>
-      <body className="antialiased font-sans">
+      <body className="antialiased font-sans" suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){var t=localStorage.getItem('submana-theme');if(!t){var m=document.cookie.match(/submana-theme=([^;]+)/);t=m?m[1]:'dark';}document.documentElement.setAttribute('data-theme',t);})();`,

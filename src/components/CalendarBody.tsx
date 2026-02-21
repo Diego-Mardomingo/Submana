@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { flushSync } from "react-dom";
-import { ChevronLeft, ChevronRight, House } from "lucide-react";
+import { ChevronLeft, ChevronRight, House, ChevronDown, List } from "lucide-react";
 import { useCalendarSwipe } from "@/hooks/useCalendarSwipe";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -10,10 +10,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import Day from "./Day";
 import CalendarDayList, { type DayEntry } from "./CalendarDayList";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { cn } from "@/lib/utils";
 
 function setToNoon(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
@@ -82,11 +88,32 @@ export default function CalendarBody() {
   const queryClient = useQueryClient();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
+  const [listOpen, setListOpen] = useState(false);
+  const scrollTargetRef = useRef<number | null>(null);
 
   const scrollToDay = (dayNumber: number) => {
-    const el = document.getElementById(`calendar-day-${dayNumber}`);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const doScroll = () => {
+      const el = document.getElementById(`calendar-day-${dayNumber}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    if (listOpen) {
+      doScroll();
+    } else {
+      scrollTargetRef.current = dayNumber;
+      setListOpen(true);
+    }
   };
+
+  useEffect(() => {
+    if (!listOpen || scrollTargetRef.current === null) return;
+    const dayNum = scrollTargetRef.current;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`calendar-day-${dayNum}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollTargetRef.current = null;
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [listOpen]);
 
   const { data: subscriptions = [] } = useSubscriptions();
   const { data: transactions = [], isLoading } = useTransactions(year, month);
@@ -330,7 +357,30 @@ export default function CalendarBody() {
         })}
       </section>
       </div>
-      <CalendarDayList dayEntries={dayEntries} year={year} month={month} />
+      <Collapsible open={listOpen} onOpenChange={setListOpen}>
+        <div className="calendar-records-panel">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="calendar-records-trigger"
+            >
+              <span className="flex items-center gap-2">
+                <List className="size-4" strokeWidth={1.5} />
+                {t("calendar.records_toggle")}
+              </span>
+              <ChevronDown
+                className={cn("size-4 shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]", listOpen && "rotate-180")}
+                strokeWidth={1.5}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent forceMount className="calendar-collapsible-content">
+            <div className="calendar-collapsible-inner">
+              <CalendarDayList dayEntries={dayEntries} year={year} month={month} />
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
     </div>
   );
 }
