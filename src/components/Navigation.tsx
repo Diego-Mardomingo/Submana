@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState, useCallback } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useCallback, useEffect } from "react";
 import {
   House,
   LayoutDashboard,
@@ -15,9 +15,11 @@ import {
   Wallet,
   ChevronUp,
   ChevronDown,
+  type LucideIcon,
 } from "lucide-react";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import type { UIKey } from "@/lib/i18n/ui";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -29,8 +31,29 @@ import styles from "./Navigation.module.css";
 
 const iconProps = { size: 20, strokeWidth: 1.5 };
 
+type NavItem = {
+  href: string;
+  shortcut: string;
+  labelKey: UIKey;
+  icon: LucideIcon;
+  extra?: boolean;
+};
+
+const navItems: NavItem[] = [
+  { href: "/", shortcut: "h", labelKey: "nav.home", icon: House },
+  { href: "/dashboard", shortcut: "d", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { href: "/transactions", shortcut: "t", labelKey: "nav.transactions", icon: Receipt },
+  { href: "/accounts", shortcut: "a", labelKey: "nav.accounts", icon: CreditCard, extra: true },
+  { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: Tags, extra: true },
+  { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: Calendar, extra: true },
+  { href: "/budgets", shortcut: "b", labelKey: "nav.budgets", icon: Wallet, extra: true },
+  { href: "/notifications", shortcut: "n", labelKey: "nav.notifications", icon: Bell, extra: true },
+  { href: "/settings", shortcut: "g", labelKey: "nav.settings", icon: Settings, extra: true },
+];
+
 export default function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const lang = useLang();
   const t = useTranslations(lang);
 
@@ -40,16 +63,33 @@ export default function Navigation() {
 
   const closeExpand = useCallback(() => setExpanded(false), []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      const item = navItems.find((n) => n.shortcut === e.key.toLowerCase());
+      if (item) {
+        router.push(item.href);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [router]);
+
   const NavLink = ({
     href,
     children,
     extra,
     label,
+    shortcut,
   }: {
     href: string;
     children: React.ReactNode;
     extra?: boolean;
     label: string;
+    shortcut: string;
   }) => {
     const isActive = currentPath === href;
     const linkEl = (
@@ -59,13 +99,14 @@ export default function Navigation() {
         onClick={closeExpand}
       >
         {children}
+        <kbd className={styles.shortcutBadge}>{shortcut.toUpperCase()}</kbd>
       </Link>
     );
     return (
       <Tooltip>
         <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
         <TooltipContent side="top" sideOffset={8}>
-          {label}
+          {label} ({shortcut.toUpperCase()})
         </TooltipContent>
       </Tooltip>
     );
@@ -93,42 +134,18 @@ export default function Navigation() {
             </Link>
           </div>
           <div className={styles.navItemsWrapper}>
-            <NavLink href="/" label={t("nav.home")}>
-              <House {...iconProps} />
-              <span>{t("nav.home")}</span>
-            </NavLink>
-            <NavLink href="/dashboard" label={t("nav.dashboard")}>
-              <LayoutDashboard {...iconProps} />
-              <span>{t("nav.dashboard")}</span>
-            </NavLink>
-            <NavLink href="/transactions" label={t("nav.transactions")}>
-              <Receipt {...iconProps} />
-              <span>{t("nav.transactions")}</span>
-            </NavLink>
-            <NavLink href="/accounts" extra label={t("nav.accounts")}>
-              <CreditCard {...iconProps} />
-              <span>{t("nav.accounts")}</span>
-            </NavLink>
-            <NavLink href="/categories" extra label={t("nav.categories")}>
-              <Tags {...iconProps} />
-              <span>{t("nav.categories")}</span>
-            </NavLink>
-            <NavLink href="/subscriptions" extra label={t("nav.subscriptions")}>
-              <Calendar {...iconProps} />
-              <span>{t("nav.subscriptions")}</span>
-            </NavLink>
-            <NavLink href="/budgets" extra label={t("nav.budgets")}>
-              <Wallet {...iconProps} />
-              <span>{t("nav.budgets")}</span>
-            </NavLink>
-            <NavLink href="/notifications" extra label={t("nav.notifications")}>
-              <Bell {...iconProps} />
-              <span>{t("nav.notifications")}</span>
-            </NavLink>
-            <NavLink href="/settings" extra label={t("nav.settings")}>
-              <Settings {...iconProps} />
-              <span>{t("nav.settings")}</span>
-            </NavLink>
+            {navItems.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={t(item.labelKey)}
+                extra={item.extra}
+                shortcut={item.shortcut}
+              >
+                <item.icon {...iconProps} />
+                <span>{t(item.labelKey)}</span>
+              </NavLink>
+            ))}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
