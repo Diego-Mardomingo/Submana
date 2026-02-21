@@ -11,6 +11,7 @@ interface CreateSubscriptionInput {
   end_date?: string | null;
   frequency?: string;
   frequency_value?: number;
+  account_id?: string | null;
 }
 
 export function useCreateSubscription() {
@@ -43,6 +44,7 @@ interface UpdateSubscriptionInput {
   end_date?: string | null;
   frequency?: string;
   frequency_value?: number;
+  account_id?: string | null;
 }
 
 export function useUpdateSubscription() {

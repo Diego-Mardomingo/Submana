@@ -17,6 +17,7 @@
 
   --accent: #8b5cf6;
   --accent-hover: #7c3aed;
+  --accent-light: #a78bfa;
   --accent-soft: rgba(139, 92, 246, 0.12);
   --accent-muted: rgba(139, 92, 246, 0.25);
 
@@ -58,6 +59,7 @@ html[data-theme="light"] {
 
   --accent: #6d28d9;
   --accent-hover: #5b21b6;
+  --accent-light: #8b5cf6;
   --accent-soft: rgba(109, 40, 217, 0.1);
   --accent-muted: rgba(109, 40, 217, 0.2);
 

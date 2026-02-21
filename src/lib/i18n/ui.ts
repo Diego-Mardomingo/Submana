@@ -130,6 +130,7 @@ export const ui = {
     "sub.searching": "Searching...",
     "sub.noIconsFound": "No icons found",
     "sub.randomAvatar": "Random Avatar",
+    "sub.account": "Account",
   },
   es: {
     "nav.home": "Inicio",
@@ -252,5 +253,6 @@ export const ui = {
     "sub.searching": "Buscando...",
     "sub.noIconsFound": "No se han encontrado iconos",
     "sub.randomAvatar": "Avatar Aleatorio",
+    "sub.account": "Cuenta",
   },
 } as const;

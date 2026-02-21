@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
   const frequencyValue = body.frequency_value
     ? parseInt(body.frequency_value, 10)
     : 1;
+  const accountId = body.account_id as string | null | undefined;
 
   const defaultIcon = `https://ui-avatars.com/api/?name=${encodeURIComponent(service_name || "Sub")}&length=2&background=random&color=fff&size=256`;
 
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
       end_date: endDate || null,
       frequency,
       frequency_value: frequencyValue,
+      account_id: accountId || null,
     })
     .select()
     .single();

@@ -40,15 +40,15 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { href: "/", shortcut: "h", labelKey: "nav.home", icon: House },
+  { href: "/", shortcut: "f", labelKey: "nav.home", icon: House },
   { href: "/dashboard", shortcut: "d", labelKey: "nav.dashboard", icon: LayoutDashboard },
-  { href: "/transactions", shortcut: "t", labelKey: "nav.transactions", icon: Receipt },
+  { href: "/transactions", shortcut: "q", labelKey: "nav.transactions", icon: Receipt },
   { href: "/accounts", shortcut: "a", labelKey: "nav.accounts", icon: CreditCard, extra: true },
   { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: Tags, extra: true },
   { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: Calendar, extra: true },
-  { href: "/budgets", shortcut: "b", labelKey: "nav.budgets", icon: Wallet, extra: true },
-  { href: "/notifications", shortcut: "n", labelKey: "nav.notifications", icon: Bell, extra: true },
-  { href: "/settings", shortcut: "g", labelKey: "nav.settings", icon: Settings, extra: true },
+  { href: "/budgets", shortcut: "e", labelKey: "nav.budgets", icon: Wallet, extra: true },
+  { href: "/notifications", shortcut: "z", labelKey: "nav.notifications", icon: Bell, extra: true },
+  { href: "/settings", shortcut: "x", labelKey: "nav.settings", icon: Settings, extra: true },
 ];
 
 export default function Navigation() {
@@ -68,8 +68,11 @@ export default function Navigation() {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
 
-      const item = navItems.find((n) => n.shortcut === e.key.toLowerCase());
+      const item = navItems.find((n) => 
+        n.shortcut.toLowerCase() === e.key.toLowerCase()
+      );
       if (item) {
+        e.preventDefault();
         router.push(item.href);
       }
     };
@@ -92,6 +95,8 @@ export default function Navigation() {
     shortcut: string;
   }) => {
     const isActive = currentPath === href;
+    const displayShortcut = shortcut.toLowerCase() === "tab" ? "⇥ TAB" : shortcut.toUpperCase();
+    const tooltipShortcut = shortcut.toLowerCase() === "tab" ? "Tab" : shortcut.toUpperCase();
     const linkEl = (
       <Link
         href={href}
@@ -99,14 +104,14 @@ export default function Navigation() {
         onClick={closeExpand}
       >
         {children}
-        <kbd className={styles.shortcutBadge}>{shortcut.toUpperCase()}</kbd>
+        <kbd className={styles.shortcutBadge}>{displayShortcut}</kbd>
       </Link>
     );
     return (
       <Tooltip>
         <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
         <TooltipContent side="top" sideOffset={8}>
-          {label} ({shortcut.toUpperCase()})
+          {label} ({tooltipShortcut})
         </TooltipContent>
       </Tooltip>
     );
