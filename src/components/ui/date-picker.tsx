@@ -13,6 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 
 interface DatePickerProps {
   value?: Date
@@ -33,6 +34,7 @@ function DatePicker({
 }: DatePickerProps) {
   const locale = lang === "es" ? es : enUS
   const [open, setOpen] = React.useState(false)
+  const isMobile = useMediaQuery("(max-width: 767px)")
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -54,7 +56,12 @@ function DatePicker({
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        className="w-auto p-0"
+        align="start"
+        side={isMobile ? "top" : "bottom"}
+        sideOffset={isMobile ? 8 : 4}
+      >
         <Calendar
           mode="single"
           selected={value}
