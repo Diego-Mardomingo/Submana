@@ -6,6 +6,7 @@ import { useCreateSubscription } from "@/hooks/useSubscriptionMutations";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { toDateString } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import IconPicker from "@/components/IconPicker";
 import { Spinner } from "@/components/ui/spinner";
@@ -57,8 +58,8 @@ export default function NewSubscriptionPage() {
       icon: icon || undefined,
       service_name: name,
       cost: num,
-      start_date: startDate.toISOString().slice(0, 10),
-      end_date: endDate ? endDate.toISOString().slice(0, 10) : null,
+      start_date: toDateString(startDate),
+      end_date: endDate ? toDateString(endDate) : null,
       frequency,
       frequency_value: parseInt(freqVal, 10) || 1,
       account_id: accountId && accountId !== "none" ? accountId : null,

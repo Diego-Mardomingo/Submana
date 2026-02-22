@@ -6,6 +6,7 @@ import { useUpdateSubscription } from "@/hooks/useSubscriptionMutations";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { parseDateString, toDateString } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import IconPicker from "@/components/IconPicker";
 import { Spinner } from "@/components/ui/spinner";
@@ -55,10 +56,10 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
   const [name, setName] = useState(sub.service_name);
   const [cost, setCost] = useState(String(sub.cost));
   const [startDate, setStartDate] = useState<Date>(
-    sub.start_date ? new Date(sub.start_date) : new Date()
+    sub.start_date ? parseDateString(sub.start_date) : new Date()
   );
   const [endDate, setEndDate] = useState<Date | undefined>(
-    sub.end_date ? new Date(sub.end_date) : undefined
+    sub.end_date ? parseDateString(sub.end_date) : undefined
   );
   const [frequency, setFrequency] = useState(sub.frequency);
   const [freqVal, setFreqVal] = useState(String(sub.frequency_value || 1));
@@ -74,8 +75,8 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
       icon: icon || undefined,
       service_name: name,
       cost: num,
-      start_date: startDate.toISOString().slice(0, 10),
-      end_date: endDate ? endDate.toISOString().slice(0, 10) : null,
+      start_date: toDateString(startDate),
+      end_date: endDate ? toDateString(endDate) : null,
       frequency,
       frequency_value: parseInt(freqVal, 10) || 1,
       account_id: accountId && accountId !== "none" ? accountId : null,

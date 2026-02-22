@@ -9,6 +9,7 @@ import { useCreateTransaction } from "@/hooks/useCreateTransaction";
 import { useUpdateTransaction } from "@/hooks/useUpdateTransaction";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { parseDateString, toDateString } from "@/lib/date";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
   const [type, setType] = useState<"income" | "expense">(editData?.type === "income" ? "income" : "expense");
   const [amount, setAmount] = useState(editData ? String(editData.amount) : "");
   const [date, setDate] = useState<Date>(
-    editData?.date ? new Date(editData.date) : new Date()
+    editData?.date ? parseDateString(editData.date) : new Date()
   );
   const [description, setDescription] = useState(editData?.description || "");
   const [accountId, setAccountId] = useState(editData?.account_id || "none");
@@ -86,7 +87,7 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
     const payload = {
       amount: num,
       type,
-      date: date.toISOString().slice(0, 10),
+      date: toDateString(date),
       description: description || undefined,
       account_id: accountId && accountId !== "none" ? accountId : undefined,
       category_id: categoryId && categoryId !== "none" ? categoryId : undefined,
