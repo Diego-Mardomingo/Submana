@@ -35,6 +35,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -114,8 +122,11 @@ export default function AccountsBody() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const balance = parseFloat(formData.balance);
-    if (isNaN(balance) || !formData.name) return;
+    if (!formData.name) return;
+    const balance =
+      formData.balance === "" || isNaN(parseFloat(formData.balance))
+        ? 0
+        : parseFloat(formData.balance);
 
     if (modalMode === "create") {
       await createAccount.mutateAsync({
@@ -295,56 +306,51 @@ export default function AccountsBody() {
 
       {isModalOpen && (
         <div className="modal-backdrop" onClick={closeModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{modalMode === "create" ? t("accounts.add") : t("accounts.edit")}</h2>
-            <form onSubmit={handleSave}>
-              <div className="field">
-                <label>{t("sub.icon")}</label>
+          <div className="modal-content modal-content-subs" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">{modalMode === "create" ? t("accounts.add") : t("accounts.edit")}</h2>
+            <form onSubmit={handleSave} className="subs-form">
+              <div className="subs-form-section">
+                <Label className="subs-form-label" optional>{t("sub.icon")}</Label>
                 <IconPicker
                   defaultIcon={formData.icon}
                   onIconSelect={(url) => setFormData({ ...formData, icon: url })}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="acc-name">{t("settings.name")}</label>
-                <input
+              <div className="subs-form-section">
+                <Label className="subs-form-label" htmlFor="acc-name" required>{t("settings.name")}</Label>
+                <Input
                   id="acc-name"
                   type="text"
                   required
                   placeholder="Santander"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="!h-10"
                 />
               </div>
-              <div className="field">
-                <label htmlFor="acc-balance">{t("accounts.balance")} (€)</label>
-                <div className="currency-input" style={{ position: "relative" }}>
-                  <span style={{ position: "absolute", left: "1rem", color: "var(--gris-claro)", top: "50%", transform: "translateY(-50%)" }}>€</span>
-                  <input
+              <div className="subs-form-section">
+                <Label className="subs-form-label" htmlFor="acc-balance" optional>{t("accounts.balance")} (€)</Label>
+                <InputGroup className="!h-10">
+                  <InputGroupInput
                     id="acc-balance"
                     type="number"
                     step="0.01"
+                    min="0"
                     placeholder="0.00"
-                    style={{ paddingLeft: "2.5rem" }}
                     value={formData.balance}
                     onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
                   />
-                </div>
+                  <InputGroupAddon align="inline-end">€</InputGroupAddon>
+                </InputGroup>
               </div>
-              <div className="field">
-                <label>{t("common.color")}</label>
+              <div className="subs-form-section">
+                <Label className="subs-form-label">{t("common.color")}</Label>
                 <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: "50%",
-                        backgroundColor: formData.color,
-                        border: "3px solid var(--negro)",
-                        cursor: "pointer",
-                      }}
+                      className="account-modal-color-btn"
+                      style={{ backgroundColor: formData.color }}
                     />
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-3" align="start" style={{ zIndex: 2100 }}>
@@ -365,14 +371,23 @@ export default function AccountsBody() {
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={closeModal}>
+              <div className="account-modal-actions">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={closeModal}
+                  className="account-modal-cancel"
+                >
                   {t("common.cancel")}
-                </button>
-                <button type="submit" className="btn-save" disabled={createAccount.isPending || updateAccount.isPending}>
-                  {(createAccount.isPending || updateAccount.isPending) && <Spinner className="size-4 mr-2" />}
+                </Button>
+                <Button
+                  type="submit"
+                  className="subs-form-submit account-modal-submit"
+                  disabled={createAccount.isPending || updateAccount.isPending}
+                >
+                  {(createAccount.isPending || updateAccount.isPending) && <Spinner className="size-5 shrink-0" />}
                   {modalMode === "create" ? (lang === "es" ? "Crear" : "Create") : t("common.save")}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

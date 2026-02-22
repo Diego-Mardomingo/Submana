@@ -462,9 +462,16 @@ body {
   overflow-y: auto;
 }
 
-.modal-content h2 {
+.modal-content h2,
+.modal-content .modal-title {
   margin: 0 0 1.5rem;
   color: var(--blanco);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.modal-content-subs .subs-form {
+  margin-top: 0;
 }
 
 .modal-content p {

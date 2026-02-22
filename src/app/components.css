@@ -2255,6 +2255,43 @@
   cursor: not-allowed;
 }
 
+/* Account modal (cuentas) - estilos alineados con la página */
+.account-modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  width: 100%;
+}
+
+.account-modal-actions .subs-form-submit,
+.account-modal-actions .account-modal-submit {
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.account-modal-cancel {
+  color: var(--gris-claro) !important;
+}
+
+.account-modal-cancel:hover {
+  color: var(--blanco) !important;
+  background: var(--gris-oscuro) !important;
+}
+
+.account-modal-color-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid var(--gris);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.account-modal-color-btn:hover {
+  transform: scale(1.05);
+}
+
 /* ═══════════════════════════════════════════════
    ICON PICKER COMPONENT
    ═══════════════════════════════════════════════ */
