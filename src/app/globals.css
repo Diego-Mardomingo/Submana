@@ -53,6 +53,9 @@
   --teal: #5eead4;
   --teal-hover: #2dd4bf;
   --teal-soft: rgba(94, 234, 212, 0.10);
+
+  /* Degradado sutil para tarjetas (igual que días del calendario) */
+  --card-subtle-gradient: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%, rgba(0, 0, 0, 0.03) 100%);
 }
 
 /* ── Light theme ── */
@@ -102,6 +105,9 @@ html[data-theme="light"] {
   --teal: #14b8a6;
   --teal-hover: #0f766e;
   --teal-soft: rgba(13, 148, 136, 0.08);
+
+  /* Degradado sutil para tarjetas (igual que días del calendario) */
+  --card-subtle-gradient: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%, rgba(0, 0, 0, 0.03) 100%);
 }
 
 @theme inline {
@@ -295,7 +301,7 @@ body {
 
 .info-stat-card {
   position: relative;
-  background: linear-gradient(135deg, 
+  background: var(--card-subtle-gradient), linear-gradient(135deg, 
     rgba(96, 165, 250, 0.18) 0%, 
     rgba(96, 165, 250, 0.06) 40%,
     var(--gris-oscuro) 100%);
@@ -310,7 +316,7 @@ body {
 }
 
 [data-theme="light"] .info-stat-card {
-  background: linear-gradient(135deg, 
+  background: var(--card-subtle-gradient), linear-gradient(135deg, 
     rgba(59, 130, 246, 0.15) 0%, 
     rgba(59, 130, 246, 0.05) 40%,
     var(--gris-oscuro) 100%);
@@ -739,7 +745,7 @@ body {
 }
 
 .settings-profile-card {
-  background: var(--gris-oscuro);
+  background: var(--card-subtle-gradient), var(--gris-oscuro);
   border: 1px solid var(--gris);
   min-width: 0;
   overflow: hidden;
@@ -786,7 +792,7 @@ body {
 }
 
 .settings-section-card {
-  background: var(--gris-oscuro);
+  background: var(--card-subtle-gradient), var(--gris-oscuro);
   border: 1px solid var(--gris);
 }
 
