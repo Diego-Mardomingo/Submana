@@ -6,49 +6,57 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ── Dark theme (default) ── */
+/* Paleta cohesiva: tonos desaturados y elegantes para diseño minimalista */
 :root,
 [data-theme="dark"] {
   --negro: #0f1012;
-  --gris-oscuro: #18191c;
-  --gris: #26282d;
+  --gris-oscuro: #16171a;
+  --gris: #23252a;
   --gris-claro: #6b7280;
   --gris-muy-claro: #9ca3af;
-  --blanco: #f0f1f3;
+  --blanco: #e8eaed;
 
-  --accent: #8b5cf6;
-  --accent-hover: #7c3aed;
-  --accent-light: #a78bfa;
-  --accent-soft: rgba(139, 92, 246, 0.12);
-  --accent-muted: rgba(139, 92, 246, 0.25);
+  /* Accent - Violeta suave y elegante */
+  --accent: #a78bfa;
+  --accent-hover: #8b6fe0;
+  --accent-light: #c4b5fd;
+  --accent-soft: rgba(167, 139, 250, 0.10);
+  --accent-muted: rgba(167, 139, 250, 0.18);
 
-  --success: #34d399;
-  --success-hover: #10b981;
-  --success-soft: rgba(52, 211, 153, 0.12);
-  --success-muted: rgba(52, 211, 153, 0.25);
-  --success-rgb: 52, 211, 153;
+  /* Success - Verde menta suave */
+  --success: #6ee7b7;
+  --success-hover: #4fd1a5;
+  --success-soft: rgba(110, 231, 183, 0.10);
+  --success-muted: rgba(110, 231, 183, 0.18);
+  --success-rgb: 110, 231, 183;
 
-  --danger: #f87171;
-  --danger-hover: #ef4444;
-  --danger-soft: rgba(248, 113, 113, 0.12);
-  --danger-muted: rgba(248, 113, 113, 0.25);
-  --danger-rgb: 248, 113, 113;
+  /* Danger - Coral suave */
+  --danger: #fca5a5;
+  --danger-hover: #f87171;
+  --danger-soft: rgba(252, 165, 165, 0.10);
+  --danger-muted: rgba(252, 165, 165, 0.18);
+  --danger-rgb: 252, 165, 165;
 
-  --warning: #fbbf24;
-  --warning-hover: #f59e0b;
-  --warning-soft: rgba(251, 191, 36, 0.12);
-  --warning-muted: rgba(251, 191, 36, 0.25);
+  /* Warning - Ámbar suave */
+  --warning: #fcd34d;
+  --warning-hover: #fbbf24;
+  --warning-soft: rgba(252, 211, 77, 0.10);
+  --warning-muted: rgba(252, 211, 77, 0.18);
 
-  --info: #60a5fa;
-  --info-hover: #3b82f6;
-  --info-soft: rgba(96, 165, 250, 0.12);
-  --info-muted: rgba(96, 165, 250, 0.25);
+  /* Info - Azul cielo suave */
+  --info: #93c5fd;
+  --info-hover: #7db8fc;
+  --info-soft: rgba(147, 197, 253, 0.10);
+  --info-muted: rgba(147, 197, 253, 0.18);
 
-  --teal: #2dd4bf;
-  --teal-hover: #14b8a6;
-  --teal-soft: rgba(45, 212, 191, 0.12);
+  /* Teal - Turquesa suave */
+  --teal: #5eead4;
+  --teal-hover: #2dd4bf;
+  --teal-soft: rgba(94, 234, 212, 0.10);
 }
 
 /* ── Light theme ── */
+/* Paleta cohesiva para tema claro */
 html[data-theme="light"] {
   --negro: #f8f9fb;
   --gris-oscuro: #eef0f4;
@@ -57,35 +65,41 @@ html[data-theme="light"] {
   --gris-muy-claro: #4b5563;
   --blanco: #111318;
 
-  --accent: #6d28d9;
-  --accent-hover: #5b21b6;
-  --accent-light: #8b5cf6;
-  --accent-soft: rgba(109, 40, 217, 0.1);
-  --accent-muted: rgba(109, 40, 217, 0.2);
+  /* Accent - Violeta profundo pero suave */
+  --accent: #7c5ccc;
+  --accent-hover: #6b4eb8;
+  --accent-light: #9678e0;
+  --accent-soft: rgba(124, 92, 204, 0.08);
+  --accent-muted: rgba(124, 92, 204, 0.15);
 
-  --success: #059669;
-  --success-hover: #047857;
-  --success-soft: rgba(5, 150, 105, 0.08);
-  --success-muted: rgba(5, 150, 105, 0.18);
-  --success-rgb: 5, 150, 105;
+  /* Success - Verde esmeralda */
+  --success: #10b981;
+  --success-hover: #059669;
+  --success-soft: rgba(16, 185, 129, 0.08);
+  --success-muted: rgba(16, 185, 129, 0.15);
+  --success-rgb: 16, 185, 129;
 
-  --danger: #dc2626;
-  --danger-hover: #b91c1c;
-  --danger-soft: rgba(220, 38, 38, 0.08);
-  --danger-muted: rgba(220, 38, 38, 0.18);
-  --danger-rgb: 220, 38, 38;
+  /* Danger - Rojo coral */
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-soft: rgba(239, 68, 68, 0.08);
+  --danger-muted: rgba(239, 68, 68, 0.15);
+  --danger-rgb: 239, 68, 68;
 
-  --warning: #d97706;
-  --warning-hover: #b45309;
-  --warning-soft: rgba(217, 119, 6, 0.08);
-  --warning-muted: rgba(217, 119, 6, 0.18);
+  /* Warning - Ámbar */
+  --warning: #f59e0b;
+  --warning-hover: #d97706;
+  --warning-soft: rgba(245, 158, 11, 0.08);
+  --warning-muted: rgba(245, 158, 11, 0.15);
 
-  --info: #2563eb;
-  --info-hover: #1d4ed8;
-  --info-soft: rgba(37, 99, 235, 0.08);
-  --info-muted: rgba(37, 99, 235, 0.18);
+  /* Info - Azul suave */
+  --info: #3b82f6;
+  --info-hover: #2563eb;
+  --info-soft: rgba(59, 130, 246, 0.08);
+  --info-muted: rgba(59, 130, 246, 0.15);
 
-  --teal: #0d9488;
+  /* Teal */
+  --teal: #14b8a6;
   --teal-hover: #0f766e;
   --teal-soft: rgba(13, 148, 136, 0.08);
 }
@@ -196,25 +210,27 @@ body {
 }
 
 .add-btn {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-muted);
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   white-space: nowrap;
   text-decoration: none;
 }
 
 .add-btn:hover {
-  background: var(--accent-hover);
-  transform: translateY(-2px);
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 /* ── Page Header Clean ── */

@@ -513,26 +513,46 @@
 }
 
 .account-detail-header {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  padding: 2rem 1rem;
-  background: var(--gris-oscuro);
-  border: 1px solid var(--gris);
-  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  background: linear-gradient(135deg, 
+    rgba(96, 165, 250, 0.12) 0%, 
+    rgba(96, 165, 250, 0.04) 40%,
+    var(--gris-oscuro) 100%);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+.account-detail-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--info) 0%, transparent 50%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.5;
 }
 
 .account-detail-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
   background: var(--negro);
-  border: 3px solid var(--accent);
+  border: 3px solid var(--info);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  box-shadow: 0 0 30px var(--info-muted);
 }
 
 .account-detail-icon img {
@@ -543,22 +563,25 @@
 
 .account-detail-name {
   margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.6rem;
+  font-weight: 800;
   color: var(--blanco);
+  letter-spacing: -0.02em;
 }
 
 .account-detail-balance {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 800;
   white-space: nowrap;
+  color: var(--info);
+  text-shadow: 0 0 30px var(--info-muted);
 }
 
 .account-badge-default {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.75rem;
+  padding: 0.4rem 0.85rem;
   background: var(--warning-soft);
   color: var(--warning);
   border-radius: 20px;
@@ -572,35 +595,69 @@
   gap: 1rem;
 }
 
+@media (max-width: 600px) {
+  .account-detail-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
 .account-stat-card {
-  background: var(--gris-oscuro);
-  border: 1px solid var(--gris);
+  position: relative;
+  background: linear-gradient(135deg, 
+    rgba(96, 165, 250, 0.1) 0%, 
+    var(--gris-oscuro) 60%);
   border-radius: 16px;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   text-align: center;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.account-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--info) 0%, transparent 50%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.account-stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.account-stat-card:hover::before {
+  opacity: 0.8;
 }
 
 .account-stat-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--gris-claro);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 
 .account-stat-sublabel {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--gris-claro);
   opacity: 0.8;
   margin-top: -0.25rem;
 }
 
 .account-stat-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--accent-light);
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--info);
 }
 
 .account-stat-value.income {
@@ -1686,24 +1743,44 @@
 }
 
 .subs-detail-header {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1rem;
-  padding: 2rem;
-  background: var(--accent-soft);
-  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  background: linear-gradient(135deg, 
+    rgba(167, 139, 250, 0.10) 0%, 
+    rgba(167, 139, 250, 0.03) 40%,
+    var(--gris-oscuro) 100%);
+  border-radius: 20px;
   text-align: center;
+  overflow: hidden;
+}
+
+.subs-detail-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 2px;
+  background: linear-gradient(135deg, var(--accent) 0%, transparent 50%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.4;
 }
 
 .subs-detail-icon {
-  width: 96px;
-  height: 96px;
-  border-radius: 20px;
+  width: 100px;
+  height: 100px;
+  border-radius: 24px;
   overflow: hidden;
   background: var(--negro);
-  border: 2px solid var(--gris);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 4px var(--accent-soft);
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 25px var(--accent-muted);
 }
 
 .subs-detail-icon img {
@@ -1713,16 +1790,18 @@
 }
 
 .subs-detail-name {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: var(--blanco);
+  letter-spacing: -0.02em;
+  margin: 0;
 }
 
 .subs-detail-cost {
-  font-size: 2rem;
+  font-size: 2.25rem;
   font-weight: 800;
   color: var(--accent);
-  text-shadow: 0 0 30px var(--accent-muted);
+  text-shadow: 0 0 25px var(--accent-muted);
 }
 
 .subs-detail-freq {
@@ -1744,26 +1823,53 @@
 }
 
 .subs-detail-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 1rem;
-  background: var(--gris-oscuro);
-  border: 1px solid var(--gris);
-  border-radius: 12px;
+  gap: 0.3rem;
+  padding: 1.1rem 1.25rem;
+  background: linear-gradient(135deg, 
+    rgba(167, 139, 250, 0.06) 0%, 
+    var(--gris-oscuro) 60%);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.subs-detail-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--accent) 0%, transparent 50%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.25;
+}
+
+.subs-detail-card:hover {
+  transform: translateY(-2px);
+}
+
+.subs-detail-card:hover::before {
+  opacity: 0.6;
 }
 
 .subs-detail-card-label {
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--gris-claro);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 .subs-detail-card-value {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.05rem;
+  font-weight: 700;
   color: var(--blanco);
 }
 

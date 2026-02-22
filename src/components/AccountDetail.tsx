@@ -134,10 +134,7 @@ export default function AccountDetail({ account }: { account: Account }) {
     <>
       <div className="account-detail">
         <div className="account-detail-header">
-          <div
-            className="account-detail-icon"
-            style={{ borderColor: account.color || "var(--accent)" }}
-          >
+          <div className="account-detail-icon">
             {account.icon ? (
               <img src={account.icon} alt={account.name} />
             ) : (
@@ -146,7 +143,7 @@ export default function AccountDetail({ account }: { account: Account }) {
                 height="48"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke={account.color || "var(--accent)"}
+                stroke="var(--info)"
                 strokeWidth="1.5"
               >
                 <rect x="1" y="4" width="22" height="16" rx="2" />
@@ -156,9 +153,7 @@ export default function AccountDetail({ account }: { account: Account }) {
           </div>
           <h1 className="account-detail-name">{account.name}</h1>
           <div className="account-detail-balance">
-            <span style={{ color: account.color || "var(--accent-light)" }}>
-              {formatCurrency(Number(account.balance))}
-            </span>
+            {formatCurrency(Number(account.balance))}
           </div>
           {account.is_default && (
             <span className="account-badge-default">

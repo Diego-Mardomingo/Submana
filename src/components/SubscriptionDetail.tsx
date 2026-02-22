@@ -212,13 +212,13 @@ export default function SubscriptionDetail({ sub }: { sub: Sub }) {
           </div>
           <div className="subs-detail-card">
             <span className="subs-detail-card-label">{t("sub.nextPayment")}</span>
-            <span className="subs-detail-card-value" style={{ color: nextPayment ? "var(--accent-light)" : "var(--gris-claro)" }}>
+            <span className="subs-detail-card-value" style={{ color: nextPayment ? "var(--accent)" : "var(--gris-claro)" }}>
               {nextPayment ? formatDateShort(nextPayment) : "-"}
             </span>
           </div>
           <div className="subs-detail-card">
             <span className="subs-detail-card-label">{t("sub.totalSpent")}</span>
-            <span className="subs-detail-card-value" style={{ color: "var(--accent-light)" }}>
+            <span className="subs-detail-card-value" style={{ color: "var(--accent)" }}>
               {formatCurrency(totalSpent)}
             </span>
           </div>

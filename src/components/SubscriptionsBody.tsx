@@ -191,6 +191,7 @@ export default function SubscriptionsBody() {
             <section className="subs-section">
               <div className="subs-section-header">
                 <span className="subs-section-title">{t("sub.active")}</span>
+                <span className="subs-section-count">{activeSubs.length}</span>
               </div>
               <div className="subs-list">
                 {activeSubs.map((sub) => (
