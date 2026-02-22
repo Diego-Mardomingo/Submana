@@ -18,6 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useLang } from "@/hooks/useLang";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTranslations } from "@/lib/i18n/utils";
 import type { UIKey } from "@/lib/i18n/ui";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ export default function Navigation() {
   const router = useRouter();
   const lang = useLang();
   const t = useTranslations(lang);
+  const isMobile = useMediaQuery("(max-width: 767px)");
 
   const currentPath = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
 
@@ -107,6 +109,7 @@ export default function Navigation() {
         <kbd className={styles.shortcutBadge}>{displayShortcut}</kbd>
       </Link>
     );
+    if (isMobile) return linkEl;
     return (
       <Tooltip>
         <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
@@ -151,29 +154,48 @@ export default function Navigation() {
                 <span>{t(item.labelKey)}</span>
               </NavLink>
             ))}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className={cn(styles.navItem, styles.moreBtn)}
-                  onClick={() => setExpanded((e) => !e)}
-                  aria-label={t("nav.menu")}
-                >
-                  <div className={styles.iconContainer}>
-                    {expanded ? (
-                      <ChevronDown {...iconProps} />
-                    ) : (
-                      <ChevronUp {...iconProps} />
-                    )}
-                  </div>
-                  <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8}>
-                {expanded ? t("nav.close") : t("nav.menu")}
-              </TooltipContent>
-            </Tooltip>
+            {isMobile ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className={cn(styles.navItem, styles.moreBtn)}
+                onClick={() => setExpanded((e) => !e)}
+                aria-label={t("nav.menu")}
+              >
+                <div className={styles.iconContainer}>
+                  {expanded ? (
+                    <ChevronDown {...iconProps} />
+                  ) : (
+                    <ChevronUp {...iconProps} />
+                  )}
+                </div>
+                <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
+              </Button>
+            ) : (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className={cn(styles.navItem, styles.moreBtn)}
+                    onClick={() => setExpanded((e) => !e)}
+                    aria-label={t("nav.menu")}
+                  >
+                    <div className={styles.iconContainer}>
+                      {expanded ? (
+                        <ChevronDown {...iconProps} />
+                      ) : (
+                        <ChevronUp {...iconProps} />
+                      )}
+                    </div>
+                    <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  {expanded ? t("nav.close") : t("nav.menu")}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </nav>
