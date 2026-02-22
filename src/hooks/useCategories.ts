@@ -3,11 +3,29 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
-async function fetchCategories() {
+export interface CategoryItem {
+  id: string;
+  name: string;
+  name_en?: string;
+  icon?: string;
+  parent_id?: string | null;
+  isDefault: boolean;
+}
+
+export interface CategoryWithSubs extends CategoryItem {
+  subcategories?: CategoryItem[];
+}
+
+interface CategoriesData {
+  defaultCategories: CategoryWithSubs[];
+  userCategories: CategoryWithSubs[];
+}
+
+async function fetchCategories(): Promise<CategoriesData> {
   const res = await fetch("/api/crud/categories");
   if (!res.ok) throw new Error("Failed to fetch categories");
   const json = await res.json();
-  return json.data ?? [];
+  return json.data ?? { defaultCategories: [], userCategories: [] };
 }
 
 export function useCategories() {

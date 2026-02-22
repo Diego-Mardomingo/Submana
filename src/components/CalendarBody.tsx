@@ -21,6 +21,15 @@ import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
+const formatCurrency = (n: number) => {
+  const formatted = new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  }).format(n);
+  return `${formatted} €`;
+};
+
 function setToNoon(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
 }
@@ -340,7 +349,7 @@ export default function CalendarBody() {
             {isLoading ? (
               <Spinner className="size-5 text-primary" />
             ) : (
-              <span>{getSpentValue()} €</span>
+              <span>{formatCurrency(getSpentValue())}</span>
             )}
           </div>
         </div>

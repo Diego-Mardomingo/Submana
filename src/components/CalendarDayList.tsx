@@ -11,6 +11,15 @@ import {
   Repeat,
 } from "lucide-react";
 
+const formatCurrency = (n: number) => {
+  const formatted = new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  }).format(n);
+  return `${formatted} €`;
+};
+
 export type SubForList = {
   id: string;
   service_name: string;
@@ -132,7 +141,7 @@ export default function CalendarDayList({
                         </span>
                       </div>
                       <span className="calendar-day-card-amount calendar-day-card-amount-expense shrink-0">
-                        -{Number(sub.cost).toFixed(2)} €
+                        -{formatCurrency(Number(sub.cost))}
                       </span>
                     </CardContent>
                   </Card>
@@ -178,7 +187,7 @@ export default function CalendarDayList({
                         )}
                       >
                         {tx.type === "income" ? "+" : "-"}
-                        {Number(tx.amount).toFixed(2)} €
+                        {formatCurrency(Number(tx.amount))}
                       </span>
                     </CardContent>
                   </Card>

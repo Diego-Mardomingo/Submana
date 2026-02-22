@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useAccounts } from "@/hooks/useAccounts";
 import {
   useCreateAccount,
@@ -11,6 +12,33 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import IconPicker from "@/components/IconPicker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+const formatCurrency = (n: number) => {
+  const formatted = new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  }).format(n);
+  return `${formatted} €`;
+};
 
 export default function AccountsBody() {
   const lang = useLang();
@@ -40,7 +68,7 @@ export default function AccountsBody() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const colors = ["#7c3aed", "#3b82f6", "#10b981", "#f43f5e", "#f59e0b", "#64748b"];
+  const colors = ["#7c3aed", "#3b82f6", "#10b981", "#f43f5e", "#f59e0b", "#ec4899"];
 
   const resetForm = () => {
     setFormData({
@@ -103,8 +131,7 @@ export default function AccountsBody() {
     closeModal();
   };
 
-  const handleDelete = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleDelete = async () => {
     if (!accountToDelete) return;
     await deleteAccount.mutateAsync(accountToDelete);
     setDeleteModalOpen(false);
@@ -149,15 +176,25 @@ export default function AccountsBody() {
     );
   }
 
+  const totalBalance = (accounts as Array<{ balance: number }>).reduce(
+    (sum, acc) => sum + Number(acc.balance), 0
+  );
+
   return (
     <div className="page-container fade-in">
-      <header className="page-header">
-        <div className="title-with-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="title-icon">
-            <rect x="1" y="4" width="22" height="16" rx="2" />
-            <line x1="1" y1="10" x2="23" y2="10" />
-          </svg>
-          <h1 className="title">{t("accounts.title")}</h1>
+      {/* Page Header */}
+      <header className="page-header-clean">
+        <div className="page-header-left">
+          <div className="page-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <rect x="1" y="4" width="22" height="16" rx="2" />
+              <line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
+          </div>
+          <div className="page-header-text">
+            <h1>{t("accounts.title")}</h1>
+            <p>{t("accounts.heroSubtitle")}</p>
+          </div>
         </div>
         <button type="button" className="add-btn" onClick={() => openModal("create")}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -167,6 +204,25 @@ export default function AccountsBody() {
           <span>{t("accounts.add")}</span>
         </button>
       </header>
+
+      {/* Balance Card */}
+      {accounts.length > 0 && (
+        <div className="info-stats-row single">
+          <div className="info-stat-card">
+            <div className="info-stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
+                <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
+              </svg>
+            </div>
+            <div className="info-stat-content">
+              <span className="info-stat-label">{lang === "es" ? "Balance Total" : "Total Balance"}</span>
+              <span className="info-stat-value">{formatCurrency(totalBalance)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="accounts-grid">
         {accounts.length === 0 ? (
           <div className="empty-state">
@@ -180,8 +236,9 @@ export default function AccountsBody() {
           </div>
         ) : (
           (accounts as Array<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean }>).map((account) => (
-            <div
+            <Link
               key={account.id}
+              href={`/account/${account.id}`}
               className="account-card"
               style={{ "--accent-account": account.color || "var(--accent)" } as React.CSSProperties}
             >
@@ -200,37 +257,33 @@ export default function AccountsBody() {
                 </div>
                 <div className="account-info">
                   <h3 className="account-name">{account.name}</h3>
-                  <p className="account-balance">{Number(account.balance).toFixed(2)} €</p>
+                  <p className="account-balance">{formatCurrency(Number(account.balance))}</p>
                 </div>
               </div>
-              <button
-                type="button"
-                className={`favorite-btn ${account.is_default ? "is-default" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleSetDefault(account);
-                }}
-                aria-label="Set as default"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill={account.is_default ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                </svg>
-              </button>
-              <div className="card-actions">
-                <button type="button" className="icon-btn edit-btn" onClick={() => openModal("edit", account)} aria-label="Edit">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                  </svg>
-                </button>
-                <button type="button" className="icon-btn delete-btn" onClick={() => { setAccountToDelete(account.id); setDeleteModalOpen(true); }} aria-label="Delete">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="3 6 5 6 21 6" />
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className={`favorite-btn ${account.is_default ? "is-default" : ""}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSetDefault(account);
+                      }}
+                      aria-label="Set as default"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill={account.is_default ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{lang === "es" ? "Cuenta por defecto para crear transacciones" : "Default account for creating transactions"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </Link>
           ))
         )}
       </div>
@@ -241,12 +294,19 @@ export default function AccountsBody() {
             <h2>{modalMode === "create" ? t("accounts.add") : t("accounts.edit")}</h2>
             <form onSubmit={handleSave}>
               <div className="field">
+                <label>{t("sub.icon")}</label>
+                <IconPicker
+                  defaultIcon={formData.icon}
+                  onIconSelect={(url) => setFormData({ ...formData, icon: url })}
+                />
+              </div>
+              <div className="field">
                 <label htmlFor="acc-name">{t("settings.name")}</label>
                 <input
                   id="acc-name"
                   type="text"
                   required
-                  placeholder="Ex. Main Bank"
+                  placeholder="Santander"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
@@ -318,7 +378,8 @@ export default function AccountsBody() {
                   {t("common.cancel")}
                 </button>
                 <button type="submit" className="btn-save" disabled={createAccount.isPending || updateAccount.isPending}>
-                  {t("common.save")}
+                  {(createAccount.isPending || updateAccount.isPending) && <Spinner className="size-4 mr-2" />}
+                  {modalMode === "create" ? (lang === "es" ? "Crear" : "Create") : t("common.save")}
                 </button>
               </div>
             </form>
@@ -326,22 +387,33 @@ export default function AccountsBody() {
         </div>
       )}
 
-      {deleteModalOpen && (
-        <div className="modal-backdrop" onClick={() => setDeleteModalOpen(false)}>
-          <div className="modal-content delete-confirm" onClick={(e) => e.stopPropagation()}>
-            <h2>{t("common.areYouSure")}</h2>
-            <p>{t("accounts.deleteConfirm")}</p>
-            <div className="modal-actions">
-              <button type="button" className="btn-cancel" onClick={() => setDeleteModalOpen(false)}>
-                {t("common.cancel")}
-              </button>
-              <button type="button" className="btn-delete-final" onClick={handleDelete} disabled={deleteAccount.isPending}>
-                {t("common.delete")}
-              </button>
+      <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
             </div>
-          </div>
-        </div>
-      )}
+            <AlertDialogTitle className="text-center">{t("accounts.delete")}</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              {t("accounts.deleteConfirm")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center gap-3">
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleteAccount.isPending}
+              className="bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white"
+            >
+              {deleteAccount.isPending && <Spinner className="size-4 mr-2" />}
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

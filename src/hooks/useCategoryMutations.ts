@@ -6,6 +6,7 @@ import { queryKeys } from "@/lib/queryKeys";
 interface CreateCategoryInput {
   name: string;
   parent_id?: string | null;
+  icon?: string;
 }
 
 export function useCreateCategory() {
@@ -32,17 +33,18 @@ export function useCreateCategory() {
 interface UpdateCategoryInput {
   id: string;
   name: string;
+  icon?: string;
 }
 
 export function useUpdateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, name }: UpdateCategoryInput) => {
+    mutationFn: async ({ id, name, icon }: UpdateCategoryInput) => {
       const res = await fetch(`/api/crud/categories/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, icon }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Failed to update category");

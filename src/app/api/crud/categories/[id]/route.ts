@@ -19,14 +19,20 @@ export async function PATCH(
 
   const { body } = await parseRequestBody(request);
   const name = body.name;
+  const icon = body.icon;
 
   if (!id || !name) {
     return jsonError("missing_fields");
   }
 
+  const updateData: { name: string; icon?: string } = { name };
+  if (icon !== undefined) {
+    updateData.icon = icon;
+  }
+
   const { data: updatedData, error } = await supabase
     .from("categories")
-    .update({ name })
+    .update(updateData)
     .eq("id", id)
     .eq("user_id", user.id)
     .select()

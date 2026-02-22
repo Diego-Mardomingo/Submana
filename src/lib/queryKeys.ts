@@ -2,7 +2,7 @@ export const queryKeys = {
   transactions: {
     all: ["transactions"] as const,
     lists: () => [...queryKeys.transactions.all, "list"] as const,
-    list: (filters?: { month?: number; year?: number }) =>
+    list: (filters?: { month?: number; year?: number; accountId?: string }) =>
       [...queryKeys.transactions.lists(), filters] as const,
     detail: (id: string) =>
       [...queryKeys.transactions.all, "detail", id] as const,

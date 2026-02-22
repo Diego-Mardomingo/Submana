@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const yearParam = searchParams.get("year");
   const monthParam = searchParams.get("month");
+  const accountIdParam = searchParams.get("account_id");
 
   let query = supabase
     .from("transactions")
@@ -36,6 +37,10 @@ export async function GET(request: NextRequest) {
     const startDate = new Date(year, month, 1).toISOString();
     const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
     query = query.gte("date", startDate).lte("date", endDate);
+  }
+
+  if (accountIdParam) {
+    query = query.eq("account_id", accountIdParam);
   }
 
   const { data: transactions, error } = await query;

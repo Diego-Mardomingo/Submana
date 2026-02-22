@@ -50,9 +50,10 @@ export default function SubscriptionsBody() {
   const [inactiveOpen, setInactiveOpen] = useState(false);
 
   const formatCurrency = (amount: number) => {
-    const formatted = new Intl.NumberFormat(lang === "es" ? "es-ES" : "en-US", {
+    const formatted = new Intl.NumberFormat("es-ES", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+      useGrouping: true,
     }).format(amount);
     return `${formatted} €`;
   };
@@ -98,15 +99,21 @@ export default function SubscriptionsBody() {
 
   return (
     <div className="page-container fade-in">
-      <header className="page-header">
-        <div className="title-with-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="title-icon">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-          <h1 className="title">{t("nav.subscriptions")}</h1>
+      {/* Page Header */}
+      <header className="page-header-clean">
+        <div className="page-header-left">
+          <div className="page-header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          </div>
+          <div className="page-header-text">
+            <h1>{t("nav.subscriptions")}</h1>
+            <p>{t("sub.heroSubtitle")}</p>
+          </div>
         </div>
         <Link href="/subscriptions/new" className="add-btn">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -116,6 +123,37 @@ export default function SubscriptionsBody() {
           <span>{t("sub.new")}</span>
         </Link>
       </header>
+
+      {/* Stats Cards */}
+      {!hasNoSubs && (
+        <div className="info-stats-row">
+          <div className="info-stat-card">
+            <div className="info-stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M2 17a5 5 0 0 0 10 0c0-2.76-2.24-5-5-5s-5 2.24-5 5Z" />
+                <path d="M12 17a5 5 0 0 0 10 0c0-2.76-2.24-5-5-5s-5 2.24-5 5Z" />
+                <path d="M7 7a5 5 0 0 0 10 0c0-2.76-2.24-5-5-5S7 4.24 7 7Z" />
+              </svg>
+            </div>
+            <div className="info-stat-content">
+              <span className="info-stat-label">{t("sub.monthlyCost")}</span>
+              <span className="info-stat-value">{formatCurrency(totalMonthly)}</span>
+            </div>
+          </div>
+          <div className="info-stat-card">
+            <div className="info-stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 3v18h18" />
+                <path d="m19 9-5 5-4-4-3 3" />
+              </svg>
+            </div>
+            <div className="info-stat-content">
+              <span className="info-stat-label">{t("sub.annualCost")}</span>
+              <span className="info-stat-value">{formatCurrency(totalYearly)}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {hasNoSubs ? (
         <div className="subs-empty">
@@ -148,28 +186,11 @@ export default function SubscriptionsBody() {
         </div>
       ) : (
         <>
-          {/* Stats Panel */}
-          <div className="subs-stats-panel">
-            <div className="subs-stat-card">
-              <span className="subs-stat-value">{formatCurrency(totalMonthly)}</span>
-              <span className="subs-stat-label">{t("sub.monthlyCost")}</span>
-            </div>
-            <div className="subs-stat-card">
-              <span className="subs-stat-value">{formatCurrency(totalYearly)}</span>
-              <span className="subs-stat-label">{t("sub.annualCost")}</span>
-            </div>
-            <div className="subs-stat-card">
-              <span className="subs-stat-value">{activeSubs.length}</span>
-              <span className="subs-stat-label">{t("sub.active")}</span>
-            </div>
-          </div>
-
           {/* Active Subscriptions */}
           {activeSubs.length > 0 && (
             <section className="subs-section">
               <div className="subs-section-header">
                 <span className="subs-section-title">{t("sub.active")}</span>
-                <span className="subs-section-count">{activeSubs.length}</span>
               </div>
               <div className="subs-list">
                 {activeSubs.map((sub) => (

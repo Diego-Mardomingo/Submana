@@ -130,9 +130,10 @@ export default function SubscriptionDetail({ sub }: { sub: Sub }) {
     : null;
 
   const formatCurrency = (n: number) => {
-    const formatted = new Intl.NumberFormat(lang === "es" ? "es-ES" : "en-US", {
+    const formatted = new Intl.NumberFormat("es-ES", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+      useGrouping: true,
     }).format(n);
     return `${formatted} €`;
   };
