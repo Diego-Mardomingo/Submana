@@ -228,7 +228,14 @@ export default function CalendarBody() {
     );
   const getSubsForDay = (dayNumber: number) =>
     subscriptions.filter((sub: SubForCalendar) => isPaymentDay(sub, year, month, dayNumber));
-  type TxWithAmount = TxForCalendar & { amount?: number; type?: string };
+  type TxWithAmount = TxForCalendar & {
+    id: string;
+    amount?: number;
+    type?: string;
+    description?: string | null;
+    category?: { name: string } | null;
+    subcategory?: { name: string } | null;
+  };
   const getTransactionsForDay = (dayNumber: number): TxWithAmount[] =>
     (transactions || []).filter((tx: TxWithAmount) => {
       const d = new Date(tx.date);
@@ -301,7 +308,7 @@ export default function CalendarBody() {
         dayNumber,
         isToday: getIsToday(dayNumber),
         subs: getSubsForDay(dayNumber) as DayEntry["subs"],
-        transactions: getTransactionsForDay(dayNumber) as DayEntry["transactions"],
+        transactions: getTransactionsForDay(dayNumber) as unknown as DayEntry["transactions"],
       }));
   })();
 
@@ -376,7 +383,7 @@ export default function CalendarBody() {
               isToday={getIsToday(dayNumber)}
               icons={getSubsIconsForDay(dayNumber)}
               subsForDay={getSubsForDay(dayNumber)}
-              transactions={getTransactionsForDay(dayNumber)}
+              transactions={getTransactionsForDay(dayNumber) as { id: string; amount: number; type: string; description?: string; category?: { name: string }; subcategory?: { name: string } }[]}
               onDayClick={scrollToDay}
               {...getWeightsForDay(dayNumber)}
             />
