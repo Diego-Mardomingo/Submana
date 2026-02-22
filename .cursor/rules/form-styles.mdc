@@ -1,0 +1,162 @@
+---
+description: Guía de estilos para formularios - Estándares de UI con shadcn
+globs: ["**/components/**Form*.tsx", "**/app/**/**/page.tsx"]
+---
+
+# Guía de Estilos para Formularios
+
+## Componentes Base
+
+Usar siempre componentes de shadcn/ui:
+- `Input` de `@/components/ui/input`
+- `Label` de `@/components/ui/label`
+- `Button` de `@/components/ui/button`
+- `Select`, `SelectTrigger`, `SelectContent`, `SelectItem` de `@/components/ui/select`
+- `InputGroup`, `InputGroupInput`, `InputGroupAddon` de `@/components/ui/input-group`
+- `DatePicker` de `@/components/ui/date-picker`
+
+## Alturas Consistentes
+
+Todos los inputs deben tener altura `!h-10` (40px) usando el modificador important:
+
+```tsx
+<Input className="!h-10" />
+<SelectTrigger className="w-full !h-10" />
+<InputGroup className="!h-10" />
+```
+
+## Labels con Required/Optional
+
+El componente `Label` soporta las props `required` y `optional`:
+
+```tsx
+// Campo obligatorio (muestra asterisco rojo *)
+<Label required>Nombre</Label>
+
+// Campo opcional (muestra badge "Opcional")
+<Label optional>Descripción</Label>
+
+// Campo sin indicador
+<Label>Campo normal</Label>
+```
+
+## Inputs Numéricos con Símbolo
+
+Para inputs numéricos con símbolos (€, %, etc.), usar `InputGroup`:
+
+```tsx
+<InputGroup className="!h-10">
+  <InputGroupInput
+    type="number"
+    step="0.01"
+    min="0"
+    placeholder="0.00"
+    value={value}
+    onChange={(e) => setValue(e.target.value)}
+    required
+  />
+  <InputGroupAddon align="inline-end">€</InputGroupAddon>
+</InputGroup>
+```
+
+## Select con Indicador de Color
+
+Para selects que muestran elementos con color (cuentas, categorías):
+
+```tsx
+<Select value={value} onValueChange={setValue}>
+  <SelectTrigger className="w-full !h-10">
+    <SelectValue>
+      {selectedItem ? (
+        <span className="flex items-center gap-2">
+          <span
+            className="size-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: selectedItem.color || "var(--accent)" }}
+          />
+          {selectedItem.name}
+        </span>
+      ) : (
+        "Placeholder"
+      )}
+    </SelectValue>
+  </SelectTrigger>
+  <SelectContent>
+    {items.map((item) => (
+      <SelectItem key={item.id} value={item.id}>
+        <span className="flex items-center gap-2">
+          <span
+            className="size-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: item.color || "var(--accent)" }}
+          />
+          {item.name}
+        </span>
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+```
+
+## DatePicker
+
+Usar el componente `DatePicker` con soporte de idioma:
+
+```tsx
+<DatePicker
+  value={date}
+  onChange={(date) => setDate(date)}
+  placeholder="Seleccionar fecha"
+  lang={lang}
+/>
+```
+
+## Layout de Formularios
+
+Usar las clases CSS del formulario:
+
+```tsx
+<form className="subs-form">
+  {/* Sección individual */}
+  <div className="subs-form-section">
+    <Label>...</Label>
+    <Input />
+  </div>
+
+  {/* Fila con 2 columnas */}
+  <div className="subs-form-row">
+    <div className="subs-form-section">...</div>
+    <div className="subs-form-section">...</div>
+  </div>
+
+  {/* Fila con 3 columnas (1fr 1fr 80px) */}
+  <div className="subs-form-row triple">
+    <div className="subs-form-section">...</div>
+    <div className="subs-form-section">...</div>
+    <div className="subs-form-section">...</div>
+  </div>
+
+  {/* Botón submit */}
+  <Button type="submit" className="subs-form-submit">
+    Guardar
+  </Button>
+</form>
+```
+
+## Ocultar Spinners de Inputs Numéricos
+
+Los spinners de inputs numéricos están ocultos globalmente en el componente `Input`.
+
+## Estilos CSS Importantes
+
+```css
+.subs-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  align-items: end; /* Alinea inputs al fondo */
+}
+
+.subs-form-row.triple {
+  grid-template-columns: 1fr 1fr 80px;
+  align-items: end;
+}
+```

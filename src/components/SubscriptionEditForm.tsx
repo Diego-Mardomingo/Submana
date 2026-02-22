@@ -9,6 +9,22 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { useRouter } from "next/navigation";
 import IconPicker from "@/components/IconPicker";
 import { Spinner } from "@/components/ui/spinner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Account {
   id: string;
@@ -38,8 +54,12 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
   const [icon, setIcon] = useState(sub.icon || "");
   const [name, setName] = useState(sub.service_name);
   const [cost, setCost] = useState(String(sub.cost));
-  const [startDate, setStartDate] = useState(sub.start_date?.slice(0, 10) || "");
-  const [endDate, setEndDate] = useState(sub.end_date?.slice(0, 10) || "");
+  const [startDate, setStartDate] = useState<Date>(
+    sub.start_date ? new Date(sub.start_date) : new Date()
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    sub.end_date ? new Date(sub.end_date) : undefined
+  );
   const [frequency, setFrequency] = useState(sub.frequency);
   const [freqVal, setFreqVal] = useState(String(sub.frequency_value || 1));
   const [accountId, setAccountId] = useState(sub.account_id || "");
@@ -54,14 +74,18 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
       icon: icon || undefined,
       service_name: name,
       cost: num,
-      start_date: startDate,
-      end_date: endDate || null,
+      start_date: startDate.toISOString().slice(0, 10),
+      end_date: endDate ? endDate.toISOString().slice(0, 10) : null,
       frequency,
       frequency_value: parseInt(freqVal, 10) || 1,
-      account_id: accountId || null,
+      account_id: accountId && accountId !== "none" ? accountId : null,
     });
     router.push(`/subscription/${sub.id}`);
   };
+
+  const selectedAccount = accountId && accountId !== "none" 
+    ? (accounts as Account[]).find((a) => a.id === accountId) 
+    : undefined;
 
   return (
     <div className="page-container fade-in">
@@ -89,87 +113,99 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
       <form onSubmit={handleSubmit} className="subs-form">
         {/* Icon Picker */}
         <div className="subs-form-section">
-          <label className="subs-form-label">{t("sub.icon")}</label>
+          <Label className="subs-form-label" optional>{t("sub.icon")}</Label>
           <IconPicker defaultIcon={icon} onIconSelect={setIcon} />
         </div>
 
         {/* Name */}
         <div className="subs-form-section">
-          <label className="subs-form-label">{t("sub.name")}</label>
-          <input
+          <Label className="subs-form-label" required>{t("sub.name")}</Label>
+          <Input
             type="text"
-            className="subs-form-input"
             placeholder={t("sub.namePlaceholder")}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            className="!h-10"
           />
         </div>
 
         {/* Account */}
         <div className="subs-form-section">
-          <label className="subs-form-label">
-            {t("sub.account")} <span style={{ opacity: 0.6 }}>({t("sub.optional")})</span>
-          </label>
-          <div className="subs-form-select-wrapper">
-            <select
-              className="subs-form-select"
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-            >
-              <option value="">{lang === "es" ? "Sin cuenta" : "No account"}</option>
+          <Label className="subs-form-label" optional>{t("sub.account")}</Label>
+          <Select value={accountId || "none"} onValueChange={setAccountId}>
+            <SelectTrigger className="w-full !h-10">
+              <SelectValue placeholder={lang === "es" ? "Sin cuenta" : "No account"}>
+                {selectedAccount ? (
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="size-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: selectedAccount.color || "var(--accent)" }}
+                    />
+                    {selectedAccount.name}
+                  </span>
+                ) : (
+                  lang === "es" ? "Sin cuenta" : "No account"
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">
+                {lang === "es" ? "Sin cuenta" : "No account"}
+              </SelectItem>
               {(accounts as Account[]).map((acc) => (
-                <option key={acc.id} value={acc.id}>
-                  {acc.name}
-                </option>
+                <SelectItem key={acc.id} value={acc.id}>
+                  <span className="flex items-center gap-2">
+                    <span
+                      className="size-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: acc.color || "var(--accent)" }}
+                    />
+                    {acc.name}
+                  </span>
+                </SelectItem>
               ))}
-            </select>
-            {accountId && (
-              <span
-                className="subs-form-account-indicator"
-                style={{
-                  backgroundColor: (accounts as Account[]).find((a) => a.id === accountId)?.color || "var(--accent)",
-                }}
-              />
-            )}
-          </div>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Cost + Frequency */}
         <div className="subs-form-row triple">
           <div className="subs-form-section">
-            <label className="subs-form-label">{t("sub.cost")}</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              className="subs-form-input"
-              placeholder="0.00"
-              value={cost}
-              onChange={(e) => setCost(e.target.value)}
-              required
-            />
+            <Label className="subs-form-label" required>{t("sub.cost")}</Label>
+            <InputGroup className="!h-10">
+              <InputGroupInput
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                required
+              />
+              <InputGroupAddon align="inline-end">€</InputGroupAddon>
+            </InputGroup>
           </div>
           <div className="subs-form-section">
-            <label className="subs-form-label">{t("sub.frequency")}</label>
-            <select
-              className="subs-form-select"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-            >
-              <option value="weekly">{t("sub.weekly")}</option>
-              <option value="monthly">{t("sub.monthly")}</option>
-              <option value="yearly">{t("sub.yearly")}</option>
-            </select>
+            <Label className="subs-form-label">{t("sub.frequency")}</Label>
+            <Select value={frequency} onValueChange={setFrequency}>
+              <SelectTrigger className="w-full !h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="weekly">{t("sub.weekly")}</SelectItem>
+                <SelectItem value="monthly">{t("sub.monthly")}</SelectItem>
+                <SelectItem value="yearly">{t("sub.yearly")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="subs-form-section">
-            <label className="subs-form-label">{t("sub.every")}</label>
-            <input
+            <Label className="subs-form-label">{t("sub.every")}</Label>
+            <Input
               type="number"
               min="1"
-              className="subs-form-input"
               value={freqVal}
               onChange={(e) => setFreqVal(e.target.value)}
+              className="!h-10"
             />
           </div>
         </div>
@@ -177,30 +213,27 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
         {/* Dates */}
         <div className="subs-form-row">
           <div className="subs-form-section">
-            <label className="subs-form-label">{t("sub.startDate")}</label>
-            <input
-              type="date"
-              className="subs-form-input"
+            <Label className="subs-form-label" required>{t("sub.startDate")}</Label>
+            <DatePicker
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
+              onChange={(date) => date && setStartDate(date)}
+              placeholder={lang === "es" ? "Seleccionar fecha" : "Select date"}
+              lang={lang}
             />
           </div>
           <div className="subs-form-section">
-            <label className="subs-form-label">
-              {t("sub.endDate")} <span style={{ opacity: 0.6 }}>({t("sub.optional")})</span>
-            </label>
-            <input
-              type="date"
-              className="subs-form-input"
+            <Label className="subs-form-label" optional>{t("sub.endDate")}</Label>
+            <DatePicker
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={setEndDate}
+              placeholder={lang === "es" ? "Seleccionar fecha" : "Select date"}
+              lang={lang}
             />
           </div>
         </div>
 
         {/* Submit */}
-        <button 
+        <Button 
           type="submit" 
           className="subs-form-submit" 
           disabled={updateSub.isPending}
@@ -215,7 +248,7 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
             </svg>
           )}
           {t("sub.saveChanges")}
-        </button>
+        </Button>
       </form>
     </div>
   );

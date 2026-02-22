@@ -30,6 +30,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -328,50 +333,37 @@ export default function AccountsBody() {
               </div>
               <div className="field">
                 <label>{t("common.color")}</label>
-                <div style={{ position: "relative" }}>
-                  <button
-                    type="button"
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      backgroundColor: formData.color,
-                      border: "3px solid var(--negro)",
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setColorPickerOpen(!colorPickerOpen)}
-                  />
-                  {colorPickerOpen && (
-                    <div style={{
-                      position: "absolute",
-                      top: "100%",
-                      marginTop: 8,
-                      background: "var(--gris-oscuro)",
-                      padding: 12,
-                      borderRadius: 12,
-                      display: "grid",
-                      gridTemplateColumns: "repeat(3, 1fr)",
-                      gap: 8,
-                      zIndex: 2100,
-                    }}>
+                <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: "50%",
+                        backgroundColor: formData.color,
+                        border: "3px solid var(--negro)",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-3" align="start" style={{ zIndex: 2100 }}>
+                    <div className="grid grid-cols-3 gap-2">
                       {colors.map((c) => (
                         <button
                           key={c}
                           type="button"
+                          className="size-6 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
                           style={{
-                            width: 24,
-                            height: 24,
-                            borderRadius: "50%",
                             backgroundColor: c,
                             border: formData.color === c ? "2px solid var(--blanco)" : "none",
-                            cursor: "pointer",
                           }}
                           onClick={() => { setFormData({ ...formData, color: c }); setColorPickerOpen(false); }}
                         />
                       ))}
                     </div>
-                  )}
-                </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="modal-actions">
                 <button type="button" className="btn-cancel" onClick={closeModal}>

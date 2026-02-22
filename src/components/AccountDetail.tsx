@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useDeleteAccount } from "@/hooks/useAccountMutations";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useLang } from "@/hooks/useLang";
@@ -20,6 +20,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 interface Account {
   id: string;
@@ -114,25 +122,106 @@ export default function AccountDetail({ account }: { account: Account }) {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const thisMonthTransactions = (transactions as TransactionItem[]).filter((tx) => {
-    const d = new Date(tx.date);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
+  const getAvailableMonths = useCallback(() => {
+    const txs = transactions as TransactionItem[];
+    if (!txs.length) {
+      return [{ year: currentYear, month: currentMonth }];
+    }
+    const dates = txs.map((tx) => new Date(tx.date));
+    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
+    const months: { year: number; month: number }[] = [];
+    let y = minDate.getFullYear();
+    let m = minDate.getMonth();
+    const endY = currentYear;
+    const endM = currentMonth;
+    while (y < endY || (y === endY && m <= endM)) {
+      months.push({ year: y, month: m });
+      m++;
+      if (m > 11) {
+        m = 0;
+        y++;
+      }
+    }
+    return months.length ? months : [{ year: currentYear, month: currentMonth }];
+  }, [transactions, currentYear, currentMonth]);
 
-  const thisMonthIncome = thisMonthTransactions.filter((tx) => tx.type === "income");
-  const thisMonthExpense = thisMonthTransactions.filter((tx) => tx.type === "expense");
+  const months = getAvailableMonths();
 
-  const totalIncome = (transactions as TransactionItem[])
-    .filter((tx) => tx.type === "income")
-    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const getMonthStats = useCallback(
+    (year: number, month: number) => {
+      const monthTxs = (transactions as TransactionItem[]).filter((tx) => {
+        const d = new Date(tx.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+      const income = monthTxs
+        .filter((tx) => tx.type === "income")
+        .reduce((sum, tx) => sum + Number(tx.amount), 0);
+      const expense = monthTxs
+        .filter((tx) => tx.type === "expense")
+        .reduce((sum, tx) => sum + Number(tx.amount), 0);
+      return {
+        income,
+        expense,
+        balance: income - expense,
+        count: monthTxs.length,
+        incomeCount: monthTxs.filter((tx) => tx.type === "income").length,
+        expenseCount: monthTxs.filter((tx) => tx.type === "expense").length,
+      };
+    },
+    [transactions]
+  );
 
-  const totalExpense = (transactions as TransactionItem[])
-    .filter((tx) => tx.type === "expense")
-    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const formatMonthYearDisplay = (year: number, month: number) => {
+    const monthsNames =
+      lang === "es"
+        ? ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+        : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    return `${monthsNames[month]} ${year}`;
+  };
+
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [selectedIndex, setSelectedIndex] = useState(
+    months.findIndex((m) => m.year === currentYear && m.month === currentMonth)
+  );
+
+  const carouselOpts = useMemo(
+    () => ({
+      align: "center" as const,
+      loop: false,
+      duration: 25,
+      startIndex: (() => {
+        const idx = months.findIndex((m) => m.year === currentYear && m.month === currentMonth);
+        return idx >= 0 ? idx : Math.max(0, months.length - 1);
+      })(),
+    }),
+    [months, currentYear, currentMonth]
+  );
+
+  useEffect(() => {
+    const idx = months.findIndex((m) => m.year === currentYear && m.month === currentMonth);
+    setSelectedIndex(idx >= 0 ? idx : months.length - 1);
+  }, [months, currentYear, currentMonth]);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    const updateIndex = () => setSelectedIndex(carouselApi.selectedScrollSnap());
+    updateIndex();
+    carouselApi.on("select", updateIndex);
+    carouselApi.on("scroll", updateIndex);
+    return () => {
+      carouselApi.off("select", updateIndex);
+      carouselApi.off("scroll", updateIndex);
+    };
+  }, [carouselApi]);
+
+  const accentColor = account.color || "var(--accent)";
 
   return (
     <>
-      <div className="account-detail">
+      <div 
+        className="account-detail"
+        style={{ "--account-accent": accentColor } as React.CSSProperties}
+      >
         <div className="account-detail-header">
           <div className="account-detail-icon">
             {account.icon ? (
@@ -143,7 +232,7 @@ export default function AccountDetail({ account }: { account: Account }) {
                 height="48"
                 viewBox="0 0 24 24"
                 fill="none"
-                stroke="var(--info)"
+                stroke={accentColor}
                 strokeWidth="1.5"
               >
                 <rect x="1" y="4" width="22" height="16" rx="2" />
@@ -165,35 +254,64 @@ export default function AccountDetail({ account }: { account: Account }) {
           )}
         </div>
 
-        <div className="account-detail-stats">
-          <div className="account-stat-card">
-            <span className="account-stat-label">{lang === "es" ? "Ingresos Totales" : "Total Income"}</span>
-            <span className="account-stat-value income">{formatCurrency(totalIncome)}</span>
+        <div className="account-stats-carousel">
+          <div className="account-stats-month-header">
+            {months[selectedIndex] && formatMonthYearDisplay(months[selectedIndex].year, months[selectedIndex].month)}
           </div>
-          <div className="account-stat-card">
-            <span className="account-stat-label">{lang === "es" ? "Gastos Totales" : "Total Expenses"}</span>
-            <span className="account-stat-value expense">{formatCurrency(totalExpense)}</span>
-          </div>
-          <div className="account-stat-card">
-            <span className="account-stat-label">{lang === "es" ? "Transacciones" : "Transactions"}</span>
-            <span className="account-stat-sublabel">{lang === "es" ? "Este Mes" : "This Month"}</span>
-            <div className="account-stat-row">
-              <span className="account-stat-value">{thisMonthTransactions.length}</span>
-              <span className="account-stat-separator">|</span>
-              <span className="account-stat-inline income">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="17 11 12 6 7 11" />
-                </svg>
-                {thisMonthIncome.length}
-              </span>
-              <span className="account-stat-inline expense">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="7 13 12 18 17 13" />
-                </svg>
-                {thisMonthExpense.length}
-              </span>
-            </div>
-          </div>
+          <Carousel
+            opts={carouselOpts}
+            setApi={setCarouselApi}
+            className="account-stats-carousel-inner"
+          >
+            <CarouselContent>
+              {months.map(({ year, month }) => {
+                const stats = getMonthStats(year, month);
+                const balanceClass =
+                  stats.balance > 0 ? "positive" : stats.balance < 0 ? "negative" : "neutral";
+                return (
+                  <CarouselItem key={`${year}-${month}`}>
+                    <div className="account-detail-stats">
+                      <div className="account-stat-card income">
+                        <span className="account-stat-label">{lang === "es" ? "Ingresos" : "Income"}</span>
+                        <span className="account-stat-value">{formatCurrency(stats.income)}</span>
+                      </div>
+                      <div className="account-stat-card expense">
+                        <span className="account-stat-label">{lang === "es" ? "Gastos" : "Expenses"}</span>
+                        <span className="account-stat-value">{formatCurrency(stats.expense)}</span>
+                      </div>
+                      <div className={`account-stat-card balance ${balanceClass}`}>
+                        <span className="account-stat-label">{lang === "es" ? "Balance del Mes" : "Month Balance"}</span>
+                        <span className="account-stat-value">
+                          {stats.balance >= 0 ? "+" : ""}{formatCurrency(stats.balance)}
+                        </span>
+                      </div>
+                      <div className="account-stat-card">
+                        <span className="account-stat-label">{lang === "es" ? "Transacciones" : "Transactions"}</span>
+                        <div className="account-stat-row">
+                          <span className="account-stat-value">{stats.count}</span>
+                          <span className="account-stat-separator">|</span>
+                          <span className="account-stat-inline income">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="17 11 12 6 7 11" />
+                            </svg>
+                            {stats.incomeCount}
+                          </span>
+                          <span className="account-stat-inline expense">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polyline points="7 13 12 18 17 13" />
+                            </svg>
+                            {stats.expenseCount}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                );
+              })}
+            </CarouselContent>
+            <CarouselPrevious className="account-stats-carousel-nav account-stats-carousel-prev" />
+            <CarouselNext className="account-stats-carousel-nav account-stats-carousel-next" />
+          </Carousel>
         </div>
 
         <div className="account-detail-actions">

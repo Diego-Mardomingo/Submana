@@ -478,7 +478,7 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.field input,
+.field input:not(.icon-picker-input),
 .field select {
   width: 100%;
   background: var(--gris-oscuro);
