@@ -1,0 +1,413 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { flushSync } from "react-dom";
+import { ChevronLeft, ChevronRight, House, ChevronDown, List } from "lucide-react";
+import { useCalendarSwipe } from "@/hooks/useCalendarSwipe";
+import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useTransactions } from "@/hooks/useTransactions";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/queryKeys";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import Day from "./Day";
+import CalendarDayList, { type DayEntry } from "./CalendarDayList";
+import { useLang } from "@/hooks/useLang";
+import { useTranslations } from "@/lib/i18n/utils";
+import { cn } from "@/lib/utils";
+
+const formatCurrency = (n: number) => {
+  const formatted = new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true,
+  }).format(n);
+  return `${formatted} €`;
+};
+
+function setToNoon(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+}
+
+type TxForCalendar = { date: string };
+
+type SubForCalendar = {
+  start_date: string;
+  end_date?: string | null;
+  frequency: string;
+  frequency_value?: number;
+  icon?: string | null;
+  cost?: number | string;
+};
+
+function isPaymentDay(
+  sub: SubForCalendar,
+  year: number,
+  month: number,
+  dayNumber: number
+) {
+  const current = setToNoon(new Date(year, month, dayNumber));
+  const start = setToNoon(new Date(sub.start_date));
+  const startYear = start.getFullYear();
+  const startMonth = start.getMonth();
+  const startDay = start.getDate();
+  if (start > current) return false;
+  if (sub.end_date) {
+    const end = setToNoon(new Date(sub.end_date));
+    if (end < current) return false;
+  }
+  switch (sub.frequency) {
+    case "weekly": {
+      const msInDay = 86400000;
+      const diffDays = Math.round((current.getTime() - start.getTime()) / msInDay);
+      const interval = 7 * (sub.frequency_value || 1);
+      return diffDays % interval === 0;
+    }
+    case "monthly": {
+      const diffMonths = (year - startYear) * 12 + (month - startMonth);
+      if (diffMonths < 0) return false;
+      if (diffMonths % (sub.frequency_value || 1) === 0) {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        return dayNumber === Math.min(startDay, daysInMonth);
+      }
+      return false;
+    }
+    case "yearly": {
+      const diffYears = year - startYear;
+      if (diffYears < 0) return false;
+      if (diffYears % (sub.frequency_value || 1) === 0 && month === startMonth) {
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        return dayNumber === Math.min(startDay, daysInMonth);
+      }
+      return false;
+    }
+    default:
+      return false;
+  }
+}
+
+export default function CalendarBody() {
+  const lang = useLang();
+  const t = useTranslations(lang);
+  const queryClient = useQueryClient();
+  const [year, setYear] = useState(new Date().getFullYear());
+  const [month, setMonth] = useState(new Date().getMonth());
+  const [listOpen, setListOpen] = useState(false);
+  const scrollTargetRef = useRef<number | null>(null);
+
+  const scrollToDay = (dayNumber: number) => {
+    const doScroll = () => {
+      const el = document.getElementById(`calendar-day-${dayNumber}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    if (listOpen) {
+      doScroll();
+    } else {
+      scrollTargetRef.current = dayNumber;
+      setListOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!listOpen || scrollTargetRef.current === null) return;
+    const dayNum = scrollTargetRef.current;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`calendar-day-${dayNum}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollTargetRef.current = null;
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [listOpen]);
+
+  const { data: subscriptions = [] } = useSubscriptions();
+  const { data: transactions = [], isLoading } = useTransactions(year, month);
+
+  const diasSemana = [
+    t("calendar.monday"),
+    t("calendar.tuesday"),
+    t("calendar.wednesday"),
+    t("calendar.thursday"),
+    t("calendar.friday"),
+    t("calendar.saturday"),
+    t("calendar.sunday"),
+  ];
+  const meses = [
+    t("calendar.months.january"),
+    t("calendar.months.february"),
+    t("calendar.months.march"),
+    t("calendar.months.april"),
+    t("calendar.months.may"),
+    t("calendar.months.june"),
+    t("calendar.months.july"),
+    t("calendar.months.august"),
+    t("calendar.months.september"),
+    t("calendar.months.october"),
+    t("calendar.months.november"),
+    t("calendar.months.december"),
+  ];
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const startColumn = firstDayOfMonth === 0 ? 7 : firstDayOfMonth;
+
+  const changeMonth = (delta: number) => {
+    const go = () => {
+      let newMonth = month + delta;
+      let newYear = year;
+      if (newMonth < 0) {
+        newMonth = 11;
+        newYear--;
+      } else if (newMonth > 11) {
+        newMonth = 0;
+        newYear++;
+      }
+      setMonth(newMonth);
+      setYear(newYear);
+    };
+    if (typeof document !== "undefined" && (document as Document & { startViewTransition?: (cb: () => void) => void }).startViewTransition) {
+      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => flushSync(go));
+    } else {
+      go();
+    }
+  };
+
+  const handleToday = () => {
+    const go = () => {
+      setYear(new Date().getFullYear());
+      setMonth(new Date().getMonth());
+    };
+    if (typeof document !== "undefined" && (document as Document & { startViewTransition?: (cb: () => void) => void }).startViewTransition) {
+      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => flushSync(go));
+    } else {
+      go();
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft") {
+        changeMonth(-1);
+      } else if (e.key === "ArrowRight") {
+        changeMonth(1);
+      } else if (e.key === "ArrowDown") {
+        handleToday();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [month, year]);
+
+  const prefetchMonth = (delta: number) => {
+    let newMonth = month + delta;
+    let newYear = year;
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear--;
+    } else if (newMonth > 11) {
+      newMonth = 0;
+      newYear++;
+    }
+    queryClient.prefetchQuery({
+      queryKey: queryKeys.transactions.list({ year: newYear, month: newMonth }),
+    });
+  };
+
+  const getSubsIconsForDay = (dayNumber: number) =>
+    subscriptions.flatMap((sub: SubForCalendar) =>
+      isPaymentDay(sub, year, month, dayNumber) ? [sub.icon] : []
+    );
+  const getSubsForDay = (dayNumber: number) =>
+    subscriptions.filter((sub: SubForCalendar) => isPaymentDay(sub, year, month, dayNumber));
+  type TxWithAmount = TxForCalendar & { amount?: number; type?: string };
+  const getTransactionsForDay = (dayNumber: number): TxWithAmount[] =>
+    (transactions || []).filter((tx: TxWithAmount) => {
+      const d = new Date(tx.date);
+      return d.getFullYear() === year && d.getMonth() === month && d.getDate() === dayNumber;
+    });
+
+  const getSpentValue = () => {
+    let spent = 0;
+    daysArray.forEach((dayNumber) => {
+      subscriptions.forEach((sub: SubForCalendar) => {
+        if (isPaymentDay(sub, year, month, dayNumber)) {
+          spent = parseFloat((spent + Number(sub.cost)).toFixed(2));
+        }
+      });
+    });
+    return spent;
+  };
+
+  const getWeightsForDay = (() => {
+    let monthIncome = 0;
+    let monthExpense = 0;
+    (transactions || []).forEach((tx: TxWithAmount) => {
+      const amt = Number(tx.amount) || 0;
+      if (tx.type === "income") monthIncome += amt;
+      else monthExpense += amt;
+    });
+    const monthSubExpense = getSpentValue();
+    const totalMonthExpense = monthExpense + monthSubExpense;
+
+    return (dayNumber: number) => {
+      const dayTxs = getTransactionsForDay(dayNumber);
+      const daySubs = getSubsForDay(dayNumber);
+      let dayIncome = 0;
+      let dayExpense = 0;
+      dayTxs.forEach((tx: TxWithAmount) => {
+        const amt = Number(tx.amount) || 0;
+        if (tx.type === "income") dayIncome += amt;
+        else dayExpense += amt;
+      });
+      daySubs.forEach((sub: SubForCalendar) => {
+        dayExpense += Number(sub.cost) || 0;
+      });
+      return {
+        incomeWeight: monthIncome > 0 ? Math.min(1, dayIncome / monthIncome) : 0,
+        expenseWeight: totalMonthExpense > 0 ? Math.min(1, dayExpense / totalMonthExpense) : 0,
+      };
+    };
+  })();
+  const getIsToday = (dayNumber: number) =>
+    year === new Date().getFullYear() &&
+    month === new Date().getMonth() &&
+    dayNumber === new Date().getDate();
+  const swipeZoneRef = useRef<HTMLDivElement>(null);
+  useCalendarSwipe(swipeZoneRef, {
+    onSwipeLeft: () => changeMonth(1),
+    onSwipeRight: () => changeMonth(-1),
+    onSwipeUp: handleToday,
+  });
+
+  const dayEntries: DayEntry[] = (() => {
+    const daysWithContent = new Set<number>();
+    daysArray.forEach((d) => {
+      const subs = getSubsForDay(d);
+      const txs = getTransactionsForDay(d);
+      if (subs.length > 0 || txs.length > 0) daysWithContent.add(d);
+    });
+    return Array.from(daysWithContent)
+      .sort((a, b) => a - b)
+      .map((dayNumber) => ({
+        dayNumber,
+        isToday: getIsToday(dayNumber),
+        subs: getSubsForDay(dayNumber) as DayEntry["subs"],
+        transactions: getTransactionsForDay(dayNumber) as DayEntry["transactions"],
+      }));
+  })();
+
+  return (
+    <div className="calendar_container">
+      <header className="calendar_header">
+        <div className="buttonsMonth">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => changeMonth(-1)}
+            onMouseEnter={() => prefetchMonth(-1)}
+            aria-label="Previous"
+            className="rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ChevronLeft className="size-5" strokeWidth={1.5} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToday}
+            aria-label={t("calendar.today")}
+            className="rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <House className="size-4" strokeWidth={1.5} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => changeMonth(1)}
+            onMouseEnter={() => prefetchMonth(1)}
+            aria-label="Next"
+            className="rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ChevronRight className="size-5" strokeWidth={1.5} />
+          </Button>
+        </div>
+        <div className="header_text" onClick={handleToday} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleToday()}>
+          <p className="nombre_mes">{meses[month]}</p>
+          <p className="año">{year}</p>
+        </div>
+        <div className="spent_container">
+          <p className="spent_title">{t("calendar.monthly_spend")}</p>
+          <div className={`spent_value ${isLoading ? "spent_value_loading" : ""}`}>
+            {isLoading ? (
+              <Spinner className="size-5 text-primary" />
+            ) : (
+              <span>{formatCurrency(getSpentValue())}</span>
+            )}
+          </div>
+        </div>
+      </header>
+      <div
+        ref={swipeZoneRef}
+        className="calendar_swipe_zone"
+      >
+      <aside className="calendar_weekdays">
+        {diasSemana.map((dia) => (
+          <div key={dia} className="diaSemana">
+            {dia}
+          </div>
+        ))}
+      </aside>
+      <section className="calendar_body">
+        {daysArray.map((dayNumber, index) => {
+          const styleObj = index === 0 ? { gridColumnStart: startColumn } : {};
+          return (
+            <Day
+              key={dayNumber}
+              dayNumber={dayNumber}
+              dayStyle={styleObj}
+              isToday={getIsToday(dayNumber)}
+              icons={getSubsIconsForDay(dayNumber)}
+              subsForDay={getSubsForDay(dayNumber)}
+              transactions={getTransactionsForDay(dayNumber)}
+              onDayClick={scrollToDay}
+              {...getWeightsForDay(dayNumber)}
+            />
+          );
+        })}
+      </section>
+      </div>
+      <Collapsible open={listOpen} onOpenChange={setListOpen}>
+        <div className="calendar-records-panel">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="calendar-records-trigger"
+            >
+              <span className="flex items-center gap-2">
+                <List className="size-4" strokeWidth={1.5} />
+                {t("calendar.records_toggle")}
+              </span>
+              <ChevronDown
+                className={cn("size-4 shrink-0 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]", listOpen && "rotate-180")}
+                strokeWidth={1.5}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent forceMount className="calendar-collapsible-content">
+            <div className="calendar-collapsible-inner">
+              <CalendarDayList dayEntries={dayEntries} year={year} month={month} />
+            </div>
+          </CollapsibleContent>
+        </div>
+      </Collapsible>
+    </div>
+  );
+}

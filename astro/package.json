@@ -1,0 +1,25 @@
+{
+  "name": "myplayground",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/netlify": "^6.5.1",
+    "@astrojs/react": "^4.3.0",
+    "@fontsource-variable/inter": "^5.1.0",
+    "@pheralb/toast": "^1.0.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-query": "^5.90.21",
+    "astro": "^5.11.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.1.18"
+  }
+}

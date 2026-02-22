@@ -1,0 +1,190 @@
+# Submana — Cursor Rules (Next.js Migration)
+
+## Objetivo
+Migrar desde Astro 5 + React islands a una app React completa con Next.js.
+Prioridad: experiencia nativa en móvil, reactividad fluida, caché agresivo y PWA.
+
+---
+
+## Stack objetivo
+- **Framework**: Next.js 15 (App Router)
+- **Lenguaje**: TypeScript estricto
+- **Base de datos**: Supabase (PostgreSQL)
+- **UI Components**: shadcn/ui + Tailwind CSS v4
+- **State / Fetching**: TanStack Query v5 (cliente) + Server Components (servidor)
+- **PWA**: next-pwa (Workbox)
+- **Hosting**: Vercel
+
+---
+
+## Arquitectura: App Router
+
+### Server vs Client Components
+- Por defecto, los componentes son **Server Components**. Añadir `'use client'` solo cuando sea estrictamente necesario (interactividad, hooks, estado).
+- La carga inicial de datos ocurre en Server Components (`async/await` directo con Supabase server client). No usar TanStack Query en el servidor.
+- TanStack Query se usa exclusivamente en Client Components para revalidaciones, mutaciones y estado reactivo en cliente.
+
+### Estructura de carpetas
+```
+src/
+├── app/                    # Rutas (App Router)
+│   ├── (auth)/             # Grupo de rutas autenticadas
+│   ├── api/                # Route Handlers (API)
+│   └── layout.tsx
+├── components/
+│   ├── ui/                 # shadcn/ui (no modificar directamente)
+│   └── [feature]/          # Componentes por dominio
+├── hooks/                  # Custom hooks TanStack Query (solo client)
+├── lib/
+│   ├── supabase/
+│   │   ├── server.ts       # Cliente Supabase para Server Components
+│   │   └── client.ts       # Cliente Supabase para Client Components
+│   ├── queryClient.ts      # Singleton TanStack Query
+│   └── queryKeys.ts        # Keys jerárquicas
+└── types/                  # Tipos TypeScript globales
+```
+
+### Patrón de datos por página
+1. **Server Component** obtiene datos iniciales y los pasa como `initialData` a TanStack Query.
+2. **Client Component** usa `useQuery` con ese `initialData` → cero loading state en primera carga.
+3. Las mutaciones invalidan las queries afectadas en `onSettled`.
+
+---
+
+## Data Fetching
+
+- **Server Components**: `supabase/server.ts` con cookies SSR. Nunca exponer claves de servicio al cliente.
+- **Client Components**: `supabase/client.ts` solo para realtime o casos muy específicos. Preferir llamadas a Route Handlers propios.
+- **Route Handlers** (`app/api/`): punto de entrada para todas las mutaciones desde el cliente. Formato de respuesta: `{ data } | { error }`.
+- **Nunca** `useEffect` + `fetch` directo para obtener datos. Siempre TanStack Query.
+
+---
+
+## PWA y experiencia móvil
+
+- Configurar `next-pwa` con estrategia **StaleWhileRevalidate** para assets estáticos y **NetworkFirst** para llamadas API.
+- Todas las rutas deben funcionar offline con datos cacheados (al menos lectura).
+- Usar `next/navigation` (`useRouter`, `usePathname`) en lugar de manipulación manual del historial.
+- Las animaciones de navegación deben sentirse nativas: usar `framer-motion` o CSS transitions suaves. Evitar saltos o re-renders visibles.
+- Bottom navigation en móvil, sidebar en desktop (igual que en Astro, pero como componente React puro).
+
+---
+
+## Design Tokens — Paleta de colores oficial
+
+Estos tokens deben copiarse tal cual en `globals.css` del nuevo proyecto. **No inventar colores nuevos.** Toda la UI debe construirse sobre estas variables.
+
+```css
+/* ── Dark theme (default) ── */
+:root, [data-theme="dark"] {
+  --negro:          #0f1012;
+  --gris-oscuro:    #18191c;
+  --gris:           #26282d;
+  --gris-claro:     #6b7280;
+  --gris-muy-claro: #9ca3af;
+  --blanco:         #f0f1f3;
+
+  --accent:         #8b5cf6;   /* Morado principal de marca */
+  --accent-hover:   #7c3aed;
+  --accent-soft:    rgba(139, 92, 246, 0.12);
+  --accent-muted:   rgba(139, 92, 246, 0.25);
+
+  --success:        #34d399;   /* Ingresos / positivo */
+  --success-hover:  #10b981;
+  --success-soft:   rgba(52, 211, 153, 0.12);
+  --success-muted:  rgba(52, 211, 153, 0.25);
+
+  --danger:         #f87171;   /* Gastos / negativo */
+  --danger-hover:   #ef4444;
+  --danger-soft:    rgba(248, 113, 113, 0.12);
+  --danger-muted:   rgba(248, 113, 113, 0.25);
+
+  --warning:        #fbbf24;
+  --warning-hover:  #f59e0b;
+  --warning-soft:   rgba(251, 191, 36, 0.12);
+  --warning-muted:  rgba(251, 191, 36, 0.25);
+
+  --info:           #60a5fa;
+  --info-hover:     #3b82f6;
+  --info-soft:      rgba(96, 165, 250, 0.12);
+  --info-muted:     rgba(96, 165, 250, 0.25);
+
+  --teal:           #2dd4bf;
+  --teal-hover:     #14b8a6;
+  --teal-soft:      rgba(45, 212, 191, 0.12);
+}
+
+/* ── Light theme ── */
+html[data-theme="light"] {
+  --negro:          #f8f9fb;
+  --gris-oscuro:    #eef0f4;
+  --gris:           #dde1e8;
+  --gris-claro:     #6b7280;
+  --gris-muy-claro: #4b5563;
+  --blanco:         #111318;
+
+  --accent:         #6d28d9;
+  --accent-hover:   #5b21b6;
+  --accent-soft:    rgba(109, 40, 217, 0.1);
+  --accent-muted:   rgba(109, 40, 217, 0.2);
+
+  --success:        #059669;
+  --success-hover:  #047857;
+  --success-soft:   rgba(5, 150, 105, 0.08);
+  --success-muted:  rgba(5, 150, 105, 0.18);
+
+  --danger:         #dc2626;
+  --danger-hover:   #b91c1c;
+  --danger-soft:    rgba(220, 38, 38, 0.08);
+  --danger-muted:   rgba(220, 38, 38, 0.18);
+
+  --warning:        #d97706;
+  --warning-hover:  #b45309;
+  --warning-soft:   rgba(217, 119, 6, 0.08);
+  --warning-muted:  rgba(217, 119, 6, 0.18);
+
+  --info:           #2563eb;
+  --info-hover:     #1d4ed8;
+  --info-soft:      rgba(37, 99, 235, 0.08);
+  --info-muted:     rgba(37, 99, 235, 0.18);
+
+  --teal:           #0d9488;
+  --teal-hover:     #0f766e;
+  --teal-soft:      rgba(13, 148, 136, 0.08);
+}
+```
+
+**Reglas de uso:**
+- Usar siempre las variables CSS, nunca valores hexadecimales hardcodeados.
+- `--accent` es el color de marca: botones primarios, estados activos, focus rings.
+- `--success` / `--danger` son semánticos: ingresos siempre en verde, gastos siempre en rojo.
+- Las variantes `*-soft` y `*-muted` son para fondos y bordes con transparencia.
+- La fuente principal es **Sora** (variable font). Mantenerla en el nuevo proyecto.
+
+---
+
+## UI con shadcn/ui
+
+- Instalar componentes con `npx shadcn@latest add [componente]`. No copiar/pegar manualmente.
+- Los archivos en `components/ui/` son generados — no modificarlos directamente. Extender con wrappers en `components/[feature]/`.
+- Mantener el sistema de design tokens actual (`--accent`, `--danger`, `--success`, etc.) en `globals.css` para consistencia visual con el diseño existente.
+
+---
+
+## Prácticas generales
+
+- **TypeScript estricto**: `strict: true` en `tsconfig.json`. Sin `any`.
+- **Un hook por entidad y operación**: `useTransactions`, `useCreateTransaction`, etc.
+- **Optimistic UI** en mutaciones frecuentes: `onMutate` → rollback en `onError` → invalidar en `onSettled`.
+- **i18n**: mantener el sistema de traducciones. Evaluar `next-intl` si se necesita routing por locale.
+- **Auth**: usar Supabase Auth con middleware de Next.js para proteger rutas (`middleware.ts`).
+
+---
+
+## Lo que NO hacer durante la migración
+
+- No mezclar patrones de Astro (islands, `client:load`, `transition:persist`) con Next.js.
+- No usar el Pages Router — toda la app va en App Router.
+- No llamar a Supabase directamente desde Client Components para operaciones de escritura — siempre a través de Route Handlers.
+- No crear Server Components con estado (`useState`, `useEffect`) — extraer la parte interactiva a un Client Component hijo.
+- No ignorar el `initialData` pattern — es lo que elimina los flashes de carga.

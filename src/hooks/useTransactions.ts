@@ -1,26 +1,37 @@
+"use client";
+
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { queryKeys } from "../lib/queryKeys";
+import { queryKeys } from "@/lib/queryKeys";
 
-async function fetchTransactions({ queryKey }) {
-    const [_key, _list, filters] = queryKey;
-    const { year, month } = filters || {};
-
-    const params = new URLSearchParams();
-    if (year !== undefined) params.append("year", year);
-    if (month !== undefined) params.append("month", month);
-
-    const res = await fetch(`/api/crud/get-all-transactions?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch transactions");
-    const data = await res.json();
-    return data.transactions ?? [];
+interface TransactionFilters {
+  year?: number;
+  month?: number;
+  accountId?: string;
 }
 
-export function useTransactions(year?: number, month?: number) {
-    return useQuery({
-        // If year/month are undefined, this key is effectively ['transactions', 'list', { year: undefined, month: undefined }]
-        // which matches the logic we want for "all transactions"
-        queryKey: queryKeys.transactions.list({ year, month }),
-        queryFn: fetchTransactions,
-        placeholderData: keepPreviousData,
-    });
+async function fetchTransactions({
+  queryKey,
+}: {
+  queryKey: readonly unknown[];
+}) {
+  const [, , filters] = queryKey;
+  const { year, month, accountId } = (filters || {}) as TransactionFilters;
+
+  const params = new URLSearchParams();
+  if (year !== undefined) params.append("year", String(year));
+  if (month !== undefined) params.append("month", String(month));
+  if (accountId) params.append("account_id", accountId);
+
+  const res = await fetch(`/api/crud/transactions?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch transactions");
+  const json = await res.json();
+  return json.data ?? [];
+}
+
+export function useTransactions(year?: number, month?: number, accountId?: string) {
+  return useQuery({
+    queryKey: queryKeys.transactions.list({ year, month, accountId }),
+    queryFn: fetchTransactions,
+    placeholderData: keepPreviousData,
+  });
 }
