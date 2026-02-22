@@ -214,6 +214,24 @@ export default function AccountDetail({ account }: { account: Account }) {
     };
   }, [carouselApi]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (!carouselApi) return;
+
+      if (e.key === "ArrowLeft" && carouselApi.canScrollPrev()) {
+        e.preventDefault();
+        carouselApi.scrollPrev();
+      } else if (e.key === "ArrowRight" && carouselApi.canScrollNext()) {
+        e.preventDefault();
+        carouselApi.scrollNext();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [carouselApi]);
+
   const accentColor = account.color || "var(--accent)";
 
   return (
@@ -271,21 +289,13 @@ export default function AccountDetail({ account }: { account: Account }) {
                 return (
                   <CarouselItem key={`${year}-${month}`}>
                     <div className="account-detail-stats">
-                      <div className="account-stat-card income">
-                        <span className="account-stat-label">{lang === "es" ? "Ingresos" : "Income"}</span>
-                        <span className="account-stat-value">{formatCurrency(stats.income)}</span>
-                      </div>
-                      <div className="account-stat-card expense">
-                        <span className="account-stat-label">{lang === "es" ? "Gastos" : "Expenses"}</span>
-                        <span className="account-stat-value">{formatCurrency(stats.expense)}</span>
-                      </div>
                       <div className={`account-stat-card balance ${balanceClass}`}>
                         <span className="account-stat-label">{lang === "es" ? "Balance del Mes" : "Month Balance"}</span>
-                        <span className="account-stat-value">
+                        <span className="account-stat-value account-stat-value-balance">
                           {stats.balance >= 0 ? "+" : ""}{formatCurrency(stats.balance)}
                         </span>
                       </div>
-                      <div className="account-stat-card">
+                      <div className="account-stat-card account-stat-transactions">
                         <span className="account-stat-label">{lang === "es" ? "Transacciones" : "Transactions"}</span>
                         <div className="account-stat-row">
                           <span className="account-stat-value">{stats.count}</span>
@@ -303,6 +313,14 @@ export default function AccountDetail({ account }: { account: Account }) {
                             {stats.expenseCount}
                           </span>
                         </div>
+                      </div>
+                      <div className="account-stat-card income">
+                        <span className="account-stat-label">{lang === "es" ? "Ingresos" : "Income"}</span>
+                        <span className="account-stat-value">{formatCurrency(stats.income)}</span>
+                      </div>
+                      <div className="account-stat-card expense">
+                        <span className="account-stat-label">{lang === "es" ? "Gastos" : "Expenses"}</span>
+                        <span className="account-stat-value">{formatCurrency(stats.expense)}</span>
                       </div>
                     </div>
                   </CarouselItem>
