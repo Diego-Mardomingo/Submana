@@ -22,12 +22,21 @@ interface EmojiPickerProps {
   value?: string | null;
   onChange: (emoji: string) => void;
   className?: string;
+  /** Controlled mode: parent controls open state */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export default function EmojiPicker({ value, onChange, className }: EmojiPickerProps) {
+export default function EmojiPicker({ value, onChange, className, open: controlledOpen, onOpenChange }: EmojiPickerProps) {
   const lang = useLang();
   const t = useTranslations(lang);
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (!isControlled) setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   const [inputVal, setInputVal] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 

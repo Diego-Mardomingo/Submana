@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useCategories, useArchivedCategories, CategoryWithSubs } from "@/hooks/useCategories";
 import {
   useCreateCategory,
@@ -58,6 +58,15 @@ export default function CategoriesBody() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string } | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
+  const modalContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [isModalOpen]);
 
   const resetForm = () => {
     setFormData({ id: "", name: "", parent_id: "", emoji: "" });
@@ -364,8 +373,20 @@ export default function CategoriesBody() {
       )}
 
       {isModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content modal-content-subs" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-backdrop"
+          onPointerDownCapture={(e) => {
+            const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+            if (!isMobile) return;
+            if (modalContentRef.current?.contains(e.target as Node)) return;
+            if (emojiPickerOpen) {
+              setEmojiPickerOpen(false);
+              return;
+            }
+            closeModal();
+          }}
+        >
+          <div ref={modalContentRef} className="modal-content modal-content-subs" onClick={(e) => e.stopPropagation()}>
             <h2 className="modal-title">
               {modalMode === "create"
                 ? t("categories.add")
@@ -381,6 +402,8 @@ export default function CategoriesBody() {
                 <EmojiPicker
                   value={formData.emoji || null}
                   onChange={(emoji) => setFormData({ ...formData, emoji })}
+                  open={emojiPickerOpen}
+                  onOpenChange={setEmojiPickerOpen}
                 />
               </div>
               <div className="subs-form-section">
@@ -438,7 +461,7 @@ export default function CategoriesBody() {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleteCategory.isPending}
-              className="bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white"
+              variant="destructive"
             >
               {deleteCategory.isPending && <Spinner className="size-4 mr-2" />}
               {t("common.delete")}
