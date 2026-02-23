@@ -61,7 +61,7 @@ export default function EmojiPicker({ value, onChange, className }: EmojiPickerP
           {value || "🏷️"}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3" align="start" style={{ zIndex: 9999 }}>
+      <PopoverContent className="w-auto p-3 max-h-[min(70vh,420px)] overflow-y-auto" align="start" style={{ zIndex: 9999 }}>
         <div className="flex flex-col gap-3">
           <div>
             <label className="text-xs text-muted-foreground block mb-1.5">
