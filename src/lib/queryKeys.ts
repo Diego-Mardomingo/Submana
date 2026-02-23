@@ -25,7 +25,7 @@ export const queryKeys = {
   categories: {
     all: ["categories"] as const,
     lists: () => [...queryKeys.categories.all, "list"] as const,
-    list: (filters?: { type?: string }) =>
+    list: (filters?: { type?: string; archived?: boolean }) =>
       [...queryKeys.categories.lists(), filters] as const,
   },
 } as const;

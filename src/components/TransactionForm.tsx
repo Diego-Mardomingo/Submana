@@ -53,8 +53,8 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
   const updateTx = useUpdateTransaction();
 
   const categories: CategoryWithSubs[] = [
-    ...(categoriesData?.defaultCategories ?? []),
     ...(categoriesData?.userCategories ?? []),
+    ...(categoriesData?.defaultCategories ?? []),
   ];
   const parents = categories.filter((c) => !("parent_id" in c) || !(c as { parent_id?: string }).parent_id);
 

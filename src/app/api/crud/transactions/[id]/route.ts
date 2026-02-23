@@ -23,8 +23,8 @@ export async function PATCH(
   const date = body.date;
   const description = body.description;
   const account_id = body.account_id || null;
-  const category_id = body.category_id || null;
-  const subcategory_id = body.subcategory_id || null;
+  const category_id = body.category_id && body.category_id !== "" ? body.category_id : null;
+  const subcategory_id = body.subcategory_id && body.subcategory_id !== "" ? body.subcategory_id : null;
 
   if (!id || isNaN(amount) || !type || !date) {
     return jsonError("missing_fields");
@@ -66,9 +66,8 @@ export async function PATCH(
       date,
       description: description || null,
       account_id: account_id && account_id !== "" ? account_id : null,
-      category_id: category_id && category_id !== "" ? category_id : null,
-      subcategory_id:
-        subcategory_id && subcategory_id !== "" ? subcategory_id : null,
+      category_id,
+      subcategory_id,
     })
     .eq("id", id)
     .eq("user_id", user.id)
