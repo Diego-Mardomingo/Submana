@@ -1678,6 +1678,28 @@
   color: inherit;
 }
 
+/* Subscription cards swipe (mobile only) */
+.subs-swipe-wrapper {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.subs-swipe-wrapper .swipe-to-reveal__content {
+  display: flex;
+  background: var(--card-subtle-gradient), var(--gris-oscuro);
+}
+
+.subs-swipe-wrapper .swipe-to-reveal__actions {
+  background: var(--gris-oscuro);
+  border-radius: 0 14px 14px 0;
+}
+
+.subs-swipe-wrapper .swipe-to-reveal__content a {
+  width: 100%;
+  text-decoration: none;
+  color: inherit;
+}
+
 /* Pantallas grandes: track como tarjeta unificada, iconos dentro */
 @media (min-width: 1024px) {
   .tx-swipe-wrapper.swipe-to-reveal--desktop {
@@ -2050,6 +2072,15 @@
   border-color: var(--danger);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px -4px rgba(248, 113, 113, 0.15);
+}
+
+/* Móvil: sin elevación en hover */
+@media (max-width: 767px) {
+  .subs-card.active:hover,
+  .subs-card.inactive:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 /* ── Card Icon ── */

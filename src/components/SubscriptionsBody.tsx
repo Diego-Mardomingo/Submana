@@ -1,10 +1,26 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
+import { useUpdateSubscription, useDeleteSubscription } from "@/hooks/useSubscriptionMutations";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { Pencil, XCircle, Trash2 } from "lucide-react";
+import { toDateString } from "@/lib/date";
 import { useState } from "react";
 
 type Sub = {
@@ -46,8 +62,16 @@ function calculateMonthly(subs: Sub[]) {
 export default function SubscriptionsBody() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const router = useRouter();
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const { data: subscriptions = [], isLoading } = useSubscriptions();
+  const updateSub = useUpdateSubscription();
+  const deleteSub = useDeleteSubscription();
   const [inactiveOpen, setInactiveOpen] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
+  const [subToDelete, setSubToDelete] = useState<Sub | null>(null);
+  const [subToCancel, setSubToCancel] = useState<Sub | null>(null);
 
   const formatCurrency = (amount: number) => {
     const formatted = new Intl.NumberFormat("es-ES", {
@@ -77,6 +101,107 @@ export default function SubscriptionsBody() {
       if (freq === "weekly") return `${t("sub.every")} ${val} ${t("sub.weeks")}`;
     }
     return freq;
+  };
+
+  const handleDelete = async () => {
+    if (!subToDelete) return;
+    await deleteSub.mutateAsync(subToDelete.id);
+    setShowDelete(false);
+    setSubToDelete(null);
+    router.push("/subscriptions");
+  };
+
+  const handleCancel = async () => {
+    if (!subToCancel) return;
+    const today = toDateString(new Date());
+    await updateSub.mutateAsync({ id: subToCancel.id, end_date: today });
+    setShowCancel(false);
+    setSubToCancel(null);
+    router.refresh();
+  };
+
+  const renderSubCard = (sub: Sub, isActive: boolean) => {
+    const canCancel = isActive && !sub.end_date;
+    const cardContent = (
+      <Link href={`/subscription/${sub.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+        <div className={`subs-card ${isActive ? "active" : "inactive"}`}>
+          <div className="subs-card-icon">
+            <img src={sub.icon || "/placeholder-icon.png"} alt="" />
+          </div>
+          <div className="subs-card-content">
+            <span className="subs-card-name">{sub.service_name}</span>
+            <div className="subs-card-badges">
+              <span className="subs-badge subs-badge-freq">{getFreqLabel(sub.frequency, sub.frequency_value || 1)}</span>
+              <span className={`subs-badge ${isActive ? "subs-badge-active" : "subs-badge-inactive"}`}>
+                {isActive ? t("sub.active") : t("sub.inactive")}
+              </span>
+            </div>
+            <span className="subs-card-cost">{formatCurrency(Number(sub.cost))}</span>
+          </div>
+          {isActive && (
+            <svg className="subs-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          )}
+        </div>
+      </Link>
+    );
+
+    if (!isMobile) {
+      return <div key={sub.id}>{cardContent}</div>;
+    }
+
+    return (
+      <SwipeToReveal
+        key={sub.id}
+        id={sub.id}
+        className="subs-swipe-wrapper"
+        swipeHint
+        desktopMinWidth={768}
+        actions={
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/subscription/${sub.id}/edit`}
+              onClick={(e) => e.stopPropagation()}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
+              aria-label={t("sub.edit")}
+            >
+              <Pencil className="size-5" />
+            </Link>
+            {canCancel && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSubToCancel(sub);
+                  setShowCancel(true);
+                }}
+                className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--warning)] transition-colors hover:bg-[var(--warning-soft)]"
+                aria-label={t("sub.cancel")}
+              >
+                <XCircle className="size-5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSubToDelete(sub);
+                setShowDelete(true);
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--danger)] transition-colors hover:bg-[var(--danger-soft)]"
+              aria-label={t("sub.delete")}
+            >
+              <Trash2 className="size-5" />
+            </button>
+          </div>
+        }
+      >
+        {cardContent}
+      </SwipeToReveal>
+    );
   };
 
   if (isLoading) {
@@ -193,32 +318,15 @@ export default function SubscriptionsBody() {
                 <span className="subs-section-title">{t("sub.active")}</span>
                 <span className="subs-section-count">{activeSubs.length}</span>
               </div>
-              <div className="subs-list">
-                {activeSubs.map((sub) => (
-                  <Link 
-                    href={`/subscription/${sub.id}`} 
-                    key={sub.id} 
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    <div className="subs-card active">
-                      <div className="subs-card-icon">
-                        <img src={sub.icon || "/placeholder-icon.png"} alt="" />
-                      </div>
-                      <div className="subs-card-content">
-                        <span className="subs-card-name">{sub.service_name}</span>
-                        <div className="subs-card-badges">
-                          <span className="subs-badge subs-badge-freq">{getFreqLabel(sub.frequency, sub.frequency_value || 1)}</span>
-                          <span className="subs-badge subs-badge-active">{t("sub.active")}</span>
-                        </div>
-                        <span className="subs-card-cost">{formatCurrency(Number(sub.cost))}</span>
-                      </div>
-                      <svg className="subs-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M9 18l6-6-6-6" />
-                      </svg>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+              {isMobile ? (
+                <SwipeToRevealGroup className="subs-list">
+                  {activeSubs.map((sub) => renderSubCard(sub, true))}
+                </SwipeToRevealGroup>
+              ) : (
+                <div className="subs-list">
+                  {activeSubs.map((sub) => renderSubCard(sub, true))}
+                </div>
+              )}
             </section>
           )}
 
@@ -236,35 +344,90 @@ export default function SubscriptionsBody() {
               </CollapsibleTrigger>
               <CollapsibleContent className="subs-collapsible-content">
                 <div className="subs-collapsible-inner" style={{ paddingTop: 12 }}>
-                  <div className="subs-list">
-                    {inactiveSubs.map((sub) => (
-                      <Link 
-                        href={`/subscription/${sub.id}`} 
-                        key={sub.id} 
-                        style={{ textDecoration: "none", color: "inherit" }}
-                      >
-                        <div className="subs-card inactive">
-                          <div className="subs-card-icon">
-                            <img src={sub.icon || "/placeholder-icon.png"} alt="" />
-                          </div>
-                          <div className="subs-card-content">
-                            <span className="subs-card-name">{sub.service_name}</span>
-                            <div className="subs-card-badges">
-                              <span className="subs-badge subs-badge-freq">{getFreqLabel(sub.frequency, sub.frequency_value || 1)}</span>
-                              <span className="subs-badge subs-badge-inactive">{t("sub.inactive")}</span>
-                            </div>
-                            <span className="subs-card-cost">{formatCurrency(Number(sub.cost))}</span>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+                  {isMobile ? (
+                    <SwipeToRevealGroup className="subs-list">
+                      {inactiveSubs.map((sub) => renderSubCard(sub, false))}
+                    </SwipeToRevealGroup>
+                  ) : (
+                    <div className="subs-list">
+                      {inactiveSubs.map((sub) => renderSubCard(sub, false))}
+                    </div>
+                  )}
                 </div>
               </CollapsibleContent>
             </Collapsible>
           )}
         </>
       )}
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancel} onOpenChange={(open) => { setShowCancel(open); if (!open) setSubToCancel(null); }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="items-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--warning-soft)]">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M15 9l-6 6M9 9l6 6" />
+              </svg>
+            </div>
+            <DialogTitle className="text-center">
+              {lang === "es" ? "¿Cancelar suscripción?" : "Cancel subscription?"}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {subToCancel && (
+                lang === "es"
+                  ? `Se establecerá la fecha de fin de ${subToCancel.service_name} como hoy.`
+                  : `This will set ${subToCancel.service_name}'s end date to today.`
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center gap-3 pt-2">
+            <Button variant="outline" onClick={() => { setShowCancel(false); setSubToCancel(null); }}>
+              {t("sub.cancelAction")}
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleCancel}
+              disabled={updateSub.isPending}
+              className="bg-[var(--warning)] hover:bg-[var(--warning-hover)] text-black"
+            >
+              {updateSub.isPending && <Spinner className="size-4" />}
+              {t("sub.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDelete} onOpenChange={(open) => { setShowDelete(open); if (!open) setSubToDelete(null); }}>
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="items-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)]">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+            </div>
+            <DialogTitle className="text-center">{t("sub.deleteTitle")}</DialogTitle>
+            <DialogDescription className="text-center">
+              {t("sub.deleteConfirm")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center gap-3 pt-2">
+            <Button variant="outline" onClick={() => { setShowDelete(false); setSubToDelete(null); }}>
+              {t("sub.cancelAction")}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteSub.isPending}
+            >
+              {deleteSub.isPending && <Spinner className="size-4" />}
+              {t("sub.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

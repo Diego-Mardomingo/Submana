@@ -7,6 +7,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useRouter } from "next/navigation";
+import { toDateString } from "@/lib/date";
 import {
   Dialog,
   DialogContent,
@@ -159,7 +160,7 @@ export default function SubscriptionDetail({ sub }: { sub: Sub }) {
   };
 
   const handleCancel = async () => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toDateString(new Date());
     await updateSub.mutateAsync({
       id: sub.id,
       end_date: today,

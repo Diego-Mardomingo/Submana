@@ -229,6 +229,7 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
               onChange={setEndDate}
               placeholder={lang === "es" ? "Seleccionar fecha" : "Select date"}
               lang={lang}
+              clearable
             />
           </div>
         </div>
