@@ -306,6 +306,10 @@ button:not(:disabled),
   max-width: 300px;
 }
 
+.info-stats-row-three {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 .info-stat-card {
   position: relative;
   background: var(--card-subtle-gradient), linear-gradient(135deg, 

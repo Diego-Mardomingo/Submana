@@ -10,7 +10,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, House, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, House, Trash2, Euro } from "lucide-react";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import {
   AlertDialog,
@@ -135,6 +135,7 @@ export default function TransactionsBody() {
   const txList = transactions as TransactionItem[];
   const totalIncome = txList.filter((tx) => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount), 0);
   const totalExpense = txList.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const totalBalance = totalIncome - totalExpense;
 
   const grouped = txList.reduce(
     (acc, tx) => {
@@ -164,8 +165,11 @@ export default function TransactionsBody() {
           </div>
         </header>
         <div className="skeleton" style={{ height: 56, borderRadius: 12, marginBottom: 16 }} />
-        <div className="info-stats-row">
-          <div className="skeleton" style={{ height: 90, borderRadius: 18 }} />
+        <div className="tx-stats-panel">
+          <div className="info-stats-row">
+            <div className="skeleton" style={{ height: 90, borderRadius: 18 }} />
+            <div className="skeleton" style={{ height: 90, borderRadius: 18 }} />
+          </div>
           <div className="skeleton" style={{ height: 90, borderRadius: 18 }} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
@@ -235,29 +239,40 @@ export default function TransactionsBody() {
 
       {/* Stats Cards */}
       {hasTransactions && (
-        <div className="info-stats-row tx-month-content" key={`stats-${year}-${month}`}>
-          <div className="info-stat-card info-stat-income">
-            <div className="info-stat-icon info-stat-icon-income">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                <polyline points="17 6 23 6 23 12" />
-              </svg>
+        <div className="tx-stats-panel tx-month-content" key={`stats-${year}-${month}`}>
+          <div className="info-stats-row">
+            <div className="info-stat-card info-stat-income">
+              <div className="info-stat-icon info-stat-icon-income">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                  <polyline points="17 6 23 6 23 12" />
+                </svg>
+              </div>
+              <div className="info-stat-content">
+                <span className="info-stat-label">{t("transactions.monthlyIncome")}</span>
+                <span className="info-stat-value info-stat-value-income">{formatCurrency(totalIncome)}</span>
+              </div>
             </div>
-            <div className="info-stat-content">
-              <span className="info-stat-label">{t("transactions.monthlyIncome")}</span>
-              <span className="info-stat-value info-stat-value-income">{formatCurrency(totalIncome)}</span>
+            <div className="info-stat-card info-stat-expense">
+              <div className="info-stat-icon info-stat-icon-expense">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+                  <polyline points="17 18 23 18 23 12" />
+                </svg>
+              </div>
+              <div className="info-stat-content">
+                <span className="info-stat-label">{t("transactions.monthlyExpense")}</span>
+                <span className="info-stat-value info-stat-value-expense">{formatCurrency(totalExpense)}</span>
+              </div>
             </div>
           </div>
-          <div className="info-stat-card info-stat-expense">
-            <div className="info-stat-icon info-stat-icon-expense">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-                <polyline points="17 18 23 18 23 12" />
-              </svg>
+          <div className={`info-stat-card info-stat-balance info-stat-balance-full info-stat-balance-${totalBalance > 0 ? "positive" : totalBalance < 0 ? "negative" : "neutral"}`}>
+            <div className="info-stat-icon info-stat-icon-balance">
+              <Euro className="size-6" strokeWidth={2} />
             </div>
             <div className="info-stat-content">
-              <span className="info-stat-label">{t("transactions.monthlyExpense")}</span>
-              <span className="info-stat-value info-stat-value-expense">{formatCurrency(totalExpense)}</span>
+              <span className="info-stat-label">{t("transactions.monthlyBalance")}</span>
+              <span className="info-stat-value info-stat-value-balance">{totalBalance >= 0 ? "+" : ""}{formatCurrency(totalBalance)}</span>
             </div>
           </div>
         </div>

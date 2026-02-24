@@ -1208,6 +1208,29 @@
   color: var(--danger) !important;
 }
 
+.info-stat-balance-positive .info-stat-value-balance { color: var(--success) !important; }
+.info-stat-balance-negative .info-stat-value-balance { color: var(--danger) !important; }
+.info-stat-balance-neutral .info-stat-value-balance { color: var(--gris-claro) !important; }
+
+.info-stat-icon-balance { background: var(--info-soft) !important; color: var(--info) !important; }
+.info-stat-balance-positive .info-stat-icon-balance { background: var(--success-soft) !important; color: var(--success) !important; }
+.info-stat-balance-negative .info-stat-icon-balance { background: var(--danger-soft) !important; color: var(--danger) !important; }
+.info-stat-balance-neutral .info-stat-icon-balance { background: var(--gris) !important; color: var(--gris-claro) !important; }
+
+/* Tx stats layout: income + expense arriba, balance abajo a ancho completo */
+.tx-stats-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.tx-stats-panel .info-stats-row {
+  margin-bottom: 0;
+}
+.info-stat-balance-full {
+  width: 100%;
+}
+
 /* Transaction sections & list */
 .tx-sections {
   display: flex;

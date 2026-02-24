@@ -378,7 +378,9 @@ export default function CategoriesBody() {
           onPointerDownCapture={(e) => {
             const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
             if (!isMobile) return;
-            if (modalContentRef.current?.contains(e.target as Node)) return;
+            const target = e.target as Node;
+            if (modalContentRef.current?.contains(target)) return;
+            if ((target as Element).nodeType === Node.ELEMENT_NODE && (target as Element).closest?.("[data-emoji-picker-popover]")) return;
             if (emojiPickerOpen) {
               setEmojiPickerOpen(false);
               return;

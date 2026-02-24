@@ -34,6 +34,9 @@ export default function EmojiPicker({ value, onChange, className, open: controll
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = (v: boolean) => {
+    // #region agent log
+    if (v === false) fetch("http://127.0.0.1:7758/ingest/a39ccdc9-d118-4e4b-9fd3-e3cdc92e95b3",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"f06c04"},body:JSON.stringify({sessionId:"f06c04",location:"EmojiPicker.tsx:setOpen",message:"popover closing",data:{isControlled},timestamp:Date.now(),hypothesisId:"H2"})}).catch(()=>{});
+    // #endregion
     if (!isControlled) setInternalOpen(v);
     onOpenChange?.(v);
   };
@@ -70,10 +73,16 @@ export default function EmojiPicker({ value, onChange, className, open: controll
           {value || "🏷️"}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-3 max-h-[min(70vh,420px)] overflow-y-auto" align="start" style={{ zIndex: 9999 }}>
-        <div className="flex flex-col gap-3">
+      <PopoverContent
+        side="bottom"
+        align="start"
+        className="w-auto p-3 max-h-[200px] overflow-y-auto"
+        style={{ zIndex: 9999 }}
+        data-emoji-picker-popover
+      >
+        <div className="flex flex-col gap-2">
           <div>
-            <label className="text-xs text-muted-foreground block mb-1.5">
+            <label className="text-xs text-muted-foreground block mb-1">
               {t("categories.emojiHint")}
             </label>
             <Input
@@ -84,18 +93,18 @@ export default function EmojiPicker({ value, onChange, className, open: controll
               onChange={handleInputChange}
               onBlur={handleInputBlur}
               placeholder="🏷️"
-              className="text-xl h-11 text-center"
+              className="text-lg h-9 text-center"
               aria-label="Escribe o pega un emoji"
             />
           </div>
           <div className="text-xs text-muted-foreground">{t("categories.emojiQuickPick")}</div>
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-5 gap-0.5">
             {COMMON_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 className={cn(
-                  "flex h-9 w-9 items-center justify-center rounded-lg text-xl transition-colors hover:bg-accent",
+                  "flex h-8 w-8 items-center justify-center rounded-md text-lg transition-colors hover:bg-accent",
                   value === emoji && "bg-accent"
                 )}
                 onClick={() => {
