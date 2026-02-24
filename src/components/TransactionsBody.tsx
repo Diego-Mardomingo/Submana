@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -10,7 +10,7 @@ import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, House, Trash2, Euro } from "lucide-react";
+import { ChevronLeft, ChevronRight, House, Trash2, Euro, Loader2 } from "lucide-react";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import {
   AlertDialog,
@@ -61,10 +61,47 @@ export default function TransactionsBody() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
 
-  const { data: transactions = [], isLoading } = useTransactions(year, month);
+  const { data: transactions = [], isLoading, isFetching } = useTransactions(year, month);
   const deleteTx = useDeleteTransaction();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const swipeAreaRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const changeMonthRef = useRef<(delta: number) => void>(() => {});
+  const SWIPE_THRESHOLD = 50;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const set = () => setIsMobile(mq.matches);
+    set();
+    mq.addEventListener("change", set);
+    return () => mq.removeEventListener("change", set);
+  }, []);
+
+  // Registrar swipe solo cuando el área existe en el DOM (tras dejar de cargar) y estamos en móvil
+  useEffect(() => {
+    if (!isMobile || isLoading || !swipeAreaRef.current) return;
+    const el = swipeAreaRef.current;
+    const onStart = (e: TouchEvent) => {
+      touchStartX.current = e.touches[0].clientX;
+    };
+    const onEnd = (e: TouchEvent) => {
+      const start = touchStartX.current;
+      touchStartX.current = null;
+      if (start === null || !e.changedTouches[0]) return;
+      const delta = e.changedTouches[0].clientX - start;
+      if (Math.abs(delta) >= SWIPE_THRESHOLD) {
+        changeMonthRef.current(delta > 0 ? -1 : 1);
+      }
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, [isMobile, isLoading]);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
@@ -112,6 +149,8 @@ export default function TransactionsBody() {
       go();
     }
   };
+
+  changeMonthRef.current = changeMonth;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -202,42 +241,55 @@ export default function TransactionsBody() {
         </Link>
       </header>
 
-      {/* Month Selector + content */}
+      {/* Month Selector + Stats: swipe zone solo en móvil (solo esta zona responde al swipe) */}
       <div className="tx-swipe-zone">
-      <div className="tx-month-selector">
-        <Button
-          variant="ghost"
-          size="icon-lg"
-          onClick={() => changeMonth(-1)}
-          onMouseEnter={() => prefetchMonth(-1)}
-          aria-label="Previous"
-          className="tx-month-arrow tx-month-arrow-left rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <ChevronLeft className="size-6" strokeWidth={1.5} />
-        </Button>
-        <button
-          type="button"
-          className="tx-month-display"
-          onClick={handleToday}
-          onKeyDown={(e) => e.key === "Enter" && handleToday()}
-        >
-          <span className="tx-month-name">{months[month]}</span>
-          <span className="tx-month-year">{year}</span>
-          <House className="tx-month-home" strokeWidth={1.5} aria-hidden />
-        </button>
-        <Button
-          variant="ghost"
-          size="icon-lg"
-          onClick={() => changeMonth(1)}
-          onMouseEnter={() => prefetchMonth(1)}
-          aria-label="Next"
-          className="tx-month-arrow tx-month-arrow-right rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <ChevronRight className="size-6" strokeWidth={1.5} />
-        </Button>
-      </div>
+      <div ref={swipeAreaRef} className="tx-month-swipe-area">
+        <div className="tx-month-selector">
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            onClick={() => changeMonth(-1)}
+            onMouseEnter={() => prefetchMonth(-1)}
+            aria-label="Previous"
+            className="tx-month-arrow tx-month-arrow-left rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ChevronLeft className="size-6" strokeWidth={1.5} />
+          </Button>
+          <button
+            type="button"
+            className="tx-month-display"
+            onClick={handleToday}
+            onKeyDown={(e) => e.key === "Enter" && handleToday()}
+          >
+            <span className="tx-month-name">{months[month]}</span>
+            <span className="tx-month-year">{year}</span>
+            {isFetching ? (
+              <Loader2 className="tx-month-loading size-5 animate-spin text-muted-foreground" aria-hidden />
+            ) : (
+              <House className="tx-month-home" strokeWidth={1.5} aria-hidden />
+            )}
+          </button>
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            onClick={() => changeMonth(1)}
+            onMouseEnter={() => prefetchMonth(1)}
+            aria-label="Next"
+            className="tx-month-arrow tx-month-arrow-right rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ChevronRight className="size-6" strokeWidth={1.5} />
+          </Button>
+        </div>
 
-      {/* Stats Cards */}
+        {/* Indicador de carga cuando los datos pueden ser del mes anterior */}
+        {isFetching && !isLoading && (
+          <div className="tx-month-loading-bar" role="status" aria-label={lang === "es" ? "Cargando datos del mes" : "Loading month data"}>
+            <Loader2 className="size-4 animate-spin" />
+            <span>{lang === "es" ? "Cargando..." : "Loading..."}</span>
+          </div>
+        )}
+
+        {/* Stats Cards */}
       {hasTransactions && (
         <div className="tx-stats-panel tx-month-content" key={`stats-${year}-${month}`}>
           <div className="info-stats-row">
@@ -285,7 +337,10 @@ export default function TransactionsBody() {
           </div>
           <p className="tx-empty-month-text">{t("transactions.emptyThisMonth")}</p>
         </div>
-      ) : (
+      ) : null}
+      </div>
+
+      {hasTransactions ? (
         <div className="tx-sections tx-month-content" key={`list-${year}-${month}`}>
           {sortedDates.map((date) => (
             <section className="subs-section" key={date}>
@@ -382,7 +437,7 @@ export default function TransactionsBody() {
             </section>
           ))}
         </div>
-      )}
+      ) : null}
       </div>
 
       <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>

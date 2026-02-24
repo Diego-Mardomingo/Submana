@@ -30,12 +30,12 @@
   --success-muted: rgba(110, 231, 183, 0.18);
   --success-rgb: 110, 231, 183;
 
-  /* Danger - Coral suave */
-  --danger: #fca5a5;
-  --danger-hover: #f87171;
-  --danger-soft: rgba(252, 165, 165, 0.10);
-  --danger-muted: rgba(252, 165, 165, 0.18);
-  --danger-rgb: 252, 165, 165;
+  /* Danger - Rojo (uniforme en la app, incluido icono papelera) */
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+  --danger-muted: rgba(239, 68, 68, 0.25);
+  --danger-rgb: 239, 68, 68;
 
   /* Warning - Ámbar suave */
   --warning: #fcd34d;
@@ -82,11 +82,11 @@ html[data-theme="light"] {
   --success-muted: rgba(16, 185, 129, 0.15);
   --success-rgb: 16, 185, 129;
 
-  /* Danger - Rojo coral */
+  /* Danger - Rojo (igual que dark) */
   --danger: #ef4444;
   --danger-hover: #dc2626;
-  --danger-soft: rgba(239, 68, 68, 0.08);
-  --danger-muted: rgba(239, 68, 68, 0.15);
+  --danger-soft: rgba(239, 68, 68, 0.12);
+  --danger-muted: rgba(239, 68, 68, 0.25);
   --danger-rgb: 239, 68, 68;
 
   /* Warning - Ámbar */
@@ -483,6 +483,30 @@ button:not(:disabled),
 
 .modal-content-subs .subs-form {
   margin-top: 0;
+}
+
+.modal-content-budget {
+  height: fit-content;
+  max-height: calc(100vh - 120px);
+}
+
+.modal-backdrop--budget {
+  align-items: flex-start;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.modal-backdrop--budget .modal-content-budget {
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-backdrop--budget .modal-content-budget .modal-title {
+  margin-bottom: 1rem;
+}
+
+.modal-backdrop--budget .modal-content-budget .subs-form {
+  gap: 1rem;
 }
 
 .modal-content p {

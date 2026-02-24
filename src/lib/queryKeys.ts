@@ -28,4 +28,12 @@ export const queryKeys = {
     list: (filters?: { type?: string; archived?: boolean }) =>
       [...queryKeys.categories.lists(), filters] as const,
   },
+
+  budgets: {
+    all: ["budgets"] as const,
+    lists: () => [...queryKeys.budgets.all, "list"] as const,
+    list: (filters?: { month?: string }) =>
+      [...queryKeys.budgets.lists(), filters] as const,
+    detail: (id: string) => [...queryKeys.budgets.all, "detail", id] as const,
+  },
 } as const;

@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
 
 interface Account {
   id: string;
@@ -29,7 +30,7 @@ interface Account {
   color?: string;
 }
 
-const colors = ["#7c3aed", "#3b82f6", "#10b981", "#f43f5e", "#f59e0b", "#ec4899"];
+const colors = ACCOUNT_BUDGET_COLORS;
 
 export default function AccountEditForm({ account }: { account: Account }) {
   const lang = useLang();
@@ -40,7 +41,7 @@ export default function AccountEditForm({ account }: { account: Account }) {
   const [icon, setIcon] = useState(account.icon || "");
   const [name, setName] = useState(account.name);
   const [balance, setBalance] = useState(String(account.balance));
-  const [color, setColor] = useState(account.color || "#7c3aed");
+  const [color, setColor] = useState(account.color || defaultAccountBudgetColor);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -43,6 +43,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
+import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -76,12 +77,12 @@ export default function AccountsBody() {
     name: "",
     balance: "",
     icon: "",
-    color: "#7c3aed",
+    color: defaultAccountBudgetColor,
   });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
-  const colors = ["#7c3aed", "#3b82f6", "#10b981", "#f43f5e", "#f59e0b", "#ec4899"];
+  const colors = ACCOUNT_BUDGET_COLORS;
 
   const resetForm = () => {
     setFormData({
@@ -89,7 +90,7 @@ export default function AccountsBody() {
       name: "",
       balance: "",
       icon: "",
-      color: "#7c3aed",
+      color: defaultAccountBudgetColor,
     });
     setModalMode("create");
     setCurrentAccount(null);
@@ -107,7 +108,7 @@ export default function AccountsBody() {
         name: account.name,
         balance: String(account.balance),
         icon: account.icon || "",
-        color: account.color || "#7c3aed",
+        color: account.color || defaultAccountBudgetColor,
       });
       setCurrentAccount(account);
     } else {
