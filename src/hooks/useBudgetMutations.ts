@@ -4,7 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
 interface CreateBudgetInput {
-  name: string;
   amount: number;
   color?: string | null;
   category_ids?: string[];
@@ -32,7 +31,6 @@ export function useCreateBudget() {
 
 interface UpdateBudgetInput {
   id: string;
-  name?: string;
   amount?: number;
   color?: string | null;
   category_ids?: string[];

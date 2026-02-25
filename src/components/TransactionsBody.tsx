@@ -61,7 +61,7 @@ export default function TransactionsBody() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
 
-  const { data: transactions = [], isLoading, isFetching } = useTransactions(year, month);
+  const { data: transactions = [], isLoading, isFetching } = useTransactions(year, month + 1);
   const deleteTx = useDeleteTransaction();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
@@ -168,7 +168,7 @@ export default function TransactionsBody() {
     let newMonth = month + delta;
     let newYear = year;
     if (newMonth < 0) { newMonth = 11; newYear--; } else if (newMonth > 11) { newMonth = 0; newYear++; }
-    queryClient.prefetchQuery({ queryKey: queryKeys.transactions.list({ year: newYear, month: newMonth }) });
+    queryClient.prefetchQuery({ queryKey: queryKeys.transactions.list({ year: newYear, month: newMonth + 1 }) });
   };
 
   const txList = transactions as TransactionItem[];
@@ -400,6 +400,7 @@ export default function TransactionsBody() {
                           <span
                             className="tx-card-badge tx-card-badge-account"
                             style={{
+                              ["--tx-account-badge-color" as string]: tx.account.color || "var(--gris-claro)",
                               backgroundColor: tx.account.color ? `${tx.account.color}20` : "var(--gris)",
                               color: tx.account.color || "var(--gris-claro)",
                             }}

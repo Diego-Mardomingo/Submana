@@ -1,0 +1,143 @@
+/* Estilos propios de la tarjeta de balance - CSS Module para prioridad */
+
+.wrapper {
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  gap: 0 !important;
+}
+
+.top {
+  padding: 1.25rem 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.label {
+  font-size: clamp(0.6rem, 1.8vw, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  margin: 0;
+}
+
+.total {
+  font-size: clamp(1.5rem, 5vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.divider {
+  margin: 1rem 1.5rem 0;
+  width: calc(100% - 3rem);
+  border: none;
+  border-top: 1px solid var(--gris);
+  flex-shrink: 0;
+}
+
+.accounts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 0;
+  padding: 1rem 1.5rem 1.5rem;
+  width: 100%;
+}
+
+.account {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  border-right: 1px solid var(--gris);
+  min-width: 0;
+}
+
+.account:first-child {
+  padding-left: 0;
+}
+
+.account:last-child {
+  border-right: none;
+  padding-right: 0;
+}
+
+.accountLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.accountDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.accountLabel {
+  font-size: clamp(0.55rem, 1.5vw, 0.7rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  margin: 0;
+}
+
+.accountValue {
+  font-size: clamp(0.875rem, 2.5vw, 1.125rem);
+  font-weight: 700;
+  color: var(--blanco);
+  margin: 0;
+  line-height: 1.2;
+}
+
+@media (max-width: 768px) {
+  .top {
+    padding: 0.35rem 0.75rem 0;
+    gap: 0.2rem;
+  }
+  .label {
+    font-size: 0.55rem;
+  }
+  .total {
+    font-size: clamp(1.1rem, 4vw, 1.35rem);
+  }
+  .divider {
+    margin: 0.35rem 0.75rem 0;
+  }
+  .accounts {
+    padding: 0.35rem 0.75rem 0.5rem;
+  }
+  .account {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .accountLabelRow {
+    gap: 0.3rem;
+  }
+  .accountDot {
+    width: 0.4rem;
+    height: 0.4rem;
+  }
+  .accountLabel {
+    font-size: 0.5rem;
+  }
+  .accountValue {
+    font-size: clamp(0.75rem, 2vw, 0.9rem);
+  }
+}

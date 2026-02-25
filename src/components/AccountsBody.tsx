@@ -72,7 +72,13 @@ export default function AccountsBody() {
     icon?: string;
     color?: string;
   } | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    id: string;
+    name: string;
+    balance: string;
+    icon: string;
+    color: string;
+  }>({
     id: "",
     name: "",
     balance: "",

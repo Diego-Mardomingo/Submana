@@ -125,7 +125,7 @@ export default function CalendarBody() {
   }, [listOpen]);
 
   const { data: subscriptions = [] } = useSubscriptions();
-  const { data: transactions = [], isLoading } = useTransactions(year, month);
+  const { data: transactions = [], isLoading } = useTransactions(year, month + 1);
 
   const diasSemana = [
     t("calendar.monday"),
@@ -218,7 +218,7 @@ export default function CalendarBody() {
       newYear++;
     }
     queryClient.prefetchQuery({
-      queryKey: queryKeys.transactions.list({ year: newYear, month: newMonth }),
+      queryKey: queryKeys.transactions.list({ year: newYear, month: newMonth + 1 }),
     });
   };
 
@@ -292,7 +292,7 @@ export default function CalendarBody() {
   useCalendarSwipe(swipeZoneRef, {
     onSwipeLeft: () => changeMonth(1),
     onSwipeRight: () => changeMonth(-1),
-    onSwipeUp: handleToday,
+    onDoubleTap: handleToday,
   });
 
   const dayEntries: DayEntry[] = (() => {

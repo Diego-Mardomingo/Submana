@@ -110,12 +110,26 @@ export default function BudgetsBody() {
     return m;
   }, [categoryOptions]);
 
+  const categoryIdToEmoji = useMemo(() => {
+    const m = new Map<string, string>();
+    const walk = (list: CategoryWithSubs[]) => {
+      for (const parent of list) {
+        if (parent.emoji) m.set(parent.id, parent.emoji);
+        for (const sub of parent.subcategories ?? []) {
+          if (sub.emoji) m.set(sub.id, sub.emoji);
+        }
+      }
+    };
+    walk(defaultCategories);
+    walk(userCategories);
+    return m;
+  }, [defaultCategories, userCategories]);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [currentBudget, setCurrentBudget] = useState<BudgetWithSpent | null>(null);
   const [formData, setFormData] = useState({
     id: "",
-    name: "",
     amount: "",
     color: defaultBudgetColor,
     categoryIds: [] as string[],
@@ -127,7 +141,6 @@ export default function BudgetsBody() {
   const resetForm = () => {
     setFormData({
       id: "",
-      name: "",
       amount: "",
       color: defaultBudgetColor,
       categoryIds: [],
@@ -142,7 +155,6 @@ export default function BudgetsBody() {
     if (mode === "edit" && budget) {
       setFormData({
         id: budget.id,
-        name: budget.name,
         amount: String(budget.amount),
         color: budget.color || defaultBudgetColor,
         categoryIds: budget.categoryIds ?? [],
@@ -169,14 +181,12 @@ export default function BudgetsBody() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const name = formData.name.trim();
     const amount = parseFloat(formData.amount);
-    if (!name || isNaN(amount) || amount < 0) return;
+    if (isNaN(amount) || amount < 0) return;
 
     try {
       if (modalMode === "create") {
         await createBudget.mutateAsync({
-          name,
           amount,
           color: formData.color || null,
           category_ids: formData.categoryIds.length > 0 ? formData.categoryIds : undefined,
@@ -184,7 +194,6 @@ export default function BudgetsBody() {
       } else if (formData.id) {
         await updateBudget.mutateAsync({
           id: formData.id,
-          name,
           amount,
           color: formData.color || null,
           category_ids: formData.categoryIds,
@@ -300,43 +309,53 @@ export default function BudgetsBody() {
               const progressValue = amount > 0 ? Math.min(100, pct) : 0;
               const pctWarning = pct >= 80 && !over;
               const accent = budget.color || "var(--accent)";
+              const summaryText = over
+                ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
+                : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
+              const firstCategoryEmoji = budget.categoryIds?.length ? categoryIdToEmoji.get(budget.categoryIds[0]) : undefined;
               const cardContent = (
                 <div
                   className={`budget-card ${over ? "budget-card--over" : ""}`}
                   style={{ "--accent-budget": accent } as React.CSSProperties}
                 >
                   <div className="budget-card-header">
-                    {over && (
-                      <span className="budget-card-danger-icon" aria-hidden>
-                        <AlertTriangle size={22} />
-                      </span>
+                  </div>
+                  <div className="budget-card-badges-row">
+                    <span className="budget-card-icon-blur" aria-hidden>
+                      {firstCategoryEmoji ? (
+                        <span className="budget-card-emoji">{firstCategoryEmoji}</span>
+                      ) : (
+                        <Wallet size={20} strokeWidth={1.5} />
+                      )}
+                    </span>
+                    {budget.categoryIds?.length ? (
+                      <div className="budget-card-badges">
+                        {(budget.categoryIds as string[])
+                          .map((id) => ({ id, name: categoryIdToName.get(id) }))
+                          .filter((x): x is { id: string; name: string } => Boolean(x.name))
+                          .map(({ id: catId, name }) => (
+                            <span key={catId} className="budget-card-badge">{name}</span>
+                          ))}
+                      </div>
+                    ) : (
+                      <div className="budget-card-badges">
+                        <span className="budget-card-badge budget-card-badge--general">{t("budgets.generalBudget")}</span>
+                      </div>
                     )}
-                    <h3 className="budget-card-name">{budget.name}</h3>
                   </div>
-                  {budget.categoryIds?.length ? (
-                    <div className="budget-card-badges">
-                      {(budget.categoryIds as string[])
-                        .map((id) => ({ id, name: categoryIdToName.get(id) }))
-                        .filter((x): x is { id: string; name: string } => Boolean(x.name))
-                        .map(({ id: catId, name }) => (
-                          <span key={catId} className="budget-card-badge">{name}</span>
-                        ))}
-                    </div>
-                  ) : (
-                    <div className="budget-card-badges">
-                      <span className="budget-card-badge budget-card-badge--general">{t("budgets.generalBudget")}</span>
-                    </div>
-                  )}
-                  <div className="budget-card-stats">
-                    <span>
-                      {t("budgets.spent")}: {formatCurrency(spent)} / {formatCurrency(amount)}
-                    </span>
-                    <span>
-                      {over
-                        ? `${lang === "es" ? "Excedido por" : "Over by"} ${formatCurrency(spent - amount)}`
-                        : `${t("budgets.remaining")}: ${formatCurrency(remaining)}`}
-                    </span>
-                  </div>
+                  <p className="budget-card-summary">
+                    {over ? (
+                      <>
+                        {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
+                        <span className="budget-card-summary-exceeded">
+                          <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
+                          {t("budgets.exceeded")}
+                        </span>
+                      </>
+                    ) : (
+                      summaryText
+                    )}
+                  </p>
                   <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
                     <Progress value={progressValue} className="h-2 budget-card-progress" />
                     <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
@@ -385,7 +404,9 @@ export default function BudgetsBody() {
             const pct = amount > 0 ? (spent / amount) * 100 : 0;
             const progressValue = amount > 0 ? Math.min(100, pct) : 0;
             const pctWarning = pct >= 80 && !over;
-
+            const summaryText = over
+              ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
+              : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
             return (
               <div
                 key={budget.id}
@@ -393,12 +414,6 @@ export default function BudgetsBody() {
                 style={{ "--accent-budget": budget.color || "var(--accent)" } as React.CSSProperties}
               >
                 <div className="budget-card-header">
-                  {over && (
-                    <span className="budget-card-danger-icon" aria-hidden>
-                      <AlertTriangle size={22} />
-                    </span>
-                  )}
-                  <h3 className="budget-card-name">{budget.name}</h3>
                   <div className="budget-card-actions">
                     <button
                       type="button"
@@ -418,30 +433,42 @@ export default function BudgetsBody() {
                     </button>
                   </div>
                 </div>
-                {budget.categoryIds?.length ? (
-                  <div className="budget-card-badges">
-                    {(budget.categoryIds as string[])
-                      .map((id) => ({ id, name: categoryIdToName.get(id) }))
-                      .filter((x): x is { id: string; name: string } => Boolean(x.name))
-                      .map(({ id: catId, name }) => (
-                        <span key={catId} className="budget-card-badge">{name}</span>
-                      ))}
-                  </div>
-                ) : (
-                  <div className="budget-card-badges">
-                    <span className="budget-card-badge budget-card-badge--general">{t("budgets.generalBudget")}</span>
-                  </div>
-                )}
-                <div className="budget-card-stats">
-                  <span>
-                    {t("budgets.spent")}: {formatCurrency(spent)} / {formatCurrency(amount)}
+                <div className="budget-card-badges-row">
+                  <span className="budget-card-icon-blur" aria-hidden>
+                    {budget.categoryIds?.length && categoryIdToEmoji.get(budget.categoryIds[0]) ? (
+                      <span className="budget-card-emoji">{categoryIdToEmoji.get(budget.categoryIds[0])}</span>
+                    ) : (
+                      <Wallet size={20} strokeWidth={1.5} />
+                    )}
                   </span>
-                  <span>
-                    {over
-                      ? `${lang === "es" ? "Excedido por" : "Over by"} ${formatCurrency(spent - amount)}`
-                      : `${t("budgets.remaining")}: ${formatCurrency(remaining)}`}
-                  </span>
+                  {budget.categoryIds?.length ? (
+                    <div className="budget-card-badges">
+                      {(budget.categoryIds as string[])
+                        .map((id) => ({ id, name: categoryIdToName.get(id) }))
+                        .filter((x): x is { id: string; name: string } => Boolean(x.name))
+                        .map(({ id: catId, name }) => (
+                          <span key={catId} className="budget-card-badge">{name}</span>
+                        ))}
+                    </div>
+                  ) : (
+                    <div className="budget-card-badges">
+                      <span className="budget-card-badge budget-card-badge--general">{t("budgets.generalBudget")}</span>
+                    </div>
+                  )}
                 </div>
+                <p className="budget-card-summary">
+                  {over ? (
+                    <>
+                      {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
+                      <span className="budget-card-summary-exceeded">
+                        <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
+                        {t("budgets.exceeded")}
+                      </span>
+                    </>
+                  ) : (
+                    summaryText
+                  )}
+                </p>
                 <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
                   <Progress value={progressValue} className="h-2 budget-card-progress" />
                   <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
@@ -459,20 +486,6 @@ export default function BudgetsBody() {
               {modalMode === "create" ? t("budgets.add") : t("budgets.edit")}
             </h2>
             <form onSubmit={handleSave} className="subs-form">
-              <div className="subs-form-section">
-                <Label className="subs-form-label" htmlFor="budget-name" required>
-                  {t("settings.name")}
-                </Label>
-                <Input
-                  id="budget-name"
-                  type="text"
-                  required
-                  placeholder={t("budgets.namePlaceholder")}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="!h-10"
-                />
-              </div>
               <div className="subs-form-section">
                 <Label className="subs-form-label" htmlFor="budget-amount" required>
                   {t("budgets.monthlyLimit")} (€)

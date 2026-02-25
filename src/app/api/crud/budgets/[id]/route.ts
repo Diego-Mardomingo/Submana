@@ -102,9 +102,6 @@ export async function PATCH(
   }
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (body.name !== undefined && typeof body.name === "string") {
-    updates.name = body.name.trim();
-  }
   if (body.amount !== undefined) {
     const num = typeof body.amount === "number" ? body.amount : parseFloat(String(body.amount));
     if (!isNaN(num) && num >= 0) updates.amount = num;

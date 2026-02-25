@@ -1,0 +1,121 @@
+/* Estilos tarjeta resumen del mes */
+
+.row {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.incomeSection,
+.expenseSection {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0;
+}
+
+.incomeSection {
+  padding-right: 1rem;
+}
+
+.expenseSection {
+  padding-left: 1rem;
+  border-left: 1px solid var(--gris);
+}
+
+.label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  margin: 0;
+}
+
+.incomeValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--success);
+  margin: 0;
+}
+
+.expenseValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--danger);
+  margin: 0;
+}
+
+.divider {
+  margin: 0.75rem 0;
+  border: none;
+  border-top: 1px solid var(--gris);
+  width: 100%;
+}
+
+.balanceSection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.balanceValue {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--blanco);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.balanceLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+  margin: 0;
+}
+
+/* Móvil: alinear tamaños con la tarjeta de balance de cuentas */
+@media (max-width: 768px) {
+  .row {
+    gap: 0.125rem;
+  }
+  .incomeSection,
+  .expenseSection {
+    gap: 0.125rem;
+    padding: 0.25rem 0;
+  }
+  .incomeSection {
+    padding-right: 0.5rem;
+  }
+  .expenseSection {
+    padding-left: 0.5rem;
+  }
+  .label {
+    font-size: 0.5rem;
+  }
+  .incomeValue,
+  .expenseValue {
+    font-size: clamp(0.75rem, 2vw, 0.9rem);
+  }
+  .divider {
+    margin: 0.4rem 0;
+  }
+  .balanceSection {
+    gap: 0.125rem;
+    padding-top: 0.125rem;
+  }
+  .balanceValue {
+    font-size: clamp(1.1rem, 4vw, 1.35rem);
+  }
+  .balanceLabel {
+    font-size: 0.5rem;
+  }
+}

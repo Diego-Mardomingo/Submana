@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   const { data: budgets, error: budgetsError } = await supabase
     .from("budgets")
-    .select("id, user_id, name, amount, color, created_at, updated_at")
+    .select("id, user_id, amount, color, created_at, updated_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
@@ -95,7 +95,6 @@ export async function POST(request: NextRequest) {
     return jsonError("Invalid JSON body");
   }
 
-  const name = typeof body.name === "string" ? body.name.trim() : "";
   const amount =
     typeof body.amount === "number"
       ? body.amount
@@ -114,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (!name || isNaN(amount) || amount < 0) {
+  if (isNaN(amount) || amount < 0) {
     return jsonError("missing_fields");
   }
 
@@ -122,7 +121,6 @@ export async function POST(request: NextRequest) {
     .from("budgets")
     .insert({
       user_id: user.id,
-      name,
       amount,
       color,
       updated_at: new Date().toISOString(),

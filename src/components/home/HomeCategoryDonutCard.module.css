@@ -1,0 +1,12 @@
+/* Estilos tarjeta Gastos por categoría */
+
+.chartWrapper {
+  height: 240px;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .chartWrapper {
+    height: 180px;
+  }
+}
