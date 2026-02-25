@@ -1695,9 +1695,17 @@ html[data-theme="light"] .budget-card-badge--general {
 
 .tx-card-meta {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.35rem;
   margin-top: 0.2rem;
+}
+
+.tx-card-meta-separator {
+  color: var(--gris-claro);
+  font-weight: 400;
+  opacity: 0.7;
 }
 
 .tx-card-badge {
@@ -1708,13 +1716,36 @@ html[data-theme="light"] .budget-card-badge--general {
   font-weight: 600;
 }
 
-.tx-card-badge-account {
-  width: fit-content;
+.tx-card-account-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--gris-muy-claro);
 }
 
-html[data-theme="light"] .tx-card-badge-account {
-  background-color: color-mix(in srgb, var(--tx-account-badge-color, var(--gris-claro)) 38%, transparent) !important;
-  color: color-mix(in srgb, var(--tx-account-badge-color, var(--gris-claro)) 75%, black) !important;
+.tx-card-account-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tx-card-category-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--gris-muy-claro);
+}
+
+.tx-card-category-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .tx-card-categories {

@@ -41,6 +41,7 @@ import { Wallet, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
+import { getCategoryBadgeColor } from "@/lib/categoryColors";
 
 const colors = ACCOUNT_BUDGET_COLORS;
 const defaultBudgetColor = defaultAccountBudgetColor;
@@ -124,6 +125,12 @@ export default function BudgetsBody() {
     walk(userCategories);
     return m;
   }, [defaultCategories, userCategories]);
+
+  const categoryIdToColorKey = useMemo(() => {
+    const m = new Map<string, string>();
+    categoryOptions.forEach((o) => m.set(o.id, o.parentId ?? o.id));
+    return m;
+  }, [categoryOptions]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
@@ -339,11 +346,16 @@ export default function BudgetsBody() {
                     {budget.categoryIds?.length ? (
                       <div className="budget-card-badges">
                         {(budget.categoryIds as string[])
-                          .map((id) => ({ id, name: categoryIdToName.get(id) }))
-                          .filter((x): x is { id: string; name: string } => Boolean(x.name))
-                          .map(({ id: catId, name }) => (
-                            <span key={catId} className="budget-card-badge">{name}</span>
-                          ))}
+                          .map((id) => ({ id, name: categoryIdToName.get(id), colorKey: categoryIdToColorKey.get(id) ?? id }))
+                          .filter((x): x is { id: string; name: string; colorKey: string } => Boolean(x.name))
+                          .map(({ id: catId, name, colorKey }) => {
+                            const { bg, fg } = getCategoryBadgeColor(colorKey);
+                            return (
+                              <span key={catId} className="budget-card-badge" style={{ backgroundColor: bg, color: fg }}>
+                                {name}
+                              </span>
+                            );
+                          })}
                       </div>
                     ) : (
                       <div className="budget-card-badges">
@@ -452,11 +464,16 @@ export default function BudgetsBody() {
                   {budget.categoryIds?.length ? (
                     <div className="budget-card-badges">
                       {(budget.categoryIds as string[])
-                        .map((id) => ({ id, name: categoryIdToName.get(id) }))
-                        .filter((x): x is { id: string; name: string } => Boolean(x.name))
-                        .map(({ id: catId, name }) => (
-                          <span key={catId} className="budget-card-badge">{name}</span>
-                        ))}
+                        .map((id) => ({ id, name: categoryIdToName.get(id), colorKey: categoryIdToColorKey.get(id) ?? id }))
+                        .filter((x): x is { id: string; name: string; colorKey: string } => Boolean(x.name))
+                        .map(({ id: catId, name, colorKey }) => {
+                          const { bg, fg } = getCategoryBadgeColor(colorKey);
+                          return (
+                            <span key={catId} className="budget-card-badge" style={{ backgroundColor: bg, color: fg }}>
+                              {name}
+                            </span>
+                          );
+                        })}
                     </div>
                   ) : (
                     <div className="budget-card-badges">

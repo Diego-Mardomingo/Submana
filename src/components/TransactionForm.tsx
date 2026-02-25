@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAccounts } from "@/hooks/useAccounts";
-import { useCategories } from "@/hooks/useCategories";
+import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { useCreateTransaction } from "@/hooks/useCreateTransaction";
 import { useUpdateTransaction } from "@/hooks/useUpdateTransaction";
 import { useLang } from "@/hooks/useLang";
@@ -27,8 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-type CategoryWithSubs = { id: string; name: string; subcategories?: Array<{ id: string; name: string }> };
 
 interface TransactionFormProps {
   editData?: {
@@ -231,7 +229,7 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
             <SelectTrigger className="w-full !h-10">
               <SelectValue placeholder="—" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" side="top">
               <SelectItem value="none">—</SelectItem>
               {(accounts as Array<{ id: string; name: string; color?: string }>).map((a) => (
                 <SelectItem key={a.id} value={a.id}>
@@ -255,10 +253,15 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
             <SelectTrigger className="w-full !h-10">
               <SelectValue placeholder="—" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper" side="top">
               <SelectItem value="none">—</SelectItem>
               {parents.map((p) => (
-                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                <SelectItem key={p.id} value={p.id}>
+                  <span className="flex items-center gap-2">
+                    {p.emoji && <span>{p.emoji}</span>}
+                    {p.name}
+                  </span>
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -274,10 +277,15 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
               <SelectTrigger className="w-full !h-10">
                 <SelectValue placeholder="—" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" side="top">
                 <SelectItem value="none">—</SelectItem>
                 {subcategories.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  <SelectItem key={s.id} value={s.id}>
+                    <span className="flex items-center gap-2">
+                      {s.emoji && <span>{s.emoji}</span>}
+                      {s.name}
+                    </span>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

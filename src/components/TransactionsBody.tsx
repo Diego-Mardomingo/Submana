@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
+import { useCategories } from "@/hooks/useCategories";
+import { getCategoryBadgeColor } from "@/lib/categoryColors";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
@@ -30,6 +32,8 @@ type TransactionItem = {
   type: string;
   description?: string;
   account?: { name: string; color?: string };
+  category_id?: string | null;
+  subcategory_id?: string | null;
   category?: { name: string };
   subcategory?: { name: string };
 };
@@ -62,7 +66,20 @@ export default function TransactionsBody() {
   const [month, setMonth] = useState(now.getMonth());
 
   const { data: transactions = [], isLoading, isFetching } = useTransactions(year, month + 1);
+  const { data: categoriesData } = useCategories();
   const deleteTx = useDeleteTransaction();
+
+  const subToParent = useMemo(() => {
+    const m = new Map<string, string>();
+    const walk = (list: Array<{ id: string; subcategories?: Array<{ id: string }> }>) => {
+      for (const p of list) {
+        for (const s of p.subcategories ?? []) m.set(s.id, p.id);
+      }
+    };
+    walk(categoriesData?.defaultCategories ?? []);
+    walk(categoriesData?.userCategories ?? []);
+    return m;
+  }, [categoriesData]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -397,31 +414,38 @@ export default function TransactionsBody() {
                       </span>
                       <div className="tx-card-meta">
                         {tx.account && (
-                          <span
-                            className="tx-card-badge tx-card-badge-account"
-                            style={{
-                              ["--tx-account-badge-color" as string]: tx.account.color || "var(--gris-claro)",
-                              backgroundColor: tx.account.color ? `${tx.account.color}20` : "var(--gris)",
-                              color: tx.account.color || "var(--gris-claro)",
-                            }}
-                          >
-                            {tx.account.name}
+                          <span className="tx-card-account-indicator">
+                            <span
+                              className="tx-card-account-dot"
+                              style={{ backgroundColor: tx.account.color || "var(--gris-claro)" }}
+                            />
+                            <span className="tx-card-account-name">{tx.account.name}</span>
                           </span>
                         )}
-                        {(tx.category || tx.subcategory) && (
-                          <div className="tx-card-categories">
-                            {tx.category && (
-                              <span className="tx-card-badge tx-card-badge-category">
-                                {(tx.category as { name: string }).name}
-                              </span>
-                            )}
-                            {tx.subcategory && (
-                              <span className="tx-card-badge tx-card-badge-subcategory">
-                                {(tx.subcategory as { name: string }).name}
-                              </span>
-                            )}
-                          </div>
+                        {tx.account && (tx.category || tx.subcategory) && (
+                          <span className="tx-card-meta-separator" aria-hidden>|</span>
                         )}
+                        {(tx.category || tx.subcategory) && (() => {
+                          const catColorKey = tx.category_id ?? (tx.subcategory_id ? subToParent.get(tx.subcategory_id) ?? tx.subcategory_id : null);
+                          const catColors = catColorKey ? getCategoryBadgeColor(catColorKey) : null;
+                          const dotColor = catColors?.fg ?? "var(--gris-claro)";
+                          return (
+                            <div className="tx-card-categories">
+                              {tx.category && (
+                                <span className="tx-card-category-indicator">
+                                  <span className="tx-card-category-dot" style={{ backgroundColor: dotColor }} />
+                                  <span>{(tx.category as { name: string }).name}</span>
+                                </span>
+                              )}
+                              {tx.subcategory && (
+                                <span className="tx-card-category-indicator">
+                                  <span className="tx-card-category-dot" style={{ backgroundColor: dotColor }} />
+                                  <span>{(tx.subcategory as { name: string }).name}</span>
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className={`tx-card-amount tx-card-amount-${tx.type}`}>
