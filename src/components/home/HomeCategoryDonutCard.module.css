@@ -2,11 +2,13 @@
 
 .chartWrapper {
   height: 240px;
+  min-height: 240px;
   width: 100%;
 }
 
 @media (max-width: 768px) {
   .chartWrapper {
     height: 180px;
+    min-height: 180px;
   }
 }

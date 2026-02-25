@@ -247,15 +247,107 @@ button:not(:disabled),
 }
 
 /* ── Dashboard ── */
+.dashboard-page.page-container {
+  max-width: none;
+  width: 100%;
+}
+
 .dashboard-content {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  width: 100%;
 }
 
 .dashboard-chart-wrapper {
   max-width: 600px;
   width: 100%;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-auto-rows: auto;
+  align-items: stretch;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-page .dashboard-grid {
+  max-width: none;
+}
+
+@media (min-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.dashboard-grid-full {
+  grid-column: 1 / -1;
+}
+
+.dashboard-card,
+.dashboard-grid-full {
+  min-width: 0;
+}
+
+.dashboard-card > *,
+.dashboard-grid-full > * {
+  height: 100%;
+}
+
+.dashboard-chart {
+  width: 100%;
+  height: 200px;
+  min-height: 200px;
+}
+
+@media (max-width: 639px) {
+  .dashboard-chart {
+    height: 160px;
+    min-height: 160px;
+  }
+}
+
+.dashboard-chart-tall {
+  height: 240px;
+  min-height: 240px;
+}
+
+@media (max-width: 639px) {
+  .dashboard-chart-tall {
+    height: 200px;
+    min-height: 200px;
+  }
+}
+
+.dashboard-chart-small {
+  height: 180px;
+  min-height: 180px;
+}
+
+@media (max-width: 639px) {
+  .dashboard-chart-small {
+    height: 140px;
+    min-height: 140px;
+  }
 }
 
 /* ── Page Header Clean ── */
@@ -645,7 +737,7 @@ button:not(:disabled),
   align-items: center;
 }
 
-/* Pantallas grandes: calendario izquierda (max 600px), tarjetas 2x2 a la derecha */
+/* Layout principal del home */
 .home-main {
   width: 100%;
   display: grid;
@@ -653,6 +745,38 @@ button:not(:disabled),
   grid-template-rows: min-content 1fr;
   gap: 1.5rem;
   align-items: center;
+}
+
+/* Home: solo calendario con responsive */
+.home-main-calendar-only {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.home-main-calendar-only .home-main-calendar {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .home-main-calendar-only {
+    max-width: none;
+    padding: 0;
+  }
+
+  .home-main-calendar-only .home-main-calendar {
+    width: 100%;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1200px) {
+  .home-main-calendar-only {
+    max-width: 500px;
+  }
 }
 
 .home-main-calendar {
