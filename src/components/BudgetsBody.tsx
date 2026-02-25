@@ -128,11 +128,17 @@ export default function BudgetsBody() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [currentBudget, setCurrentBudget] = useState<BudgetWithSpent | null>(null);
-  const [formData, setFormData] = useState({
+  type BudgetColor = (typeof ACCOUNT_BUDGET_COLORS)[number];
+  const [formData, setFormData] = useState<{
+    id: string;
+    amount: string;
+    color: BudgetColor;
+    categoryIds: string[];
+  }>({
     id: "",
     amount: "",
     color: defaultBudgetColor,
-    categoryIds: [] as string[],
+    categoryIds: [],
   });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null);
@@ -156,7 +162,9 @@ export default function BudgetsBody() {
       setFormData({
         id: budget.id,
         amount: String(budget.amount),
-        color: budget.color || defaultBudgetColor,
+        color: (budget.color && ACCOUNT_BUDGET_COLORS.includes(budget.color as BudgetColor)
+          ? budget.color
+          : defaultBudgetColor) as BudgetColor,
         categoryIds: budget.categoryIds ?? [],
       });
       setCurrentBudget(budget);

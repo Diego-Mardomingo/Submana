@@ -14,7 +14,8 @@ export default function HomeBalanceCard() {
   const { data: accounts = [], isLoading } = useAccounts();
 
   const totalBalance = accounts.reduce(
-    (sum, acc) => sum + Number(acc.balance ?? 0),
+    (sum: number, acc: { id: string; balance?: number; color?: string }) =>
+      sum + Number(acc.balance ?? 0),
     0
   );
 
@@ -44,7 +45,7 @@ export default function HomeBalanceCard() {
           <>
             <hr className={styles.divider} />
             <div className={styles.accounts}>
-              {accounts.map((acc) => (
+              {accounts.map((acc: { id: string; name: string; balance?: number; color?: string }) => (
                 <div key={acc.id} className={styles.account}>
                   <div className={styles.accountLabelRow}>
                     <span
