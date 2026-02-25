@@ -112,10 +112,12 @@ export default function DashboardBudgetsProgress() {
               <XAxis type="number" domain={[0, 120]} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${v}%`} />
               <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
               <Tooltip
-                formatter={(value: number, _name: string, props: { payload: { spent: number; amount: number } }) => [
-                  `${formatCurrency(props.payload.spent)} / ${formatCurrency(props.payload.amount)}`,
-                  "",
-                ]}
+                formatter={(_value: number, _name: string, props: { payload?: { spent?: number; amount?: number } }) => {
+                  const payload = props?.payload;
+                  const spent = payload?.spent ?? 0;
+                  const amount = payload?.amount ?? 0;
+                  return [`${formatCurrency(spent)} / ${formatCurrency(amount)}`, ""];
+                }}
                 contentStyle={{
                   backgroundColor: "var(--card)",
                   border: "1px solid var(--border)",
