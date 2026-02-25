@@ -35,13 +35,11 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Wallet, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
-import { getCategoryBadgeColor } from "@/lib/categoryColors";
 
 const colors = ACCOUNT_BUDGET_COLORS;
 const defaultBudgetColor = defaultAccountBudgetColor;
@@ -83,8 +81,8 @@ function flattenCategoriesForSelect(
       }
     }
   };
-  walk(defaultCats);
   walk(userCats);
+  walk(defaultCats);
   return out;
 }
 
@@ -132,6 +130,16 @@ export default function BudgetsBody() {
     return m;
   }, [categoryOptions]);
 
+  /** Solo categorías padre para presupuestos (no subcategorías) */
+  const parentCategoryOptions = useMemo(
+    () => categoryOptions.filter((o) => !o.isSub),
+    [categoryOptions]
+  );
+
+  /** Convierte categoryIds del presupuesto a IDs únicos de categorías padre */
+  const getParentIds = (ids: string[]) =>
+    [...new Set(ids.map((id) => categoryIdToColorKey.get(id) ?? id))];
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [currentBudget, setCurrentBudget] = useState<BudgetWithSpent | null>(null);
@@ -172,7 +180,7 @@ export default function BudgetsBody() {
         color: (budget.color && ACCOUNT_BUDGET_COLORS.includes(budget.color as BudgetColor)
           ? budget.color
           : defaultBudgetColor) as BudgetColor,
-        categoryIds: budget.categoryIds ?? [],
+        categoryIds: getParentIds(budget.categoryIds ?? []),
       });
       setCurrentBudget(budget);
     } else {
@@ -234,25 +242,11 @@ export default function BudgetsBody() {
   const toggleCategory = (opt: CategoryOption) => {
     setFormData((prev) => {
       const isChecked = prev.categoryIds.includes(opt.id);
-      if (opt.isSub) {
-        return {
-          ...prev,
-          categoryIds: isChecked
-            ? prev.categoryIds.filter((id) => id !== opt.id)
-            : [...prev.categoryIds, opt.id],
-        };
-      }
-      // Parent: toggle parent + all subcategories
-      const idsToToggle = [opt.id, ...opt.subIds];
-      if (isChecked) {
-        return {
-          ...prev,
-          categoryIds: prev.categoryIds.filter((id) => !idsToToggle.includes(id)),
-        };
-      }
       return {
         ...prev,
-        categoryIds: [...new Set([...prev.categoryIds, ...idsToToggle])],
+        categoryIds: isChecked
+          ? prev.categoryIds.filter((id) => id !== opt.id)
+          : [...prev.categoryIds, opt.id],
       };
     });
   };
@@ -327,7 +321,8 @@ export default function BudgetsBody() {
               const summaryText = over
                 ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
                 : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
-              const firstCategoryEmoji = budget.categoryIds?.length ? categoryIdToEmoji.get(budget.categoryIds[0]) : undefined;
+              const parentIds = getParentIds(budget.categoryIds ?? []);
+              const firstCategoryEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
               const cardContent = (
                 <div
                   className={`budget-card ${over ? "budget-card--over" : ""}`}
@@ -343,24 +338,15 @@ export default function BudgetsBody() {
                         <Wallet size={20} strokeWidth={1.5} />
                       )}
                     </span>
-                    {budget.categoryIds?.length ? (
-                      <div className="budget-card-badges">
-                        {(budget.categoryIds as string[])
-                          .map((id) => ({ id, name: categoryIdToName.get(id), colorKey: categoryIdToColorKey.get(id) ?? id }))
-                          .filter((x): x is { id: string; name: string; colorKey: string } => Boolean(x.name))
-                          .map(({ id: catId, name, colorKey }) => {
-                            const { bg, fg } = getCategoryBadgeColor(colorKey);
-                            return (
-                              <span key={catId} className="budget-card-badge" style={{ backgroundColor: bg, color: fg }}>
-                                {name}
-                              </span>
-                            );
-                          })}
-                      </div>
+                    {parentIds.length ? (
+                      <span className="budget-card-title-categories">
+                        {parentIds
+                          .map((id) => categoryIdToName.get(id))
+                          .filter(Boolean)
+                          .join(", ")}
+                      </span>
                     ) : (
-                      <div className="budget-card-badges">
-                        <span className="budget-card-badge budget-card-badge--general">{t("budgets.generalBudget")}</span>
-                      </div>
+                      <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
                     )}
                   </div>
                   <p className="budget-card-summary">
@@ -427,13 +413,31 @@ export default function BudgetsBody() {
             const summaryText = over
               ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
               : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
+            const parentIdsDesktop = getParentIds(budget.categoryIds ?? []);
             return (
               <div
                 key={budget.id}
                 className={`budget-card ${over ? "budget-card--over" : ""}`}
                 style={{ "--accent-budget": budget.color || "var(--accent)" } as React.CSSProperties}
               >
-                <div className="budget-card-header">
+                <div className="budget-card-badges-row">
+                  <span className="budget-card-icon-blur" aria-hidden>
+                    {parentIdsDesktop.length && categoryIdToEmoji.get(parentIdsDesktop[0]) ? (
+                      <span className="budget-card-emoji">{categoryIdToEmoji.get(parentIdsDesktop[0])}</span>
+                    ) : (
+                      <Wallet size={20} strokeWidth={1.5} />
+                    )}
+                  </span>
+                  {parentIdsDesktop.length ? (
+                    <span className="budget-card-title-categories">
+                      {parentIdsDesktop
+                        .map((id) => categoryIdToName.get(id))
+                        .filter(Boolean)
+                        .join(", ")}
+                    </span>
+                  ) : (
+                    <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
+                  )}
                   <div className="budget-card-actions">
                     <button
                       type="button"
@@ -452,34 +456,6 @@ export default function BudgetsBody() {
                       <Trash2 size={18} />
                     </button>
                   </div>
-                </div>
-                <div className="budget-card-badges-row">
-                  <span className="budget-card-icon-blur" aria-hidden>
-                    {budget.categoryIds?.length && categoryIdToEmoji.get(budget.categoryIds[0]) ? (
-                      <span className="budget-card-emoji">{categoryIdToEmoji.get(budget.categoryIds[0])}</span>
-                    ) : (
-                      <Wallet size={20} strokeWidth={1.5} />
-                    )}
-                  </span>
-                  {budget.categoryIds?.length ? (
-                    <div className="budget-card-badges">
-                      {(budget.categoryIds as string[])
-                        .map((id) => ({ id, name: categoryIdToName.get(id), colorKey: categoryIdToColorKey.get(id) ?? id }))
-                        .filter((x): x is { id: string; name: string; colorKey: string } => Boolean(x.name))
-                        .map(({ id: catId, name, colorKey }) => {
-                          const { bg, fg } = getCategoryBadgeColor(colorKey);
-                          return (
-                            <span key={catId} className="budget-card-badge" style={{ backgroundColor: bg, color: fg }}>
-                              {name}
-                            </span>
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <div className="budget-card-badges">
-                      <span className="budget-card-badge budget-card-badge--general">{t("budgets.generalBudget")}</span>
-                    </div>
-                  )}
                 </div>
                 <p className="budget-card-summary">
                   {over ? (
@@ -567,27 +543,23 @@ export default function BudgetsBody() {
                 <p style={{ fontSize: "0.8rem", color: "var(--gris-claro)", marginBottom: "0.5rem" }}>
                   {t("budgets.generalBudget")} {lang === "es" ? "si no eliges ninguna" : "if you leave none selected"}
                 </p>
-                <ScrollArea className="h-[140px] w-full max-w-full rounded-md border border-[var(--gris)] p-2 [&_[data-slot=scroll-area-viewport]]:overflow-x-hidden">
-                  <div className="flex flex-col gap-1 min-w-0">
-                    {categoryOptions.map((opt) => (
-                      <label
-                        key={opt.id}
-                        className="flex items-center gap-2 cursor-pointer py-1 min-w-0"
-                        style={{ paddingLeft: opt.isSub ? "1.25rem" : 0 }}
-                      >
-                        <Checkbox
-                          checked={
-                            opt.isSub
-                              ? formData.categoryIds.includes(opt.id)
-                              : formData.categoryIds.includes(opt.id) || (opt.subIds.length > 0 && opt.subIds.every((id) => formData.categoryIds.includes(id)))
-                          }
-                          onCheckedChange={() => toggleCategory(opt)}
-                        />
-                        <span className="text-sm truncate">{opt.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </ScrollArea>
+                <div className="flex flex-col gap-1 min-w-0">
+                  {parentCategoryOptions.map((opt) => (
+                    <label
+                      key={opt.id}
+                      className="flex items-center gap-2 cursor-pointer py-1 min-w-0"
+                    >
+                      <Checkbox
+                        checked={formData.categoryIds.includes(opt.id)}
+                        onCheckedChange={() => toggleCategory(opt)}
+                      />
+                      {categoryIdToEmoji.get(opt.id) && (
+                        <span className="text-base shrink-0">{categoryIdToEmoji.get(opt.id)}</span>
+                      )}
+                      <span className="text-sm truncate">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
               <div className="flex gap-2 justify-end mt-4">
                 <Button type="button" variant="outline" onClick={closeModal}>

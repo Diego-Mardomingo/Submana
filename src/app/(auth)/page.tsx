@@ -4,7 +4,6 @@ import CalendarBody from "@/components/CalendarBody";
 import HomeBalanceCard from "@/components/home/HomeBalanceCard";
 import HomeMonthlySummaryCard from "@/components/home/HomeMonthlySummaryCard";
 import HomeBudgetsCard from "@/components/home/HomeBudgetsCard";
-import HomeCategoryDonutCard from "@/components/home/HomeCategoryDonutCard";
 
 export default function HomePage() {
   return (
@@ -21,9 +20,6 @@ export default function HomePage() {
         </div>
         <div className="home-main-card home-main-card-3">
           <HomeBudgetsCard />
-        </div>
-        <div className="home-main-card home-main-card-4">
-          <HomeCategoryDonutCard />
         </div>
       </section>
     </div>

@@ -30,26 +30,32 @@ export default function HomeBudgetsCard() {
   const { data: budgets = [], isLoading } = useBudgets(monthStr);
   const { data: categoriesData } = useCategories();
 
-  const categoryIdToName = useMemo(() => {
-    const m = new Map<string, string>();
+  const { categoryIdToName, categoryIdToColorKey } = useMemo(() => {
+    const nameMap = new Map<string, string>();
+    const colorKeyMap = new Map<string, string>();
     const defaultCategories = categoriesData?.defaultCategories ?? [];
     const userCategories = categoriesData?.userCategories ?? [];
-    const add = (cat: CategoryWithSubs | CategoryItem) => {
+    const add = (cat: CategoryWithSubs | CategoryItem, parentId: string | null) => {
       const name = (cat as CategoryWithSubs).name_en && lang === "en"
         ? (cat as CategoryWithSubs).name_en!
         : cat.name;
-      m.set(cat.id, name);
+      nameMap.set(cat.id, name);
+      colorKeyMap.set(cat.id, parentId ?? cat.id);
     };
     for (const parent of [...defaultCategories, ...userCategories]) {
-      add(parent);
-      for (const sub of parent.subcategories ?? []) add(sub);
+      add(parent, null);
+      for (const sub of parent.subcategories ?? []) add(sub, parent.id);
     }
-    return m;
+    return { categoryIdToName: nameMap, categoryIdToColorKey: colorKeyMap };
   }, [categoriesData, lang]);
 
+  const getParentIds = (ids: string[]) =>
+    [...new Set(ids.map((id) => categoryIdToColorKey.get(id) ?? id))];
+
   const getBudgetLabel = (budget: BudgetWithSpent) => {
-    if (budget.categoryIds?.length) {
-      const names = (budget.categoryIds as string[])
+    const parentIds = getParentIds(budget.categoryIds ?? []);
+    if (parentIds.length) {
+      const names = parentIds
         .map((id) => categoryIdToName.get(id))
         .filter(Boolean) as string[];
       return names.length > 0 ? names.join(", ") : t("budgets.generalBudget");

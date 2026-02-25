@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
 import { useCategories } from "@/hooks/useCategories";
-import { getCategoryBadgeColor } from "@/lib/categoryColors";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
@@ -74,6 +73,21 @@ export default function TransactionsBody() {
     const walk = (list: Array<{ id: string; subcategories?: Array<{ id: string }> }>) => {
       for (const p of list) {
         for (const s of p.subcategories ?? []) m.set(s.id, p.id);
+      }
+    };
+    walk(categoriesData?.defaultCategories ?? []);
+    walk(categoriesData?.userCategories ?? []);
+    return m;
+  }, [categoriesData]);
+
+  const categoryIdToEmoji = useMemo(() => {
+    const m = new Map<string, string>();
+    const walk = (list: Array<{ id: string; emoji?: string | null; subcategories?: Array<{ id: string; emoji?: string | null }> }>) => {
+      for (const p of list) {
+        if (p.emoji) m.set(p.id, p.emoji);
+        for (const s of p.subcategories ?? []) {
+          if (s.emoji) m.set(s.id, s.emoji);
+        }
       }
     };
     walk(categoriesData?.defaultCategories ?? []);
@@ -426,20 +440,21 @@ export default function TransactionsBody() {
                           <span className="tx-card-meta-separator" aria-hidden>|</span>
                         )}
                         {(tx.category || tx.subcategory) && (() => {
-                          const catColorKey = tx.category_id ?? (tx.subcategory_id ? subToParent.get(tx.subcategory_id) ?? tx.subcategory_id : null);
-                          const catColors = catColorKey ? getCategoryBadgeColor(catColorKey) : null;
-                          const dotColor = catColors?.fg ?? "var(--gris-claro)";
+                          const categoryEmoji = tx.category_id ? categoryIdToEmoji.get(tx.category_id) : null;
+                          const subcategoryEmoji = tx.subcategory_id
+                            ? (categoryIdToEmoji.get(tx.subcategory_id) ?? categoryIdToEmoji.get(subToParent.get(tx.subcategory_id) ?? ""))
+                            : null;
                           return (
                             <div className="tx-card-categories">
                               {tx.category && (
                                 <span className="tx-card-category-indicator">
-                                  <span className="tx-card-category-dot" style={{ backgroundColor: dotColor }} />
+                                  {categoryEmoji && <span className="tx-card-category-emoji">{categoryEmoji}</span>}
                                   <span>{(tx.category as { name: string }).name}</span>
                                 </span>
                               )}
                               {tx.subcategory && (
                                 <span className="tx-card-category-indicator">
-                                  <span className="tx-card-category-dot" style={{ backgroundColor: dotColor }} />
+                                  {subcategoryEmoji && <span className="tx-card-category-emoji">{subcategoryEmoji}</span>}
                                   <span>{(tx.subcategory as { name: string }).name}</span>
                                 </span>
                               )}
