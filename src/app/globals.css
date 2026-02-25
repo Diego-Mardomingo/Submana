@@ -655,6 +655,13 @@ button:not(:disabled),
   align-self: stretch;
 }
 
+/* Tarjetas 3 y 4 (presupuestos, gastos por categoría): altura según contenido,
+   no estiran con el calendario/registros expandidos */
+.home-main-card-3,
+.home-main-card-4 {
+  align-self: start;
+}
+
 .home-main-card-1 .home-card,
 .home-main-card-2 .home-card,
 .home-main-card-3 .home-card,
@@ -844,7 +851,7 @@ button:not(:disabled),
   }
 
   .home-main-card-4 .home-card [data-slot="card-title"] {
-    font-size: 0.65rem;
+    font-size: 1rem; /* mismo tamaño que Presupuestos (text-base) */
   }
 
   .home-main-card-4 .home-card [data-slot="card-content"] {
