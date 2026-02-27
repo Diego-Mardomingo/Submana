@@ -1,7 +1,7 @@
 /* Calendar & Day styles */
 .calendar_container {
-  padding: 2rem;
-  max-width: 600px; /* evita que se deforme en pantallas grandes */
+  padding: 0;
+  max-width: 600px;
   width: 100%;
   min-width: 0;
   margin: 0 auto;
@@ -255,7 +255,7 @@
 /* ─── Calendar & Home responsive ─── */
 @media (max-width: 640px) {
   .calendar_container {
-    padding: 1rem 0.75rem;
+    padding: 0;
   }
 
   .calendar_header {
@@ -346,7 +346,7 @@
 
 @media (max-width: 380px) {
   .calendar_container {
-    padding: 0.5rem 0.35rem;
+    padding: 0;
   }
 
   .nombre_mes {

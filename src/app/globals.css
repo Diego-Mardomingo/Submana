@@ -832,11 +832,12 @@ button:not(:disabled),
   width: 100%;
   max-width: none;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 2rem 1rem;
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   min-height: calc(100dvh - 5rem);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 /* Layout principal del home */
@@ -856,7 +857,6 @@ button:not(:disabled),
   align-items: flex-start;
   width: 100%;
   max-width: 600px;
-  margin: 0 auto;
 }
 
 .home-main-calendar-only .home-main-calendar {
@@ -1075,7 +1075,7 @@ button:not(:disabled),
 /* Calendario más compacto cuando comparte espacio con las tarjetas (768–1770px) */
 @media (max-width: 1770px) and (min-width: 769px) {
   .home-main-calendar .calendar_container {
-    padding: 1.25rem 1rem;
+    padding: 0;
   }
 
   .home-main-calendar .nombre_mes {
@@ -1112,7 +1112,7 @@ button:not(:disabled),
 /* Móvil: todo en una sola columna */
 @media (max-width: 768px) {
   .home-container {
-    padding: 0.5rem 0.5rem;
+    padding: 1.5rem 0.5rem;
     margin-bottom: 5rem;
     min-height: calc(100dvh - 180px);
   }
@@ -1179,7 +1179,7 @@ button:not(:disabled),
 
 @media (max-width: 380px) {
   .home-container {
-    padding: 0.5rem 0.35rem;
+    padding: 1.5rem 0.35rem;
   }
 }
 
