@@ -825,8 +825,7 @@ button:not(:disabled),
   max-width: none;
   margin: 0 auto;
   padding: 2rem 1rem;
-  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-  min-height: calc(100dvh - 5rem);
+  padding-bottom: 1rem;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -1104,9 +1103,8 @@ button:not(:disabled),
 /* Móvil: todo en una sola columna */
 @media (max-width: 768px) {
   .home-container {
-    padding: 1.5rem 0.5rem;
-    margin-bottom: 5rem;
-    min-height: calc(100dvh - 180px);
+    padding: 1rem 0.5rem;
+    padding-bottom: 0;
   }
 
   .home-main {
