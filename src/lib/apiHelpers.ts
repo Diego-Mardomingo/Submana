@@ -24,6 +24,20 @@ export function jsonResponse(data: Record<string, unknown>, status = 200) {
   return Response.json(data, { status });
 }
 
+export function jsonCachedResponse(
+  data: Record<string, unknown>,
+  status = 200,
+  maxAge = 60,
+  staleWhileRevalidate = 300
+) {
+  return Response.json(data, {
+    status,
+    headers: {
+      "Cache-Control": `private, max-age=${maxAge}, stale-while-revalidate=${staleWhileRevalidate}`,
+    },
+  });
+}
+
 export function jsonError(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }

@@ -62,6 +62,27 @@ export function useUpdateSubscription() {
       return json.data;
     },
 
+    onMutate: async ({ id, ...updates }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.subscriptions.lists() });
+      const previous = queryClient.getQueriesData({ queryKey: queryKeys.subscriptions.lists() });
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.subscriptions.lists() },
+        (old: unknown[] | undefined) =>
+          ((old ?? []) as Array<{ id: string }>).map((sub) =>
+            sub.id === id ? { ...sub, ...updates } : sub
+          )
+      );
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.all });
     },
@@ -79,6 +100,25 @@ export function useDeleteSubscription() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Failed to delete subscription");
       return json.data;
+    },
+
+    onMutate: async (deletedId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.subscriptions.lists() });
+      const previous = queryClient.getQueriesData({ queryKey: queryKeys.subscriptions.lists() });
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.subscriptions.lists() },
+        (old: unknown[] | undefined) =>
+          ((old ?? []) as Array<{ id: string }>).filter((sub) => sub.id !== deletedId)
+      );
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
     },
 
     onSettled: () => {

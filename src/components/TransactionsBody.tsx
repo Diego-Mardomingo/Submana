@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, memo } from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -56,6 +56,86 @@ function TransactionsIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+type TransactionCardProps = {
+  tx: TransactionItem;
+  categoryEmoji: string | null;
+  subcategoryEmoji: string | null;
+  incomeLabel: string;
+  expenseLabel: string;
+};
+
+const TransactionCard = memo(function TransactionCard({
+  tx,
+  categoryEmoji,
+  subcategoryEmoji,
+  incomeLabel,
+  expenseLabel,
+}: TransactionCardProps) {
+  return (
+    <Link
+      href={`/transactions/edit/${tx.id}`}
+      className={`tx-card tx-card-${tx.type}`}
+      style={{ viewTransitionName: `tx-card-${tx.id}` }}
+    >
+      <div className="tx-card-icon">
+        {tx.type === "income" ? (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+            <polyline points="17 6 23 6 23 12" />
+          </svg>
+        ) : (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
+            <polyline points="17 18 23 18 23 12" />
+          </svg>
+        )}
+      </div>
+      <div className="tx-card-content">
+        <span className="tx-card-desc">
+          {tx.description || tx.category?.name || (tx.type === "income" ? incomeLabel : expenseLabel)}
+        </span>
+        <div className="tx-card-meta">
+          {tx.account && (
+            <span className="tx-card-account-indicator">
+              <span
+                className="tx-card-account-dot"
+                style={{ backgroundColor: tx.account.color || "var(--gris-claro)" }}
+              />
+              <span className="tx-card-account-name">{tx.account.name}</span>
+            </span>
+          )}
+          {tx.account && (tx.category || tx.subcategory) && (
+            <span className="tx-card-meta-separator" aria-hidden>|</span>
+          )}
+          {(tx.category || tx.subcategory) && (
+            <div className="tx-card-categories">
+              {tx.category && (
+                <span className="tx-card-category-indicator">
+                  {categoryEmoji && <span className="tx-card-category-emoji">{categoryEmoji}</span>}
+                  <span>{tx.category.name}</span>
+                </span>
+              )}
+              {tx.subcategory && (
+                <span className="tx-card-category-indicator">
+                  {subcategoryEmoji && <span className="tx-card-category-emoji">{subcategoryEmoji}</span>}
+                  <span>{tx.subcategory.name}</span>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className={`tx-card-amount tx-card-amount-${tx.type}`}>
+        {tx.type === "income" ? "+" : "-"}
+        {formatCurrency(Number(tx.amount))}
+      </div>
+      <svg className="tx-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M9 18l6-6-6-6" />
+      </svg>
+    </Link>
+  );
+});
 
 export default function TransactionsBody() {
   const lang = useLang();
@@ -405,73 +485,17 @@ export default function TransactionsBody() {
                       </div>
                     }
                   >
-                    <Link
-                      href={`/transactions/edit/${tx.id}`}
-                      className={`tx-card tx-card-${tx.type}`}
-                      style={{ viewTransitionName: `tx-card-${tx.id}` }}
-                    >
-                      <div className="tx-card-icon">
-                      {tx.type === "income" ? (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                          <polyline points="17 6 23 6 23 12" />
-                        </svg>
-                      ) : (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" />
-                          <polyline points="17 18 23 18 23 12" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="tx-card-content">
-                      <span className="tx-card-desc">
-                        {tx.description || (tx.category as { name?: string })?.name || (tx.type === "income" ? t("transactions.income") : t("transactions.expense"))}
-                      </span>
-                      <div className="tx-card-meta">
-                        {tx.account && (
-                          <span className="tx-card-account-indicator">
-                            <span
-                              className="tx-card-account-dot"
-                              style={{ backgroundColor: tx.account.color || "var(--gris-claro)" }}
-                            />
-                            <span className="tx-card-account-name">{tx.account.name}</span>
-                          </span>
-                        )}
-                        {tx.account && (tx.category || tx.subcategory) && (
-                          <span className="tx-card-meta-separator" aria-hidden>|</span>
-                        )}
-                        {(tx.category || tx.subcategory) && (() => {
-                          const categoryEmoji = tx.category_id ? categoryIdToEmoji.get(tx.category_id) : null;
-                          const subcategoryEmoji = tx.subcategory_id
-                            ? (categoryIdToEmoji.get(tx.subcategory_id) ?? categoryIdToEmoji.get(subToParent.get(tx.subcategory_id) ?? ""))
-                            : null;
-                          return (
-                            <div className="tx-card-categories">
-                              {tx.category && (
-                                <span className="tx-card-category-indicator">
-                                  {categoryEmoji && <span className="tx-card-category-emoji">{categoryEmoji}</span>}
-                                  <span>{(tx.category as { name: string }).name}</span>
-                                </span>
-                              )}
-                              {tx.subcategory && (
-                                <span className="tx-card-category-indicator">
-                                  {subcategoryEmoji && <span className="tx-card-category-emoji">{subcategoryEmoji}</span>}
-                                  <span>{(tx.subcategory as { name: string }).name}</span>
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className={`tx-card-amount tx-card-amount-${tx.type}`}>
-                      {tx.type === "income" ? "+" : "-"}
-                      {formatCurrency(Number(tx.amount))}
-                    </div>
-                    <svg className="tx-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-                  </Link>
+                    <TransactionCard
+                      tx={tx}
+                      categoryEmoji={tx.category_id ? categoryIdToEmoji.get(tx.category_id) ?? null : null}
+                      subcategoryEmoji={
+                        tx.subcategory_id
+                          ? (categoryIdToEmoji.get(tx.subcategory_id) ?? categoryIdToEmoji.get(subToParent.get(tx.subcategory_id) ?? "") ?? null)
+                          : null
+                      }
+                      incomeLabel={t("transactions.income")}
+                      expenseLabel={t("transactions.expense")}
+                    />
                   </SwipeToReveal>
                 ))}
               </SwipeToRevealGroup>

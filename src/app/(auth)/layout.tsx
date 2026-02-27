@@ -1,7 +1,5 @@
 import Navigation from "@/components/Navigation";
 
-export const dynamic = "force-dynamic";
-
 export default function AuthLayout({
   children,
 }: {

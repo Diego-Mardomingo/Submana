@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 import { computeBudgetSpent, type CategoryRow } from "@/lib/budgetHelpers";
 
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     })
   );
 
-  return jsonResponse({ data: result });
+  return jsonCachedResponse({ data: result }, 200, 60, 300);
 }
 
 export async function POST(request: NextRequest) {

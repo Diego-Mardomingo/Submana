@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Pencil, XCircle, Trash2 } from "lucide-react";
 import { toDateString } from "@/lib/date";
-import { useState } from "react";
+import { useState, memo } from "react";
 
 type Sub = {
   id: string;
@@ -58,6 +58,49 @@ function calculateMonthly(subs: Sub[]) {
     return acc + monthly;
   }, 0);
 }
+
+type SubscriptionCardContentProps = {
+  sub: Sub;
+  isActive: boolean;
+  freqLabel: string;
+  activeLabel: string;
+  inactiveLabel: string;
+  formattedCost: string;
+};
+
+const SubscriptionCardContent = memo(function SubscriptionCardContent({
+  sub,
+  isActive,
+  freqLabel,
+  activeLabel,
+  inactiveLabel,
+  formattedCost,
+}: SubscriptionCardContentProps) {
+  return (
+    <Link href={`/subscription/${sub.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+      <div className={`subs-card ${isActive ? "active" : "inactive"}`}>
+        <div className="subs-card-icon">
+          <img src={sub.icon || "/placeholder-icon.png"} alt="" />
+        </div>
+        <div className="subs-card-content">
+          <span className="subs-card-name">{sub.service_name}</span>
+          <div className="subs-card-badges">
+            <span className="subs-badge subs-badge-freq">{freqLabel}</span>
+            <span className={`subs-badge ${isActive ? "subs-badge-active" : "subs-badge-inactive"}`}>
+              {isActive ? activeLabel : inactiveLabel}
+            </span>
+          </div>
+          <span className="subs-card-cost">{formattedCost}</span>
+        </div>
+        {isActive && (
+          <svg className="subs-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        )}
+      </div>
+    </Link>
+  );
+});
 
 export default function SubscriptionsBody() {
   const lang = useLang();
@@ -123,28 +166,14 @@ export default function SubscriptionsBody() {
   const renderSubCard = (sub: Sub, isActive: boolean) => {
     const canCancel = isActive && !sub.end_date;
     const cardContent = (
-      <Link href={`/subscription/${sub.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-        <div className={`subs-card ${isActive ? "active" : "inactive"}`}>
-          <div className="subs-card-icon">
-            <img src={sub.icon || "/placeholder-icon.png"} alt="" />
-          </div>
-          <div className="subs-card-content">
-            <span className="subs-card-name">{sub.service_name}</span>
-            <div className="subs-card-badges">
-              <span className="subs-badge subs-badge-freq">{getFreqLabel(sub.frequency, sub.frequency_value || 1)}</span>
-              <span className={`subs-badge ${isActive ? "subs-badge-active" : "subs-badge-inactive"}`}>
-                {isActive ? t("sub.active") : t("sub.inactive")}
-              </span>
-            </div>
-            <span className="subs-card-cost">{formatCurrency(Number(sub.cost))}</span>
-          </div>
-          {isActive && (
-            <svg className="subs-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          )}
-        </div>
-      </Link>
+      <SubscriptionCardContent
+        sub={sub}
+        isActive={isActive}
+        freqLabel={getFreqLabel(sub.frequency, sub.frequency_value || 1)}
+        activeLabel={t("sub.active")}
+        inactiveLabel={t("sub.inactive")}
+        formattedCost={formatCurrency(Number(sub.cost))}
+      />
     );
 
     if (!isMobile) {

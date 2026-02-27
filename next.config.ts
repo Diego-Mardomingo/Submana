@@ -3,6 +3,9 @@ import withSerwistInit from "@serwist/next";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  experimental: {
+    viewTransitions: true,
+  },
 };
 
 const withSerwist = withSerwistInit({

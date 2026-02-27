@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -59,12 +59,12 @@ export async function GET(request: NextRequest) {
 
     const defaultCategories = buildStructuredCategoriesWithArchived(allParents, allChildren);
 
-    return jsonResponse({
+    return jsonCachedResponse({
       data: {
         defaultCategories,
         userCategories: [],
       },
-    });
+    }, 200, 180, 900);
   }
 
   const { data: archivedRows } = await supabase
@@ -126,12 +126,12 @@ export async function GET(request: NextRequest) {
     };
   });
 
-  return jsonResponse({
+  return jsonCachedResponse({
     data: {
       defaultCategories: structuredSystem,
       userCategories: structuredUser,
     },
-  });
+  }, 200, 180, 900);
 }
 
 function buildStructuredCategories(

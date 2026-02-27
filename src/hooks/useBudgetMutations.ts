@@ -51,6 +51,28 @@ export function useUpdateBudget() {
       if (!res.ok) throw new Error(json.error || "Failed to update budget");
       return json.data;
     },
+
+    onMutate: async ({ id, ...updates }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budgets.lists() });
+      const previous = queryClient.getQueriesData({ queryKey: queryKeys.budgets.lists() });
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.budgets.lists() },
+        (old: unknown[] | undefined) =>
+          ((old ?? []) as Array<{ id: string }>).map((budget) =>
+            budget.id === id ? { ...budget, ...updates } : budget
+          )
+      );
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
     },
@@ -67,6 +89,26 @@ export function useDeleteBudget() {
       if (!res.ok) throw new Error(json.error || "Failed to delete budget");
       return json.data;
     },
+
+    onMutate: async (deletedId) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.budgets.lists() });
+      const previous = queryClient.getQueriesData({ queryKey: queryKeys.budgets.lists() });
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.budgets.lists() },
+        (old: unknown[] | undefined) =>
+          ((old ?? []) as Array<{ id: string }>).filter((budget) => budget.id !== deletedId)
+      );
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all });
     },

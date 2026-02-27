@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { useDashboardPrefetch } from "@/hooks/useDashboardPrefetch";
@@ -7,19 +8,72 @@ import { LayoutDashboard } from "lucide-react";
 import HomeBalanceCard from "@/components/home/HomeBalanceCard";
 import HomeMonthlySummaryCard from "@/components/home/HomeMonthlySummaryCard";
 import HomeBudgetsCard from "@/components/home/HomeBudgetsCard";
-import HomeCategoryDonutCard from "@/components/home/HomeCategoryDonutCard";
-import DashboardMonthlyTrendBars from "@/components/dashboard/DashboardMonthlyTrendBars";
-import DashboardDailyExpenseBars from "@/components/dashboard/DashboardDailyExpenseBars";
-import DashboardBalanceByAccountDonut from "@/components/dashboard/DashboardBalanceByAccountDonut";
-import DashboardBudgetsProgress from "@/components/dashboard/DashboardBudgetsProgress";
-import DashboardCashFlowArea from "@/components/dashboard/DashboardCashFlowArea";
-import DashboardIncomeByCategoryDonut from "@/components/dashboard/DashboardIncomeByCategoryDonut";
-import DashboardExpenseByAccountDonut from "@/components/dashboard/DashboardExpenseByAccountDonut";
-import DashboardMonthComparisonBar from "@/components/dashboard/DashboardMonthComparisonBar";
-import DashboardBalanceTrendLine from "@/components/dashboard/DashboardBalanceTrendLine";
-import DashboardSubscriptionsCard from "@/components/dashboard/DashboardSubscriptionsCard";
-import DashboardExpenseScatter from "@/components/dashboard/DashboardExpenseScatter";
-import DashboardSavingsRateRadial from "@/components/dashboard/DashboardSavingsRateRadial";
+import { ChartSkeleton } from "@/components/dashboard/ChartSkeleton";
+
+const HomeCategoryDonutCard = dynamic(
+  () => import("@/components/home/HomeCategoryDonutCard"),
+  { loading: () => <ChartSkeleton height="h-[220px]" />, ssr: false }
+);
+
+const DashboardMonthlyTrendBars = dynamic(
+  () => import("@/components/dashboard/DashboardMonthlyTrendBars"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardDailyExpenseBars = dynamic(
+  () => import("@/components/dashboard/DashboardDailyExpenseBars"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardBalanceByAccountDonut = dynamic(
+  () => import("@/components/dashboard/DashboardBalanceByAccountDonut"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardBudgetsProgress = dynamic(
+  () => import("@/components/dashboard/DashboardBudgetsProgress"),
+  { loading: () => <ChartSkeleton height="h-[180px]" />, ssr: false }
+);
+
+const DashboardCashFlowArea = dynamic(
+  () => import("@/components/dashboard/DashboardCashFlowArea"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardIncomeByCategoryDonut = dynamic(
+  () => import("@/components/dashboard/DashboardIncomeByCategoryDonut"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardExpenseByAccountDonut = dynamic(
+  () => import("@/components/dashboard/DashboardExpenseByAccountDonut"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardMonthComparisonBar = dynamic(
+  () => import("@/components/dashboard/DashboardMonthComparisonBar"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardBalanceTrendLine = dynamic(
+  () => import("@/components/dashboard/DashboardBalanceTrendLine"),
+  { loading: () => <ChartSkeleton height="h-[250px]" />, ssr: false }
+);
+
+const DashboardSubscriptionsCard = dynamic(
+  () => import("@/components/dashboard/DashboardSubscriptionsCard"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardExpenseScatter = dynamic(
+  () => import("@/components/dashboard/DashboardExpenseScatter"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
+
+const DashboardSavingsRateRadial = dynamic(
+  () => import("@/components/dashboard/DashboardSavingsRateRadial"),
+  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
+);
 
 export default function DashboardPage() {
   const lang = useLang();

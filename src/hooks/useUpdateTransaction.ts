@@ -30,6 +30,27 @@ export function useUpdateTransaction() {
       return json.data;
     },
 
+    onMutate: async (updatedTx) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.transactions.lists() });
+      const previous = queryClient.getQueriesData({ queryKey: queryKeys.transactions.lists() });
+      queryClient.setQueriesData(
+        { queryKey: queryKeys.transactions.lists() },
+        (old: unknown[] | undefined) =>
+          ((old ?? []) as Array<{ id: string }>).map((tx) =>
+            tx.id === updatedTx.id ? { ...tx, ...updatedTx } : tx
+          )
+      );
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        context.previous.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });

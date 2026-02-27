@@ -94,6 +94,11 @@ export default function Navigation() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [router]);
 
+  useEffect(() => {
+    const mainRoutes = ["/", "/dashboard", "/transactions"];
+    mainRoutes.forEach((route) => router.prefetch(route));
+  }, [router]);
+
   const NavLink = ({
     href,
     children,
@@ -113,6 +118,7 @@ export default function Navigation() {
     const linkEl = (
       <Link
         href={href}
+        prefetch={true}
         className={`${styles.navItem} ${isActive ? styles.active : ""} ${extra ? styles.extraItem : ""}`}
         onClick={closeExpand}
       >
