@@ -354,8 +354,8 @@ export async function parseTradeRepublicPDF(
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
     const pageText = textContent.items
-      .filter((item): item is { str: string } => "str" in item)
-      .map((item) => item.str)
+      .filter((item) => "str" in item)
+      .map((item) => (item as { str: string }).str)
       .join(" ");
 
     if (pageText.toUpperCase().includes("RESUMEN DEL BALANCE") || 
