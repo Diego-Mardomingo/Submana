@@ -272,16 +272,17 @@ export async function parseTradeRepublicPDF(
     const textContent = await page.getTextContent();
 
     const pageItems: TextItem[] = textContent.items
-      .filter((item): item is { str: string; transform: number[]; width: number; height: number } => 
-        "str" in item && "transform" in item
-      )
-      .map((item) => ({
-        text: item.str,
-        x: item.transform[4],
-        y: item.transform[5],
-        width: item.width,
-        height: item.height,
-      }));
+      .filter((item) => "str" in item && "transform" in item)
+      .map((item) => {
+        const textItem = item as { str: string; transform: number[]; width: number; height: number };
+        return {
+          text: textItem.str,
+          x: textItem.transform[4],
+          y: textItem.transform[5],
+          width: textItem.width,
+          height: textItem.height,
+        };
+      });
 
     const footerY = FOOTER_BOTTOM_BAND;
     const items = pageItems.filter((it) => it.y > footerY);
