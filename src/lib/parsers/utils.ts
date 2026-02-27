@@ -147,7 +147,7 @@ export function normalizeDescription(rawDescription: string, type: string): stri
   if (text.match(/^transacci[oó]n\s+con\s+tarjeta\s+/i)) {
     const merchant = text.replace(/^transacci[oó]n\s+con\s+tarjeta\s+/i, "").trim();
     if (merchant) {
-      return `Tarjeta - ${cleanMerchantName(merchant)}`;
+      return cleanMerchantName(merchant);
     }
     return "Pago con tarjeta";
   }

@@ -304,7 +304,7 @@ function normalizeRevolutDescription(tx: RevolutRawTransaction): string {
   if (desc.match(/^pago\s+/i) || tipo === "pago con tarjeta") {
     const merchant = desc.replace(/^pago\s+(con\s+tarjeta\s+)?/i, "").trim();
     if (merchant) {
-      return `Tarjeta - ${capitalizeWords(merchant)}`;
+      return capitalizeWords(merchant);
     }
     return "Pago con tarjeta";
   }
