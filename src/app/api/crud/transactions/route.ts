@@ -34,8 +34,10 @@ export async function GET(request: NextRequest) {
   if (yearParam && monthParam) {
     const year = parseInt(yearParam, 10);
     const month = parseInt(monthParam, 10); // 1-12 from client
-    const startDate = new Date(year, month - 1, 1).toISOString();
-    const endDate = new Date(year, month, 0, 23, 59, 59).toISOString();
+    const monthStr = String(month).padStart(2, "0");
+    const lastDay = new Date(year, month, 0).getDate();
+    const startDate = `${year}-${monthStr}-01`;
+    const endDate = `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
     query = query.gte("date", startDate).lte("date", endDate);
   }
 

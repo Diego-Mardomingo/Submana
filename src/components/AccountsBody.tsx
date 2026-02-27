@@ -38,12 +38,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
+import { BANK_PROVIDER_LIST, getBankProvider, type BankProvider } from "@/lib/bankProviders";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -71,6 +75,7 @@ export default function AccountsBody() {
     balance: number;
     icon?: string;
     color?: string;
+    bank_provider?: string | null;
   } | null>(null);
   const [formData, setFormData] = useState<{
     id: string;
@@ -78,15 +83,19 @@ export default function AccountsBody() {
     balance: string;
     icon: string;
     color: string;
+    bank_provider: string;
   }>({
     id: "",
     name: "",
     balance: "",
     icon: "",
     color: defaultAccountBudgetColor,
+    bank_provider: "",
   });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [accountToDelete, setAccountToDelete] = useState<string | null>(null);
+  const [transactionCount, setTransactionCount] = useState<number | null>(null);
+  const [loadingTransactionCount, setLoadingTransactionCount] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const colors = ACCOUNT_BUDGET_COLORS;
 
@@ -97,6 +106,7 @@ export default function AccountsBody() {
       balance: "",
       icon: "",
       color: defaultAccountBudgetColor,
+      bank_provider: "",
     });
     setModalMode("create");
     setCurrentAccount(null);
@@ -104,7 +114,7 @@ export default function AccountsBody() {
 
   const openModal = (
     mode: "create" | "edit",
-    account?: { id: string; name: string; balance: number; icon?: string; color?: string }
+    account?: { id: string; name: string; balance: number; icon?: string; color?: string; bank_provider?: string | null }
   ) => {
     setIsModalOpen(true);
     setModalMode(mode);
@@ -112,9 +122,12 @@ export default function AccountsBody() {
       setFormData({
         id: account.id,
         name: account.name,
-        balance: String(account.balance),
+        balance: account.balance !== undefined && account.balance !== null
+          ? account.balance.toFixed(2).replace(".", ",")
+          : "",
         icon: account.icon || "",
         color: account.color || defaultAccountBudgetColor,
+        bank_provider: account.bank_provider || "",
       });
       setCurrentAccount(account);
     } else {
@@ -130,10 +143,7 @@ export default function AccountsBody() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return;
-    const balance =
-      formData.balance === "" || isNaN(parseFloat(formData.balance))
-        ? 0
-        : parseFloat(formData.balance);
+    const balance = parseCurrencyValue(formData.balance);
 
     if (modalMode === "create") {
       await createAccount.mutateAsync({
@@ -141,6 +151,7 @@ export default function AccountsBody() {
         balance,
         icon: formData.icon || undefined,
         color: formData.color,
+        bank_provider: formData.bank_provider || null,
       });
     } else if (formData.id) {
       await updateAccount.mutateAsync({
@@ -149,9 +160,28 @@ export default function AccountsBody() {
         balance,
         icon: formData.icon || undefined,
         color: formData.color,
+        bank_provider: formData.bank_provider || null,
       });
     }
     closeModal();
+  };
+
+  const openDeleteModal = async (accountId: string) => {
+    setAccountToDelete(accountId);
+    setTransactionCount(null);
+    setDeleteModalOpen(true);
+    setLoadingTransactionCount(true);
+    try {
+      const res = await fetch(`/api/crud/accounts/${accountId}`);
+      const json = await res.json();
+      if (json.data?.transaction_count !== undefined) {
+        setTransactionCount(json.data.transaction_count);
+      }
+    } catch {
+      setTransactionCount(0);
+    } finally {
+      setLoadingTransactionCount(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -159,6 +189,7 @@ export default function AccountsBody() {
     await deleteAccount.mutateAsync(accountToDelete);
     setDeleteModalOpen(false);
     setAccountToDelete(null);
+    setTransactionCount(null);
   };
 
   const handleSetDefault = async (account: { id: string }) => {
@@ -258,7 +289,7 @@ export default function AccountsBody() {
             <p>{t("accounts.noAccounts")}</p>
           </div>
         ) : (
-          (accounts as Array<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean }>).map((account) => (
+          (accounts as Array<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean; bank_provider?: string | null }>).map((account) => (
             <Link
               key={account.id}
               href={`/account/${account.id}`}
@@ -317,6 +348,73 @@ export default function AccountsBody() {
             <h2 className="modal-title">{modalMode === "create" ? t("accounts.add") : t("accounts.edit")}</h2>
             <form onSubmit={handleSave} className="subs-form">
               <div className="subs-form-section">
+                <div className="flex items-center gap-2">
+                  <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="text-muted-foreground hover:text-foreground">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <path d="M12 16v-4" />
+                            <path d="M12 8h.01" />
+                          </svg>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t("accounts.bankProviderTooltip")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <Select
+                  value={formData.bank_provider || "none"}
+                  onValueChange={(value) => {
+                    if (value === "none") {
+                      setFormData({ ...formData, bank_provider: "" });
+                    } else {
+                      const bankProvider = getBankProvider(value);
+                      if (bankProvider) {
+                        setFormData({
+                          ...formData,
+                          bank_provider: value,
+                          name: formData.name || bankProvider.name,
+                          icon: formData.icon || bankProvider.icon,
+                        });
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger className="!h-10">
+                    <SelectValue placeholder={t("accounts.bankProviderNone")}>
+                      {formData.bank_provider ? (
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={getBankProvider(formData.bank_provider)?.icon}
+                            alt=""
+                            className="size-5 rounded"
+                          />
+                          <span>{getBankProvider(formData.bank_provider)?.name}</span>
+                        </div>
+                      ) : (
+                        t("accounts.bankProviderNone")
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent style={{ zIndex: 2100 }}>
+                    <SelectItem value="none">{t("accounts.bankProviderNone")}</SelectItem>
+                    {BANK_PROVIDER_LIST.map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id}>
+                        <div className="flex items-center gap-2">
+                          <img src={bank.icon} alt="" className="size-5 rounded" />
+                          <span>{bank.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="subs-form-section">
                 <Label className="subs-form-label" optional>{t("sub.icon")}</Label>
                 <IconPicker
                   defaultIcon={formData.icon}
@@ -336,19 +434,14 @@ export default function AccountsBody() {
                 />
               </div>
               <div className="subs-form-section">
-                <Label className="subs-form-label" htmlFor="acc-balance" optional>{t("accounts.balance")} (€)</Label>
-                <InputGroup className="!h-10">
-                  <InputGroupInput
-                    id="acc-balance"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={formData.balance}
-                    onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-                  />
-                  <InputGroupAddon align="inline-end">€</InputGroupAddon>
-                </InputGroup>
+                <Label className="subs-form-label" htmlFor="acc-balance" optional>{t("accounts.balance")}</Label>
+                <CurrencyInput
+                  id="acc-balance"
+                  placeholder="0,00"
+                  value={formData.balance}
+                  onChange={(value) => setFormData({ ...formData, balance: value })}
+                  className="!h-10"
+                />
               </div>
               <div className="subs-form-section">
                 <Label className="subs-form-label">{t("common.color")}</Label>
@@ -414,12 +507,25 @@ export default function AccountsBody() {
             <AlertDialogDescription className="text-center">
               {t("accounts.deleteConfirm")}
             </AlertDialogDescription>
+            {loadingTransactionCount ? (
+              <div className="flex items-center justify-center py-2">
+                <Spinner className="size-5" />
+              </div>
+            ) : transactionCount !== null && transactionCount > 0 ? (
+              <div className="mt-3 p-3 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)] text-center">
+                <p className="text-sm font-medium text-[var(--danger)]">
+                  {lang === "es" 
+                    ? `⚠️ Se eliminarán ${transactionCount} transaccion${transactionCount === 1 ? '' : 'es'} asociadas a esta cuenta`
+                    : `⚠️ ${transactionCount} transaction${transactionCount === 1 ? '' : 's'} associated with this account will be deleted`}
+                </p>
+              </div>
+            ) : null}
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:justify-center gap-3">
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              disabled={deleteAccount.isPending}
+              disabled={deleteAccount.isPending || loadingTransactionCount}
               className="bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white"
             >
               {deleteAccount.isPending && <Spinner className="size-4 mr-2" />}

@@ -14,11 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import {
   Select,
   SelectContent,
@@ -51,8 +47,8 @@ export default function NewSubscriptionPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const num = parseFloat(cost);
-    if (!name || isNaN(num)) return;
+    const num = parseCurrencyValue(cost);
+    if (!name || num <= 0) return;
     
     await createSub.mutateAsync({
       icon: icon || undefined,
@@ -156,18 +152,12 @@ export default function NewSubscriptionPage() {
         <div className="subs-form-row triple">
           <div className="subs-form-section">
             <Label className="subs-form-label" required>{t("sub.cost")}</Label>
-            <InputGroup className="!h-10">
-              <InputGroupInput
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-                required
-              />
-              <InputGroupAddon align="inline-end">€</InputGroupAddon>
-            </InputGroup>
+            <CurrencyInput
+              placeholder="0,00"
+              value={cost}
+              onChange={setCost}
+              className="!h-10"
+            />
           </div>
           <div className="subs-form-section">
             <Label className="subs-form-label">{t("sub.frequency")}</Label>

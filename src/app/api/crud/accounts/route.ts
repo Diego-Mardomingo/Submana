@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
   const balance = body.balance ? parseFloat(body.balance) : 0;
   const icon = body.icon;
   const color = body.color;
+  const bank_provider = body.bank_provider || null;
 
   if (!name || isNaN(balance)) {
     return jsonError("missing_fields");
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
 
   const { data: insertedData, error } = await supabase
     .from("accounts")
-    .insert({ user_id: user.id, name, balance, icon, color })
+    .insert({ user_id: user.id, name, balance, icon, color, bank_provider })
     .select()
     .single();
 

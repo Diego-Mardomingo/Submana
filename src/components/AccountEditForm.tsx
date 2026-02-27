@@ -10,17 +10,27 @@ import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
+import { BANK_PROVIDER_LIST, getBankProvider } from "@/lib/bankProviders";
 
 interface Account {
   id: string;
@@ -28,6 +38,7 @@ interface Account {
   balance: number;
   icon?: string;
   color?: string;
+  bank_provider?: string | null;
 }
 
 const colors = ACCOUNT_BUDGET_COLORS;
@@ -40,14 +51,19 @@ export default function AccountEditForm({ account }: { account: Account }) {
 
   const [icon, setIcon] = useState(account.icon || "");
   const [name, setName] = useState(account.name);
-  const [balance, setBalance] = useState(String(account.balance));
+  const [balance, setBalance] = useState(
+    account.balance !== undefined && account.balance !== null
+      ? account.balance.toFixed(2).replace(".", ",")
+      : ""
+  );
   const [color, setColor] = useState(account.color || defaultAccountBudgetColor);
+  const [bankProvider, setBankProvider] = useState(account.bank_provider || "");
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const balanceNum = parseFloat(balance);
-    if (!name || isNaN(balanceNum)) return;
+    const balanceNum = parseCurrencyValue(balance);
+    if (!name) return;
 
     await updateAccount.mutateAsync({
       id: account.id,
@@ -55,8 +71,22 @@ export default function AccountEditForm({ account }: { account: Account }) {
       balance: balanceNum,
       icon: icon || undefined,
       color,
+      bank_provider: bankProvider || null,
     });
     router.push(`/account/${account.id}`);
+  };
+
+  const handleBankProviderChange = (value: string) => {
+    if (value === "none") {
+      setBankProvider("");
+    } else {
+      const bank = getBankProvider(value);
+      if (bank) {
+        setBankProvider(value);
+        if (!name) setName(bank.name);
+        if (!icon) setIcon(bank.icon);
+      }
+    }
   };
 
   return (
@@ -66,6 +96,57 @@ export default function AccountEditForm({ account }: { account: Account }) {
       </h1>
 
       <form onSubmit={handleSubmit} className="subs-form">
+        <div className="subs-form-section">
+          <div className="flex items-center gap-2">
+            <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" className="text-muted-foreground hover:text-foreground">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t("accounts.bankProviderTooltip")}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <Select value={bankProvider || "none"} onValueChange={handleBankProviderChange}>
+            <SelectTrigger className="!h-10">
+              <SelectValue placeholder={t("accounts.bankProviderNone")}>
+                {bankProvider ? (
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={getBankProvider(bankProvider)?.icon}
+                      alt=""
+                      className="size-5 rounded"
+                    />
+                    <span>{getBankProvider(bankProvider)?.name}</span>
+                  </div>
+                ) : (
+                  t("accounts.bankProviderNone")
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("accounts.bankProviderNone")}</SelectItem>
+              {BANK_PROVIDER_LIST.map((bank) => (
+                <SelectItem key={bank.id} value={bank.id}>
+                  <div className="flex items-center gap-2">
+                    <img src={bank.icon} alt="" className="size-5 rounded" />
+                    <span>{bank.name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         <div className="subs-form-section">
           <Label className="subs-form-label" optional>{t("sub.icon")}</Label>
           <IconPicker defaultIcon={icon} onIconSelect={setIcon} />
@@ -86,17 +167,12 @@ export default function AccountEditForm({ account }: { account: Account }) {
         <div className="subs-form-row">
           <div className="subs-form-section">
             <Label className="subs-form-label" required>{t("accounts.balance")}</Label>
-            <InputGroup className="!h-10">
-              <InputGroupInput
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                value={balance}
-                onChange={(e) => setBalance(e.target.value)}
-                required
-              />
-              <InputGroupAddon align="inline-end">€</InputGroupAddon>
-            </InputGroup>
+            <CurrencyInput
+              placeholder="0,00"
+              value={balance}
+              onChange={setBalance}
+              className="!h-10"
+            />
           </div>
           <div className="subs-form-section">
             <Label className="subs-form-label">{t("common.color")}</Label>

@@ -30,11 +30,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Wallet, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -176,7 +172,9 @@ export default function BudgetsBody() {
     if (mode === "edit" && budget) {
       setFormData({
         id: budget.id,
-        amount: String(budget.amount),
+        amount: budget.amount !== undefined && budget.amount !== null
+          ? budget.amount.toFixed(2).replace(".", ",")
+          : "",
         color: (budget.color && ACCOUNT_BUDGET_COLORS.includes(budget.color as BudgetColor)
           ? budget.color
           : defaultBudgetColor) as BudgetColor,
@@ -204,8 +202,8 @@ export default function BudgetsBody() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseFloat(formData.amount);
-    if (isNaN(amount) || amount < 0) return;
+    const amount = parseCurrencyValue(formData.amount);
+    if (amount < 0) return;
 
     try {
       if (modalMode === "create") {
@@ -489,20 +487,15 @@ export default function BudgetsBody() {
             <form onSubmit={handleSave} className="subs-form">
               <div className="subs-form-section">
                 <Label className="subs-form-label" htmlFor="budget-amount" required>
-                  {t("budgets.monthlyLimit")} (€)
+                  {t("budgets.monthlyLimit")}
                 </Label>
-                <InputGroup className="!h-10">
-                  <InputGroupInput
-                    id="budget-amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder={t("budgets.amountPlaceholder")}
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  />
-                  <InputGroupAddon align="inline-end">€</InputGroupAddon>
-                </InputGroup>
+                <CurrencyInput
+                  id="budget-amount"
+                  placeholder="0,00"
+                  value={formData.amount}
+                  onChange={(value) => setFormData({ ...formData, amount: value })}
+                  className="!h-10"
+                />
               </div>
               <div className="subs-form-section">
                 <Label className="subs-form-label">{t("common.color")}</Label>

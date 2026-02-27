@@ -15,11 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { DatePicker } from "@/components/ui/date-picker";
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-} from "@/components/ui/input-group";
+import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import {
   Select,
   SelectContent,
@@ -57,19 +53,23 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
   const parents = categories.filter((c) => !("parent_id" in c) || !(c as { parent_id?: string }).parent_id);
 
   const [type, setType] = useState<"income" | "expense">(editData?.type === "income" ? "income" : "expense");
-  const [amount, setAmount] = useState(editData ? String(editData.amount) : "");
+  const [amount, setAmount] = useState(
+    editData?.amount !== undefined && editData?.amount !== null
+      ? editData.amount.toFixed(2).replace(".", ",")
+      : ""
+  );
   const [date, setDate] = useState<Date>(
     editData?.date ? parseDateString(editData.date) : new Date()
   );
   const [description, setDescription] = useState(editData?.description || "");
-  const [accountId, setAccountId] = useState(editData?.account_id || "none");
+  const [accountId, setAccountId] = useState(editData?.account_id || "");
   const [categoryId, setCategoryId] = useState(editData?.category_id || "none");
   const [subcategoryId, setSubcategoryId] = useState(editData?.subcategory_id || "none");
   const [error, setError] = useState("");
 
   useEffect(() => {
     const def = (accounts as Array<{ id: string; is_default?: boolean }>).find((a) => a.is_default);
-    if (!editData && accountId === "none" && def) setAccountId(def.id);
+    if (!editData && !accountId && def) setAccountId(def.id);
   }, [accounts, accountId, editData]);
 
   const subcategories = categories.find((c) => c.id === categoryId)?.subcategories || [];
@@ -77,8 +77,8 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0 || !date) {
+    const num = parseCurrencyValue(amount);
+    if (num <= 0 || !date || !accountId) {
       setError(lang === "es" ? "Por favor, completa todos los campos obligatorios" : "Please fill all required fields");
       return;
     }
@@ -87,7 +87,7 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
       type,
       date: toDateString(date),
       description: description || undefined,
-      account_id: accountId && accountId !== "none" ? accountId : undefined,
+      account_id: accountId,
       category_id: categoryId && categoryId !== "none" ? categoryId : undefined,
       subcategory_id: subcategoryId && subcategoryId !== "none" ? subcategoryId : undefined,
     };
@@ -185,18 +185,12 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
         {/* Amount */}
         <div className="subs-form-section">
           <Label className="subs-form-label" required>{t("common.amount")}</Label>
-          <InputGroup className="!h-10">
-            <InputGroupInput
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              required
-            />
-            <InputGroupAddon align="inline-end">€</InputGroupAddon>
-          </InputGroup>
+          <CurrencyInput
+            placeholder="0,00"
+            value={amount}
+            onChange={setAmount}
+            className="!h-10"
+          />
         </div>
 
         {/* Date */}
@@ -224,13 +218,12 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
 
         {/* Account */}
         <div className="subs-form-section">
-          <Label className="subs-form-label" optional>{t("common.account")}</Label>
+          <Label className="subs-form-label" required>{t("common.account")}</Label>
           <Select value={accountId} onValueChange={setAccountId}>
             <SelectTrigger className="w-full !h-10">
-              <SelectValue placeholder="—" />
+              <SelectValue placeholder={lang === "es" ? "Seleccionar cuenta" : "Select account"} />
             </SelectTrigger>
             <SelectContent position="popper" side="top">
-              <SelectItem value="none">—</SelectItem>
               {(accounts as Array<{ id: string; name: string; color?: string }>).map((a) => (
                 <SelectItem key={a.id} value={a.id}>
                   <span className="flex items-center gap-2">

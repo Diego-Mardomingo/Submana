@@ -8,6 +8,7 @@ interface CreateAccountInput {
   balance?: number;
   icon?: string;
   color?: string;
+  bank_provider?: string | null;
 }
 
 export function useCreateAccount() {
@@ -58,6 +59,7 @@ interface UpdateAccountInput {
   balance?: number;
   icon?: string;
   color?: string;
+  bank_provider?: string | null;
 }
 
 export function useUpdateAccount() {

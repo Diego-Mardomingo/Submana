@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { parseDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, House, Trash2, Euro, Loader2 } from "lucide-react";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
@@ -135,7 +136,7 @@ export default function TransactionsBody() {
   }, [isMobile, isLoading]);
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = parseDateString(dateStr);
     return d.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", {
       weekday: "long",
       day: "numeric",
@@ -216,7 +217,7 @@ export default function TransactionsBody() {
     },
     {} as Record<string, TransactionItem[]>
   );
-  const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+  const sortedDates = Object.keys(grouped).sort((a, b) => parseDateString(b).getTime() - parseDateString(a).getTime());
 
   const hasTransactions = txList.length > 0;
 

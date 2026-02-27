@@ -6,6 +6,7 @@ import { useDeleteAccount } from "@/hooks/useAccountMutations";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { parseDateString } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import {
   AlertDialog,
@@ -28,6 +29,8 @@ import {
   CarouselNext,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import BankStatementUpload from "@/components/BankStatementUpload";
+import type { BankProvider } from "@/lib/bankProviders";
 
 interface Account {
   id: string;
@@ -36,6 +39,7 @@ interface Account {
   icon?: string;
   color?: string;
   is_default?: boolean;
+  bank_provider?: string | null;
 }
 
 interface TransactionItem {
@@ -70,7 +74,7 @@ export default function AccountDetail({ account }: { account: Account }) {
   };
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = parseDateString(dateStr);
     const day = d.getDate().toString().padStart(2, "0");
     const month = (d.getMonth() + 1).toString().padStart(2, "0");
     const year = d.getFullYear();
@@ -78,7 +82,7 @@ export default function AccountDetail({ account }: { account: Account }) {
   };
 
   const formatMonthYear = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = parseDateString(dateStr);
     const months = lang === "es"
       ? ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
       : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -86,7 +90,7 @@ export default function AccountDetail({ account }: { account: Account }) {
   };
 
   const formatDayMonth = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = parseDateString(dateStr);
     const day = d.getDate();
     const months = lang === "es"
       ? ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -95,11 +99,11 @@ export default function AccountDetail({ account }: { account: Account }) {
   };
 
   const groupTransactionsByMonthAndDay = (txs: TransactionItem[]) => {
-    const sorted = [...txs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const sorted = [...txs].sort((a, b) => parseDateString(b.date).getTime() - parseDateString(a.date).getTime());
     const byMonth: Record<string, Record<string, TransactionItem[]>> = {};
 
     for (const tx of sorted) {
-      const d = new Date(tx.date);
+      const d = parseDateString(tx.date);
       const monthKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
       const dayKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
 
@@ -127,7 +131,7 @@ export default function AccountDetail({ account }: { account: Account }) {
     if (!txs.length) {
       return [{ year: currentYear, month: currentMonth }];
     }
-    const dates = txs.map((tx) => new Date(tx.date));
+    const dates = txs.map((tx) => parseDateString(tx.date));
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
     const months: { year: number; month: number }[] = [];
     let y = minDate.getFullYear();
@@ -150,7 +154,7 @@ export default function AccountDetail({ account }: { account: Account }) {
   const getMonthStats = useCallback(
     (year: number, month: number) => {
       const monthTxs = (transactions as TransactionItem[]).filter((tx) => {
-        const d = new Date(tx.date);
+        const d = parseDateString(tx.date);
         return d.getFullYear() === year && d.getMonth() === month;
       });
       const income = monthTxs
@@ -355,6 +359,13 @@ export default function AccountDetail({ account }: { account: Account }) {
           </Button>
         </div>
 
+        {account.bank_provider && (account.bank_provider === "trade_republic" || account.bank_provider === "revolut") && (
+          <BankStatementUpload
+            accountId={account.id}
+            bankProvider={account.bank_provider as BankProvider}
+          />
+        )}
+
         <div className="account-transactions-section">
           <h2 className="account-transactions-title">
             {lang === "es" ? "Transacciones" : "Transactions"}
@@ -426,6 +437,15 @@ export default function AccountDetail({ account }: { account: Account }) {
             <AlertDialogDescription className="text-center">
               {t("accounts.deleteConfirm")}
             </AlertDialogDescription>
+            {(transactions as TransactionItem[]).length > 0 && (
+              <div className="mt-3 p-3 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)] text-center">
+                <p className="text-sm font-medium text-[var(--danger)]">
+                  {lang === "es" 
+                    ? `⚠️ Se eliminarán ${(transactions as TransactionItem[]).length} transaccion${(transactions as TransactionItem[]).length === 1 ? '' : 'es'} asociadas a esta cuenta`
+                    : `⚠️ ${(transactions as TransactionItem[]).length} transaction${(transactions as TransactionItem[]).length === 1 ? '' : 's'} associated with this account will be deleted`}
+                </p>
+              </div>
+            )}
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:justify-center gap-3">
             <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
