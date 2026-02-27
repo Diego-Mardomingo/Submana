@@ -231,7 +231,7 @@ export async function parseRevolutExcel(
   const firstSheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[firstSheetName];
   
-  const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 });
+  const jsonData = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1 });
   
   if (jsonData.length < 2) {
     throw new Error("El archivo Excel está vacío o no tiene datos");
@@ -240,7 +240,7 @@ export async function parseRevolutExcel(
   onStatus?.("Procesando transacciones...");
   onProgress?.(2, 3);
   
-  const headers = (jsonData[0] as string[]).map(h => String(h || ""));
+  const headers = jsonData[0].map(h => String(h || ""));
   const headerMapping = mapHeaders(headers);
   
   if (Object.keys(headerMapping).length < 3) {
@@ -250,7 +250,7 @@ export async function parseRevolutExcel(
   const transactions: RevolutRawTransaction[] = [];
   
   for (let i = 1; i < jsonData.length; i++) {
-    const row = (jsonData[i] as unknown[]).map(cell => String(cell ?? ""));
+    const row = jsonData[i].map(cell => String(cell ?? ""));
     const tx = parseRow(row, headerMapping, true);
     if (tx && tx.estado?.toUpperCase() === "COMPLETADO") {
       transactions.push(tx);
