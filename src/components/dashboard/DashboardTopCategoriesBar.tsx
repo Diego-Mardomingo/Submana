@@ -5,11 +5,14 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
+import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { CHART_COLORS } from "./chartColors";
 import { Spinner } from "@/components/ui/spinner";
+import { ChartMobileHint } from "./ChartMobileHint";
 
 type Tx = { amount?: number; type?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -39,6 +42,7 @@ function buildCategoryMaps(
 export default function DashboardTopCategoriesBar() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const { containerRef, isTouch } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: categoriesData, isLoading: catLoading } = useCategories();
@@ -109,24 +113,21 @@ export default function DashboardTopCategoriesBar() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full">
+        <div className="dashboard-chart w-full" ref={containerRef}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
               <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
               <Tooltip
+                trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [formatCurrency(value), ""]}
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--blanco)",
-                }}
+                {...chartTooltipStyle}
               />
               <Bar dataKey="value" fill={CHART_COLORS[0]} radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+        {isTouch && <ChartMobileHint type="tap" />}
       </CardContent>
     </Card>
   );

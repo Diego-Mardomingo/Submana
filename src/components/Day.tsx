@@ -30,8 +30,6 @@ interface DayProps {
   subsForDay: Sub[];
   transactions: Transaction[];
   onDayClick?: (dayNumber: number) => void;
-  incomeWeight?: number;
-  expenseWeight?: number;
 }
 
 export default function Day({
@@ -42,8 +40,6 @@ export default function Day({
   subsForDay,
   transactions,
   onDayClick,
-  incomeWeight = 0,
-  expenseWeight = 0,
 }: DayProps) {
   const dayNum = dayNumber.toString().padStart(2, "0");
   const hasSubscriptions = subsForDay.length > 0;
@@ -53,26 +49,15 @@ export default function Day({
   const hasIncome = transactions.some((t) => t.type === "income");
   const hasExpense = transactions.some((t) => t.type === "expense");
 
-  const incomeScale = 0.75 + incomeWeight * 0.8;
-  const expenseScale = 0.75 + expenseWeight * 0.8;
-
-  const incomeAlpha = 0.5 + incomeWeight * 0.5;
-  const expenseAlpha = 0.5 + expenseWeight * 0.5;
-
-  const incomeGlowAlpha = 0.3 + incomeWeight * 0.5;
-  const expenseGlowAlpha = 0.3 + expenseWeight * 0.5;
-  const incomeGlowSize = 4 + incomeWeight * 10;
-  const expenseGlowSize = 4 + expenseWeight * 10;
-
   const getBgGradient = () => {
     if (hasIncome && hasExpense) {
-      return `linear-gradient(90deg, rgba(var(--success-rgb), 0.12) 0%, rgba(var(--success-rgb), 0) 50%, rgba(var(--danger-rgb), 0) 50%, rgba(var(--danger-rgb), 0.12) 100%)`;
+      return `linear-gradient(90deg, rgba(var(--success-rgb), 0.04) 0%, rgba(var(--success-rgb), 0) 50%, rgba(var(--danger-rgb), 0) 50%, rgba(var(--danger-rgb), 0.04) 100%)`;
     }
     if (hasIncome) {
-      return `linear-gradient(90deg, rgba(var(--success-rgb), 0.12) 0%, rgba(var(--success-rgb), 0) 100%)`;
+      return `linear-gradient(90deg, rgba(var(--success-rgb), 0.04) 0%, rgba(var(--success-rgb), 0) 100%)`;
     }
     if (hasExpense) {
-      return `linear-gradient(90deg, rgba(var(--danger-rgb), 0) 0%, rgba(var(--danger-rgb), 0.12) 100%)`;
+      return `linear-gradient(90deg, rgba(var(--danger-rgb), 0) 0%, rgba(var(--danger-rgb), 0.04) 100%)`;
     }
     return undefined;
   };
@@ -80,8 +65,8 @@ export default function Day({
   const bgGradient = getBgGradient();
 
   const innerShadow = (hasIncome || hasExpense) ? [
-    hasIncome ? `inset 8px 0 12px -4px rgba(var(--success-rgb), 0.08)` : null,
-    hasExpense ? `inset -8px 0 12px -4px rgba(var(--danger-rgb), 0.08)` : null,
+    hasIncome ? `inset 8px 0 12px -4px rgba(var(--success-rgb), 0.03)` : null,
+    hasExpense ? `inset -8px 0 12px -4px rgba(var(--danger-rgb), 0.03)` : null,
   ].filter(Boolean).join(", ") : undefined;
 
   const renderIcons = () => {
@@ -153,24 +138,12 @@ export default function Day({
         <span
           className="tx-dot tx-dot-tl"
           aria-hidden
-          style={{
-            backgroundColor: `rgba(var(--success-rgb), ${incomeAlpha})`,
-            filter: `brightness(${0.85 + incomeWeight * 0.4})`,
-            transform: `scale(${incomeScale})`,
-            boxShadow: `0 0 ${incomeGlowSize}px rgba(var(--success-rgb), ${incomeGlowAlpha})`,
-          }}
         />
       )}
       {hasExpense && (
         <span
           className="tx-dot tx-dot-tr"
           aria-hidden
-          style={{
-            backgroundColor: `rgba(var(--danger-rgb), ${expenseAlpha})`,
-            filter: `brightness(${0.85 + expenseWeight * 0.4})`,
-            transform: `scale(${expenseScale})`,
-            boxShadow: `0 0 ${expenseGlowSize}px rgba(var(--danger-rgb), ${expenseGlowAlpha})`,
-          }}
         />
       )}
       <div className="dia_content">

@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
+import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
 import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, ZAxis } from "recharts";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -14,6 +15,7 @@ type Tx = { amount?: number; type?: string; date?: string };
 export default function DashboardExpenseScatter() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const { containerRef, isTouch } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
 
@@ -72,13 +74,14 @@ export default function DashboardExpenseScatter() {
         </p>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full">
+        <div className="dashboard-chart w-full" ref={containerRef}>
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <XAxis dataKey="x" type="number" name="day" domain={[1, 31]} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
               <YAxis dataKey="y" type="number" name="amount" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <ZAxis dataKey="z" range={[50, 400]} />
               <Tooltip
+                trigger={isTouch ? "click" : "hover"}
                 cursor={{ strokeDasharray: "3 3" }}
                 content={({ active, payload }) => {
                   if (!active || !payload?.length) return null;

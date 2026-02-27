@@ -4,9 +4,11 @@ import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { RadialBarChart, RadialBar, Legend, ResponsiveContainer, Tooltip } from "recharts";
+import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
+import { RadialBarChart, RadialBar, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Spinner } from "@/components/ui/spinner";
 
 type Tx = { amount?: number; type?: string };
@@ -14,6 +16,7 @@ type Tx = { amount?: number; type?: string };
 export default function DashboardSavingsRateRadial() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const { containerRef, isTouch } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
 
@@ -56,7 +59,7 @@ export default function DashboardSavingsRateRadial() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full">
+        <div className="dashboard-chart w-full" ref={containerRef}>
           <ResponsiveContainer width="100%" height="100%">
             <RadialBarChart
               cx="50%"
@@ -91,13 +94,9 @@ export default function DashboardSavingsRateRadial() {
                 )}
               />
               <Tooltip
+                trigger={isTouch ? "click" : "hover"}
                 formatter={() => [formatCurrency(balance), ""]}
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--blanco)",
-                }}
+                {...chartTooltipStyle}
               />
             </RadialBarChart>
           </ResponsiveContainer>

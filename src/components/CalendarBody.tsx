@@ -254,36 +254,6 @@ export default function CalendarBody() {
     return spent;
   };
 
-  const getWeightsForDay = (() => {
-    let monthIncome = 0;
-    let monthExpense = 0;
-    (transactions || []).forEach((tx: TxWithAmount) => {
-      const amt = Number(tx.amount) || 0;
-      if (tx.type === "income") monthIncome += amt;
-      else monthExpense += amt;
-    });
-    const monthSubExpense = getSpentValue();
-    const totalMonthExpense = monthExpense + monthSubExpense;
-
-    return (dayNumber: number) => {
-      const dayTxs = getTransactionsForDay(dayNumber);
-      const daySubs = getSubsForDay(dayNumber);
-      let dayIncome = 0;
-      let dayExpense = 0;
-      dayTxs.forEach((tx: TxWithAmount) => {
-        const amt = Number(tx.amount) || 0;
-        if (tx.type === "income") dayIncome += amt;
-        else dayExpense += amt;
-      });
-      daySubs.forEach((sub: SubForCalendar) => {
-        dayExpense += Number(sub.cost) || 0;
-      });
-      return {
-        incomeWeight: monthIncome > 0 ? Math.min(1, dayIncome / monthIncome) : 0,
-        expenseWeight: totalMonthExpense > 0 ? Math.min(1, dayExpense / totalMonthExpense) : 0,
-      };
-    };
-  })();
   const getIsToday = (dayNumber: number) =>
     year === new Date().getFullYear() &&
     month === new Date().getMonth() &&
@@ -293,6 +263,7 @@ export default function CalendarBody() {
     onSwipeLeft: () => changeMonth(1),
     onSwipeRight: () => changeMonth(-1),
     onDoubleTap: handleToday,
+    onSwipeUp: handleToday,
   });
 
   const dayEntries: DayEntry[] = (() => {
@@ -385,7 +356,6 @@ export default function CalendarBody() {
               subsForDay={getSubsForDay(dayNumber)}
               transactions={getTransactionsForDay(dayNumber) as { id: string; amount: number; type: string; description?: string; category?: { name: string }; subcategory?: { name: string } }[]}
               onDayClick={scrollToDay}
-              {...getWeightsForDay(dayNumber)}
             />
           );
         })}

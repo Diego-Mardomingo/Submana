@@ -14,5 +14,6 @@ export function useAccounts() {
   return useQuery({
     queryKey: queryKeys.accounts.lists(),
     queryFn: fetchAccounts,
+    staleTime: 10 * 60 * 1000, // 10 min - cuentas cambian poco
   });
 }

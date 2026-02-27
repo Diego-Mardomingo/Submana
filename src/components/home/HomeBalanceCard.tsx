@@ -11,7 +11,7 @@ import styles from "./HomeBalanceCard.module.css";
 export default function HomeBalanceCard() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { data: accounts = [], isLoading } = useAccounts();
+  const { data: accounts = [], isLoading, isFetching } = useAccounts();
 
   const totalBalance = accounts.reduce(
     (sum: number, acc: { id: string; balance?: number; color?: string }) =>
@@ -19,7 +19,10 @@ export default function HomeBalanceCard() {
     0
   );
 
-  if (isLoading) {
+  const isInitialLoading = isLoading && accounts.length === 0;
+  const isRefreshing = isFetching && !isInitialLoading;
+
+  if (isInitialLoading) {
     return (
       <Card className="home-card">
         <CardContent className={styles.wrapper}>
@@ -36,7 +39,7 @@ export default function HomeBalanceCard() {
 
   return (
     <Card className="home-card">
-      <CardContent className={styles.wrapper}>
+      <CardContent className={styles.wrapper} style={{ opacity: isRefreshing ? 0.7 : 1, transition: "opacity 0.2s" }}>
         <div className={styles.top}>
           <p className={styles.label}>{t("home.totalBalance")}</p>
           <p className={styles.total}>{formatCurrency(totalBalance)}</p>

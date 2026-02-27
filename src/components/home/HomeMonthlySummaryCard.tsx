@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
 import {
   Card,
@@ -11,16 +12,18 @@ import {
   CardAction,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import styles from "./HomeMonthlySummaryCard.module.css";
 
 type Tx = { amount?: number; type?: string };
 
 function useMonthlyTotals(year: number, month: number) {
-  const { data: transactions = [], isLoading } = useTransactions(year, month);
+  const { data: transactions = [], isLoading, isFetching, isPlaceholderData } = useTransactions(year, month);
   return useMemo(() => {
     let income = 0;
     let expense = 0;
@@ -29,22 +32,32 @@ function useMonthlyTotals(year: number, month: number) {
       if (tx.type === "income") income += amt;
       else expense += amt;
     }
-    return { income, expense, balance: income - expense, isLoading };
-  }, [transactions, isLoading]);
+    // isInitialLoading: true solo cuando no hay datos anteriores
+    const isInitialLoading = isLoading && transactions.length === 0;
+    // isRefreshing: hay datos pero se están actualizando
+    const isRefreshing = isFetching && !isInitialLoading;
+    return { income, expense, balance: income - expense, isInitialLoading, isRefreshing, isPlaceholderData };
+  }, [transactions, isLoading, isFetching, isPlaceholderData]);
 }
 
 export default function HomeMonthlySummaryCard() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // 1-12 for API
+  const nav = useMonthNavigation(lang);
 
-  const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-  const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+  const cardRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      nav.setSwipeElement(node);
+    },
+    [nav.setSwipeElement]
+  );
 
-  const current = useMonthlyTotals(currentYear, currentMonth);
+  const prevYear = nav.month === 1 ? nav.year - 1 : nav.year;
+  const prevMonth = nav.month === 1 ? 12 : nav.month - 1;
+
+  const current = useMonthlyTotals(nav.year, nav.month);
   const previous = useMonthlyTotals(prevYear, prevMonth);
 
   const percentChange = useMemo(() => {
@@ -54,9 +67,12 @@ export default function HomeMonthlySummaryCard() {
     );
   }, [current.balance, previous.balance]);
 
-  const isLoading = current.isLoading || previous.isLoading;
+  // Solo spinner completo si no hay datos
+  const isInitialLoading = current.isInitialLoading;
+  // Indicador sutil si está recargando
+  const isRefreshing = current.isRefreshing || previous.isRefreshing;
 
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <Card className="home-card">
         <CardHeader>
@@ -72,7 +88,7 @@ export default function HomeMonthlySummaryCard() {
   }
 
   return (
-    <Card className="home-card">
+    <Card className="home-card" ref={cardRefCallback}>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <CardTitle className="text-base font-semibold text-muted-foreground">
           {t("home.monthlySummary")}
@@ -98,7 +114,42 @@ export default function HomeMonthlySummaryCard() {
           </CardAction>
         )}
       </CardHeader>
-      <CardContent className="flex flex-col">
+      <CardContent className="flex flex-col" style={{ opacity: isRefreshing ? 0.7 : 1, transition: "opacity 0.2s" }}>
+        <div className={styles.monthNav}>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nav.goToPrevMonth}
+              className={styles.navButton}
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="size-4" strokeWidth={1.5} />
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={nav.goToCurrentMonth}
+            className={styles.monthLabel}
+            title={nav.isCurrentMonth ? undefined : t("calendar.today")}
+          >
+            <span>{nav.monthLabel}</span>
+            {!nav.isCurrentMonth && (
+              <span className={styles.currentIndicator}>●</span>
+            )}
+          </button>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nav.goToNextMonth}
+              className={styles.navButton}
+              aria-label="Next month"
+            >
+              <ChevronRight className="size-4" strokeWidth={1.5} />
+            </Button>
+          )}
+        </div>
         <div className={styles.row}>
           <div className={styles.incomeSection}>
             <p className={styles.label}>{t("home.totalIncome")}</p>

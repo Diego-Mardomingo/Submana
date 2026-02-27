@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
+import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
 import { formatCurrency } from "@/lib/format";
 import {
   Card,
@@ -10,11 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Spinner } from "@/components/ui/spinner";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import styles from "./HomeCategoryDonutCard.module.css";
 
 /* Variables CSS del tema (--chart-* ya son colores completos: accent, success, info, warning, teal) */
@@ -66,16 +71,22 @@ export default function HomeCategoryDonutCard() {
   const lang = useLang();
   const t = useTranslations(lang);
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const { containerRef: chartContainerRef } = useChartTooltipControl();
 
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
+  const nav = useMonthNavigation(lang);
 
-  const { data: transactions = [], isLoading: txLoading } = useTransactions(
-    currentYear,
-    currentMonth
+  const cardRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      nav.setSwipeElement(node);
+    },
+    [nav.setSwipeElement]
   );
-  const { data: categoriesData, isLoading: catLoading } = useCategories();
+
+  const { data: transactions = [], isLoading: txLoading, isFetching: txFetching } = useTransactions(
+    nav.year,
+    nav.month
+  );
+  const { data: categoriesData, isLoading: catLoading, isFetching: catFetching } = useCategories();
 
   const { chartData, totalExpense } = useMemo(() => {
     const defaultCats = categoriesData?.defaultCategories ?? [];
@@ -110,9 +121,10 @@ export default function HomeCategoryDonutCard() {
     return { chartData: data, totalExpense: total };
   }, [transactions, categoriesData, lang, t]);
 
-  const isLoading = txLoading || catLoading;
+  const isInitialLoading = (txLoading && transactions.length === 0) || (catLoading && !categoriesData);
+  const isRefreshing = (txFetching || catFetching) && !isInitialLoading;
 
-  if (isLoading) {
+  if (isInitialLoading) {
     return (
       <Card className="home-card">
         <CardHeader>
@@ -128,19 +140,54 @@ export default function HomeCategoryDonutCard() {
   }
 
   return (
-    <Card className="home-card">
+    <Card className="home-card" ref={cardRefCallback}>
       <CardHeader>
         <CardTitle className="text-base font-semibold text-muted-foreground">
           {t("home.expensesByCategory")}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent style={{ opacity: isRefreshing ? 0.7 : 1, transition: "opacity 0.2s" }}>
+        <div className={styles.monthNav}>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nav.goToPrevMonth}
+              className={styles.navButton}
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="size-4" strokeWidth={1.5} />
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={nav.goToCurrentMonth}
+            className={styles.monthLabel}
+            title={nav.isCurrentMonth ? undefined : t("calendar.today")}
+          >
+            <span>{nav.monthLabel}</span>
+            {!nav.isCurrentMonth && (
+              <span className={styles.currentIndicator}>●</span>
+            )}
+          </button>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nav.goToNextMonth}
+              className={styles.navButton}
+              aria-label="Next month"
+            >
+              <ChevronRight className="size-4" strokeWidth={1.5} />
+            </Button>
+          )}
+        </div>
         {chartData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
             {t("home.noExpensesThisMonth")}
           </p>
         ) : (
-          <div className={styles.chartWrapper}>
+          <div className={styles.chartWrapper} ref={chartContainerRef}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -168,15 +215,7 @@ export default function HomeCategoryDonutCard() {
                       ? `${((value / totalExpense) * 100).toFixed(1)}%`
                       : "",
                   ]}
-                  contentStyle={{
-                    backgroundColor: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "8px",
-                    padding: "10px 14px",
-                    color: "var(--blanco)",
-                  }}
-                  labelStyle={{ color: "var(--blanco)", fontWeight: 600 }}
-                  itemStyle={{ color: "var(--blanco)" }}
+                  {...chartTooltipStyle}
                 />
                 <Legend
                   layout="vertical"

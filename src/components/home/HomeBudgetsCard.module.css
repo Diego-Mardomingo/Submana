@@ -1,4 +1,4 @@
-/* Estilos tarjeta Gastos por categoría */
+/* Estilos tarjeta de presupuestos */
 
 /* Navegación de mes */
 .monthNav {
@@ -62,7 +62,7 @@
 @media (max-width: 768px) {
   .monthNav {
     position: relative;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.5rem;
   }
 
   .monthLabel {
@@ -98,18 +98,5 @@
   .monthNav:active .monthLabel::before,
   .monthNav:active .monthLabel::after {
     opacity: 0.4;
-  }
-}
-
-.chartWrapper {
-  height: 240px;
-  min-height: 240px;
-  width: 100%;
-}
-
-@media (max-width: 768px) {
-  .chartWrapper {
-    height: 180px;
-    min-height: 180px;
   }
 }

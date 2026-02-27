@@ -10,7 +10,7 @@
 }
 
 .top {
-  padding: 1.25rem 1.5rem 0;
+  padding: 1.5rem 2rem 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -20,7 +20,7 @@
 }
 
 .label {
-  font-size: clamp(0.6rem, 1.8vw, 0.75rem);
+  font-size: clamp(0.8rem, 1.8vw, 1rem);
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -29,17 +29,18 @@
 }
 
 .total {
-  font-size: clamp(1.5rem, 5vw, 2.5rem);
-  font-weight: 700;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--accent);
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .divider {
-  margin: 1rem 1.5rem 0;
-  width: calc(100% - 3rem);
+  margin: 1.25rem 2rem 0;
+  width: calc(100% - 4rem);
   border: none;
   border-top: 1px solid var(--gris);
   flex-shrink: 0;
@@ -47,9 +48,9 @@
 
 .accounts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  gap: 0;
-  padding: 1rem 1.5rem 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 0.75rem 0;
+  padding: 1.25rem 2rem 1.75rem;
   width: 100%;
 }
 
@@ -58,9 +59,9 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.25rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
+  gap: 0.35rem;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
   border-right: 1px solid var(--gris);
   min-width: 0;
 }
@@ -78,19 +79,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
   margin: 0;
 }
 
 .accountDot {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.6rem;
+  height: 0.6rem;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .accountLabel {
-  font-size: clamp(0.55rem, 1.5vw, 0.7rem);
+  font-size: clamp(0.7rem, 1.4vw, 0.9rem);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -99,45 +100,131 @@
 }
 
 .accountValue {
-  font-size: clamp(0.875rem, 2.5vw, 1.125rem);
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
   font-weight: 700;
   color: var(--blanco);
   margin: 0;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
-@media (max-width: 768px) {
+/* Tablet y móvil grande (481px - 768px) */
+@media (max-width: 768px) and (min-width: 481px) {
   .top {
-    padding: 0.35rem 0.75rem 0;
-    gap: 0.2rem;
+    padding: 1.25rem 1.5rem 0;
+    gap: 0.4rem;
   }
   .label {
-    font-size: 0.55rem;
+    font-size: 0.75rem;
   }
   .total {
-    font-size: clamp(1.1rem, 4vw, 1.35rem);
+    font-size: clamp(2rem, 6vw, 2.75rem);
   }
   .divider {
-    margin: 0.35rem 0.75rem 0;
+    margin: 1rem 1.5rem 0;
+    width: calc(100% - 3rem);
   }
   .accounts {
-    padding: 0.35rem 0.75rem 0.5rem;
+    padding: 1rem 1.5rem 1.25rem;
   }
   .account {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
-  .accountLabelRow {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
     gap: 0.3rem;
   }
+  .accountLabelRow {
+    gap: 0.4rem;
+  }
   .accountDot {
-    width: 0.4rem;
-    height: 0.4rem;
+    width: 0.5rem;
+    height: 0.5rem;
   }
   .accountLabel {
-    font-size: 0.5rem;
+    font-size: 0.7rem;
   }
   .accountValue {
-    font-size: clamp(0.75rem, 2vw, 0.9rem);
+    font-size: clamp(1.1rem, 3vw, 1.4rem);
+  }
+}
+
+/* Móvil (hasta 480px) - 2 columnas para cuentas */
+@media (max-width: 480px) {
+  .top {
+    padding: 1.25rem 1rem 0;
+    gap: 0.4rem;
+  }
+  .label {
+    font-size: 0.8rem;
+  }
+  .total {
+    font-size: clamp(2rem, 10vw, 2.5rem);
+  }
+  .divider {
+    margin: 0.85rem 1rem 0;
+    width: calc(100% - 2rem);
+  }
+  .accounts {
+    padding: 0.85rem 1rem 1.25rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+  }
+  .account {
+    padding: 0.6rem;
+    gap: 0.3rem;
+    border-right: none;
+    border-bottom: 1px solid var(--gris);
+  }
+  .account:nth-child(odd) {
+    border-right: 1px solid var(--gris);
+  }
+  .account:nth-child(even) {
+    border-right: none;
+  }
+  .account:nth-last-child(1),
+  .account:nth-last-child(2):nth-child(odd) {
+    border-bottom: none;
+  }
+  .account:last-child:nth-child(odd) {
+    border-right: none;
+  }
+  .accountLabelRow {
+    gap: 0.35rem;
+  }
+  .accountDot {
+    width: 0.5rem;
+    height: 0.5rem;
+  }
+  .accountLabel {
+    font-size: 0.7rem;
+  }
+  .accountValue {
+    font-size: clamp(1.1rem, 5vw, 1.35rem);
+  }
+}
+
+/* Móvil pequeño (hasta 360px) */
+@media (max-width: 360px) {
+  .top {
+    padding: 1rem 0.75rem 0;
+    gap: 0.35rem;
+  }
+  .label {
+    font-size: 0.75rem;
+  }
+  .total {
+    font-size: 1.85rem;
+  }
+  .divider {
+    margin: 0.65rem 0.75rem 0;
+    width: calc(100% - 1.5rem);
+  }
+  .accounts {
+    padding: 0.65rem 0.75rem 1rem;
+  }
+  .accountLabel {
+    font-size: 0.65rem;
+  }
+  .accountValue {
+    font-size: 1.05rem;
   }
 }

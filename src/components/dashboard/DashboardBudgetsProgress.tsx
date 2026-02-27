@@ -7,8 +7,10 @@ import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
+import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Spinner } from "@/components/ui/spinner";
+import { ChartMobileHint } from "./ChartMobileHint";
 
 function currentMonthParam(): string {
   const now = new Date();
@@ -20,6 +22,7 @@ function currentMonthParam(): string {
 export default function DashboardBudgetsProgress() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const { containerRef, isTouch } = useChartTooltipControl();
   const monthStr = currentMonthParam();
   const { data: budgets = [], isLoading } = useBudgets(monthStr);
   const { data: categoriesData } = useCategories();
@@ -106,12 +109,13 @@ export default function DashboardBudgetsProgress() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full">
+        <div className="dashboard-chart w-full" ref={containerRef}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
               <XAxis type="number" domain={[0, 120]} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${v}%`} />
               <YAxis type="category" dataKey="name" width={90} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
               <Tooltip
+                trigger={isTouch ? "click" : "hover"}
                 formatter={(_value: number, _name: string, props: { payload?: { spent?: number; amount?: number } }) => {
                   const payload = props?.payload;
                   const spent = payload?.spent ?? 0;
@@ -133,6 +137,7 @@ export default function DashboardBudgetsProgress() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        {isTouch && <ChartMobileHint type="tap" />}
       </CardContent>
     </Card>
   );

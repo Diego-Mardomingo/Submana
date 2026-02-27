@@ -4,9 +4,10 @@ import { useMemo } from "react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { CHART_COLORS } from "./chartColors";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -111,12 +112,7 @@ export default function DashboardSubscriptionsCard() {
                   formatCurrency(value),
                   total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "",
                 ]}
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--blanco)",
-                }}
+                {...chartTooltipStyle}
               />
               <Legend wrapperStyle={{ fontSize: "11px" }} iconSize={8} />
             </PieChart>

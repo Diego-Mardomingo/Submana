@@ -34,6 +34,7 @@ export function useCategories() {
   return useQuery({
     queryKey: queryKeys.categories.list({ archived: false }),
     queryFn: () => fetchCategories(false),
+    staleTime: 15 * 60 * 1000, // 15 min - categorías cambian muy poco
   });
 }
 
@@ -41,5 +42,6 @@ export function useArchivedCategories() {
   return useQuery({
     queryKey: queryKeys.categories.list({ archived: true }),
     queryFn: () => fetchCategories(true),
+    staleTime: 15 * 60 * 1000,
   });
 }

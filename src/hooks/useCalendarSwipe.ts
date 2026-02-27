@@ -2,29 +2,36 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-const SWIPE_THRESHOLD = 50;
+const SWIPE_THRESHOLD = 60;
+const SWIPE_RATIO = 2.5; // deltaX debe ser 2.5x mayor que deltaY para considerarse horizontal
+const TAP_THRESHOLD = 10;
+const SWIPE_TIMEOUT = 300;
 const DOUBLE_TAP_MAX_DELAY_MS = 400;
 const DOUBLE_TAP_MAX_MOVEMENT_PX = 15;
 
 type SwipeHandlers = {
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
-  /** Doble tap para volver al mes actual (sustituye al swipe hacia arriba para no interferir con scroll) */
+  /** Doble tap para volver al mes actual */
   onDoubleTap?: () => void;
+  /** Swipe de abajo hacia arriba para volver al mes actual */
+  onSwipeUp?: () => void;
 };
 
 /**
  * Hook para gestos swipe en el calendario (móvil).
  * - Swipe horizontal: cambiar mes (anterior/siguiente).
- * - Swipe vertical: se deja al navegador para scroll (touch-action: pan-y).
+ * - Swipe vertical hacia arriba: volver al mes actual.
  * - Doble tap: volver al mes actual.
  */
 export function useCalendarSwipe(
   elementRef: React.RefObject<HTMLElement | null>,
-  { onSwipeLeft, onSwipeRight, onDoubleTap }: SwipeHandlers
+  { onSwipeLeft, onSwipeRight, onDoubleTap, onSwipeUp }: SwipeHandlers
 ) {
   const startRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const lastTapRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const gestureTypeRef = useRef<"none" | "horizontal" | "vertical">("none");
+  const gestureDecidedRef = useRef(false);
 
   const handleTouchStart = useCallback(
     (e: TouchEvent) => {
@@ -35,6 +42,8 @@ export function useCalendarSwipe(
         y: touch.clientY,
         time: Date.now(),
       };
+      gestureTypeRef.current = "none";
+      gestureDecidedRef.current = false;
     },
     []
   );
@@ -46,12 +55,23 @@ export function useCalendarSwipe(
 
     const deltaX = touch.clientX - startRef.current.x;
     const deltaY = touch.clientY - startRef.current.y;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
 
-    // Solo prevenir scroll cuando el gesto es claramente horizontal (cambiar mes)
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 20) {
+    // Decidir el tipo de gesto solo una vez
+    if (!gestureDecidedRef.current && (absX > TAP_THRESHOLD || absY > TAP_THRESHOLD)) {
+      gestureDecidedRef.current = true;
+      if (absX > absY * SWIPE_RATIO) {
+        gestureTypeRef.current = "horizontal";
+      } else if (absY > absX * SWIPE_RATIO) {
+        gestureTypeRef.current = "vertical";
+      }
+    }
+
+    // Solo prevenir scroll si claramente es un swipe horizontal
+    if (gestureTypeRef.current === "horizontal" && absX > 30) {
       e.preventDefault();
     }
-    // Vertical: no hacer preventDefault → el scroll funciona con touch-action: pan-y
   }, []);
 
   const handleTouchEnd = useCallback(
@@ -67,6 +87,7 @@ export function useCalendarSwipe(
       const deltaY = touch.clientY - startRef.current.y;
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
+      const elapsed = Date.now() - startRef.current.time;
 
       // Si fue un tap (poco movimiento), comprobar doble tap
       const isTap = absX < DOUBLE_TAP_MAX_MOVEMENT_PX && absY < DOUBLE_TAP_MAX_MOVEMENT_PX;
@@ -91,8 +112,16 @@ export function useCalendarSwipe(
 
       lastTapRef.current = null;
 
+      // Validar swipe: debe ser rápido y claramente direccional
+      const isQuickGesture = elapsed < SWIPE_TIMEOUT;
+
       // Swipe horizontal: cambiar mes
-      if (absX > absY && absX > SWIPE_THRESHOLD) {
+      if (
+        gestureTypeRef.current === "horizontal" &&
+        absX > SWIPE_THRESHOLD &&
+        isQuickGesture &&
+        absX > absY * SWIPE_RATIO
+      ) {
         if (deltaX > 0) {
           onSwipeRight();
         } else {
@@ -100,9 +129,23 @@ export function useCalendarSwipe(
         }
       }
 
+      // Swipe vertical hacia arriba: volver al mes actual
+      if (
+        gestureTypeRef.current === "vertical" &&
+        absY > SWIPE_THRESHOLD &&
+        isQuickGesture &&
+        deltaY < 0 &&
+        absY > absX * SWIPE_RATIO &&
+        onSwipeUp
+      ) {
+        onSwipeUp();
+      }
+
       startRef.current = null;
+      gestureTypeRef.current = "none";
+      gestureDecidedRef.current = false;
     },
-    [onSwipeLeft, onSwipeRight, onDoubleTap]
+    [onSwipeLeft, onSwipeRight, onDoubleTap, onSwipeUp]
   );
 
   useEffect(() => {

@@ -1,7 +1,9 @@
 "use client";
 
+import { useMemo, useCallback } from "react";
 import { useBudgets, type BudgetWithSpent } from "@/hooks/useBudgets";
 import { useCategories, type CategoryWithSubs, type CategoryItem } from "@/hooks/useCategories";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
 import {
   Card,
@@ -10,25 +12,35 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { AlertTriangle } from "lucide-react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { useMemo } from "react";
-
-function currentMonthParam(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
-}
+import styles from "./HomeBudgetsCard.module.css";
 
 export default function HomeBudgetsCard() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const monthStr = currentMonthParam();
-  const { data: budgets = [], isLoading } = useBudgets(monthStr);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+
+  const nav = useMonthNavigation(lang);
+
+  const cardRefCallback = useCallback(
+    (node: HTMLDivElement | null) => {
+      nav.setSwipeElement(node);
+    },
+    [nav.setSwipeElement]
+  );
+
+  const monthStr = `${nav.year}-${String(nav.month).padStart(2, "0")}`;
+  const { data: budgets = [], isLoading, isFetching } = useBudgets(monthStr);
   const { data: categoriesData } = useCategories();
+  
+  // Solo spinner si no hay datos previos
+  const isInitialLoading = isLoading && budgets.length === 0;
+  const isRefreshing = isFetching && !isInitialLoading;
 
   const { categoryIdToName, categoryIdToColorKey } = useMemo(() => {
     const nameMap = new Map<string, string>();
@@ -63,7 +75,14 @@ export default function HomeBudgetsCard() {
     return t("budgets.generalBudget");
   };
 
-  if (isLoading) {
+  const getProgressColor = (pct: number, over: boolean) => {
+    if (over) return "var(--destructive, #ef4444)";
+    if (pct >= 100) return "var(--destructive, #ef4444)";
+    if (pct >= 80) return "var(--warning, #f59e0b)";
+    return "var(--chart-2, #22c55e)";
+  };
+
+  if (isInitialLoading) {
     return (
       <Card className="home-card">
         <CardHeader>
@@ -78,21 +97,49 @@ export default function HomeBudgetsCard() {
     );
   }
 
-  const getProgressColor = (pct: number, over: boolean) => {
-    if (over) return "var(--destructive, #ef4444)";
-    if (pct >= 100) return "var(--destructive, #ef4444)";
-    if (pct >= 80) return "var(--warning, #f59e0b)";
-    return "var(--chart-2, #22c55e)";
-  };
-
   return (
-    <Card className="home-card">
+    <Card className="home-card" ref={cardRefCallback}>
       <CardHeader>
         <CardTitle className="text-base font-semibold text-muted-foreground">
           {t("home.budgetsTitle")}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent style={{ opacity: isRefreshing ? 0.7 : 1, transition: "opacity 0.2s" }}>
+        <div className={styles.monthNav}>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nav.goToPrevMonth}
+              className={styles.navButton}
+              aria-label="Previous month"
+            >
+              <ChevronLeft className="size-4" strokeWidth={1.5} />
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={nav.goToCurrentMonth}
+            className={styles.monthLabel}
+            title={nav.isCurrentMonth ? undefined : t("calendar.today")}
+          >
+            <span>{nav.monthLabel}</span>
+            {!nav.isCurrentMonth && (
+              <span className={styles.currentIndicator}>●</span>
+            )}
+          </button>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nav.goToNextMonth}
+              className={styles.navButton}
+              aria-label="Next month"
+            >
+              <ChevronRight className="size-4" strokeWidth={1.5} />
+            </Button>
+          )}
+        </div>
         {budgets.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
             {t("home.noActiveBudgets")}

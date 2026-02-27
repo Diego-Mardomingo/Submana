@@ -5,9 +5,11 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useAccounts } from "@/hooks/useAccounts";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { CHART_COLORS } from "./chartColors";
 import { Spinner } from "@/components/ui/spinner";
 
@@ -17,6 +19,7 @@ type Account = { id: string; name: string; color?: string };
 export default function DashboardExpenseByAccountDonut() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const { containerRef, isTouch } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: accounts = [], isLoading: accLoading } = useAccounts();
@@ -90,7 +93,7 @@ export default function DashboardExpenseByAccountDonut() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart-small w-full">
+        <div className="dashboard-chart-small w-full" ref={containerRef}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -109,16 +112,12 @@ export default function DashboardExpenseByAccountDonut() {
                 ))}
               </Pie>
               <Tooltip
+                trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [
                   formatCurrency(value),
                   totalExpense > 0 ? `${((value / totalExpense) * 100).toFixed(1)}%` : "",
                 ]}
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--blanco)",
-                }}
+                {...chartTooltipStyle}
               />
               <Legend wrapperStyle={{ fontSize: "11px" }} iconSize={8} />
             </PieChart>

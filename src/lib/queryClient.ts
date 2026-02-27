@@ -6,7 +6,10 @@ function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60 * 1000,
+        staleTime: 5 * 60 * 1000, // 5 minutos - datos frescos más tiempo
+        gcTime: 30 * 60 * 1000, // 30 minutos - mantener en cache más tiempo
+        refetchOnWindowFocus: false, // Evitar refetch al volver a la ventana
+        retry: 1, // Solo 1 reintento en caso de error
       },
     },
   });

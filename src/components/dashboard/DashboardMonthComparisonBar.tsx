@@ -4,10 +4,13 @@ import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
+import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Spinner } from "@/components/ui/spinner";
+import { ChartMobileHint } from "./ChartMobileHint";
 
 type Tx = { amount?: number; type?: string };
 
@@ -28,6 +31,7 @@ function useMonthlyTotals(year: number, month: number) {
 export default function DashboardMonthComparisonBar() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const { containerRef, isTouch } = useChartTooltipControl();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
@@ -73,19 +77,15 @@ export default function DashboardMonthComparisonBar() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full">
+        <div className="dashboard-chart w-full" ref={containerRef}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <XAxis dataKey="metric" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip
+                trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [formatCurrency(value), ""]}
-                contentStyle={{
-                  backgroundColor: "var(--card)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "8px",
-                  color: "var(--blanco)",
-                }}
+                {...chartTooltipStyle}
               />
               <Legend />
               <Bar dataKey="current" fill="var(--accent)" name={lang === "es" ? "Este mes" : "This month"} radius={[4, 4, 0, 0]} />
@@ -93,6 +93,7 @@ export default function DashboardMonthComparisonBar() {
             </BarChart>
           </ResponsiveContainer>
         </div>
+        {isTouch && <ChartMobileHint type="tap" />}
       </CardContent>
     </Card>
   );

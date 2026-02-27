@@ -169,11 +169,13 @@
 .tx-dot-tl {
   top: 0.35rem;
   left: 0.35rem;
+  background-color: rgba(var(--success-rgb), 0.7);
 }
 
 .tx-dot-tr {
   top: 0.35rem;
   right: 0.35rem;
+  background-color: rgba(var(--danger-rgb), 0.7);
 }
 
 .dia.diaActual {

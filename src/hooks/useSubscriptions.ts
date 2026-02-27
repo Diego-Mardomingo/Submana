@@ -14,5 +14,6 @@ export function useSubscriptions() {
   return useQuery({
     queryKey: queryKeys.subscriptions.lists(),
     queryFn: fetchSubscriptions,
+    staleTime: 10 * 60 * 1000, // 10 min - suscripciones cambian poco
   });
 }
