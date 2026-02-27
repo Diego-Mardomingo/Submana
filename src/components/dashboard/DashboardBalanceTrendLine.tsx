@@ -16,7 +16,7 @@ type Tx = { amount?: number; type?: string };
 export default function DashboardBalanceTrendLine() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const { transactionsByMonth, monthLabels, isLoading } = useTransactionsRange();
 
   const chartData = useMemo(() => {
@@ -67,6 +67,7 @@ export default function DashboardBalanceTrendLine() {
               <XAxis dataKey="name" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [formatCurrency(value), ""]}
                 {...chartTooltipStyle}

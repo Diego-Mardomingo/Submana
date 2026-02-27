@@ -43,7 +43,7 @@ export default function DashboardMonthlyTrendBars() {
     undefined,
     customRange ?? undefined
   );
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   
   // Estado temporal para el selector
   const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
@@ -256,6 +256,7 @@ export default function DashboardMonthlyTrendBars() {
               <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
               <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" width={45} tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))} />
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [formatCurrency(value), ""]}
                 labelFormatter={(label) => label}

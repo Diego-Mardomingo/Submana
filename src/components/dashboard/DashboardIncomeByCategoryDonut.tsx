@@ -41,7 +41,7 @@ function buildCategoryMaps(
 export default function DashboardIncomeByCategoryDonut() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: categoriesData, isLoading: catLoading } = useCategories();
@@ -131,6 +131,7 @@ export default function DashboardIncomeByCategoryDonut() {
                 ))}
               </Pie>
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [
                   formatCurrency(value),

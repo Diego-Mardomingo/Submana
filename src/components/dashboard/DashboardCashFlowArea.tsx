@@ -16,7 +16,7 @@ type Tx = { amount?: number; type?: string; date?: string };
 export default function DashboardCashFlowArea() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
 
@@ -81,6 +81,7 @@ export default function DashboardCashFlowArea() {
               <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
               <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [formatCurrency(value), ""]}
                 labelFormatter={(label) => `${t("common.date")}: ${label}`}

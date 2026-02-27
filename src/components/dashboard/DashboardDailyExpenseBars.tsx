@@ -27,7 +27,7 @@ export default function DashboardDailyExpenseBars() {
   const now = new Date();
   
   // Control de tooltip para evitar activación durante scroll
-  const { containerRef: chartContainerRef, isTouch } = useChartTooltipControl();
+  const { containerRef: chartContainerRef, isTouch, tooltipKey } = useChartTooltipControl();
   
   // Para año necesitamos transacciones de todo el año
   const { data: currentMonthTx = [], isLoading: loadingCurrent } = useTransactions(
@@ -187,6 +187,7 @@ export default function DashboardDailyExpenseBars() {
               />
               <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" width={45} tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))} />
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [formatCurrency(value), ""]}
                 {...chartTooltipStyle}

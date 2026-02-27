@@ -16,7 +16,7 @@ type Tx = { amount?: number; type?: string };
 export default function DashboardSavingsRateRadial() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
 
@@ -94,6 +94,7 @@ export default function DashboardSavingsRateRadial() {
                 )}
               />
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={() => [formatCurrency(balance), ""]}
                 {...chartTooltipStyle}

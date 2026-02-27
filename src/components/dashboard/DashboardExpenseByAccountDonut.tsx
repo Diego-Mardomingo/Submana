@@ -19,7 +19,7 @@ type Account = { id: string; name: string; color?: string };
 export default function DashboardExpenseByAccountDonut() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: accounts = [], isLoading: accLoading } = useAccounts();
@@ -112,6 +112,7 @@ export default function DashboardExpenseByAccountDonut() {
                 ))}
               </Pie>
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [
                   formatCurrency(value),

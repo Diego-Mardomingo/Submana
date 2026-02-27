@@ -17,7 +17,7 @@ type Account = { id: string; name: string; balance?: number; color?: string };
 export default function DashboardBalanceByAccountDonut() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const { data: accounts = [], isLoading } = useAccounts();
 
   const chartData = useMemo(() => {
@@ -89,6 +89,7 @@ export default function DashboardBalanceByAccountDonut() {
                 ))}
               </Pie>
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 formatter={(value: number) => [
                   formatCurrency(value),

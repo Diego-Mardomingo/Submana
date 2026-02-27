@@ -71,7 +71,7 @@ export default function HomeCategoryDonutCard() {
   const lang = useLang();
   const t = useTranslations(lang);
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const { containerRef: chartContainerRef } = useChartTooltipControl();
+  const { containerRef: chartContainerRef, isTouch, tooltipKey } = useChartTooltipControl();
 
   const nav = useMonthNavigation(lang);
 
@@ -209,6 +209,8 @@ export default function HomeCategoryDonutCard() {
                   ))}
                 </Pie>
                 <Tooltip
+                  key={tooltipKey}
+                  trigger={isTouch ? "click" : "hover"}
                   formatter={(value: number) => [
                     formatCurrency(value),
                     totalExpense > 0

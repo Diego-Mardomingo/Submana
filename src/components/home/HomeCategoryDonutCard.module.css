@@ -105,6 +105,10 @@
   height: 240px;
   min-height: 240px;
   width: 100%;
+  touch-action: pan-y pinch-zoom;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 @media (max-width: 768px) {

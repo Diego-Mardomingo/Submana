@@ -15,7 +15,7 @@ type Tx = { amount?: number; type?: string; date?: string };
 export default function DashboardExpenseScatter() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
+  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
 
@@ -81,6 +81,7 @@ export default function DashboardExpenseScatter() {
               <YAxis dataKey="y" type="number" name="amount" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
               <ZAxis dataKey="z" range={[50, 400]} />
               <Tooltip
+                key={tooltipKey}
                 trigger={isTouch ? "click" : "hover"}
                 cursor={{ strokeDasharray: "3 3" }}
                 content={({ active, payload }) => {

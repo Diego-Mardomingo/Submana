@@ -360,33 +360,25 @@ button:not(:disabled),
 .dashboard-chart,
 .dashboard-chart-tall,
 .dashboard-chart-small {
-  touch-action: pan-y;
+  touch-action: pan-y pinch-zoom;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
 }
 
-/* En móviles, las gráficas permiten scroll vertical nativo */
+/* En móviles, las gráficas permiten scroll vertical y zoom */
 @media (pointer: coarse) {
   .dashboard-chart .recharts-surface,
   .dashboard-chart-tall .recharts-surface,
   .dashboard-chart-small .recharts-surface {
-    touch-action: pan-y;
+    touch-action: pan-y pinch-zoom;
   }
 }
 
 /* Transición suave para tooltips de gráficos */
 .recharts-tooltip-wrapper {
-  transition: opacity 150ms ease-out;
-}
-
-/* Ocultar tooltip durante scroll/swipe (controlado por JS) */
-.chart-tooltip-hidden .recharts-tooltip-wrapper,
-.chart-tooltip-dismissed .recharts-tooltip-wrapper {
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transition: none !important;
+  transition: opacity 100ms ease-out;
+  pointer-events: none;
 }
 
 /* En móviles, hint de interacción para gráficos */
