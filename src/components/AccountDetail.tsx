@@ -30,6 +30,9 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import BankStatementUpload from "@/components/BankStatementUpload";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
+import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
+import { Pencil, Trash2 } from "lucide-react";
 import type { BankProvider } from "@/lib/bankProviders";
 
 interface Account {
@@ -56,7 +59,10 @@ export default function AccountDetail({ account }: { account: Account }) {
   const t = useTranslations(lang);
   const router = useRouter();
   const [showDelete, setShowDelete] = useState(false);
+  const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
+  const [showDeleteTx, setShowDeleteTx] = useState(false);
   const deleteAccount = useDeleteAccount();
+  const deleteTransaction = useDeleteTransaction();
 
   const { data: transactions = [], isLoading: txLoading } = useTransactions(
     undefined,
@@ -126,30 +132,28 @@ export default function AccountDetail({ account }: { account: Account }) {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const getAvailableMonths = useCallback(() => {
+  const months = useMemo(() => {
     const txs = transactions as TransactionItem[];
     if (!txs.length) {
       return [{ year: currentYear, month: currentMonth }];
     }
     const dates = txs.map((tx) => parseDateString(tx.date));
     const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const months: { year: number; month: number }[] = [];
+    const result: { year: number; month: number }[] = [];
     let y = minDate.getFullYear();
     let m = minDate.getMonth();
     const endY = currentYear;
     const endM = currentMonth;
     while (y < endY || (y === endY && m <= endM)) {
-      months.push({ year: y, month: m });
+      result.push({ year: y, month: m });
       m++;
       if (m > 11) {
         m = 0;
         y++;
       }
     }
-    return months.length ? months : [{ year: currentYear, month: currentMonth }];
+    return result.length ? result : [{ year: currentYear, month: currentMonth }];
   }, [transactions, currentYear, currentMonth]);
-
-  const months = getAvailableMonths();
 
   const getMonthStats = useCallback(
     (year: number, month: number) => {
@@ -202,11 +206,6 @@ export default function AccountDetail({ account }: { account: Account }) {
   );
 
   useEffect(() => {
-    const idx = months.findIndex((m) => m.year === currentYear && m.month === currentMonth);
-    setSelectedIndex(idx >= 0 ? idx : months.length - 1);
-  }, [months, currentYear, currentMonth]);
-
-  useEffect(() => {
     if (!carouselApi) return;
     const updateIndex = () => setSelectedIndex(carouselApi.selectedScrollSnap());
     updateIndex();
@@ -245,21 +244,31 @@ export default function AccountDetail({ account }: { account: Account }) {
         style={{ "--account-accent": accentColor } as React.CSSProperties}
       >
         <div className="account-detail-header">
-          <div className="account-detail-icon">
-            {account.icon ? (
-              <img src={account.icon} alt={account.name} />
-            ) : (
-              <svg
-                width="48"
-                height="48"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={accentColor}
-                strokeWidth="1.5"
-              >
-                <rect x="1" y="4" width="22" height="16" rx="2" />
-                <line x1="1" y1="10" x2="23" y2="10" />
-              </svg>
+          <div className="account-detail-icon-wrapper">
+            <div className="account-detail-icon">
+              {account.icon ? (
+                <img src={account.icon} alt={account.name} />
+              ) : (
+                <svg
+                  width="48"
+                  height="48"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={accentColor}
+                  strokeWidth="1.5"
+                >
+                  <rect x="1" y="4" width="22" height="16" rx="2" />
+                  <line x1="1" y1="10" x2="23" y2="10" />
+                </svg>
+              )}
+            </div>
+            {account.name?.toLowerCase().includes("remunerada") && (
+              <div className="account-badge-interest account-badge-interest-lg" title={lang === "es" ? "Cuenta remunerada" : "Savings account"}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                  <polyline points="17 6 23 6 23 12" />
+                </svg>
+              </div>
             )}
           </div>
           <h1 className="account-detail-name">{account.name}</h1>
@@ -278,7 +287,27 @@ export default function AccountDetail({ account }: { account: Account }) {
 
         <div className="account-stats-carousel">
           <div className="account-stats-month-header">
-            {months[selectedIndex] && formatMonthYearDisplay(months[selectedIndex].year, months[selectedIndex].month)}
+            <button
+              type="button"
+              className="account-stats-month-title"
+              onClick={() => {
+                const currentIdx = months.findIndex(
+                  (m) => m.year === currentYear && m.month === currentMonth
+                );
+                if (currentIdx >= 0 && carouselApi) {
+                  carouselApi.scrollTo(currentIdx);
+                }
+              }}
+              title={lang === "es" ? "Ir al mes actual" : "Go to current month"}
+            >
+              {months[selectedIndex] && formatMonthYearDisplay(months[selectedIndex].year, months[selectedIndex].month)}
+              {months[selectedIndex] && (months[selectedIndex].year !== currentYear || months[selectedIndex].month !== currentMonth) && (
+                <svg className="account-stats-home-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                  <polyline points="9 22 9 12 15 12 15 22" />
+                </svg>
+              )}
+            </button>
           </div>
           <Carousel
             opts={carouselOpts}
@@ -400,18 +429,49 @@ export default function AccountDetail({ account }: { account: Account }) {
                         <div className="account-tx-day-header">
                           {formatDayMonth(dayKey)}
                         </div>
-                        <div className="account-tx-day-items">
+                        <SwipeToRevealGroup className="account-tx-day-items">
                           {txs.map((tx) => (
-                            <div key={tx.id} className={`account-transaction-item ${tx.type}`}>
-                              <span className="account-transaction-desc">
-                                {tx.description || (tx.type === "income" ? (lang === "es" ? "Ingreso" : "Income") : (lang === "es" ? "Gasto" : "Expense"))}
-                              </span>
-                              <span className={`account-transaction-amount ${tx.type}`}>
-                                {tx.type === "income" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
-                              </span>
-                            </div>
+                            <SwipeToReveal
+                              key={tx.id}
+                              id={tx.id}
+                              className="account-tx-swipe-wrapper"
+                              swipeHint
+                              desktopMinWidth={1024}
+                              actions={
+                                <div className="account-tx-actions-reveal flex items-center gap-2">
+                                  <Link
+                                    href={`/transactions/edit/${tx.id}`}
+                                    className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
+                                    aria-label={t("common.edit")}
+                                  >
+                                    <Pencil className="size-5" />
+                                  </Link>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      setTxToDelete(tx);
+                                      setShowDeleteTx(true);
+                                    }}
+                                    className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--danger)] transition-colors hover:bg-[var(--danger-soft)]"
+                                    aria-label={t("common.delete")}
+                                  >
+                                    <Trash2 className="size-5" />
+                                  </button>
+                                </div>
+                              }
+                            >
+                              <div className={`account-transaction-item ${tx.type}`}>
+                                <span className="account-transaction-desc">
+                                  {tx.description || (tx.type === "income" ? (lang === "es" ? "Ingreso" : "Income") : (lang === "es" ? "Gasto" : "Expense"))}
+                                </span>
+                                <span className={`account-transaction-amount ${tx.type}`}>
+                                  {tx.type === "income" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                                </span>
+                              </div>
+                            </SwipeToReveal>
                           ))}
-                        </div>
+                        </SwipeToRevealGroup>
                       </div>
                     ))}
                   </div>
@@ -455,6 +515,45 @@ export default function AccountDetail({ account }: { account: Account }) {
               disabled={deleteAccount.isPending}
             >
               {deleteAccount.isPending && <Spinner className="size-4 mr-2" />}
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showDeleteTx} onOpenChange={setShowDeleteTx}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
+              <Trash2 className="size-7 text-[var(--danger)]" />
+            </div>
+            <AlertDialogTitle className="text-center">
+              {t("transactions.delete")}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              {txToDelete && (
+                <span>
+                  {txToDelete.description || (txToDelete.type === "income" ? t("transactions.income") : t("transactions.expense"))}
+                  {" - "}
+                  {formatCurrency(Number(txToDelete.amount))}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center gap-3">
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (txToDelete) {
+                  deleteTransaction.mutate(txToDelete.id);
+                  setShowDeleteTx(false);
+                  setTxToDelete(null);
+                }
+              }}
+              disabled={deleteTransaction.isPending}
+            >
+              {deleteTransaction.isPending && <Spinner className="size-4 mr-2" />}
               {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>

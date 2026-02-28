@@ -72,6 +72,35 @@ function findCashHeaders(items: TextItem[]): Headers | null {
   }
   
   if (!headerLine) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const lineText = line.map(item => item.text.trim()).join(" ").toUpperCase();
+      
+      const hasDate = lineText.includes("FECHA") || lineText.includes("DATUM") || lineText.includes("DATE") || lineText.includes("DATA");
+      const hasDesc = lineText.includes("DESCRIPCIÓN") || lineText.includes("BESCHREIBUNG") || lineText.includes("DESCRIPTION") || lineText.includes("DESCRIZIONE");
+      
+      if (hasDate && hasDesc) {
+        const combinedItems = [...line];
+        const baseY = line[0]?.y || 0;
+        
+        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+          const nextLine = lines[j];
+          if (Math.abs((nextLine[0]?.y || 0) - baseY) < 30) {
+            combinedItems.push(...nextLine);
+          }
+        }
+        
+        const combinedText = combinedItems.map(item => item.text.trim()).join(" ").toUpperCase();
+        if (combinedText.includes("BALANCE") || combinedText.includes("SALDO")) {
+          headerLine = combinedItems;
+          headerY = baseY;
+          break;
+        }
+      }
+    }
+  }
+  
+  if (!headerLine) {
     return null;
   }
   
@@ -287,17 +316,23 @@ export async function parseTradeRepublicPDF(
     const footerY = FOOTER_BOTTOM_BAND;
     const items = pageItems.filter((it) => it.y > footerY);
 
-    const cashStartMarker = items.find((item) => {
-      const t = item.text.trim().toUpperCase();
-      return (
-        t.includes("UMSATZÜBERSICHT") ||
-        t.includes("TRANSAZIONI SUL CONTO") ||
-        t.includes("ACCOUNT TRANSACTIONS") ||
-        t.includes("TRANSACCIONES DE CUENTA") ||
-        t.includes("TRANSACCIONES") ||
-        t.includes("MOVIMIENTOS")
-      );
-    });
+    let cashStartMarker: TextItem | undefined = undefined;
+    
+    if (!isParsingCash) {
+      cashStartMarker = items.find((item) => {
+        const t = item.text.trim().toUpperCase();
+        return (
+          t.includes("UMSATZÜBERSICHT") ||
+          t.includes("TRANSAZIONI SUL CONTO") ||
+          t.includes("ACCOUNT TRANSACTIONS") ||
+          t.includes("TRANSACCIONES DE CUENTA") ||
+          t === "TRANSACCIONES" ||
+          t === "MOVIMIENTOS" ||
+          t.startsWith("TRANSACCIONES DE") ||
+          t.startsWith("MOVIMIENTOS DE")
+        );
+      });
+    }
     
 
     const cashEndMarker = items.find((item) => {
@@ -331,9 +366,19 @@ export async function parseTradeRepublicPDF(
       }
 
       if (cashColumnBoundaries) {
+        let boundariesToUse = cashColumnBoundaries;
+        
+        if (!cashHeaders && isParsingCash && cashItems.length > 0) {
+          const maxY = Math.max(...cashItems.map(item => item.y));
+          boundariesToUse = {
+            ...cashColumnBoundaries,
+            headerY: maxY + 50,
+          };
+        }
+        
         const pageCashTransactions = extractCashTransactionsFromPage(
           cashItems,
-          cashColumnBoundaries
+          boundariesToUse
         );
         allCashTransactions.push(...pageCashTransactions);
       }
@@ -361,7 +406,7 @@ export async function parseTradeRepublicPDF(
     if (pageText.toUpperCase().includes("RESUMEN DEL BALANCE") || 
         pageText.toUpperCase().includes("BALANCE OVERVIEW") ||
         pageText.toUpperCase().includes("KONTOÜBERSICHT")) {
-      const balanceMatch = pageText.match(/(\d{1,3}(?:\.\d{3})*,\d{2})\s*€/g);
+      const balanceMatch = pageText.match(/(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€/g);
       if (balanceMatch && balanceMatch.length > 0) {
         const lastBalance = balanceMatch[balanceMatch.length - 1];
         const balanceStr = lastBalance
@@ -379,8 +424,23 @@ export async function parseTradeRepublicPDF(
   }
 
   if (finalBalance === undefined && allCashTransactions.length > 0) {
-    const lastTx = allCashTransactions[allCashTransactions.length - 1];
-    if (lastTx.saldo) {
+    const parseDate = (dateStr: string): Date => {
+      const parts = dateStr.split(/[.\-/]/);
+      if (parts.length === 3) {
+        const day = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10) - 1;
+        const year = parseInt(parts[2], 10);
+        return new Date(year, month, day);
+      }
+      return new Date(dateStr);
+    };
+    
+    const sortedByDate = [...allCashTransactions].sort((a, b) => 
+      parseDate(b.datum).getTime() - parseDate(a.datum).getTime()
+    );
+    
+    const lastTx = sortedByDate[0];
+    if (lastTx?.saldo) {
       const balanceStr = lastTx.saldo
         .replace(/€/g, "")
         .replace(/\s|\u202f/g, "")

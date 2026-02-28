@@ -58,6 +58,11 @@ export async function PATCH(
     }
   }
 
+  const descriptionChanged = (description || null) !== (oldTx.description || null);
+  const amountChanged = amount !== Number(oldTx.amount);
+  const dateChanged = date !== oldTx.date;
+  const shouldClearHash = oldTx.external_hash && (descriptionChanged || amountChanged || dateChanged);
+
   const { data: updatedTx, error: updateError } = await supabase
     .from("transactions")
     .update({
@@ -68,6 +73,7 @@ export async function PATCH(
       account_id: account_id && account_id !== "" ? account_id : null,
       category_id,
       subcategory_id,
+      ...(shouldClearHash ? { external_hash: null } : {}),
     })
     .eq("id", id)
     .eq("user_id", user.id)

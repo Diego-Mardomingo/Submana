@@ -1,6 +1,6 @@
 /**
  * Paleta única para cuentas y presupuestos.
- * Saturación media, coherente con la app. Sin rojo, negro ni blanco.
+ * Saturación media, coherente con la app.
  * Legible en tema claro y oscuro.
  */
 export const ACCOUNT_BUDGET_COLORS = [
@@ -13,6 +13,9 @@ export const ACCOUNT_BUDGET_COLORS = [
   "#fbbf24", /* ámbar */
   "#fb923c", /* naranja */
   "#e879f9", /* fucsia */
+  "#f87171", /* rojo */
+  "#ec4899", /* rosa */
+  "#84cc16", /* lima */
 ] as const;
 
 export const defaultAccountBudgetColor = ACCOUNT_BUDGET_COLORS[0];

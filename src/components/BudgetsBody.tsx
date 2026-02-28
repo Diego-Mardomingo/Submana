@@ -508,8 +508,8 @@ export default function BudgetsBody() {
                       aria-label={t("common.color")}
                     />
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-3" align="start" style={{ zIndex: 2100 }}>
-                    <div className="grid grid-cols-3 gap-2">
+                  <PopoverContent className="w-auto p-3" align="start" side="top" style={{ zIndex: 2100 }}>
+                    <div className="grid grid-cols-4 gap-2">
                       {colors.map((c) => (
                         <button
                           key={c}

@@ -23,6 +23,10 @@ interface ParseRevolutOptions {
 interface ParsedRevolutResult {
   transactions: RevolutRawTransaction[];
   finalBalance?: number;
+  actualTransactions: RevolutRawTransaction[];
+  depositTransactions: RevolutRawTransaction[];
+  actualBalance?: number;
+  depositBalance?: number;
 }
 
 const COLUMN_MAPPINGS: Record<string, keyof RevolutRawTransaction> = {
@@ -134,7 +138,10 @@ function parseExcelDate(value: string): string {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
   return value;
 }
@@ -167,6 +174,41 @@ function parseRow(row: string[], headerMapping: Record<number, keyof RevolutRawT
   }
   
   return tx as RevolutRawTransaction;
+}
+
+function getBalanceByProduct(transactions: RevolutRawTransaction[], producto: string): number | undefined {
+  const filtered = transactions.filter(tx => 
+    tx.producto?.toLowerCase() === producto.toLowerCase()
+  );
+  
+  if (filtered.length === 0) {
+    return undefined;
+  }
+  
+  const sortedByDate = [...filtered].sort((a, b) => 
+    new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime()
+  );
+  
+  return sortedByDate[0].saldo;
+}
+
+function separateTransactionsByProduct(transactions: RevolutRawTransaction[]): {
+  actualTransactions: RevolutRawTransaction[];
+  depositTransactions: RevolutRawTransaction[];
+} {
+  const actualTransactions: RevolutRawTransaction[] = [];
+  const depositTransactions: RevolutRawTransaction[] = [];
+  
+  for (const tx of transactions) {
+    const producto = tx.producto?.toLowerCase() || "";
+    if (producto === "actual") {
+      actualTransactions.push(tx);
+    } else if (producto === "depósito" || producto === "deposito") {
+      depositTransactions.push(tx);
+    }
+  }
+  
+  return { actualTransactions, depositTransactions };
 }
 
 export async function parseRevolutCSV(
@@ -207,13 +249,24 @@ export async function parseRevolutCSV(
   onProgress?.(3, 3);
   onStatus?.(`Encontradas ${transactions.length} transacciones`);
   
-  const sortedByDate = [...transactions].sort((a, b) => 
-    new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime()
-  );
+  const sortByDate = (txs: RevolutRawTransaction[]) => 
+    [...txs].sort((a, b) => 
+      new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
+    );
+
+  const sortedTransactions = sortByDate(transactions);
+  const { actualTransactions, depositTransactions } = separateTransactionsByProduct(sortedTransactions);
+  const actualBalance = getBalanceByProduct(sortedTransactions, "actual");
+  const depositBalance = getBalanceByProduct(sortedTransactions, "depósito") ?? getBalanceByProduct(sortedTransactions, "deposito");
   
-  const finalBalance = sortedByDate.length > 0 ? sortedByDate[0].saldo : undefined;
-  
-  return { transactions, finalBalance };
+  return { 
+    transactions: sortedTransactions, 
+    finalBalance: actualBalance,
+    actualTransactions: sortByDate(actualTransactions),
+    depositTransactions: sortByDate(depositTransactions),
+    actualBalance,
+    depositBalance,
+  };
 }
 
 export async function parseRevolutExcel(
@@ -260,13 +313,24 @@ export async function parseRevolutExcel(
   onProgress?.(3, 3);
   onStatus?.(`Encontradas ${transactions.length} transacciones`);
   
-  const sortedByDate = [...transactions].sort((a, b) => 
-    new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime()
-  );
+  const sortByDate = (txs: RevolutRawTransaction[]) => 
+    [...txs].sort((a, b) => 
+      new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
+    );
+
+  const sortedTransactions = sortByDate(transactions);
+  const { actualTransactions, depositTransactions } = separateTransactionsByProduct(sortedTransactions);
+  const actualBalance = getBalanceByProduct(sortedTransactions, "actual");
+  const depositBalance = getBalanceByProduct(sortedTransactions, "depósito") ?? getBalanceByProduct(sortedTransactions, "deposito");
   
-  const finalBalance = sortedByDate.length > 0 ? sortedByDate[0].saldo : undefined;
-  
-  return { transactions, finalBalance };
+  return { 
+    transactions: sortedTransactions, 
+    finalBalance: actualBalance,
+    actualTransactions: sortByDate(actualTransactions),
+    depositTransactions: sortByDate(depositTransactions),
+    actualBalance,
+    depositBalance,
+  };
 }
 
 function normalizeRevolutDescription(tx: RevolutRawTransaction): string {

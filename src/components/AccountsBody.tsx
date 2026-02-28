@@ -308,6 +308,14 @@ export default function AccountsBody() {
                       </svg>
                     </div>
                   )}
+                  {account.name?.toLowerCase().includes("remunerada") && (
+                    <div className="account-badge-interest" title={lang === "es" ? "Cuenta remunerada" : "Savings account"}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                        <polyline points="17 6 23 6 23 12" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
                 <div className="account-info">
                   <h3 className="account-name">{account.name}</h3>
@@ -453,8 +461,8 @@ export default function AccountsBody() {
                       style={{ backgroundColor: formData.color }}
                     />
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-3" align="start" style={{ zIndex: 2100 }}>
-                    <div className="grid grid-cols-3 gap-2">
+                  <PopoverContent className="w-auto p-3" align="start" side="top" style={{ zIndex: 2100 }}>
+                    <div className="grid grid-cols-4 gap-2">
                       {colors.map((c) => (
                         <button
                           key={c}

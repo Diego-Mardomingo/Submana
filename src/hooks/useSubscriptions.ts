@@ -4,7 +4,9 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 
 async function fetchSubscriptions() {
-  const res = await fetch("/api/crud/subscriptions");
+  const res = await fetch("/api/crud/subscriptions", {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch subscriptions");
   const json = await res.json();
   return json.data ?? [];

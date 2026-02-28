@@ -17,7 +17,9 @@ export interface BudgetWithSpent {
 
 async function fetchBudgets(month?: string): Promise<BudgetWithSpent[]> {
   const params = month ? `?month=${encodeURIComponent(month)}` : "";
-  const res = await fetch(`/api/crud/budgets${params}`);
+  const res = await fetch(`/api/crud/budgets${params}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch budgets");
   const json = await res.json();
   return json.data ?? [];

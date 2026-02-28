@@ -184,8 +184,8 @@ export default function AccountEditForm({ account }: { account: Account }) {
                   style={{ backgroundColor: color }}
                 />
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start">
-                <div className="grid grid-cols-3 gap-2">
+              <PopoverContent className="w-auto p-3" align="start" side="top">
+                <div className="grid grid-cols-4 gap-2">
                   {colors.map((c) => (
                     <button
                       key={c}

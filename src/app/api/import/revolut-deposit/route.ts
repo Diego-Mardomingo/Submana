@@ -1,7 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { jsonError, jsonResponse } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
-import type { ImportTransactionsRequest, ImportTransactionsResponse, PossibleDuplicate } from "@/lib/parsers/types";
+import type { ImportTransactionsResponse, PossibleDuplicate } from "@/lib/parsers/types";
+import { generateTransactionHash } from "@/lib/parsers/utils";
+
+interface RevolutDepositImportRequest {
+  parent_account_id: string;
+  transactions: Array<{
+    date: string;
+    amount: number;
+    type: "income" | "expense";
+    description: string;
+    external_hash: string;
+  }>;
+  final_balance?: number | null;
+}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -14,41 +27,82 @@ export async function POST(request: NextRequest) {
     return jsonError("Unauthorized", 401);
   }
 
-  const body = await request.json() as ImportTransactionsRequest;
-  const { account_id, transactions, final_balance } = body;
+  const body = await request.json() as RevolutDepositImportRequest;
+  const { parent_account_id, transactions, final_balance } = body;
 
-  if (!account_id) {
-    return jsonError("missing account_id");
+  if (!parent_account_id) {
+    return jsonError("missing parent_account_id");
   }
-  if (!transactions) {
-    return jsonError("missing transactions");
-  }
-  if (!Array.isArray(transactions)) {
-    return jsonError("transactions must be an array");
-  }
-  if (transactions.length === 0) {
-    return jsonError("transactions array is empty");
+  if (!transactions || !Array.isArray(transactions) || transactions.length === 0) {
+    return jsonError("missing or empty transactions");
   }
 
-  const { data: account, error: accountError } = await supabase
+  const { data: parentAccount, error: parentError } = await supabase
     .from("accounts")
-    .select("id, balance, bank_provider")
-    .eq("id", account_id)
+    .select("id, name, user_id")
+    .eq("id", parent_account_id)
     .eq("user_id", user.id)
     .single();
 
-  if (accountError || !account) {
-    return jsonError("Account not found or access denied", 404);
+  if (parentError || !parentAccount) {
+    return jsonError("Parent account not found", 404);
   }
 
-  const hashes = transactions.map((t) => t.external_hash).filter(Boolean);
+  let depositAccount: { id: string; balance: number } | null = null;
+  let accountCreated = false;
+
+  const { data: existingDeposit } = await supabase
+    .from("accounts")
+    .select("id, balance")
+    .eq("user_id", user.id)
+    .ilike("name", "Revolut Remunerada")
+    .single();
+
+  if (existingDeposit) {
+    depositAccount = existingDeposit;
+  } else {
+    const { data: newAccount, error: createError } = await supabase
+      .from("accounts")
+      .insert({
+        user_id: user.id,
+        name: "Revolut Remunerada",
+        balance: 0,
+        icon: "https://cdn.brandfetch.io/revolut.com/w/400/h/400?c=1id-tf6xJEAcHu0Tio1",
+        color: "#22d3ee",
+        bank_provider: "revolut",
+        is_default: false,
+      })
+      .select("id, balance")
+      .single();
+
+    if (createError || !newAccount) {
+      return jsonError("Failed to create deposit account: " + (createError?.message || "Unknown error"), 500);
+    }
+
+    depositAccount = newAccount;
+    accountCreated = true;
+  }
+
+  const transactionsWithNewHash = await Promise.all(
+    transactions.map(async (tx) => {
+      const newHash = await generateTransactionHash(
+        depositAccount!.id,
+        tx.date,
+        tx.amount,
+        tx.description
+      );
+      return { ...tx, external_hash: newHash };
+    })
+  );
+
+  const hashes = transactionsWithNewHash.map((t) => t.external_hash).filter(Boolean);
   
   let existingHashes: Set<string> = new Set();
   if (hashes.length > 0) {
     const { data: existingTransactions } = await supabase
       .from("transactions")
       .select("external_hash")
-      .eq("account_id", account_id)
+      .eq("account_id", depositAccount.id)
       .in("external_hash", hashes);
 
     if (existingTransactions) {
@@ -58,14 +112,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const newTransactions = transactions.filter(
+  const newTransactions = transactionsWithNewHash.filter(
     (t) => t.external_hash && !existingHashes.has(t.external_hash)
   );
 
   let imported = 0;
   let balanceChange = 0;
   let latestImportedDate: string | null = null;
-  
+
   for (const t of newTransactions) {
     if (!latestImportedDate || t.date > latestImportedDate) {
       latestImportedDate = t.date;
@@ -75,55 +129,25 @@ export async function POST(request: NextRequest) {
   const { data: latestExisting } = await supabase
     .from("transactions")
     .select("date")
-    .eq("account_id", account_id)
+    .eq("account_id", depositAccount.id)
     .order("date", { ascending: false })
     .limit(1)
     .single();
-  
+
   const latestExistingDate = latestExisting?.date as string | undefined;
 
   if (newTransactions.length > 0) {
-    const uniqueDescriptions = [...new Set(
-      newTransactions.map((t) => t.description).filter(Boolean)
-    )];
-
-    const categoryMap: Record<string, { category_id: string | null; subcategory_id: string | null }> = {};
-
-    if (uniqueDescriptions.length > 0) {
-      const { data: existingWithCategories } = await supabase
-        .from("transactions")
-        .select("description, category_id, subcategory_id, date")
-        .eq("user_id", user.id)
-        .in("description", uniqueDescriptions)
-        .not("category_id", "is", null)
-        .order("date", { ascending: false });
-
-      if (existingWithCategories) {
-        for (const tx of existingWithCategories) {
-          if (tx.description && !categoryMap[tx.description]) {
-            categoryMap[tx.description] = {
-              category_id: tx.category_id,
-              subcategory_id: tx.subcategory_id,
-            };
-          }
-        }
-      }
-    }
-
-    const toInsert = newTransactions.map((t) => {
-      const categories = t.description ? categoryMap[t.description] : null;
-      return {
-        user_id: user.id,
-        account_id,
-        amount: t.amount,
-        type: t.type,
-        date: t.date,
-        description: t.description || null,
-        external_hash: t.external_hash,
-        category_id: categories?.category_id || null,
-        subcategory_id: categories?.subcategory_id || null,
-      };
-    });
+    const toInsert = newTransactions.map((t) => ({
+      user_id: user.id,
+      account_id: depositAccount!.id,
+      amount: t.amount,
+      type: t.type,
+      date: t.date,
+      description: t.description || null,
+      external_hash: t.external_hash,
+      category_id: null,
+      subcategory_id: null,
+    }));
 
     const { data: insertedData, error: insertError } = await supabase
       .from("transactions")
@@ -153,17 +177,17 @@ export async function POST(request: NextRequest) {
     const { data: recentlyInserted } = await supabase
       .from("transactions")
       .select("id, external_hash, date, amount, description")
-      .eq("account_id", account_id)
+      .eq("account_id", depositAccount.id)
       .in("external_hash", insertedHashes);
 
     if (recentlyInserted && recentlyInserted.length > 0) {
       const insertedHashSet = new Set(insertedHashes);
       const uniqueDates = [...new Set(recentlyInserted.map(t => t.date))];
-      
+
       const { data: existingByDate } = await supabase
         .from("transactions")
         .select("id, date, amount, description, external_hash")
-        .eq("account_id", account_id)
+        .eq("account_id", depositAccount.id)
         .in("date", uniqueDates);
 
       if (existingByDate && existingByDate.length > 0) {
@@ -199,10 +223,10 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  let newBalance: number = Number(account.balance);
-  const shouldUseFinalBalance = 
-    final_balance !== undefined && 
-    final_balance !== null && 
+  let newBalance: number = Number(depositAccount.balance);
+  const shouldUseFinalBalance =
+    final_balance !== undefined &&
+    final_balance !== null &&
     latestImportedDate &&
     (!latestExistingDate || latestImportedDate >= latestExistingDate);
 
@@ -211,16 +235,16 @@ export async function POST(request: NextRequest) {
     await supabase
       .from("accounts")
       .update({ balance: newBalance })
-      .eq("id", account_id);
+      .eq("id", depositAccount.id);
   } else if (balanceChange !== 0) {
-    newBalance = Number(account.balance) + balanceChange;
+    newBalance = Number(depositAccount.balance) + balanceChange;
     await supabase
       .from("accounts")
       .update({ balance: newBalance })
-      .eq("id", account_id);
+      .eq("id", depositAccount.id);
   }
 
-  const response: ImportTransactionsResponse = {
+  const importResult: ImportTransactionsResponse = {
     imported,
     skipped: transactions.length - imported,
     total: transactions.length,
@@ -228,5 +252,11 @@ export async function POST(request: NextRequest) {
     possibleDuplicates: possibleDuplicates.length > 0 ? possibleDuplicates : undefined,
   };
 
-  return jsonResponse({ data: response }, 200);
+  return jsonResponse({
+    data: {
+      importResult,
+      accountCreated,
+      accountId: depositAccount.id,
+    },
+  }, 200);
 }

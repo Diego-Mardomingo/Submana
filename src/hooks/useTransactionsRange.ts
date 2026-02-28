@@ -13,7 +13,9 @@ async function fetchAllTransactions({
   const params = new URLSearchParams();
   if (accountId) params.append("account_id", accountId);
 
-  const res = await fetch(`/api/crud/transactions?${params.toString()}`);
+  const res = await fetch(`/api/crud/transactions?${params.toString()}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch transactions");
   const json = await res.json();
   return json.data ?? [];

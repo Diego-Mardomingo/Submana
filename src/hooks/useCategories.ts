@@ -24,7 +24,9 @@ interface CategoriesData {
 
 async function fetchCategories(archived = false): Promise<CategoriesData> {
   const url = archived ? "/api/crud/categories?archived=true" : "/api/crud/categories";
-  const res = await fetch(url);
+  const res = await fetch(url, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch categories");
   const json = await res.json();
   return json.data ?? { defaultCategories: [], userCategories: [] };

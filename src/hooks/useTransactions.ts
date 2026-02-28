@@ -23,7 +23,9 @@ async function fetchTransactions({
   if (month !== undefined) params.append("month", String(month));
   if (accountId) params.append("account_id", accountId);
 
-  const res = await fetch(`/api/crud/transactions?${params.toString()}`);
+  const res = await fetch(`/api/crud/transactions?${params.toString()}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch transactions");
   const json = await res.json();
   return json.data ?? [];
@@ -35,7 +37,9 @@ async function fetchTransactionsSimple(year: number, month: number, accountId?: 
   params.append("month", String(month));
   if (accountId) params.append("account_id", accountId);
 
-  const res = await fetch(`/api/crud/transactions?${params.toString()}`);
+  const res = await fetch(`/api/crud/transactions?${params.toString()}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to fetch transactions");
   const json = await res.json();
   return json.data ?? [];

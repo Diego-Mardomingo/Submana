@@ -12,7 +12,7 @@ import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { parseDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, House, Trash2, Euro, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, House, Trash2, Euro, Loader2, Pencil } from "lucide-react";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import {
   AlertDialog,
@@ -470,6 +470,13 @@ export default function TransactionsBody() {
                     desktopMinWidth={1024}
                     actions={
                       <div className="tx-card-actions-reveal flex items-center gap-2">
+                        <Link
+                          href={`/transactions/edit/${tx.id}`}
+                          className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
+                          aria-label={t("common.edit")}
+                        >
+                          <Pencil className="size-5" />
+                        </Link>
                         <button
                           type="button"
                           onClick={(e) => {
