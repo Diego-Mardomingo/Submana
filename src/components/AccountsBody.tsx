@@ -23,6 +23,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AddButton } from "@/components/ui/add-button";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { Trash2 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
@@ -250,13 +261,9 @@ export default function AccountsBody() {
             <p>{t("accounts.heroSubtitle")}</p>
           </div>
         </div>
-        <button type="button" className="add-btn" onClick={() => openModal("create")}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span>{t("accounts.add")}</span>
-        </button>
+        <AddButton onClick={() => openModal("create")}>
+          {t("accounts.add")}
+        </AddButton>
       </header>
 
       {/* Balance Card */}
@@ -350,166 +357,164 @@ export default function AccountsBody() {
         )}
       </div>
 
-      {isModalOpen && (
-        <div className="modal-backdrop" onClick={closeModal}>
-          <div className="modal-content modal-content-subs" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">{modalMode === "create" ? t("accounts.add") : t("accounts.edit")}</h2>
-            <form onSubmit={handleSave} className="subs-form">
-              <div className="subs-form-section">
-                <div className="flex items-center gap-2">
-                  <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button type="button" className="text-muted-foreground hover:text-foreground">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M12 16v-4" />
-                            <path d="M12 8h.01" />
-                          </svg>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{t("accounts.bankProviderTooltip")}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-                <Select
-                  value={formData.bank_provider || "none"}
-                  onValueChange={(value) => {
-                    if (value === "none") {
-                      setFormData({ ...formData, bank_provider: "" });
-                    } else {
-                      const bankProvider = getBankProvider(value);
-                      if (bankProvider) {
-                        setFormData({
-                          ...formData,
-                          bank_provider: value,
-                          name: formData.name || bankProvider.name,
-                          icon: formData.icon || bankProvider.icon,
-                        });
-                      }
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">
+              {modalMode === "create" ? t("accounts.add") : t("accounts.edit")}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {modalMode === "create" 
+                ? (lang === "es" ? "Añade una nueva cuenta para gestionar tus finanzas" : "Add a new account to manage your finances")
+                : (lang === "es" ? "Modifica los detalles de tu cuenta" : "Edit your account details")}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSave} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" className="text-muted-foreground hover:text-foreground">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 16v-4" />
+                          <path d="M12 8h.01" />
+                        </svg>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{t("accounts.bankProviderTooltip")}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select
+                value={formData.bank_provider || "none"}
+                onValueChange={(value) => {
+                  if (value === "none") {
+                    setFormData({ ...formData, bank_provider: "" });
+                  } else {
+                    const bankProvider = getBankProvider(value);
+                    if (bankProvider) {
+                      setFormData({
+                        ...formData,
+                        bank_provider: value,
+                        name: formData.name || bankProvider.name,
+                        icon: formData.icon || bankProvider.icon,
+                      });
                     }
-                  }}
-                >
-                  <SelectTrigger className="!h-10">
-                    <SelectValue placeholder={t("accounts.bankProviderNone")}>
-                      {formData.bank_provider ? (
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={getBankProvider(formData.bank_provider)?.icon}
-                            alt=""
-                            className="size-5 rounded"
-                          />
-                          <span>{getBankProvider(formData.bank_provider)?.name}</span>
-                        </div>
-                      ) : (
-                        t("accounts.bankProviderNone")
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent style={{ zIndex: 2100 }}>
-                    <SelectItem value="none">{t("accounts.bankProviderNone")}</SelectItem>
-                    {BANK_PROVIDER_LIST.map((bank) => (
-                      <SelectItem key={bank.id} value={bank.id}>
-                        <div className="flex items-center gap-2">
-                          <img src={bank.icon} alt="" className="size-5 rounded" />
-                          <span>{bank.name}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="subs-form-section">
-                <Label className="subs-form-label" optional>{t("sub.icon")}</Label>
-                <IconPicker
-                  defaultIcon={formData.icon}
-                  onIconSelect={(url) => setFormData({ ...formData, icon: url })}
-                />
-              </div>
-              <div className="subs-form-section">
-                <Label className="subs-form-label" htmlFor="acc-name" required>{t("settings.name")}</Label>
-                <Input
-                  id="acc-name"
-                  type="text"
-                  required
-                  placeholder="Santander"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="!h-10"
-                />
-              </div>
-              <div className="subs-form-section">
-                <Label className="subs-form-label" htmlFor="acc-balance" optional>{t("accounts.balance")}</Label>
-                <CurrencyInput
-                  id="acc-balance"
-                  placeholder="0,00"
-                  value={formData.balance}
-                  onChange={(value) => setFormData({ ...formData, balance: value })}
-                  className="!h-10"
-                />
-              </div>
-              <div className="subs-form-section">
-                <Label className="subs-form-label">{t("common.color")}</Label>
-                <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="account-modal-color-btn"
-                      style={{ backgroundColor: formData.color }}
-                    />
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-3" align="start" side="top" style={{ zIndex: 2100 }}>
-                    <div className="grid grid-cols-4 gap-2">
-                      {colors.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          className="size-6 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                          style={{
-                            backgroundColor: c,
-                            border: formData.color === c ? "2px solid var(--blanco)" : "none",
-                          }}
-                          onClick={() => { setFormData({ ...formData, color: c }); setColorPickerOpen(false); }}
+                  }
+                }}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder={t("accounts.bankProviderNone")}>
+                    {formData.bank_provider ? (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={getBankProvider(formData.bank_provider)?.icon}
+                          alt=""
+                          className="size-5 rounded"
                         />
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="account-modal-actions">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={closeModal}
-                  className="account-modal-cancel"
-                >
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  className="subs-form-submit account-modal-submit"
-                  disabled={createAccount.isPending || updateAccount.isPending}
-                >
-                  {(createAccount.isPending || updateAccount.isPending) && <Spinner className="size-5 shrink-0" />}
-                  {modalMode === "create" ? (lang === "es" ? "Crear" : "Create") : t("common.save")}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+                        <span>{getBankProvider(formData.bank_provider)?.name}</span>
+                      </div>
+                    ) : (
+                      t("accounts.bankProviderNone")
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">{t("accounts.bankProviderNone")}</SelectItem>
+                  {BANK_PROVIDER_LIST.map((bank) => (
+                    <SelectItem key={bank.id} value={bank.id}>
+                      <div className="flex items-center gap-2">
+                        <img src={bank.icon} alt="" className="size-5 rounded" />
+                        <span>{bank.name}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label" optional>{t("sub.icon")}</Label>
+              <IconPicker
+                defaultIcon={formData.icon}
+                onIconSelect={(url) => setFormData({ ...formData, icon: url })}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label" htmlFor="acc-name" required>{t("settings.name")}</Label>
+              <Input
+                id="acc-name"
+                type="text"
+                required
+                placeholder="Santander"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="h-10"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label" htmlFor="acc-balance" optional>{t("accounts.balance")}</Label>
+              <CurrencyInput
+                id="acc-balance"
+                placeholder="0,00"
+                value={formData.balance}
+                onChange={(value) => setFormData({ ...formData, balance: value })}
+                className="h-10"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label">{t("common.color")}</Label>
+              <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="size-10 rounded-lg cursor-pointer border border-input"
+                    style={{ backgroundColor: formData.color }}
+                  />
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3" align="start" side="top">
+                  <div className="grid grid-cols-4 gap-2">
+                    {colors.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className="size-6 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        style={{
+                          backgroundColor: c,
+                          border: formData.color === c ? "2px solid var(--blanco)" : "none",
+                        }}
+                        onClick={() => { setFormData({ ...formData, color: c }); setColorPickerOpen(false); }}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <DialogFooter className="sm:justify-center gap-3">
+              <Button type="button" variant="outline" onClick={closeModal}>
+                {t("common.cancel")}
+              </Button>
+              <SubmitButton 
+                pending={createAccount.isPending || updateAccount.isPending}
+                isEdit={modalMode === "edit"}
+                className="gap-2"
+              >
+                {modalMode === "create" ? (lang === "es" ? "Crear" : "Create") : t("common.save")}
+              </SubmitButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
+              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
             </div>
             <AlertDialogTitle className="text-center">{t("accounts.delete")}</AlertDialogTitle>
             <AlertDialogDescription className="text-center">
@@ -523,8 +528,8 @@ export default function AccountsBody() {
               <div className="mt-3 p-3 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)] text-center">
                 <p className="text-sm font-medium text-[var(--danger)]">
                   {lang === "es" 
-                    ? `⚠️ Se eliminarán ${transactionCount} transaccion${transactionCount === 1 ? '' : 'es'} asociadas a esta cuenta`
-                    : `⚠️ ${transactionCount} transaction${transactionCount === 1 ? '' : 's'} associated with this account will be deleted`}
+                    ? `Se eliminarán ${transactionCount} transaccion${transactionCount === 1 ? '' : 'es'} asociadas a esta cuenta`
+                    : `${transactionCount} transaction${transactionCount === 1 ? '' : 's'} associated with this account will be deleted`}
                 </p>
               </div>
             ) : null}
@@ -534,7 +539,7 @@ export default function AccountsBody() {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleteAccount.isPending || loadingTransactionCount}
-              className="bg-[var(--danger)] hover:bg-[var(--danger-hover)] text-white"
+              variant="destructive"
             >
               {deleteAccount.isPending && <Spinner className="size-4 mr-2" />}
               {t("common.delete")}

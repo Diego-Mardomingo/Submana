@@ -9,10 +9,9 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { toDateString } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import IconPicker from "@/components/IconPicker";
-import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import {
@@ -208,21 +207,9 @@ export default function NewSubscriptionPage() {
         </div>
 
         {/* Submit */}
-        <Button 
-          type="submit" 
-          className="subs-form-submit" 
-          disabled={createSub.isPending}
-        >
-          {createSub.isPending ? (
-            <Spinner className="size-5" />
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          )}
+        <SubmitButton pending={createSub.isPending}>
           {t("sub.create")}
-        </Button>
+        </SubmitButton>
       </form>
     </div>
   );

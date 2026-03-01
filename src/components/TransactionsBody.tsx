@@ -24,6 +24,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { AddButton } from "@/components/ui/add-button";
+import { Spinner } from "@/components/ui/spinner";
 
 type TransactionItem = {
   id: string;
@@ -344,13 +346,9 @@ export default function TransactionsBody() {
             <p>{t("transactions.heroSubtitle")}</p>
           </div>
         </div>
-        <Link href="/transactions/new" className="add-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span>{t("transactions.add")}</span>
-        </Link>
+        <AddButton href="/transactions/new">
+          {t("transactions.add")}
+        </AddButton>
       </header>
 
       {/* Month Selector + Stats: swipe zone solo en móvil (solo esta zona responde al swipe) */}
@@ -516,7 +514,7 @@ export default function TransactionsBody() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <Trash2 className="size-7 text-[var(--danger)]" />
+              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
             </div>
             <AlertDialogTitle className="text-center">
               {lang === "es" ? "Eliminar transacción" : "Delete transaction"}
@@ -537,11 +535,8 @@ export default function TransactionsBody() {
               }}
               disabled={deleteTx.isPending}
             >
-              {deleteTx.isPending ? (
-                <span className="animate-pulse">{t("common.delete")}</span>
-              ) : (
-                t("common.delete")
-              )}
+              {deleteTx.isPending && <Spinner className="size-4 mr-2" />}
+              {t("common.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
