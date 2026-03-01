@@ -46,6 +46,8 @@ import { Wallet, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
+import { SortableContainer, SortableItem } from "@/components/sortable";
+import { useReorder } from "@/hooks/useReorder";
 
 const colors = ACCOUNT_BUDGET_COLORS;
 const defaultBudgetColor = defaultAccountBudgetColor;
@@ -100,6 +102,7 @@ export default function BudgetsBody() {
   const createBudget = useCreateBudget();
   const updateBudget = useUpdateBudget();
   const deleteBudget = useDeleteBudget();
+  const { handleReorder } = useReorder<BudgetWithSpent>({ table: "budgets" });
 
   const isMobile = useMediaQuery("(max-width: 767px)");
   const defaultCategories = categoriesData?.defaultCategories ?? [];
@@ -304,7 +307,173 @@ export default function BudgetsBody() {
             </p>
           </div>
         ) : isMobile ? (
-          <SwipeToRevealGroup className="budgets-grid budgets-grid--swipe">
+          <SortableContainer
+            items={budgets}
+            onReorder={handleReorder}
+            className="budgets-grid budgets-grid--mobile"
+            strategy="vertical"
+            renderOverlay={(activeItem) => {
+              if (!activeItem) return null;
+              const amount = Number(activeItem.amount);
+              const spent = Number(activeItem.spent ?? 0);
+              const over = spent > amount;
+              const parentIds = getParentIds(activeItem.categoryIds ?? []);
+              const firstEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
+              return (
+                <div
+                  className={`budget-card sortable-overlay ${over ? "budget-card--over" : ""}`}
+                  style={{ "--accent-budget": activeItem.color || "var(--accent)" } as React.CSSProperties}
+                >
+                  <div className="budget-card-badges-row">
+                    <span className="budget-card-icon-blur" aria-hidden>
+                      {firstEmoji ? <span className="budget-card-emoji">{firstEmoji}</span> : <Wallet size={20} strokeWidth={1.5} />}
+                    </span>
+                    {parentIds.length ? (
+                      <span className="budget-card-title-categories">
+                        {parentIds.map((id) => categoryIdToName.get(id)).filter(Boolean).join(", ")}
+                      </span>
+                    ) : (
+                      <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
+                    )}
+                  </div>
+                  <p className="budget-card-summary">{formatCurrency(spent)} / {formatCurrency(amount)}</p>
+                </div>
+              );
+            }}
+          >
+            <SwipeToRevealGroup className="budgets-grid budgets-grid--swipe">
+              {budgets.map((budget) => {
+                const amount = Number(budget.amount);
+                const spent = Number(budget.spent ?? 0);
+                const remaining = Math.max(0, amount - spent);
+                const over = spent > amount;
+                const pct = amount > 0 ? (spent / amount) * 100 : 0;
+                const progressValue = amount > 0 ? Math.min(100, pct) : 0;
+                const pctWarning = pct >= 80 && !over;
+                const accent = budget.color || "var(--accent)";
+                const summaryText = over
+                  ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
+                  : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
+                const parentIds = getParentIds(budget.categoryIds ?? []);
+                const firstCategoryEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
+                const cardContent = (
+                  <div
+                    className={`budget-card ${over ? "budget-card--over" : ""}`}
+                    style={{ "--accent-budget": accent } as React.CSSProperties}
+                  >
+                    <div className="budget-card-header">
+                    </div>
+                    <div className="budget-card-badges-row">
+                      <span className="budget-card-icon-blur" aria-hidden>
+                        {firstCategoryEmoji ? (
+                          <span className="budget-card-emoji">{firstCategoryEmoji}</span>
+                        ) : (
+                          <Wallet size={20} strokeWidth={1.5} />
+                        )}
+                      </span>
+                      {parentIds.length ? (
+                        <span className="budget-card-title-categories">
+                          {parentIds
+                            .map((id) => categoryIdToName.get(id))
+                            .filter(Boolean)
+                            .join(", ")}
+                        </span>
+                      ) : (
+                        <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
+                      )}
+                    </div>
+                    <p className="budget-card-summary">
+                      {over ? (
+                        <>
+                          {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
+                          <span className="budget-card-summary-exceeded">
+                            <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
+                            {t("budgets.exceeded")}
+                          </span>
+                        </>
+                      ) : (
+                        summaryText
+                      )}
+                    </p>
+                    <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
+                      <Progress value={progressValue} className="h-2 budget-card-progress" />
+                      <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
+                    </div>
+                  </div>
+                );
+                return (
+                  <SortableItem key={budget.id} id={budget.id} showHandle={false}>
+                    <SwipeToReveal
+                      id={budget.id}
+                      className="budget-swipe-wrapper"
+                      swipeHint
+                      desktopMinWidth={768}
+                      actions={
+                        <div className="budget-swipe-actions">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openModal("edit", budget); }}
+                            className="budget-swipe-btn budget-swipe-btn--edit"
+                            aria-label={t("common.edit")}
+                          >
+                            <Pencil className="size-5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBudgetToDelete(budget.id); setDeleteModalOpen(true); }}
+                            className="budget-swipe-btn budget-swipe-btn--delete"
+                            aria-label={t("common.delete")}
+                          >
+                            <Trash2 className="size-5" />
+                          </button>
+                        </div>
+                      }
+                    >
+                      {cardContent}
+                    </SwipeToReveal>
+                  </SortableItem>
+                );
+              })}
+            </SwipeToRevealGroup>
+          </SortableContainer>
+        ) : (
+          <SortableContainer
+            items={budgets}
+            onReorder={handleReorder}
+            className="budgets-grid budgets-grid--desktop"
+            strategy="grid"
+            renderOverlay={(activeItem) => {
+              if (!activeItem) return null;
+              const amount = Number(activeItem.amount);
+              const spent = Number(activeItem.spent ?? 0);
+              const over = spent > amount;
+              const parentIds = getParentIds(activeItem.categoryIds ?? []);
+              return (
+                <div
+                  className={`budget-card sortable-overlay ${over ? "budget-card--over" : ""}`}
+                  style={{ "--accent-budget": activeItem.color || "var(--accent)" } as React.CSSProperties}
+                >
+                  <div className="budget-card-badges-row">
+                    <span className="budget-card-icon-blur" aria-hidden>
+                      {parentIds.length && categoryIdToEmoji.get(parentIds[0]) ? (
+                        <span className="budget-card-emoji">{categoryIdToEmoji.get(parentIds[0])}</span>
+                      ) : (
+                        <Wallet size={20} strokeWidth={1.5} />
+                      )}
+                    </span>
+                    {parentIds.length ? (
+                      <span className="budget-card-title-categories">
+                        {parentIds.map((id) => categoryIdToName.get(id)).filter(Boolean).join(", ")}
+                      </span>
+                    ) : (
+                      <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
+                    )}
+                  </div>
+                  <p className="budget-card-summary">{formatCurrency(spent)} / {formatCurrency(amount)}</p>
+                </div>
+              );
+            }}
+          >
             {budgets.map((budget) => {
               const amount = Number(budget.amount);
               const spent = Number(budget.spent ?? 0);
@@ -313,166 +482,75 @@ export default function BudgetsBody() {
               const pct = amount > 0 ? (spent / amount) * 100 : 0;
               const progressValue = amount > 0 ? Math.min(100, pct) : 0;
               const pctWarning = pct >= 80 && !over;
-              const accent = budget.color || "var(--accent)";
               const summaryText = over
                 ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
                 : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
-              const parentIds = getParentIds(budget.categoryIds ?? []);
-              const firstCategoryEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
-              const cardContent = (
-                <div
-                  className={`budget-card ${over ? "budget-card--over" : ""}`}
-                  style={{ "--accent-budget": accent } as React.CSSProperties}
-                >
-                  <div className="budget-card-header">
-                  </div>
-                  <div className="budget-card-badges-row">
-                    <span className="budget-card-icon-blur" aria-hidden>
-                      {firstCategoryEmoji ? (
-                        <span className="budget-card-emoji">{firstCategoryEmoji}</span>
-                      ) : (
-                        <Wallet size={20} strokeWidth={1.5} />
-                      )}
-                    </span>
-                    {parentIds.length ? (
-                      <span className="budget-card-title-categories">
-                        {parentIds
-                          .map((id) => categoryIdToName.get(id))
-                          .filter(Boolean)
-                          .join(", ")}
-                      </span>
-                    ) : (
-                      <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
-                    )}
-                  </div>
-                  <p className="budget-card-summary">
-                    {over ? (
-                      <>
-                        {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
-                        <span className="budget-card-summary-exceeded">
-                          <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
-                          {t("budgets.exceeded")}
-                        </span>
-                      </>
-                    ) : (
-                      summaryText
-                    )}
-                  </p>
-                  <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
-                    <Progress value={progressValue} className="h-2 budget-card-progress" />
-                    <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
-                  </div>
-                </div>
-              );
+              const parentIdsDesktop = getParentIds(budget.categoryIds ?? []);
               return (
-                <SwipeToReveal
-                  key={budget.id}
-                  id={budget.id}
-                  className="budget-swipe-wrapper"
-                  swipeHint
-                  desktopMinWidth={768}
-                  actions={
-                    <div className="budget-swipe-actions">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); openModal("edit", budget); }}
-                        className="budget-swipe-btn budget-swipe-btn--edit"
-                        aria-label={t("common.edit")}
-                      >
-                        <Pencil className="size-5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBudgetToDelete(budget.id); setDeleteModalOpen(true); }}
-                        className="budget-swipe-btn budget-swipe-btn--delete"
-                        aria-label={t("common.delete")}
-                      >
-                        <Trash2 className="size-5" />
-                      </button>
+                <SortableItem key={budget.id} id={budget.id}>
+                  <div
+                    className={`budget-card ${over ? "budget-card--over" : ""}`}
+                    style={{ "--accent-budget": budget.color || "var(--accent)" } as React.CSSProperties}
+                  >
+                    <div className="budget-card-badges-row">
+                      <span className="budget-card-icon-blur" aria-hidden>
+                        {parentIdsDesktop.length && categoryIdToEmoji.get(parentIdsDesktop[0]) ? (
+                          <span className="budget-card-emoji">{categoryIdToEmoji.get(parentIdsDesktop[0])}</span>
+                        ) : (
+                          <Wallet size={20} strokeWidth={1.5} />
+                        )}
+                      </span>
+                      {parentIdsDesktop.length ? (
+                        <span className="budget-card-title-categories">
+                          {parentIdsDesktop
+                            .map((id) => categoryIdToName.get(id))
+                            .filter(Boolean)
+                            .join(", ")}
+                        </span>
+                      ) : (
+                        <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
+                      )}
+                      <div className="budget-card-actions">
+                        <button
+                          type="button"
+                          className="budget-card-action-btn budget-card-action-btn--edit"
+                          onClick={(e) => { e.stopPropagation(); openModal("edit", budget); }}
+                          aria-label={t("common.edit")}
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          className="budget-card-action-btn budget-card-action-btn--delete"
+                          onClick={(e) => { e.stopPropagation(); setBudgetToDelete(budget.id); setDeleteModalOpen(true); }}
+                          aria-label={t("common.delete")}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
                     </div>
-                  }
-                >
-                  {cardContent}
-                </SwipeToReveal>
+                    <p className="budget-card-summary">
+                      {over ? (
+                        <>
+                          {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
+                          <span className="budget-card-summary-exceeded">
+                            <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
+                            {t("budgets.exceeded")}
+                          </span>
+                        </>
+                      ) : (
+                        summaryText
+                      )}
+                    </p>
+                    <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
+                      <Progress value={progressValue} className="h-2 budget-card-progress" />
+                      <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
+                    </div>
+                  </div>
+                </SortableItem>
               );
             })}
-          </SwipeToRevealGroup>
-        ) : (
-          budgets.map((budget) => {
-            const amount = Number(budget.amount);
-            const spent = Number(budget.spent ?? 0);
-            const remaining = Math.max(0, amount - spent);
-            const over = spent > amount;
-            const pct = amount > 0 ? (spent / amount) * 100 : 0;
-            const progressValue = amount > 0 ? Math.min(100, pct) : 0;
-            const pctWarning = pct >= 80 && !over;
-            const summaryText = over
-              ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
-              : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
-            const parentIdsDesktop = getParentIds(budget.categoryIds ?? []);
-            return (
-              <div
-                key={budget.id}
-                className={`budget-card ${over ? "budget-card--over" : ""}`}
-                style={{ "--accent-budget": budget.color || "var(--accent)" } as React.CSSProperties}
-              >
-                <div className="budget-card-badges-row">
-                  <span className="budget-card-icon-blur" aria-hidden>
-                    {parentIdsDesktop.length && categoryIdToEmoji.get(parentIdsDesktop[0]) ? (
-                      <span className="budget-card-emoji">{categoryIdToEmoji.get(parentIdsDesktop[0])}</span>
-                    ) : (
-                      <Wallet size={20} strokeWidth={1.5} />
-                    )}
-                  </span>
-                  {parentIdsDesktop.length ? (
-                    <span className="budget-card-title-categories">
-                      {parentIdsDesktop
-                        .map((id) => categoryIdToName.get(id))
-                        .filter(Boolean)
-                        .join(", ")}
-                    </span>
-                  ) : (
-                    <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
-                  )}
-                  <div className="budget-card-actions">
-                    <button
-                      type="button"
-                      className="budget-card-action-btn budget-card-action-btn--edit"
-                      onClick={(e) => { e.stopPropagation(); openModal("edit", budget); }}
-                      aria-label={t("common.edit")}
-                    >
-                      <Pencil size={18} />
-                    </button>
-                    <button
-                      type="button"
-                      className="budget-card-action-btn budget-card-action-btn--delete"
-                      onClick={(e) => { e.stopPropagation(); setBudgetToDelete(budget.id); setDeleteModalOpen(true); }}
-                      aria-label={t("common.delete")}
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </div>
-                <p className="budget-card-summary">
-                  {over ? (
-                    <>
-                      {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
-                      <span className="budget-card-summary-exceeded">
-                        <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
-                        {t("budgets.exceeded")}
-                      </span>
-                    </>
-                  ) : (
-                    summaryText
-                  )}
-                </p>
-                <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
-                  <Progress value={progressValue} className="h-2 budget-card-progress" />
-                  <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
-                </div>
-              </div>
-            );
-          })
+          </SortableContainer>
         )}
       </div>
 

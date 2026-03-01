@@ -1567,3 +1567,99 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Sortable / Drag-and-Drop ── */
+.sortable-item {
+  position: relative;
+  user-select: none;
+}
+
+.sortable-item--desktop {
+  display: flex;
+  align-items: stretch;
+}
+
+.sortable-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sortable-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  min-height: 100%;
+  cursor: grab;
+  color: var(--gris-claro);
+  background: transparent;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  margin-right: -4px;
+}
+
+.sortable-handle:hover {
+  color: var(--blanco);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sortable-handle:active {
+  cursor: grabbing;
+}
+
+.sortable-item--dragging {
+  opacity: 0.5;
+  z-index: 1000;
+}
+
+.sortable-item--dragging .account-card,
+.sortable-item--dragging .budget-card {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: scale(1.02);
+}
+
+.sortable-overlay {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 2px var(--accent);
+  transform: scale(1.03);
+  border-radius: 16px;
+  background: var(--gris-oscuro);
+}
+
+.sortable-overlay.account-card,
+.sortable-overlay.budget-card {
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .sortable-handle {
+    display: none;
+  }
+
+  .sortable-item {
+    touch-action: none;
+  }
+
+  .sortable-item--dragging {
+    transform: scale(1.02);
+  }
+}
+
+@media (min-width: 768px) {
+  .accounts-grid .sortable-item--desktop .account-card {
+    border-radius: 0 16px 16px 0;
+  }
+
+  .accounts-grid .sortable-item--desktop .sortable-handle + .sortable-item__content .account-card {
+    border-radius: 0 16px 16px 0;
+  }
+
+  .budgets-grid--desktop .sortable-item--desktop .budget-card {
+    border-radius: 0 16px 16px 0;
+  }
+
+  .budgets-grid--desktop .sortable-item--desktop .sortable-handle + .sortable-item__content .budget-card {
+    border-radius: 0 16px 16px 0;
+  }
+}

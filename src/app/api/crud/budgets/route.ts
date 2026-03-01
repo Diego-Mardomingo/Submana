@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
     .from("budgets")
     .select("id, user_id, amount, color, created_at, updated_at")
     .eq("user_id", user.id)
+    .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
 
   if (budgetsError) {
@@ -124,6 +125,14 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
     const name = categoryIds.length > 0 ? `Budget (${categoryIds.length} categories)` : "General Budget";
+    
+    const { count } = await supabase
+      .from("budgets")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    
+    const display_order = (count ?? 0);
+
     const { data: inserted, error: insertError } = await supabase
       .from("budgets")
       .insert({
@@ -131,6 +140,7 @@ export async function POST(request: NextRequest) {
         name,
         amount,
         color,
+        display_order,
         created_at: now,
         updated_at: now,
       })

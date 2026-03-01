@@ -59,6 +59,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SortableContainer, SortableItem } from "@/components/sortable";
+import { useReorder } from "@/hooks/useReorder";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -77,6 +79,7 @@ export default function AccountsBody() {
   const createAccount = useCreateAccount();
   const updateAccount = useUpdateAccount();
   const deleteAccount = useDeleteAccount();
+  const { handleReorder } = useReorder<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean; bank_provider?: string | null }>({ table: "accounts" });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
@@ -284,8 +287,8 @@ export default function AccountsBody() {
         </div>
       )}
 
-      <div className="accounts-grid">
-        {accounts.length === 0 ? (
+      {accounts.length === 0 ? (
+        <div className="accounts-grid">
           <div className="empty-state">
             <div className="empty-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
@@ -295,67 +298,102 @@ export default function AccountsBody() {
             </div>
             <p>{t("accounts.noAccounts")}</p>
           </div>
-        ) : (
-          (accounts as Array<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean; bank_provider?: string | null }>).map((account) => (
-            <Link
-              key={account.id}
-              href={`/account/${account.id}`}
-              className="account-card"
-              style={{ "--accent-account": account.color || "var(--accent)" } as React.CSSProperties}
-            >
-              <div className="card-content">
-                <div className="account-icon-wrapper">
-                  {account.icon ? (
-                    <img src={account.icon} alt={account.name} className="account-img" />
-                  ) : (
-                    <div className="account-icon-fallback" style={{ color: account.color || "var(--accent)" }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="1" y="4" width="22" height="16" rx="2" />
-                        <line x1="1" y1="10" x2="23" y2="10" />
-                      </svg>
-                    </div>
-                  )}
-                  {account.name?.toLowerCase().includes("remunerada") && (
-                    <div className="account-badge-interest" title={lang === "es" ? "Cuenta remunerada" : "Savings account"}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                        <polyline points="17 6 23 6 23 12" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="account-info">
-                  <h3 className="account-name">{account.name}</h3>
-                  <p className="account-balance">{formatCurrency(Number(account.balance))}</p>
+        </div>
+      ) : (
+        <SortableContainer
+          items={accounts as Array<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean; bank_provider?: string | null }>}
+          onReorder={handleReorder}
+          className="accounts-grid"
+          strategy="grid"
+          renderOverlay={(activeItem) =>
+            activeItem ? (
+              <div
+                className="account-card sortable-overlay"
+                style={{ "--accent-account": activeItem.color || "var(--accent)" } as React.CSSProperties}
+              >
+                <div className="card-content">
+                  <div className="account-icon-wrapper">
+                    {activeItem.icon ? (
+                      <img src={activeItem.icon} alt={activeItem.name} className="account-img" />
+                    ) : (
+                      <div className="account-icon-fallback" style={{ color: activeItem.color || "var(--accent)" }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="1" y="4" width="22" height="16" rx="2" />
+                          <line x1="1" y1="10" x2="23" y2="10" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="account-info">
+                    <h3 className="account-name">{activeItem.name}</h3>
+                    <p className="account-balance">{formatCurrency(Number(activeItem.balance))}</p>
+                  </div>
                 </div>
               </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={`favorite-btn ${account.is_default ? "is-default" : ""}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleSetDefault(account);
-                      }}
-                      aria-label="Set as default"
-                    >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill={account.is_default ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{lang === "es" ? "Cuenta por defecto para crear transacciones" : "Default account for creating transactions"}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </Link>
-          ))
-        )}
-      </div>
+            ) : null
+          }
+        >
+          {(accounts as Array<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean; bank_provider?: string | null }>).map((account) => (
+            <SortableItem key={account.id} id={account.id}>
+              <Link
+                href={`/account/${account.id}`}
+                className="account-card"
+                style={{ "--accent-account": account.color || "var(--accent)" } as React.CSSProperties}
+              >
+                <div className="card-content">
+                  <div className="account-icon-wrapper">
+                    {account.icon ? (
+                      <img src={account.icon} alt={account.name} className="account-img" />
+                    ) : (
+                      <div className="account-icon-fallback" style={{ color: account.color || "var(--accent)" }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="1" y="4" width="22" height="16" rx="2" />
+                          <line x1="1" y1="10" x2="23" y2="10" />
+                        </svg>
+                      </div>
+                    )}
+                    {account.name?.toLowerCase().includes("remunerada") && (
+                      <div className="account-badge-interest" title={lang === "es" ? "Cuenta remunerada" : "Savings account"}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                          <polyline points="17 6 23 6 23 12" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="account-info">
+                    <h3 className="account-name">{account.name}</h3>
+                    <p className="account-balance">{formatCurrency(Number(account.balance))}</p>
+                  </div>
+                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={`favorite-btn ${account.is_default ? "is-default" : ""}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleSetDefault(account);
+                        }}
+                        aria-label="Set as default"
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill={account.is_default ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{lang === "es" ? "Cuenta por defecto para crear transacciones" : "Default account for creating transactions"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Link>
+            </SortableItem>
+          ))}
+        </SortableContainer>
+      )}
 
       <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
         <DialogContent className="sm:max-w-md">

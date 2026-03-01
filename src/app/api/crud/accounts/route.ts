@@ -17,6 +17,7 @@ export async function GET() {
     .from("accounts")
     .select("*")
     .eq("user_id", user.id)
+    .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -48,9 +49,16 @@ export async function POST(request: NextRequest) {
     return jsonError("missing_fields");
   }
 
+  const { count } = await supabase
+    .from("accounts")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+  
+  const display_order = (count ?? 0);
+
   const { data: insertedData, error } = await supabase
     .from("accounts")
-    .insert({ user_id: user.id, name, balance, icon, color, bank_provider })
+    .insert({ user_id: user.id, name, balance, icon, color, bank_provider, display_order })
     .select()
     .single();
 
