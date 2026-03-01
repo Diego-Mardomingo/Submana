@@ -36,14 +36,15 @@ export function getEffectiveCategoryIds(
 }
 
 /**
- * Returns start and end of month in ISO string for the given year/month (1-indexed).
+ * Returns start and end of month as YYYY-MM-DD strings for the given year/month (1-indexed).
+ * Uses date strings instead of ISO to avoid timezone conversion issues.
  */
 export function getMonthRange(year: number, month: number): { start: string; end: string } {
-  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const end = new Date(year, month, 0, 23, 59, 59, 999);
+  const lastDay = new Date(year, month, 0).getDate();
+  const monthStr = String(month).padStart(2, "0");
   return {
-    start: start.toISOString(),
-    end: end.toISOString(),
+    start: `${year}-${monthStr}-01`,
+    end: `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`,
   };
 }
 

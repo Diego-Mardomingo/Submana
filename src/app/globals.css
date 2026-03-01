@@ -178,6 +178,7 @@ button:not(:disabled),
 @media (max-width: 767px) {
   .auth-content-shell {
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
   }
 }
 
