@@ -440,7 +440,7 @@ export default function AccountDetail({ account }: { account: Account }) {
                               actions={
                                 <div className="account-tx-actions-reveal flex items-center gap-2">
                                   <Link
-                                    href={`/transactions/edit/${tx.id}`}
+                                    href={`/transactions/edit/${tx.id}?returnTo=${encodeURIComponent(`/account/${account.id}`)}`}
                                     className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
                                     aria-label={t("common.edit")}
                                   >

@@ -1,4 +1,5 @@
 import Navigation from "@/components/Navigation";
+import { NavigationDirectionTracker } from "@/components/NavigationDirectionTracker";
 
 export default function AuthLayout({
   children,
@@ -7,6 +8,7 @@ export default function AuthLayout({
 }) {
   return (
     <>
+      <NavigationDirectionTracker />
       <Navigation />
       <div className="auth-content-shell">{children}</div>
     </>

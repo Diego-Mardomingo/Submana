@@ -18,6 +18,54 @@
   z-index: 2147483647;
 }
 
+/* ── View Transitions - Directional animations (iOS-style) ── */
+@keyframes vt-slide-from-right {
+  from { transform: translateX(25%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes vt-slide-to-left {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-8%); opacity: 0; }
+}
+
+@keyframes vt-slide-from-left {
+  from { transform: translateX(-25%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes vt-slide-to-right {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(8%); opacity: 0; }
+}
+
+/* Forward navigation (default) */
+::view-transition-old(root) {
+  animation: vt-slide-to-left 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+::view-transition-new(root) {
+  animation: vt-slide-from-right 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Back navigation */
+html[data-nav-direction="back"]::view-transition-old(root) {
+  animation: vt-slide-to-right 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+html[data-nav-direction="back"]::view-transition-new(root) {
+  animation: vt-slide-from-left 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Respect user preferences for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 /* ── Dark theme (default) ── */
 /* Paleta cohesiva: tonos desaturados y elegantes para diseño minimalista */
 :root,

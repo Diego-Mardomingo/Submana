@@ -4,10 +4,13 @@ import TransactionForm from "@/components/TransactionForm";
 
 export default async function EditTransactionPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,5 +38,5 @@ export default async function EditTransactionPage({
     subcategory_id: tx.subcategory_id ?? undefined,
   };
 
-  return <TransactionForm editData={editData} />;
+  return <TransactionForm editData={editData} returnTo={returnTo} />;
 }
