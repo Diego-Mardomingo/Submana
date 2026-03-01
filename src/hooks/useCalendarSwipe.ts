@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from "react";
 
 const SWIPE_THRESHOLD = 40;
 const SWIPE_RATIO = 2.5; // deltaX debe ser 2.5x mayor que deltaY para considerarse horizontal
+const VERTICAL_SWIPE_RATIO = 1.5; // Ratio más permisivo para swipes verticales hacia arriba
 const TAP_THRESHOLD = 10;
 const SWIPE_TIMEOUT = 300;
 const DOUBLE_TAP_MAX_DELAY_MS = 400;
@@ -63,17 +64,19 @@ export function useCalendarSwipe(
       gestureDecidedRef.current = true;
       if (absX > absY * SWIPE_RATIO) {
         gestureTypeRef.current = "horizontal";
-      } else if (absY > absX * SWIPE_RATIO) {
+      } else if (absY > absX * VERTICAL_SWIPE_RATIO && deltaY < 0) {
+        // Solo detectar como vertical si es hacia arriba
         gestureTypeRef.current = "vertical";
       }
     }
 
-    // Prevenir scroll si claramente es un swipe horizontal o vertical hacia arriba y el evento es cancelable
+    // Prevenir scroll si claramente es un swipe horizontal y el evento es cancelable
     if (gestureTypeRef.current === "horizontal" && absX > 30 && e.cancelable) {
       e.preventDefault();
     }
     // Prevenir scroll vertical si es un swipe hacia arriba (para volver al mes actual)
-    if (gestureTypeRef.current === "vertical" && deltaY < 0 && absY > 30 && e.cancelable) {
+    // Prevenir tan pronto como se detecte el gesto vertical
+    if (gestureTypeRef.current === "vertical" && e.cancelable) {
       e.preventDefault();
     }
   }, []);
@@ -139,7 +142,7 @@ export function useCalendarSwipe(
         absY > SWIPE_THRESHOLD &&
         isQuickGesture &&
         deltaY < 0 &&
-        absY > absX * SWIPE_RATIO &&
+        absY > absX * VERTICAL_SWIPE_RATIO &&
         onSwipeUp
       ) {
         onSwipeUp();
