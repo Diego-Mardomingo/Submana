@@ -30,6 +30,7 @@
   right: 0;
   width: 100%;
   z-index: 2147483647;
+  view-transition-name: navigation;
   background: var(--negro);
   border-top: 3px solid var(--accent);
   box-shadow: 0 -4px 20px -10px var(--accent-muted);

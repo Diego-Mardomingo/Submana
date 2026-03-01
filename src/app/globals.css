@@ -5,6 +5,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── View Transitions API - z-index control ── */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-group(*) {
+  z-index: 1;
+}
+
+::view-transition-group(navigation) {
+  z-index: 2147483647;
+}
+
 /* ── Dark theme (default) ── */
 /* Paleta cohesiva: tonos desaturados y elegantes para diseño minimalista */
 :root,
