@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { flushSync } from "react-dom";
 import { ChevronLeft, ChevronRight, House, ChevronDown, List } from "lucide-react";
 import { useCalendarSwipe } from "@/hooks/useCalendarSwipe";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
@@ -157,36 +156,22 @@ export default function CalendarBody() {
   const startColumn = firstDayOfMonth === 0 ? 7 : firstDayOfMonth;
 
   const changeMonth = (delta: number) => {
-    const go = () => {
-      let newMonth = month + delta;
-      let newYear = year;
-      if (newMonth < 0) {
-        newMonth = 11;
-        newYear--;
-      } else if (newMonth > 11) {
-        newMonth = 0;
-        newYear++;
-      }
-      setMonth(newMonth);
-      setYear(newYear);
-    };
-    if (typeof document !== "undefined" && (document as Document & { startViewTransition?: (cb: () => void) => void }).startViewTransition) {
-      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => flushSync(go));
-    } else {
-      go();
+    let newMonth = month + delta;
+    let newYear = year;
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear--;
+    } else if (newMonth > 11) {
+      newMonth = 0;
+      newYear++;
     }
+    setMonth(newMonth);
+    setYear(newYear);
   };
 
   const handleToday = () => {
-    const go = () => {
-      setYear(new Date().getFullYear());
-      setMonth(new Date().getMonth());
-    };
-    if (typeof document !== "undefined" && (document as Document & { startViewTransition?: (cb: () => void) => void }).startViewTransition) {
-      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => flushSync(go));
-    } else {
-      go();
-    }
+    setYear(new Date().getFullYear());
+    setMonth(new Date().getMonth());
   };
 
   useEffect(() => {

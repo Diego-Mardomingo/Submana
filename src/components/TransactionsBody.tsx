@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, memo } from "react";
-import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
@@ -231,37 +230,23 @@ export default function TransactionsBody() {
     : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   const changeMonth = (delta: number) => {
-    const go = () => {
-      let newMonth = month + delta;
-      let newYear = year;
-      if (newMonth < 0) {
-        newMonth = 11;
-        newYear--;
-      } else if (newMonth > 11) {
-        newMonth = 0;
-        newYear++;
-      }
-      setMonth(newMonth);
-      setYear(newYear);
-    };
-    if (typeof document !== "undefined" && (document as Document & { startViewTransition?: (cb: () => void) => void }).startViewTransition) {
-      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => flushSync(go));
-    } else {
-      go();
+    let newMonth = month + delta;
+    let newYear = year;
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear--;
+    } else if (newMonth > 11) {
+      newMonth = 0;
+      newYear++;
     }
+    setMonth(newMonth);
+    setYear(newYear);
   };
 
   const handleToday = () => {
-    const go = () => {
-      const today = new Date();
-      setYear(today.getFullYear());
-      setMonth(today.getMonth());
-    };
-    if (typeof document !== "undefined" && (document as Document & { startViewTransition?: (cb: () => void) => void }).startViewTransition) {
-      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => flushSync(go));
-    } else {
-      go();
-    }
+    const today = new Date();
+    setYear(today.getFullYear());
+    setMonth(today.getMonth());
   };
 
   changeMonthRef.current = changeMonth;

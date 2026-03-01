@@ -57,6 +57,25 @@ html[data-nav-direction="back"]::view-transition-new(root) {
   animation: vt-slide-from-left 0.28s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* Same level navigation (crossfade) */
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+html[data-nav-direction="same"]::view-transition-old(root) {
+  animation: vt-fade-out 0.2s ease-out;
+}
+
+html[data-nav-direction="same"]::view-transition-new(root) {
+  animation: vt-fade-in 0.2s ease-out;
+}
+
 /* Respect user preferences for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
