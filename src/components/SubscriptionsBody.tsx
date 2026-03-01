@@ -237,10 +237,26 @@ export default function SubscriptionsBody() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <header className="page-header">
-          <h1 className="title">{t("nav.subscriptions")}</h1>
+        <header className="page-header-clean">
+          <div className="page-header-left">
+            <div className="page-header-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </div>
+            <div className="page-header-text">
+              <h1>{t("nav.subscriptions")}</h1>
+              <p>{t("sub.heroSubtitle")}</p>
+            </div>
+          </div>
         </header>
-        <div className="skeleton" style={{ height: 120, borderRadius: 16 }} />
+        <div className="info-stats-row">
+          <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
+          <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
           <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />
           <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />

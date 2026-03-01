@@ -1,41 +1,48 @@
+"use client";
+
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslations } from "@/lib/i18n/utils";
+import { useLang } from "@/hooks/useLang";
+
+function SubscriptionsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
 
 export default function SubscriptionsLoading() {
+  const lang = useLang();
+  const t = useTranslations(lang);
+
   return (
-    <div className="page-container subs-page fade-in">
+    <div className="page-container fade-in">
       <header className="page-header-clean">
         <div className="page-header-left">
-          <Skeleton className="h-10 w-10 rounded-lg" />
-          <div className="page-header-text">
-            <Skeleton className="h-6 w-36" />
-            <Skeleton className="h-4 w-48 mt-1" />
+          <div className="page-header-icon">
+            <SubscriptionsIcon />
           </div>
-        </div>
-        <div className="page-header-right">
-          <Skeleton className="h-9 w-9 rounded-lg" />
+          <div className="page-header-text">
+            <h1>{t("nav.subscriptions")}</h1>
+            <p>{t("sub.heroSubtitle")}</p>
+          </div>
         </div>
       </header>
 
-      <div className="subs-summary">
-        <Skeleton className="h-16 flex-1 rounded-xl" />
-        <Skeleton className="h-16 flex-1 rounded-xl" />
+      <div className="info-stats-row">
+        <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
+        <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
       </div>
 
-      <section className="subs-list">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="subs-item-skeleton">
-            <Skeleton className="h-12 w-12 rounded-xl" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-3 w-1/3" />
-            </div>
-            <div className="text-right space-y-2">
-              <Skeleton className="h-5 w-16 ml-auto" />
-              <Skeleton className="h-3 w-12 ml-auto" />
-            </div>
-          </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
+        {[1, 2, 3, 4].map((i) => (
+          <div className="skeleton" key={i} style={{ height: 80, borderRadius: 14 }} />
         ))}
-      </section>
+      </div>
     </div>
   );
 }

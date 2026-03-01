@@ -1,14 +1,24 @@
+"use client";
+
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslations } from "@/lib/i18n/utils";
+import { useLang } from "@/hooks/useLang";
+import { LayoutDashboard } from "lucide-react";
 
 export default function DashboardLoading() {
+  const lang = useLang();
+  const t = useTranslations(lang);
+
   return (
     <div className="page-container dashboard-page fade-in">
       <header className="page-header-clean">
         <div className="page-header-left">
-          <Skeleton className="h-10 w-10 rounded-lg" />
+          <div className="page-header-icon">
+            <LayoutDashboard size={26} strokeWidth={1.5} />
+          </div>
           <div className="page-header-text">
-            <Skeleton className="h-6 w-28" />
-            <Skeleton className="h-4 w-40 mt-1" />
+            <h1>{t("nav.dashboard")}</h1>
+            <p>{t("dashboard.subtitle")}</p>
           </div>
         </div>
       </header>

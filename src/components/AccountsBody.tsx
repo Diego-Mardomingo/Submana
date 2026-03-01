@@ -229,12 +229,23 @@ export default function AccountsBody() {
   if (isLoading) {
     return (
       <div className="page-container">
-        <header className="page-header">
-          <div className="title-with-icon">
-            <div className="skeleton" style={{ width: 28, height: 28 }} />
-            <h1 className="title">{t("accounts.title")}</h1>
+        <header className="page-header-clean">
+          <div className="page-header-left">
+            <div className="page-header-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="1" y="4" width="22" height="16" rx="2" />
+                <line x1="1" y1="10" x2="23" y2="10" />
+              </svg>
+            </div>
+            <div className="page-header-text">
+              <h1>{t("accounts.title")}</h1>
+              <p>{t("accounts.heroSubtitle")}</p>
+            </div>
           </div>
         </header>
+        <div className="info-stats-row single">
+          <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
+        </div>
         <div className="accounts-grid">
           {[1, 2, 3].map((i) => (
             <div key={i} className="skeleton" style={{ height: 140, borderRadius: 16 }} />
