@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useLayoutEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { Sun, Moon, LogOut } from "lucide-react";
+import { Sun, Moon, Monitor, LogOut } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import {
   Card,
@@ -36,9 +36,20 @@ import { cn } from "@/lib/utils";
 
 const COOKIE_THEME = "submana-theme";
 
-function getTheme(): "light" | "dark" {
-  if (typeof document === "undefined") return "dark";
-  return (localStorage.getItem(COOKIE_THEME) as "light" | "dark") || "dark";
+type Theme = "light" | "dark" | "system";
+
+function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "dark";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function getTheme(): Theme {
+  if (typeof document === "undefined") return "system";
+  return (localStorage.getItem(COOKIE_THEME) as Theme) || "system";
+}
+
+function getEffectiveTheme(theme: Theme): "light" | "dark" {
+  return theme === "system" ? getSystemTheme() : theme;
 }
 
 export default function SettingsBody() {
@@ -55,13 +66,14 @@ export default function SettingsBody() {
     user_metadata?: { name?: string; avatar_url?: string };
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [theme, setTheme] = useState<Theme>("system");
   const [sliderTransitionReady, setSliderTransitionReady] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
 
   useLayoutEffect(() => {
     const t = getTheme();
     setTheme(t);
+    document.documentElement.setAttribute("data-theme", getEffectiveTheme(t));
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => setSliderTransitionReady(true));
     });
@@ -75,9 +87,20 @@ export default function SettingsBody() {
     });
   }, [supabase]);
 
-  const handleThemeChange = (newTheme: "light" | "dark") => {
+  useEffect(() => {
+    if (theme !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = (e: MediaQueryListEvent) => {
+      document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+    };
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [theme]);
+
+  const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
-    document.documentElement.setAttribute("data-theme", newTheme);
+    const effective = getEffectiveTheme(newTheme);
+    document.documentElement.setAttribute("data-theme", effective);
     localStorage.setItem(COOKIE_THEME, newTheme);
     document.cookie = `${COOKIE_THEME}=${newTheme}; path=/; max-age=${60 * 60 * 24 * 365}`;
   };
@@ -179,6 +202,24 @@ export default function SettingsBody() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top">{t("settings.theme.light")}</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "settings-theme-btn settings-theme-btn-system flex-1",
+                        theme === "system" && "settings-theme-btn-active"
+                      )}
+                      onClick={() => handleThemeChange("system")}
+                    >
+                      <Monitor className="size-4" />
+                      <span>{t("settings.theme.system")}</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{t("settings.theme.system")}</TooltipContent>
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>

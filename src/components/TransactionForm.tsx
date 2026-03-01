@@ -12,8 +12,7 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { parseDateString, toDateString } from "@/lib/date";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import {
@@ -286,31 +285,9 @@ export default function TransactionForm({ editData }: TransactionFormProps) {
         )}
 
         {/* Submit */}
-        <Button 
-          type="submit" 
-          className="subs-form-submit" 
-          disabled={pending}
-        >
-          {pending ? (
-            <Spinner className="size-5" />
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {editData ? (
-                <>
-                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                  <polyline points="17 21 17 13 7 13 7 21" />
-                  <polyline points="7 3 7 8 15 8" />
-                </>
-              ) : (
-                <>
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </>
-              )}
-            </svg>
-          )}
+        <SubmitButton pending={pending} isEdit={!!editData}>
           {editData ? t("common.save") : t("transactions.add")}
-        </Button>
+        </SubmitButton>
       </form>
     </div>
   );

@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Pencil, XCircle, Trash2 } from "lucide-react";
+import { AddButton } from "@/components/ui/add-button";
 import { toDateString } from "@/lib/date";
 import { useState, memo } from "react";
 
@@ -269,13 +270,9 @@ export default function SubscriptionsBody() {
             <p>{t("sub.heroSubtitle")}</p>
           </div>
         </div>
-        <Link href="/subscriptions/new" className="add-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span>{t("sub.new")}</span>
-        </Link>
+        <AddButton href="/subscriptions/new">
+          {t("sub.new")}
+        </AddButton>
       </header>
 
       {/* Stats Cards */}

@@ -9,10 +9,9 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { parseDateString, toDateString } from "@/lib/date";
 import { useRouter } from "next/navigation";
 import IconPicker from "@/components/IconPicker";
-import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import {
@@ -229,22 +228,9 @@ export default function SubscriptionEditForm({ sub }: { sub: Sub }) {
         </div>
 
         {/* Submit */}
-        <Button 
-          type="submit" 
-          className="subs-form-submit" 
-          disabled={updateSub.isPending}
-        >
-          {updateSub.isPending ? (
-            <Spinner className="size-5" />
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
-            </svg>
-          )}
+        <SubmitButton pending={updateSub.isPending} isEdit>
           {t("sub.saveChanges")}
-        </Button>
+        </SubmitButton>
       </form>
     </div>
   );

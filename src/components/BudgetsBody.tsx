@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useBudgets, type BudgetWithSpent } from "@/hooks/useBudgets";
 import {
   useCreateBudget,
@@ -20,6 +20,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AddButton } from "@/components/ui/add-button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { Spinner } from "@/components/ui/spinner";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -191,14 +201,6 @@ export default function BudgetsBody() {
     resetForm();
   };
 
-  useEffect(() => {
-    if (isModalOpen) {
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }
-  }, [isModalOpen]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,13 +287,9 @@ export default function BudgetsBody() {
             <p>{t("budgets.heroSubtitle")}</p>
           </div>
         </div>
-        <button type="button" className="add-btn" onClick={() => openModal("create")}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span>{t("budgets.add")}</span>
-        </button>
+        <AddButton onClick={() => openModal("create")}>
+          {t("budgets.add")}
+        </AddButton>
       </header>
 
       <div className="budgets-grid">
@@ -478,104 +476,107 @@ export default function BudgetsBody() {
         )}
       </div>
 
-      {isModalOpen && (
-        <div className="modal-backdrop modal-backdrop--budget" onClick={closeModal}>
-          <div className="modal-content modal-content-subs modal-content-budget overflow-x-hidden max-w-[100vw]" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">
               {modalMode === "create" ? t("budgets.add") : t("budgets.edit")}
-            </h2>
-            <form onSubmit={handleSave} className="subs-form">
-              <div className="subs-form-section">
-                <Label className="subs-form-label" htmlFor="budget-amount" required>
-                  {t("budgets.monthlyLimit")}
-                </Label>
-                <CurrencyInput
-                  id="budget-amount"
-                  placeholder="0,00"
-                  value={formData.amount}
-                  onChange={(value) => setFormData({ ...formData, amount: value })}
-                  className="!h-10"
-                />
-              </div>
-              <div className="subs-form-section">
-                <Label className="subs-form-label">{t("common.color")}</Label>
-                <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="budget-modal-color-btn"
-                      style={{ backgroundColor: formData.color }}
-                      aria-label={t("common.color")}
-                    />
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-3" align="start" side="top" style={{ zIndex: 2100 }}>
-                    <div className="grid grid-cols-4 gap-2">
-                      {colors.map((c) => (
-                        <button
-                          key={c}
-                          type="button"
-                          className="size-6 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background"
-                          style={{
-                            backgroundColor: c,
-                            border: formData.color === c ? "2px solid var(--blanco)" : "none",
-                          }}
-                          onClick={() => {
-                            setFormData({ ...formData, color: c });
-                            setColorPickerOpen(false);
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="subs-form-section">
-                <Label className="subs-form-label" optional>
-                  {t("budgets.linkedCategories")}
-                </Label>
-                <p style={{ fontSize: "0.8rem", color: "var(--gris-claro)", marginBottom: "0.5rem" }}>
-                  {t("budgets.generalBudget")} {lang === "es" ? "si no eliges ninguna" : "if you leave none selected"}
-                </p>
-                <div className="flex flex-col gap-1 min-w-0">
-                  {parentCategoryOptions.map((opt) => (
-                    <label
-                      key={opt.id}
-                      className="flex items-center gap-2 cursor-pointer py-1 min-w-0"
-                    >
-                      <Checkbox
-                        checked={formData.categoryIds.includes(opt.id)}
-                        onCheckedChange={() => toggleCategory(opt)}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {lang === "es" ? "Configura un límite mensual de gastos" : "Set a monthly spending limit"}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSave} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label" htmlFor="budget-amount" required>
+                {t("budgets.monthlyLimit")}
+              </Label>
+              <CurrencyInput
+                id="budget-amount"
+                placeholder="0,00"
+                value={formData.amount}
+                onChange={(value) => setFormData({ ...formData, amount: value })}
+                className="h-10"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label">{t("common.color")}</Label>
+              <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="size-10 rounded-lg cursor-pointer border border-input"
+                    style={{ backgroundColor: formData.color }}
+                    aria-label={t("common.color")}
+                  />
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3" align="start" side="top">
+                  <div className="grid grid-cols-4 gap-2">
+                    {colors.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className="size-6 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background"
+                        style={{
+                          backgroundColor: c,
+                          border: formData.color === c ? "2px solid var(--blanco)" : "none",
+                        }}
+                        onClick={() => {
+                          setFormData({ ...formData, color: c });
+                          setColorPickerOpen(false);
+                        }}
                       />
-                      {categoryIdToEmoji.get(opt.id) && (
-                        <span className="text-base shrink-0">{categoryIdToEmoji.get(opt.id)}</span>
-                      )}
-                      <span className="text-sm truncate">{opt.label}</span>
-                    </label>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label" optional>
+                {t("budgets.linkedCategories")}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t("budgets.generalBudget")} {lang === "es" ? "si no eliges ninguna" : "if you leave none selected"}
+              </p>
+              <div className="flex flex-col gap-1 min-w-0 max-h-48 overflow-y-auto">
+                {parentCategoryOptions.map((opt) => (
+                  <label
+                    key={opt.id}
+                    className="flex items-center gap-2 cursor-pointer py-1 min-w-0"
+                  >
+                    <Checkbox
+                      checked={formData.categoryIds.includes(opt.id)}
+                      onCheckedChange={() => toggleCategory(opt)}
+                    />
+                    {categoryIdToEmoji.get(opt.id) && (
+                      <span className="text-base shrink-0">{categoryIdToEmoji.get(opt.id)}</span>
+                    )}
+                    <span className="text-sm truncate">{opt.label}</span>
+                  </label>
+                ))}
               </div>
-              <div className="flex gap-2 justify-end mt-4">
-                <Button type="button" variant="outline" onClick={closeModal}>
-                  {t("common.cancel")}
-                </Button>
-                <Button type="submit" disabled={createBudget.isPending || updateBudget.isPending}>
-                  {(createBudget.isPending || updateBudget.isPending) && <Spinner className="mr-2 size-4" />}
-                  {t("common.save")}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </div>
+            <DialogFooter className="sm:justify-center gap-3">
+              <Button type="button" variant="outline" onClick={closeModal}>
+                {t("common.cancel")}
+              </Button>
+              <SubmitButton 
+                pending={createBudget.isPending || updateBudget.isPending}
+                isEdit={modalMode === "edit"}
+                className="gap-2"
+              >
+                {modalMode === "create" ? (lang === "es" ? "Crear" : "Create") : t("common.save")}
+              </SubmitButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
+              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
             </div>
             <AlertDialogTitle className="text-center">{t("budgets.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription className="text-center">{t("budgets.deleteConfirm")}</AlertDialogDescription>
@@ -586,7 +587,6 @@ export default function BudgetsBody() {
               onClick={handleDelete}
               disabled={deleteBudget.isPending}
               variant="destructive"
-              className="!bg-[var(--danger)] hover:!bg-[var(--danger-hover)] text-white border-0"
             >
               {deleteBudget.isPending && <Spinner className="size-4 mr-2" />}
               {t("common.delete")}

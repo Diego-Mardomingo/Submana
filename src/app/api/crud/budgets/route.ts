@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonResponse, jsonCachedResponse } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 import { computeBudgetSpent, type CategoryRow } from "@/lib/budgetHelpers";
 
@@ -78,97 +78,114 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
-
-  let body: Record<string, unknown>;
   try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError("Invalid JSON body");
-  }
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-  const amount =
-    typeof body.amount === "number"
-      ? body.amount
-      : parseFloat(String(body.amount ?? ""));
-  const color =
-    typeof body.color === "string" && body.color ? body.color : null;
-  let categoryIds: string[] = [];
-  if (Array.isArray(body.category_ids)) {
-    categoryIds = body.category_ids.filter((id): id is string => typeof id === "string");
-  } else if (typeof body.category_ids === "string" && body.category_ids) {
+    if (authError || !user) {
+      return jsonError("Unauthorized", 401);
+    }
+
+    let body: Record<string, unknown>;
     try {
-      const parsed = JSON.parse(body.category_ids) as unknown;
-      categoryIds = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+      body = (await request.json()) as Record<string, unknown>;
     } catch {
-      // ignore
+      return jsonError("Invalid JSON body");
     }
-  }
 
-  if (isNaN(amount) || amount < 0) {
-    return jsonError("missing_fields");
-  }
+    console.log("[POST /api/crud/budgets] body:", JSON.stringify(body));
 
-  const { data: inserted, error: insertError } = await supabase
-    .from("budgets")
-    .insert({
-      user_id: user.id,
-      amount,
-      color,
-      updated_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
-
-  if (insertError) {
-    return jsonError(insertError.message, 500);
-  }
-
-  if (categoryIds.length > 0) {
-    const rows = categoryIds.map((category_id) => ({
-      budget_id: inserted.id,
-      category_id,
-    }));
-    const { error: relError } = await supabase.from("budget_categories").insert(rows);
-    if (relError) {
-      await supabase.from("budgets").delete().eq("id", inserted.id);
-      return jsonError(relError.message, 500);
+    const amount =
+      typeof body.amount === "number"
+        ? body.amount
+        : parseFloat(String(body.amount ?? ""));
+    const color =
+      typeof body.color === "string" && body.color ? body.color : null;
+    let categoryIds: string[] = [];
+    if (Array.isArray(body.category_ids)) {
+      categoryIds = body.category_ids.filter((id): id is string => typeof id === "string");
+    } else if (typeof body.category_ids === "string" && body.category_ids) {
+      try {
+        const parsed = JSON.parse(body.category_ids) as unknown;
+        categoryIds = Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+      } catch {
+        // ignore
+      }
     }
-  }
 
-  const categoryIdsForSpent = categoryIds;
-  const now = new Date();
-  const { data: categoriesRows } = await supabase
-    .from("categories")
-    .select("id, parent_id")
-    .or("user_id.eq." + user.id + ",user_id.is.null");
-  const allCategories: CategoryRow[] = categoriesRows ?? [];
-  const spent = await computeBudgetSpent(
-    supabase,
-    user.id,
-    categoryIdsForSpent,
-    allCategories,
-    now.getFullYear(),
-    now.getMonth() + 1
-  );
+    if (isNaN(amount) || amount < 0) {
+      return jsonError("missing_fields");
+    }
 
-  return jsonResponse(
-    {
-      data: {
-        ...inserted,
-        amount: Number(inserted.amount),
-        categoryIds: categoryIdsForSpent,
-        spent,
+    console.log("[POST /api/crud/budgets] Creating budget with:", { amount, color, categoryIds });
+
+    const now = new Date().toISOString();
+    const name = categoryIds.length > 0 ? `Budget (${categoryIds.length} categories)` : "General Budget";
+    const { data: inserted, error: insertError } = await supabase
+      .from("budgets")
+      .insert({
+        user_id: user.id,
+        name,
+        amount,
+        color,
+        created_at: now,
+        updated_at: now,
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("[POST /api/crud/budgets] Insert error:", insertError);
+      return jsonError(insertError.message, 500);
+    }
+
+    console.log("[POST /api/crud/budgets] Inserted budget:", inserted);
+
+    if (categoryIds.length > 0) {
+      const rows = categoryIds.map((category_id) => ({
+        budget_id: inserted.id,
+        category_id,
+      }));
+      const { error: relError } = await supabase.from("budget_categories").insert(rows);
+      if (relError) {
+        console.error("[POST /api/crud/budgets] Category relation error:", relError);
+        await supabase.from("budgets").delete().eq("id", inserted.id);
+        return jsonError(relError.message, 500);
+      }
+    }
+
+    const categoryIdsForSpent = categoryIds;
+    const spentDate = new Date();
+    const { data: categoriesRows } = await supabase
+      .from("categories")
+      .select("id, parent_id")
+      .or("user_id.eq." + user.id + ",user_id.is.null");
+    const allCategories: CategoryRow[] = categoriesRows ?? [];
+    const spent = await computeBudgetSpent(
+      supabase,
+      user.id,
+      categoryIdsForSpent,
+      allCategories,
+      spentDate.getFullYear(),
+      spentDate.getMonth() + 1
+    );
+
+    return jsonResponse(
+      {
+        data: {
+          ...inserted,
+          amount: Number(inserted.amount),
+          categoryIds: categoryIdsForSpent,
+          spent,
+        },
       },
-    },
-    201
-  );
+      201
+    );
+  } catch (error) {
+    console.error("[POST /api/crud/budgets] Unexpected error:", error);
+    return jsonError(error instanceof Error ? error.message : "Internal server error", 500);
+  }
 }

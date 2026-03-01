@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useCategories, useArchivedCategories, CategoryWithSubs } from "@/hooks/useCategories";
 import {
   useCreateCategory,
@@ -21,6 +21,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AddButton } from "@/components/ui/add-button";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { Trash2, Plus } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import {
   Tooltip,
@@ -59,14 +70,7 @@ export default function CategoriesBody() {
   const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string } | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
   const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const modalContentRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isModalOpen) {
-      document.body.style.overflow = "hidden";
-      return () => { document.body.style.overflow = ""; };
-    }
-  }, [isModalOpen]);
 
   const resetForm = () => {
     setFormData({ id: "", name: "", parent_id: "", emoji: "" });
@@ -170,10 +174,7 @@ export default function CategoriesBody() {
                   onClick={() => openModal("createSub", { parentId: cat.id })}
                   title={t("categories.addSub")}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
+                  <Plus className="size-4" strokeWidth={2.5} />
                 </button>
               )}
               {canEdit && (
@@ -326,13 +327,9 @@ export default function CategoriesBody() {
             <p>{t("categories.heroSubtitle")}</p>
           </div>
         </div>
-        <button type="button" className="add-btn" onClick={() => openModal("create")}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span>{t("categories.add")}</span>
-        </button>
+        <AddButton onClick={() => openModal("create")}>
+          {t("categories.add")}
+        </AddButton>
       </header>
 
       {userCategories.length > 0 && (
@@ -372,82 +369,71 @@ export default function CategoriesBody() {
         </Collapsible>
       )}
 
-      {isModalOpen && (
-        <div
-          className="modal-backdrop"
-          onPointerDownCapture={(e) => {
-            const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
-            if (!isMobile) return;
-            const target = e.target as Node;
-            if (modalContentRef.current?.contains(target)) return;
-            if ((target as Element).nodeType === Node.ELEMENT_NODE && (target as Element).closest?.("[data-emoji-picker-popover]")) return;
-            if (emojiPickerOpen) {
-              setEmojiPickerOpen(false);
-              return;
-            }
-            closeModal();
-          }}
-        >
-          <div ref={modalContentRef} className="modal-content modal-content-subs" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">
               {modalMode === "create"
                 ? t("categories.add")
                 : modalMode === "createSub"
                 ? t("categories.addSub")
                 : t("common.edit")}
-            </h2>
-            <form onSubmit={handleSave} className="subs-form">
-              <div className="subs-form-section">
-                <Label className="subs-form-label" optional>
-                  {lang === "es" ? "Emoji" : "Emoji"}
-                </Label>
-                <EmojiPicker
-                  value={formData.emoji || null}
-                  onChange={(emoji) => setFormData({ ...formData, emoji })}
-                  open={emojiPickerOpen}
-                  onOpenChange={setEmojiPickerOpen}
-                />
-              </div>
-              <div className="subs-form-section">
-                <Label className="subs-form-label" htmlFor="cat-name" required>
-                  {t("settings.name")}
-                </Label>
-                <Input
-                  id="cat-name"
-                  type="text"
-                  required
-                  placeholder={lang === "es" ? "Nombre de la categoría" : "Category name"}
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="!h-10"
-                />
-              </div>
-              <div className="account-modal-actions" style={{ marginTop: 16 }}>
-                <Button type="button" variant="ghost" onClick={closeModal} className="account-modal-cancel">
-                  {t("common.cancel")}
-                </Button>
-                <Button
-                  type="submit"
-                  className="subs-form-submit account-modal-submit"
-                  disabled={createCategory.isPending || updateCategory.isPending}
-                >
-                  {(createCategory.isPending || updateCategory.isPending) && <Spinner className="size-5 shrink-0" />}
-                  {modalMode === "edit" ? t("common.save") : lang === "es" ? "Crear" : "Create"}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {modalMode === "createSub"
+                ? (lang === "es" ? "Añade una subcategoría" : "Add a subcategory")
+                : modalMode === "edit"
+                ? (lang === "es" ? "Modifica los detalles de la categoría" : "Edit category details")
+                : (lang === "es" ? "Crea una nueva categoría personalizada" : "Create a new custom category")}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSave} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label" optional>
+                {lang === "es" ? "Emoji" : "Emoji"}
+              </Label>
+              <EmojiPicker
+                value={formData.emoji || null}
+                onChange={(emoji) => setFormData({ ...formData, emoji })}
+                open={emojiPickerOpen}
+                onOpenChange={setEmojiPickerOpen}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label className="subs-form-label" htmlFor="cat-name" required>
+                {t("settings.name")}
+              </Label>
+              <Input
+                id="cat-name"
+                type="text"
+                required
+                placeholder={lang === "es" ? "Nombre de la categoría" : "Category name"}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="h-10"
+              />
+            </div>
+            <DialogFooter className="sm:justify-center gap-3">
+              <Button type="button" variant="outline" onClick={closeModal}>
+                {t("common.cancel")}
+              </Button>
+              <SubmitButton 
+                pending={createCategory.isPending || updateCategory.isPending}
+                isEdit={modalMode === "edit"}
+                className="gap-2"
+              >
+                {modalMode === "edit" ? t("common.save") : lang === "es" ? "Crear" : "Create"}
+              </SubmitButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
+              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
             </div>
             <AlertDialogTitle className="text-center">
               {lang === "es" ? "Eliminar categoría" : "Delete category"}

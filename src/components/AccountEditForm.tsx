@@ -6,10 +6,9 @@ import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useRouter } from "next/navigation";
 import IconPicker from "@/components/IconPicker";
-import { Spinner } from "@/components/ui/spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import {
   Popover,
@@ -180,7 +179,7 @@ export default function AccountEditForm({ account }: { account: Account }) {
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  className="subs-form-color-btn"
+                  className="size-10 rounded-lg cursor-pointer border border-input"
                   style={{ backgroundColor: color }}
                 />
               </PopoverTrigger>
@@ -207,22 +206,9 @@ export default function AccountEditForm({ account }: { account: Account }) {
           </div>
         </div>
 
-        <Button
-          type="submit"
-          className="subs-form-submit"
-          disabled={updateAccount.isPending}
-        >
-          {updateAccount.isPending ? (
-            <Spinner className="size-5" />
-          ) : (
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-              <polyline points="17 21 17 13 7 13 7 21" />
-              <polyline points="7 3 7 8 15 8" />
-            </svg>
-          )}
+        <SubmitButton pending={updateAccount.isPending} isEdit>
           {t("common.save")}
-        </Button>
+        </SubmitButton>
       </form>
     </>
   );

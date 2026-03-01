@@ -486,10 +486,7 @@ export default function AccountDetail({ account }: { account: Account }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
+              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
             </div>
             <AlertDialogTitle className="text-center">
               {t("accounts.delete")}
@@ -501,8 +498,8 @@ export default function AccountDetail({ account }: { account: Account }) {
               <div className="mt-3 p-3 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)] text-center">
                 <p className="text-sm font-medium text-[var(--danger)]">
                   {lang === "es" 
-                    ? `⚠️ Se eliminarán ${(transactions as TransactionItem[]).length} transaccion${(transactions as TransactionItem[]).length === 1 ? '' : 'es'} asociadas a esta cuenta`
-                    : `⚠️ ${(transactions as TransactionItem[]).length} transaction${(transactions as TransactionItem[]).length === 1 ? '' : 's'} associated with this account will be deleted`}
+                    ? `Se eliminarán ${(transactions as TransactionItem[]).length} transaccion${(transactions as TransactionItem[]).length === 1 ? '' : 'es'} asociadas a esta cuenta`
+                    : `${(transactions as TransactionItem[]).length} transaction${(transactions as TransactionItem[]).length === 1 ? '' : 's'} associated with this account will be deleted`}
                 </p>
               </div>
             )}
@@ -525,7 +522,7 @@ export default function AccountDetail({ account }: { account: Account }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <Trash2 className="size-7 text-[var(--danger)]" />
+              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
             </div>
             <AlertDialogTitle className="text-center">
               {t("transactions.delete")}
