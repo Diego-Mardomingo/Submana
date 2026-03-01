@@ -27,21 +27,22 @@ export function SortableItem({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
-    transition,
     isDragging,
   } = useSortable({
     id,
     disabled,
   });
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 1000 : "auto",
-    touchAction: "none",
-  };
+  const style: React.CSSProperties = isDragging
+    ? {
+        opacity: 0,
+        visibility: "hidden" as const,
+      }
+    : {
+        transform: CSS.Translate.toString(transform),
+      };
 
   if (disabled) {
     return <div className={className}>{children}</div>;
@@ -53,7 +54,7 @@ export function SortableItem({
         ref={setNodeRef}
         style={style}
         className={cn(
-          "sortable-item",
+          "sortable-item sortable-item--mobile",
           isDragging && "sortable-item--dragging",
           className
         )}
@@ -78,6 +79,7 @@ export function SortableItem({
     >
       {showHandle && (
         <button
+          ref={setActivatorNodeRef}
           type="button"
           className="sortable-handle"
           {...listeners}

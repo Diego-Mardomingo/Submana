@@ -4,29 +4,28 @@ import {
   DndContext,
   closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
   DragEndEvent,
   DragStartEvent,
   DragOverlay,
-  MeasuringStrategy,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   rectSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
-import { restrictToParentElement } from "@dnd-kit/modifiers";
-import { useState, useCallback } from "react";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { restrictToWindowEdges } from "@dnd-kit/modifiers";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 interface SortableContainerProps<T extends { id: string }> {
   items: T[];
   onReorder: (items: T[]) => void;
-  children: React.ReactNode;
+  renderItem: (item: T, index: number) => React.ReactNode;
   renderOverlay?: (activeItem: T | null) => React.ReactNode;
   strategy?: "vertical" | "grid";
   className?: string;
@@ -36,24 +35,32 @@ interface SortableContainerProps<T extends { id: string }> {
 export function SortableContainer<T extends { id: string }>({
   items,
   onReorder,
-  children,
+  renderItem,
   renderOverlay,
   strategy = "grid",
   className,
   disabled = false,
 }: SortableContainerProps<T>) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [localItems, setLocalItems] = useState<T[]>(items);
+  const isDraggingRef = useRef(false);
+
+  // Sincronizar con items externos solo cuando no estamos arrastrando
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setLocalItems(items);
+    }
+  }, [items]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: {
         distance: 8,
       },
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 300,
+        delay: 500,
         tolerance: 5,
       },
     }),
@@ -63,41 +70,47 @@ export function SortableContainer<T extends { id: string }>({
   );
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    isDraggingRef.current = true;
     setActiveId(event.active.id as string);
-    if (isMobile && navigator.vibrate) {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
       navigator.vibrate(50);
     }
-  }, [isMobile]);
+  }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
-      setActiveId(null);
 
       if (over && active.id !== over.id) {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+        const oldIndex = localItems.findIndex((item) => item.id === active.id);
+        const newIndex = localItems.findIndex((item) => item.id === over.id);
 
         if (oldIndex !== -1 && newIndex !== -1) {
-          const newItems = [...items];
-          const [movedItem] = newItems.splice(oldIndex, 1);
-          newItems.splice(newIndex, 0, movedItem);
+          const newItems = arrayMove(localItems, oldIndex, newIndex);
+          // Actualizar estado local INMEDIATAMENTE (antes de limpiar activeId)
+          setLocalItems(newItems);
+          // Notificar al padre para persistir
           onReorder(newItems);
         }
       }
+
+      // Limpiar activeId después de actualizar localItems
+      setActiveId(null);
+      isDraggingRef.current = false;
     },
-    [items, onReorder]
+    [localItems, onReorder]
   );
 
   const handleDragCancel = useCallback(() => {
     setActiveId(null);
+    isDraggingRef.current = false;
   }, []);
 
-  const activeItem = activeId ? items.find((item) => item.id === activeId) ?? null : null;
+  const activeItem = activeId ? localItems.find((item) => item.id === activeId) ?? null : null;
   const sortingStrategy = strategy === "vertical" ? verticalListSortingStrategy : rectSortingStrategy;
 
   if (disabled) {
-    return <div className={className}>{children}</div>;
+    return <div className={className}>{localItems.map(renderItem)}</div>;
   }
 
   return (
@@ -107,19 +120,16 @@ export function SortableContainer<T extends { id: string }>({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
-      modifiers={[restrictToParentElement]}
-      measuring={{
-        droppable: {
-          strategy: MeasuringStrategy.Always,
-        },
-      }}
+      modifiers={[restrictToWindowEdges]}
     >
-      <SortableContext items={items.map((i) => i.id)} strategy={sortingStrategy}>
-        <div className={className}>{children}</div>
+      <SortableContext items={localItems.map((i) => i.id)} strategy={sortingStrategy}>
+        <div className={className}>{localItems.map(renderItem)}</div>
       </SortableContext>
-      <DragOverlay adjustScale dropAnimation={null}>
-        {renderOverlay ? renderOverlay(activeItem) : null}
-      </DragOverlay>
+      {renderOverlay && (
+        <DragOverlay dropAnimation={null}>
+          {renderOverlay(activeItem)}
+        </DragOverlay>
+      )}
     </DndContext>
   );
 }

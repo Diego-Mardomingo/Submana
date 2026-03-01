@@ -332,8 +332,7 @@ export default function AccountsBody() {
               </div>
             ) : null
           }
-        >
-          {(accounts as Array<{ id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean; bank_provider?: string | null }>).map((account) => (
+          renderItem={(account) => (
             <SortableItem key={account.id} id={account.id}>
               <Link
                 href={`/account/${account.id}`}
@@ -391,8 +390,8 @@ export default function AccountsBody() {
                 </TooltipProvider>
               </Link>
             </SortableItem>
-          ))}
-        </SortableContainer>
+          )}
+        />
       )}
 
       <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>

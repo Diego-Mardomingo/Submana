@@ -31,11 +31,11 @@ async function reorderItems(table: ReorderableTable, items: ReorderItem[]) {
   return res.json();
 }
 
-function getQueryKey(table: ReorderableTable) {
+function getInvalidateKey(table: ReorderableTable) {
   if (table === "accounts") {
-    return queryKeys.accounts.lists();
+    return queryKeys.accounts.all;
   }
-  return queryKeys.budgets.lists();
+  return queryKeys.budgets.all;
 }
 
 export function useReorder<T extends { id: string }>({ table, onSuccess, onError }: UseReorderOptions) {
@@ -45,7 +45,7 @@ export function useReorder<T extends { id: string }>({ table, onSuccess, onError
     mutationFn: (items: ReorderItem[]) => reorderItems(table, items),
     onError: (error: Error) => {
       toast.error("Error al reordenar");
-      queryClient.invalidateQueries({ queryKey: getQueryKey(table) });
+      queryClient.invalidateQueries({ queryKey: getInvalidateKey(table) });
       onError?.(error);
     },
     onSuccess: () => {
@@ -60,8 +60,22 @@ export function useReorder<T extends { id: string }>({ table, onSuccess, onError
         display_order: index,
       }));
 
-      const key = getQueryKey(table);
-      queryClient.setQueryData(key, () => newItems);
+      // Actualización optimista: actualiza todas las queries que coincidan con el prefijo
+      const queryKey = getInvalidateKey(table);
+      queryClient.setQueriesData<T[]>(
+        { queryKey },
+        (oldData) => {
+          if (!oldData) return oldData;
+          // Crear un mapa de id -> nuevo orden
+          const orderMap = new Map(newItems.map((item, idx) => [item.id, idx]));
+          // Reordenar los datos existentes según el nuevo orden
+          return [...oldData].sort((a, b) => {
+            const orderA = orderMap.get(a.id) ?? Infinity;
+            const orderB = orderMap.get(b.id) ?? Infinity;
+            return orderA - orderB;
+          });
+        }
+      );
 
       mutation.mutate(items);
     },

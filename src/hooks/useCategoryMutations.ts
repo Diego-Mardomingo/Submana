@@ -2,6 +2,12 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import type { CategoryWithSubs, CategoryItem } from "./useCategories";
+
+interface CategoriesData {
+  defaultCategories: CategoryWithSubs[];
+  userCategories: CategoryWithSubs[];
+}
 
 interface CreateCategoryInput {
   name: string;
@@ -27,6 +33,47 @@ export function useCreateCategory() {
       return json.data;
     },
 
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.categories.lists() });
+      const queryKey = queryKeys.categories.list({ archived: false });
+      const previous = queryClient.getQueryData<CategoriesData>(queryKey);
+
+      const optimisticCategory: CategoryWithSubs = {
+        id: `temp-${Date.now()}`,
+        name: input.name,
+        emoji: input.emoji,
+        parent_id: input.parent_id,
+        isDefault: false,
+        subcategories: [],
+      };
+
+      queryClient.setQueryData<CategoriesData>(queryKey, (old) => {
+        if (!old) return old;
+        if (input.parent_id) {
+          return {
+            ...old,
+            userCategories: old.userCategories.map((cat) =>
+              cat.id === input.parent_id
+                ? { ...cat, subcategories: [...(cat.subcategories ?? []), optimisticCategory] }
+                : cat
+            ),
+          };
+        }
+        return {
+          ...old,
+          userCategories: [...old.userCategories, optimisticCategory],
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.categories.list({ archived: false }), context.previous);
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
     },
@@ -37,6 +84,27 @@ interface UpdateCategoryInput {
   id: string;
   name: string;
   emoji?: string | null;
+}
+
+function updateCategoryInList(
+  categories: CategoryWithSubs[],
+  id: string,
+  updates: Partial<CategoryItem>
+): CategoryWithSubs[] {
+  return categories.map((cat) => {
+    if (cat.id === id) {
+      return { ...cat, ...updates };
+    }
+    if (cat.subcategories?.length) {
+      return {
+        ...cat,
+        subcategories: cat.subcategories.map((sub) =>
+          sub.id === id ? { ...sub, ...updates } : sub
+        ),
+      };
+    }
+    return cat;
+  });
 }
 
 export function useUpdateCategory() {
@@ -54,10 +122,41 @@ export function useUpdateCategory() {
       return json.data;
     },
 
+    onMutate: async ({ id, name, emoji }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.categories.lists() });
+      const queryKey = queryKeys.categories.list({ archived: false });
+      const previous = queryClient.getQueryData<CategoriesData>(queryKey);
+
+      queryClient.setQueryData<CategoriesData>(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          userCategories: updateCategoryInList(old.userCategories, id, { name, emoji }),
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.categories.list({ archived: false }), context.previous);
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
     },
   });
+}
+
+function removeCategoryFromList(categories: CategoryWithSubs[], id: string): CategoryWithSubs[] {
+  return categories
+    .filter((cat) => cat.id !== id)
+    .map((cat) => ({
+      ...cat,
+      subcategories: cat.subcategories?.filter((sub) => sub.id !== id),
+    }));
 }
 
 export function useDeleteCategory() {
@@ -71,6 +170,28 @@ export function useDeleteCategory() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error || "Failed to delete category");
       return json.data;
+    },
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.categories.lists() });
+      const queryKey = queryKeys.categories.list({ archived: false });
+      const previous = queryClient.getQueryData<CategoriesData>(queryKey);
+
+      queryClient.setQueryData<CategoriesData>(queryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          userCategories: removeCategoryFromList(old.userCategories, id),
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.categories.list({ archived: false }), context.previous);
+      }
     },
 
     onSettled: () => {
@@ -92,6 +213,29 @@ export function useArchiveCategory() {
       if (!res.ok) throw new Error(json.error || "Failed to archive");
       return json.data;
     },
+
+    onMutate: async ({ id }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.categories.lists() });
+      const activeKey = queryKeys.categories.list({ archived: false });
+      const previous = queryClient.getQueryData<CategoriesData>(activeKey);
+
+      queryClient.setQueryData<CategoriesData>(activeKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          userCategories: removeCategoryFromList(old.userCategories, id),
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.categories.list({ archived: false }), context.previous);
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
     },
@@ -109,6 +253,29 @@ export function useUnarchiveCategory() {
       if (!res.ok) throw new Error(json.error || "Failed to unarchive");
       return json.data;
     },
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.categories.lists() });
+      const archivedKey = queryKeys.categories.list({ archived: true });
+      const previous = queryClient.getQueryData<CategoriesData>(archivedKey);
+
+      queryClient.setQueryData<CategoriesData>(archivedKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          userCategories: removeCategoryFromList(old.userCategories, id),
+        };
+      });
+
+      return { previous };
+    },
+
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.categories.list({ archived: true }), context.previous);
+      }
+    },
+
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories.all });
     },

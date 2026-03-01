@@ -1584,20 +1584,20 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
   min-width: 0;
 }
 
+
 .sortable-handle {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
-  min-height: 100%;
+  min-height: 40px;
   cursor: grab;
   color: var(--gris-claro);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
   border: none;
-  border-radius: 8px 0 0 8px;
-  transition: color 0.15s, background 0.15s;
+  border-radius: 8px;
   flex-shrink: 0;
-  margin-right: -4px;
+  touch-action: none;
 }
 
 .sortable-handle:hover {
@@ -1610,25 +1610,13 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
 }
 
 .sortable-item--dragging {
-  opacity: 0.5;
-  z-index: 1000;
-}
-
-.sortable-item--dragging .account-card,
-.sortable-item--dragging .budget-card {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  transform: scale(1.02);
+  z-index: 1000 !important;
+  pointer-events: none;
 }
 
 .sortable-overlay {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 0 2px var(--accent);
-  transform: scale(1.03);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   border-radius: 16px;
-  background: var(--gris-oscuro);
-}
-
-.sortable-overlay.account-card,
-.sortable-overlay.budget-card {
   pointer-events: none;
 }
 
@@ -1636,30 +1624,25 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
   .sortable-handle {
     display: none;
   }
-
-  .sortable-item {
-    touch-action: none;
-  }
-
-  .sortable-item--dragging {
-    transform: scale(1.02);
-  }
 }
 
 @media (min-width: 768px) {
-  .accounts-grid .sortable-item--desktop .account-card {
-    border-radius: 0 16px 16px 0;
+  .sortable-item--desktop {
+    position: relative;
+    margin-left: 32px;
   }
 
-  .accounts-grid .sortable-item--desktop .sortable-handle + .sortable-item__content .account-card {
-    border-radius: 0 16px 16px 0;
+  .sortable-item--desktop .sortable-handle {
+    position: absolute;
+    left: -32px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 40px;
+    border-radius: 8px;
   }
 
-  .budgets-grid--desktop .sortable-item--desktop .budget-card {
-    border-radius: 0 16px 16px 0;
-  }
-
-  .budgets-grid--desktop .sortable-item--desktop .sortable-handle + .sortable-item__content .budget-card {
-    border-radius: 0 16px 16px 0;
+  .sortable-item--desktop .sortable-item__content {
+    width: 100%;
   }
 }

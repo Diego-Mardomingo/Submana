@@ -307,42 +307,41 @@ export default function BudgetsBody() {
             </p>
           </div>
         ) : isMobile ? (
-          <SortableContainer
-            items={budgets}
-            onReorder={handleReorder}
-            className="budgets-grid budgets-grid--mobile"
-            strategy="vertical"
-            renderOverlay={(activeItem) => {
-              if (!activeItem) return null;
-              const amount = Number(activeItem.amount);
-              const spent = Number(activeItem.spent ?? 0);
-              const over = spent > amount;
-              const parentIds = getParentIds(activeItem.categoryIds ?? []);
-              const firstEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
-              return (
-                <div
-                  className={`budget-card sortable-overlay ${over ? "budget-card--over" : ""}`}
-                  style={{ "--accent-budget": activeItem.color || "var(--accent)" } as React.CSSProperties}
-                >
-                  <div className="budget-card-badges-row">
-                    <span className="budget-card-icon-blur" aria-hidden>
-                      {firstEmoji ? <span className="budget-card-emoji">{firstEmoji}</span> : <Wallet size={20} strokeWidth={1.5} />}
-                    </span>
-                    {parentIds.length ? (
-                      <span className="budget-card-title-categories">
-                        {parentIds.map((id) => categoryIdToName.get(id)).filter(Boolean).join(", ")}
+          <SwipeToRevealGroup className="budgets-grid budgets-grid--swipe">
+            <SortableContainer
+              items={budgets}
+              onReorder={handleReorder}
+              className="budgets-grid budgets-grid--mobile"
+              strategy="vertical"
+              renderOverlay={(activeItem) => {
+                if (!activeItem) return null;
+                const amount = Number(activeItem.amount);
+                const spent = Number(activeItem.spent ?? 0);
+                const over = spent > amount;
+                const parentIds = getParentIds(activeItem.categoryIds ?? []);
+                const firstEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
+                return (
+                  <div
+                    className={`budget-card sortable-overlay ${over ? "budget-card--over" : ""}`}
+                    style={{ "--accent-budget": activeItem.color || "var(--accent)" } as React.CSSProperties}
+                  >
+                    <div className="budget-card-badges-row">
+                      <span className="budget-card-icon-blur" aria-hidden>
+                        {firstEmoji ? <span className="budget-card-emoji">{firstEmoji}</span> : <Wallet size={20} strokeWidth={1.5} />}
                       </span>
-                    ) : (
-                      <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
-                    )}
+                      {parentIds.length ? (
+                        <span className="budget-card-title-categories">
+                          {parentIds.map((id) => categoryIdToName.get(id)).filter(Boolean).join(", ")}
+                        </span>
+                      ) : (
+                        <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
+                      )}
+                    </div>
+                    <p className="budget-card-summary">{formatCurrency(spent)} / {formatCurrency(amount)}</p>
                   </div>
-                  <p className="budget-card-summary">{formatCurrency(spent)} / {formatCurrency(amount)}</p>
-                </div>
-              );
-            }}
-          >
-            <SwipeToRevealGroup className="budgets-grid budgets-grid--swipe">
-              {budgets.map((budget) => {
+                );
+              }}
+              renderItem={(budget) => {
                 const amount = Number(budget.amount);
                 const spent = Number(budget.spent ?? 0);
                 const remaining = Math.max(0, amount - spent);
@@ -433,9 +432,9 @@ export default function BudgetsBody() {
                     </SwipeToReveal>
                   </SortableItem>
                 );
-              })}
-            </SwipeToRevealGroup>
-          </SortableContainer>
+              }}
+            />
+          </SwipeToRevealGroup>
         ) : (
           <SortableContainer
             items={budgets}
@@ -473,8 +472,7 @@ export default function BudgetsBody() {
                 </div>
               );
             }}
-          >
-            {budgets.map((budget) => {
+            renderItem={(budget) => {
               const amount = Number(budget.amount);
               const spent = Number(budget.spent ?? 0);
               const remaining = Math.max(0, amount - spent);
@@ -549,8 +547,8 @@ export default function BudgetsBody() {
                   </div>
                 </SortableItem>
               );
-            })}
-          </SortableContainer>
+            }}
+          />
         )}
       </div>
 
