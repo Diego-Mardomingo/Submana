@@ -68,8 +68,12 @@ export function useCalendarSwipe(
       }
     }
 
-    // Solo prevenir scroll si claramente es un swipe horizontal y el evento es cancelable
+    // Prevenir scroll si claramente es un swipe horizontal o vertical hacia arriba y el evento es cancelable
     if (gestureTypeRef.current === "horizontal" && absX > 30 && e.cancelable) {
+      e.preventDefault();
+    }
+    // Prevenir scroll vertical si es un swipe hacia arriba (para volver al mes actual)
+    if (gestureTypeRef.current === "vertical" && deltaY < 0 && absY > 30 && e.cancelable) {
       e.preventDefault();
     }
   }, []);
