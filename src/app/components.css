@@ -42,7 +42,6 @@
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
   min-width: 0;
 }
 
@@ -335,6 +334,7 @@
     align-items: center;
     gap: 0.5rem;
     row-gap: 0.35rem;
+    flex-wrap: wrap;
   }
 
   .header_text {
