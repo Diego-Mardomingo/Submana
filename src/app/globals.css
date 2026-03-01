@@ -85,6 +85,86 @@ html[data-nav-direction="same"]::view-transition-new(root) {
   }
 }
 
+/* ── Calendar filter view transitions ── */
+html[data-filter-transition]::view-transition-old(root),
+html[data-filter-transition]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* Keep calendar grid below popovers during transition */
+html[data-filter-transition]::view-transition-group(calendar-grid) {
+  z-index: 1;
+}
+
+/* Keep popovers on top during view transitions */
+[data-radix-popper-content-wrapper] {
+  view-transition-name: popover-layer;
+}
+
+::view-transition-group(popover-layer) {
+  z-index: 9999;
+}
+
+::view-transition-old(popover-layer),
+::view-transition-new(popover-layer) {
+  animation: none;
+}
+
+html[data-filter-transition]::view-transition-old(calendar-grid) {
+  animation: vt-fade-out 0.1s ease-out forwards;
+}
+
+html[data-filter-transition]::view-transition-new(calendar-grid) {
+  animation: vt-fade-in 0.12s ease-out 0.06s forwards;
+}
+
+/* ── Calendar navigation view transitions (month swipe) ── */
+@keyframes vt-calendar-slide-to-left {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-15%); opacity: 0; }
+}
+
+@keyframes vt-calendar-slide-from-right {
+  from { transform: translateX(15%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes vt-calendar-slide-to-right {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(15%); opacity: 0; }
+}
+
+@keyframes vt-calendar-slide-from-left {
+  from { transform: translateX(-15%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Forward navigation (swipe left / next month) */
+html[data-calendar-direction]::view-transition-old(root),
+html[data-calendar-direction]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-calendar-direction="forward"]::view-transition-old(calendar-grid) {
+  animation: vt-calendar-slide-to-left 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+html[data-calendar-direction="forward"]::view-transition-new(calendar-grid) {
+  animation: vt-calendar-slide-from-right 0.22s cubic-bezier(0.32, 0.72, 0, 1) 0.05s forwards;
+}
+
+/* Back navigation (swipe right / previous month) */
+html[data-calendar-direction="back"]::view-transition-old(calendar-grid) {
+  animation: vt-calendar-slide-to-right 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+html[data-calendar-direction="back"]::view-transition-new(calendar-grid) {
+  animation: vt-calendar-slide-from-left 0.22s cubic-bezier(0.32, 0.72, 0, 1) 0.05s forwards;
+}
+
+
 /* ── Dark theme (default) ── */
 /* Paleta cohesiva: tonos desaturados y elegantes para diseño minimalista */
 :root,

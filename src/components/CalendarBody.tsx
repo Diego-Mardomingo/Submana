@@ -16,8 +16,11 @@ import {
 } from "@/components/ui/collapsible";
 import Day from "./Day";
 import CalendarDayList, { type DayEntry } from "./CalendarDayList";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { useCalendarAccountFilter } from "@/contexts/CalendarFilterContext";
+import CalendarAccountFilter from "./CalendarAccountFilter";
 import { cn } from "@/lib/utils";
 
 const formatCurrency = (n: number) => {
@@ -42,6 +45,7 @@ type SubForCalendar = {
   frequency_value?: number;
   icon?: string | null;
   cost?: number | string;
+  account_id?: string | null;
 };
 
 function isPaymentDay(
@@ -125,6 +129,7 @@ export default function CalendarBody() {
 
   const { data: subscriptions = [] } = useSubscriptions();
   const { data: transactions = [], isLoading } = useTransactions(year, month + 1);
+  const { isAccountHidden } = useCalendarAccountFilter();
 
   const diasSemana = [
     t("calendar.monday"),
@@ -165,13 +170,54 @@ export default function CalendarBody() {
       newMonth = 0;
       newYear++;
     }
-    setMonth(newMonth);
-    setYear(newYear);
+
+    const direction = delta > 0 ? "forward" : "back";
+    
+    if (
+      typeof document !== "undefined" &&
+      "startViewTransition" in document &&
+      typeof document.startViewTransition === "function"
+    ) {
+      document.documentElement.setAttribute("data-calendar-direction", direction);
+      const transition = document.startViewTransition(() => {
+        setMonth(newMonth);
+        setYear(newYear);
+      });
+      transition.finished.finally(() => {
+        document.documentElement.removeAttribute("data-calendar-direction");
+      });
+    } else {
+      setMonth(newMonth);
+      setYear(newYear);
+    }
   };
 
   const handleToday = () => {
-    setYear(new Date().getFullYear());
-    setMonth(new Date().getMonth());
+    const todayYear = new Date().getFullYear();
+    const todayMonth = new Date().getMonth();
+    
+    if (year === todayYear && month === todayMonth) return;
+    
+    const isFuture = year > todayYear || (year === todayYear && month > todayMonth);
+    const direction = isFuture ? "back" : "forward";
+    
+    if (
+      typeof document !== "undefined" &&
+      "startViewTransition" in document &&
+      typeof document.startViewTransition === "function"
+    ) {
+      document.documentElement.setAttribute("data-calendar-direction", direction);
+      const transition = document.startViewTransition(() => {
+        setYear(todayYear);
+        setMonth(todayMonth);
+      });
+      transition.finished.finally(() => {
+        document.documentElement.removeAttribute("data-calendar-direction");
+      });
+    } else {
+      setYear(todayYear);
+      setMonth(todayMonth);
+    }
   };
 
   useEffect(() => {
@@ -208,11 +254,15 @@ export default function CalendarBody() {
   };
 
   const getSubsIconsForDay = (dayNumber: number) =>
-    subscriptions.flatMap((sub: SubForCalendar) =>
-      isPaymentDay(sub, year, month, dayNumber) ? [sub.icon] : []
-    );
+    subscriptions
+      .filter((sub: SubForCalendar) => !isAccountHidden(sub.account_id))
+      .flatMap((sub: SubForCalendar) =>
+        isPaymentDay(sub, year, month, dayNumber) ? [sub.icon] : []
+      );
   const getSubsForDay = (dayNumber: number) =>
-    subscriptions.filter((sub: SubForCalendar) => isPaymentDay(sub, year, month, dayNumber));
+    subscriptions
+      .filter((sub: SubForCalendar) => !isAccountHidden(sub.account_id))
+      .filter((sub: SubForCalendar) => isPaymentDay(sub, year, month, dayNumber));
   type TxWithAmount = TxForCalendar & {
     id: string;
     amount?: number;
@@ -220,21 +270,26 @@ export default function CalendarBody() {
     description?: string | null;
     category?: { name: string } | null;
     subcategory?: { name: string } | null;
+    account_id?: string | null;
   };
   const getTransactionsForDay = (dayNumber: number): TxWithAmount[] =>
-    (transactions || []).filter((tx: TxWithAmount) => {
-      const d = new Date(tx.date);
-      return d.getFullYear() === year && d.getMonth() === month && d.getDate() === dayNumber;
-    });
+    (transactions || [])
+      .filter((tx: TxWithAmount) => !isAccountHidden(tx.account_id))
+      .filter((tx: TxWithAmount) => {
+        const d = new Date(tx.date);
+        return d.getFullYear() === year && d.getMonth() === month && d.getDate() === dayNumber;
+      });
 
   const getSpentValue = () => {
     let spent = 0;
     daysArray.forEach((dayNumber) => {
-      subscriptions.forEach((sub: SubForCalendar) => {
-        if (isPaymentDay(sub, year, month, dayNumber)) {
-          spent = parseFloat((spent + Number(sub.cost)).toFixed(2));
-        }
-      });
+      subscriptions
+        .filter((sub: SubForCalendar) => !isAccountHidden(sub.account_id))
+        .forEach((sub: SubForCalendar) => {
+          if (isPaymentDay(sub, year, month, dayNumber)) {
+            spent = parseFloat((spent + Number(sub.cost)).toFixed(2));
+          }
+        });
     });
     return spent;
   };
@@ -302,9 +357,12 @@ export default function CalendarBody() {
             <ChevronRight className="size-5" strokeWidth={1.5} />
           </Button>
         </div>
-        <div className="header_text" onClick={handleToday} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleToday()}>
-          <p className="nombre_mes">{meses[month]}</p>
-          <p className="año">{year}</p>
+        <div className="header_left_group">
+          <div className="header_text" onClick={handleToday} role="button" tabIndex={0} onKeyDown={(e) => e.key === "Enter" && handleToday()}>
+            <p className="nombre_mes">{meses[month]}</p>
+            <p className="año">{year}</p>
+          </div>
+          <CalendarAccountFilter />
         </div>
         <div className="spent_container">
           <p className="spent_title">{t("calendar.monthly_spend")}</p>
@@ -312,7 +370,11 @@ export default function CalendarBody() {
             {isLoading ? (
               <Spinner className="size-5 text-primary" />
             ) : (
-              <span>{formatCurrency(getSpentValue())}</span>
+              <AnimatedNumber
+                value={getSpentValue()}
+                formatFn={formatCurrency}
+                duration={350}
+              />
             )}
           </div>
         </div>
@@ -328,7 +390,10 @@ export default function CalendarBody() {
           </div>
         ))}
       </aside>
-      <section className="calendar_body">
+      <section
+        className="calendar_body"
+        style={{ viewTransitionName: "calendar-grid" }}
+      >
         {daysArray.map((dayNumber, index) => {
           const styleObj = index === 0 ? { gridColumnStart: startColumn } : {};
           return (

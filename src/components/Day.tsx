@@ -75,12 +75,10 @@ export default function Day({
       return (
         <>
           {iconList.slice(0, 1).map((iconUrl, idx) => {
-            const subId = subsForDay[idx]?.id ?? idx;
             return (
               <Avatar
                 key={idx}
                 className="subscription_icon shrink-0"
-                style={{ viewTransitionName: `sub-icon-${subId}-day-${dayNumber}` }}
               >
                 <AvatarImage src={iconUrl} alt="subscription" />
               </Avatar>
@@ -93,12 +91,10 @@ export default function Day({
       );
     }
     return iconList.map((iconUrl, idx) => {
-      const subId = subsForDay[idx]?.id ?? idx;
       return (
         <Avatar
           key={idx}
           className="subscription_icon shrink-0"
-          style={{ viewTransitionName: `sub-icon-${subId}-day-${dayNumber}` }}
         >
           <AvatarImage src={iconUrl} alt="subscription" />
         </Avatar>

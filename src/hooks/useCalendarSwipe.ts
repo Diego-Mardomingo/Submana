@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-const SWIPE_THRESHOLD = 60;
+const SWIPE_THRESHOLD = 40;
 const SWIPE_RATIO = 2.5; // deltaX debe ser 2.5x mayor que deltaY para considerarse horizontal
 const TAP_THRESHOLD = 10;
 const SWIPE_TIMEOUT = 300;
@@ -68,8 +68,8 @@ export function useCalendarSwipe(
       }
     }
 
-    // Solo prevenir scroll si claramente es un swipe horizontal
-    if (gestureTypeRef.current === "horizontal" && absX > 30) {
+    // Solo prevenir scroll si claramente es un swipe horizontal y el evento es cancelable
+    if (gestureTypeRef.current === "horizontal" && absX > 30 && e.cancelable) {
       e.preventDefault();
     }
   }, []);
