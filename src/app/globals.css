@@ -337,7 +337,7 @@ button:not(:disabled),
 
 @media (max-width: 767px) {
   .auth-content-shell {
-    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
     overflow-x: hidden;
   }
 }
@@ -351,7 +351,7 @@ button:not(:disabled),
 
 @media (max-width: 767px) {
   .page-container {
-    margin-bottom: 5rem;
+    margin-bottom: 0;
   }
 }
 
@@ -1611,7 +1611,7 @@ button:not(:disabled),
 @media (max-width: 768px) {
   .settings-page {
     padding: 1rem 0.75rem;
-    margin-bottom: 5rem;
+    margin-bottom: 0;
   }
 
   .settings-avatar {
@@ -1739,12 +1739,19 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
 }
 
 .sortable-item--mobile {
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 .sortable-item--desktop {
   display: flex;
   align-items: stretch;
+}
+
+.sortable-item__motion {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
 }
 
 .sortable-item__content {

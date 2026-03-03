@@ -1,4 +1,4 @@
-export type BankProvider = "trade_republic" | "revolut" | "cash";
+export type BankProvider = "trade_republic" | "revolut" | "bbva" | "cash";
 
 export interface BankProviderConfig {
   id: BankProvider;
@@ -22,6 +22,13 @@ export const BANK_PROVIDERS: Record<BankProvider, BankProviderConfig> = {
     icon: "https://cdn.brandfetch.io/revolut.com/w/400/h/400?c=1id-tf6xJEAcHu0Tio1",
     acceptedFormats: [".xlsx", ".xls", ".csv"],
     formatLabel: "Excel/CSV",
+  },
+  bbva: {
+    id: "bbva",
+    name: "BBVA",
+    icon: "https://cdn.brandfetch.io/bbva.es/w/400/h/400?c=1id-tf6xJEAcHu0Tio1",
+    acceptedFormats: [".xlsx", ".xls"],
+    formatLabel: "Excel",
   },
   cash: {
     id: "cash",

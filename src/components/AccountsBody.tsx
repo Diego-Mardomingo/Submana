@@ -26,9 +26,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AddButton } from "@/components/ui/add-button";
@@ -215,13 +213,23 @@ export default function AccountsBody() {
         return { ...a, is_default: a.id === account.id };
       });
     });
+    const currentList = accounts as Array<{ id: string }>;
+    const defaultAccount = currentList.find((a) => a.id === account.id);
+    const others = currentList.filter((a) => a.id !== account.id);
+
+    if (defaultAccount) {
+      handleReorder([defaultAccount, ...others]);
+    }
+
     try {
       await fetch("/api/accounts/set-default", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: account.id }),
       });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
+      if (!defaultAccount) {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
+      }
     } catch {
       await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
     }
@@ -416,22 +424,15 @@ export default function AccountsBody() {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">
-              {modalMode === "create" ? t("accounts.add") : t("accounts.edit")}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {modalMode === "create" 
-                ? (lang === "es" ? "Añade una nueva cuenta para gestionar tus finanzas" : "Add a new account to manage your finances")
-                : (lang === "es" ? "Modifica los detalles de tu cuenta" : "Edit your account details")}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-[calc(80px+env(safe-area-inset-bottom,0px)+1rem)]">
+          <DialogTitle className="sr-only">
+            {modalMode === "create" ? t("accounts.add") : t("common.edit")} {t("accounts.title")}
+          </DialogTitle>
           <form onSubmit={handleSave} className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
-                <TooltipProvider>
+                <TooltipProvider delayDuration={400}>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button type="button" className="text-muted-foreground hover:text-foreground">

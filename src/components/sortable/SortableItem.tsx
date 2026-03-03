@@ -3,8 +3,15 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+
+const layoutTransition = {
+  type: "spring",
+  stiffness: 400,
+  damping: 30,
+};
 
 interface SortableItemProps {
   id: string;
@@ -22,6 +29,7 @@ export function SortableItem({
   disabled = false,
 }: SortableItemProps) {
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const shouldReduceMotion = useReducedMotion();
   
   const {
     attributes,
@@ -61,7 +69,12 @@ export function SortableItem({
         {...attributes}
         {...listeners}
       >
-        {children}
+        <motion.div
+          layout={!isDragging}
+          transition={shouldReduceMotion ? { duration: 0 } : layoutTransition}
+        >
+          {children}
+        </motion.div>
       </div>
     );
   }
@@ -77,18 +90,24 @@ export function SortableItem({
       )}
       {...attributes}
     >
-      {showHandle && (
-        <button
-          ref={setActivatorNodeRef}
-          type="button"
-          className="sortable-handle"
-          {...listeners}
-          aria-label="Reordenar"
-        >
-          <GripVertical className="size-4" />
-        </button>
-      )}
-      <div className="sortable-item__content">{children}</div>
+      <motion.div
+        layout={!isDragging}
+        transition={shouldReduceMotion ? { duration: 0 } : layoutTransition}
+        className="sortable-item__motion"
+      >
+        {showHandle && (
+          <button
+            ref={setActivatorNodeRef}
+            type="button"
+            className="sortable-handle"
+            {...listeners}
+            aria-label="Reordenar"
+          >
+            <GripVertical className="size-4" />
+          </button>
+        )}
+        <div className="sortable-item__content">{children}</div>
+      </motion.div>
     </div>
   );
 }

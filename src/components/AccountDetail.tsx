@@ -51,7 +51,8 @@ interface TransactionItem {
   amount: number;
   type: string;
   description?: string;
-  category?: { name: string };
+  category?: { name: string } | null;
+  subcategory?: { name: string } | null;
 }
 
 export default function AccountDetail({ account }: { account: Account }) {
@@ -388,7 +389,7 @@ export default function AccountDetail({ account }: { account: Account }) {
           </Button>
         </div>
 
-        {account.bank_provider && (account.bank_provider === "trade_republic" || account.bank_provider === "revolut") && (
+        {account.bank_provider && (account.bank_provider === "trade_republic" || account.bank_provider === "revolut" || account.bank_provider === "bbva") && (
           <BankStatementUpload
             accountId={account.id}
             bankProvider={account.bank_provider as BankProvider}
@@ -465,9 +466,18 @@ export default function AccountDetail({ account }: { account: Account }) {
                                 <span className="account-transaction-desc">
                                   {tx.description || (tx.type === "income" ? (lang === "es" ? "Ingreso" : "Income") : (lang === "es" ? "Gasto" : "Expense"))}
                                 </span>
-                                <span className={`account-transaction-amount ${tx.type}`}>
-                                  {tx.type === "income" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
-                                </span>
+                                <div className="account-transaction-footer">
+                                  {(tx.category?.name || tx.subcategory?.name) ? (
+                                    <span className="account-transaction-category">
+                                      {[tx.category?.name, tx.subcategory?.name].filter(Boolean).join(" › ")}
+                                    </span>
+                                  ) : (
+                                    <span />
+                                  )}
+                                  <span className={`account-transaction-amount ${tx.type}`}>
+                                    {tx.type === "income" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                                  </span>
+                                </div>
                               </div>
                             </SwipeToReveal>
                           ))}

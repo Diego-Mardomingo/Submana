@@ -60,7 +60,7 @@ export function SortableContainer<T extends { id: string }>({
     }),
     useSensor(TouchSensor, {
       activationConstraint: {
-        delay: 500,
+        delay: 250,
         tolerance: 5,
       },
     }),
