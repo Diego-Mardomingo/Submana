@@ -30,5 +30,11 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "any",
       },
     ],
+    shortcuts: [
+      { name: "Transacciones", short_name: "Transacciones", url: "/transactions", icons: [{ src: "/icons/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" }] },
+      { name: "Cuentas", short_name: "Cuentas", url: "/accounts", icons: [{ src: "/icons/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" }] },
+      { name: "Presupuestos", short_name: "Presupuestos", url: "/budgets", icons: [{ src: "/icons/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" }] },
+      { name: "Suscripciones", short_name: "Suscripciones", url: "/subscriptions", icons: [{ src: "/icons/web-app-manifest-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" }] },
+    ],
   };
 }

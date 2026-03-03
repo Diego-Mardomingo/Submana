@@ -1730,9 +1730,16 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
 }
 
 /* ── Sortable / Drag-and-Drop ── */
-.sortable-item {
+.sortable-item,
+.sortable-item--mobile {
   position: relative;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sortable-item--mobile {
+  touch-action: none;
 }
 
 .sortable-item--desktop {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAccounts } from "@/hooks/useAccounts";
 import {
   useCreateAccount,
@@ -72,6 +72,7 @@ const formatCurrency = (n: number) => {
 };
 
 export default function AccountsBody() {
+  const router = useRouter();
   const lang = useLang();
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
@@ -345,10 +346,19 @@ export default function AccountsBody() {
           }
           renderItem={(account) => (
             <SortableItem key={account.id} id={account.id}>
-              <Link
-                href={`/account/${account.id}`}
+              <div
+                role="button"
+                tabIndex={0}
                 className="account-card"
                 style={{ "--accent-account": account.color || "var(--accent)" } as React.CSSProperties}
+                onClick={() => router.push(`/account/${account.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/account/${account.id}`);
+                  }
+                }}
+                aria-label={`${account.name} - ${formatCurrency(Number(account.balance))}`}
               >
                 <div className="card-content">
                   <div className="account-icon-wrapper">
@@ -399,7 +409,7 @@ export default function AccountsBody() {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-              </Link>
+              </div>
             </SortableItem>
           )}
         />
