@@ -213,7 +213,8 @@ export default function AccountsBody() {
         return { ...a, is_default: a.id === account.id };
       });
     });
-    const currentList = accounts as Array<{ id: string }>;
+    type AccountItem = { id: string; name: string; balance: number; icon?: string; color?: string; is_default?: boolean; bank_provider?: string | null };
+    const currentList = accounts as AccountItem[];
     const defaultAccount = currentList.find((a) => a.id === account.id);
     const others = currentList.filter((a) => a.id !== account.id);
 

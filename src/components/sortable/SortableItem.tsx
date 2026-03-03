@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 const layoutTransition = {
-  type: "spring",
+  type: "spring" as const,
   stiffness: 400,
   damping: 30,
 };

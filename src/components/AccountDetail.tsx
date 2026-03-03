@@ -389,7 +389,7 @@ export default function AccountDetail({ account }: { account: Account }) {
           </Button>
         </div>
 
-        {account.bank_provider && (account.bank_provider === "trade_republic" || account.bank_provider === "revolut" || account.bank_provider === "bbva") && (
+        {account.bank_provider && (account.bank_provider === "trade_republic" || account.bank_provider === "revolut" || account.bank_provider === "bbva" || account.bank_provider === "imagin") && (
           <BankStatementUpload
             accountId={account.id}
             bankProvider={account.bank_provider as BankProvider}

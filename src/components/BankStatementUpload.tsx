@@ -12,6 +12,7 @@ import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
 import { parseTradeRepublicPDF } from "@/lib/parsers/tradeRepublic";
 import { parseRevolutCSV, parseRevolutExcel, normalizeRevolutTransactions } from "@/lib/parsers/revolut";
 import { parseBBVAExcel, normalizeBBVATransactions } from "@/lib/parsers/bbva";
+import { parseImaginCSV, normalizeImaginTransactions } from "@/lib/parsers/imagin";
 import { normalizeAndHashTransactions } from "@/lib/parsers/utils";
 import type { ImportedTransaction, ImportTransactionsResponse, PossibleDuplicate } from "@/lib/parsers/types";
 
@@ -353,6 +354,18 @@ export default function BankStatementUpload({
           });
 
           const normalized = await normalizeBBVATransactions(result.transactions, accountId);
+
+          setTransactions(normalized);
+          setFinalBalance(result.finalBalance ?? null);
+          setState("preview");
+          setStatusMessage("");
+        } else if (bankProvider === "imagin") {
+          const result = await parseImaginCSV(file, {
+            onProgress: (current, total) => setProgress({ current, total }),
+            onStatus: setStatusMessage,
+          });
+
+          const normalized = await normalizeImaginTransactions(result.transactions, accountId);
 
           setTransactions(normalized);
           setFinalBalance(result.finalBalance ?? null);
