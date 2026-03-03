@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import SubscriptionDetail from "@/components/SubscriptionDetail";
+import { BackButton } from "@/components/BackButton";
 
 export default async function SubscriptionDetailPage({
   params,
@@ -26,24 +26,7 @@ export default async function SubscriptionDetailPage({
 
   return (
     <div className="page-container fade-in">
-      <Link 
-        href="/subscriptions" 
-        style={{ 
-          display: "inline-flex", 
-          alignItems: "center", 
-          gap: 8, 
-          marginBottom: 20, 
-          color: "var(--gris-claro)", 
-          textDecoration: "none",
-          fontSize: "0.9rem",
-          fontWeight: 500
-        }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-        Subscriptions
-      </Link>
+      <BackButton />
       <SubscriptionDetail sub={sub} />
     </div>
   );
