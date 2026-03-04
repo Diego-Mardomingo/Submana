@@ -110,6 +110,7 @@ export default function AccountsBody() {
   const [transactionCount, setTransactionCount] = useState<number | null>(null);
   const [loadingTransactionCount, setLoadingTransactionCount] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [bankSelectOpen, setBankSelectOpen] = useState(false);
   const colors = ACCOUNT_BUDGET_COLORS;
 
   const resetForm = () => {
@@ -424,8 +425,13 @@ export default function AccountsBody() {
         />
       )}
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
-        <DialogContent className="sm:max-w-md max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-[calc(80px+env(safe-area-inset-bottom,0px)+1rem)]">
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) { closeModal(); setBankSelectOpen(false); } else setIsModalOpen(true); }}>
+        <DialogContent
+          className="sm:max-w-md max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-[calc(80px+env(safe-area-inset-bottom,0px)+1rem)]"
+          onInteractOutside={(e) => {
+            if (bankSelectOpen) e.preventDefault();
+          }}
+        >
           <DialogTitle className="sr-only">
             {modalMode === "create" ? t("accounts.add") : t("common.edit")} {t("accounts.title")}
           </DialogTitle>
@@ -436,21 +442,23 @@ export default function AccountsBody() {
                 <TooltipProvider delayDuration={400}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button type="button" className="text-muted-foreground hover:text-foreground">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <button type="button" className="text-muted-foreground hover:text-foreground p-1 -m-1">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
                           <circle cx="12" cy="12" r="10" />
                           <path d="M12 16v-4" />
                           <path d="M12 8h.01" />
                         </svg>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>
+                    <TooltipContent className="max-w-[160px]">
                       <p>{t("accounts.bankProviderTooltip")}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select
+                open={bankSelectOpen}
+                onOpenChange={setBankSelectOpen}
                 value={formData.bank_provider || "none"}
                 onValueChange={(value) => {
                   if (value === "none") {
