@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAccounts } from "@/hooks/useAccounts";
 import {
@@ -111,7 +111,21 @@ export default function AccountsBody() {
   const [loadingTransactionCount, setLoadingTransactionCount] = useState(false);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [bankSelectOpen, setBankSelectOpen] = useState(false);
+  const bankSelectOpenRef = useRef(false);
   const colors = ACCOUNT_BUDGET_COLORS;
+
+  const handleBankSelectOpenChange = useCallback((open: boolean) => {
+    setBankSelectOpen(open);
+    if (open) {
+      bankSelectOpenRef.current = true;
+    } else {
+      // En Android el Dialog recibe el "outside" después de que el Select cierre;
+      // mantener el ref true un momento para que onInteractOutside pueda prevenir el cierre.
+      setTimeout(() => {
+        bankSelectOpenRef.current = false;
+      }, 150);
+    }
+  }, []);
 
   const resetForm = () => {
     setFormData({
@@ -425,11 +439,14 @@ export default function AccountsBody() {
         />
       )}
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) { closeModal(); setBankSelectOpen(false); } else setIsModalOpen(true); }}>
+      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) { closeModal(); setBankSelectOpen(false); bankSelectOpenRef.current = false; } else setIsModalOpen(true); }}>
         <DialogContent
           className="sm:max-w-md max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-[calc(80px+env(safe-area-inset-bottom,0px)+1rem)]"
           onInteractOutside={(e) => {
-            if (bankSelectOpen) e.preventDefault();
+            if (bankSelectOpenRef.current) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (bankSelectOpenRef.current) e.preventDefault();
           }}
         >
           <DialogTitle className="sr-only">
@@ -437,28 +454,13 @@ export default function AccountsBody() {
           </DialogTitle>
           <form onSubmit={handleSave} className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
-                <TooltipProvider delayDuration={400}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button type="button" className="text-muted-foreground hover:text-foreground p-1 -m-1">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M12 16v-4" />
-                          <path d="M12 8h.01" />
-                        </svg>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-[160px]">
-                      <p>{t("accounts.bankProviderTooltip")}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
+              <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
+              <p className="text-xs text-muted-foreground max-w-[200px] -mt-1">
+                {t("accounts.bankProviderTooltip")}
+              </p>
               <Select
                 open={bankSelectOpen}
-                onOpenChange={setBankSelectOpen}
+                onOpenChange={handleBankSelectOpenChange}
                 value={formData.bank_provider || "none"}
                 onValueChange={(value) => {
                   if (value === "none") {
