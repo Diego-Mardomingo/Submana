@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { flushSync } from "react-dom";
 import { ChevronLeft, ChevronRight, House, ChevronDown, List } from "lucide-react";
 import { useCalendarSwipe } from "@/hooks/useCalendarSwipe";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
@@ -180,8 +181,10 @@ export default function CalendarBody() {
     ) {
       document.documentElement.setAttribute("data-calendar-direction", direction);
       const transition = document.startViewTransition(() => {
-        setMonth(newMonth);
-        setYear(newYear);
+        flushSync(() => {
+          setMonth(newMonth);
+          setYear(newYear);
+        });
       });
       transition.finished.finally(() => {
         document.documentElement.removeAttribute("data-calendar-direction");
@@ -208,8 +211,10 @@ export default function CalendarBody() {
     ) {
       document.documentElement.setAttribute("data-calendar-direction", direction);
       const transition = document.startViewTransition(() => {
-        setYear(todayYear);
-        setMonth(todayMonth);
+        flushSync(() => {
+          setYear(todayYear);
+          setMonth(todayMonth);
+        });
       });
       transition.finished.finally(() => {
         document.documentElement.removeAttribute("data-calendar-direction");
@@ -294,10 +299,12 @@ export default function CalendarBody() {
     return spent;
   };
 
+  const now = new Date();
+  const todayYear = now.getFullYear();
+  const todayMonth = now.getMonth();
+  const todayDate = now.getDate();
   const getIsToday = (dayNumber: number) =>
-    year === new Date().getFullYear() &&
-    month === new Date().getMonth() &&
-    dayNumber === new Date().getDate();
+    year === todayYear && month === todayMonth && dayNumber === todayDate;
   const swipeZoneRef = useRef<HTMLDivElement>(null);
   useCalendarSwipe(swipeZoneRef, {
     onSwipeLeft: () => changeMonth(1),
@@ -390,10 +397,7 @@ export default function CalendarBody() {
           </div>
         ))}
       </aside>
-      <section
-        className="calendar_body"
-        style={{ viewTransitionName: "calendar-grid" }}
-      >
+      <section className="calendar_body">
         {daysArray.map((dayNumber, index) => {
           const styleObj = index === 0 ? { gridColumnStart: startColumn } : {};
           return (

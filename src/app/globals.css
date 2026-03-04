@@ -119,7 +119,7 @@ html[data-filter-transition]::view-transition-new(calendar-grid) {
   animation: vt-fade-in 0.12s ease-out 0.06s forwards;
 }
 
-/* ── Calendar navigation view transitions (month swipe) ── */
+/* ── Calendar: solo transición en iconos de subs (calendario y días instantáneos) ── */
 @keyframes vt-calendar-slide-to-left {
   from { transform: translateX(0); opacity: 1; }
   to { transform: translateX(-15%); opacity: 0; }
@@ -140,28 +140,10 @@ html[data-filter-transition]::view-transition-new(calendar-grid) {
   to { transform: translateX(0); opacity: 1; }
 }
 
-/* Forward navigation (swipe left / next month) */
 html[data-calendar-direction]::view-transition-old(root),
 html[data-calendar-direction]::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
-}
-
-html[data-calendar-direction="forward"]::view-transition-old(calendar-grid) {
-  animation: vt-calendar-slide-to-left 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-}
-
-html[data-calendar-direction="forward"]::view-transition-new(calendar-grid) {
-  animation: vt-calendar-slide-from-right 0.22s cubic-bezier(0.32, 0.72, 0, 1) 0.05s forwards;
-}
-
-/* Back navigation (swipe right / previous month) */
-html[data-calendar-direction="back"]::view-transition-old(calendar-grid) {
-  animation: vt-calendar-slide-to-right 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
-}
-
-html[data-calendar-direction="back"]::view-transition-new(calendar-grid) {
-  animation: vt-calendar-slide-from-left 0.22s cubic-bezier(0.32, 0.72, 0, 1) 0.05s forwards;
 }
 
 

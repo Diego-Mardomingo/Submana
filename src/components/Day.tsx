@@ -143,7 +143,12 @@ export default function Day({
         />
       )}
       <div className="dia_content">
-        <div className="icons_container">{renderIcons()}</div>
+        <div
+          className="icons_container"
+          style={{ viewTransitionName: `calendar-sub-icons-${dayNumber}` }}
+        >
+          {renderIcons()}
+        </div>
         <span className="number">{dayNum}</span>
       </div>
     </div>
