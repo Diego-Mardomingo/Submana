@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCategories, useArchivedCategories, CategoryWithSubs } from "@/hooks/useCategories";
 import {
   useCreateCategory,
@@ -47,8 +47,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
+import { useRouter, useSearchParams } from "next/navigation";
 
 export default function CategoriesBody() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const lang = useLang();
   const t = useTranslations(lang);
   const { data, isLoading } = useCategories();
@@ -94,6 +97,13 @@ export default function CategoriesBody() {
     setIsModalOpen(false);
     resetForm();
   };
+
+  useEffect(() => {
+    if (searchParams.get("open") === "create") {
+      openModal("create");
+      router.replace("/categories", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

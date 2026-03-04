@@ -36,7 +36,7 @@
   box-shadow: 0 -4px 20px -10px var(--accent-muted);
   height: calc(80px + env(safe-area-inset-bottom, 0px));
   min-height: 80px;
-  overflow: hidden;
+  overflow: visible;
   transition: height 0.5s cubic-bezier(0.22, 1, 0.36, 1), border-radius 0.5s;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -98,6 +98,60 @@
   padding: 0 0.5rem;
   height: 80px;
   width: 100%;
+}
+
+.navItemsWrapperWithNotch {
+  grid-template-columns: 1fr 1fr auto 1fr 1fr;
+  padding: 0 0.25rem;
+  overflow: visible;
+}
+
+.navNotch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 100%;
+  min-height: 80px;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  overflow: visible;
+}
+
+.navNotchShape {
+  position: absolute;
+  top: -1px;
+  left: 50%;
+  transform: translateX(-47%);
+  width: 120px;
+  height: 56px;
+  filter: drop-shadow(0 2px 6px var(--accent-muted));
+  transition: transform 0.2s, filter 0.2s;
+  pointer-events: none;
+}
+
+.navNotch:hover .navNotchShape {
+  transform: translateX(-47%) scale(1.03);
+  filter: drop-shadow(0 2px 10px var(--accent-muted));
+}
+
+.navNotch:active .navNotchShape {
+  transform: translateX(-47%) scale(0.97);
+}
+
+.navNotchIcon {
+  position: absolute;
+  top: 20px;
+  left: 57%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  color: #ffffff !important;
+  stroke: #ffffff !important;
 }
 
 .navItem {

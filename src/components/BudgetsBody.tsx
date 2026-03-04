@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useBudgets, type BudgetWithSpent } from "@/hooks/useBudgets";
 import {
   useCreateBudget,
@@ -48,6 +48,7 @@ import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
 import { SortableContainer, SortableItem } from "@/components/sortable";
 import { useReorder } from "@/hooks/useReorder";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const colors = ACCOUNT_BUDGET_COLORS;
 const defaultBudgetColor = defaultAccountBudgetColor;
@@ -95,6 +96,8 @@ function flattenCategoriesForSelect(
 }
 
 export default function BudgetsBody() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const lang = useLang();
   const t = useTranslations(lang);
   const { data: budgets = [], isLoading } = useBudgets();
@@ -198,6 +201,13 @@ export default function BudgetsBody() {
       resetForm();
     }
   };
+
+  useEffect(() => {
+    if (searchParams.get("open") === "create") {
+      openModal("create");
+      router.replace("/budgets", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -553,7 +563,7 @@ export default function BudgetsBody() {
       </div>
 
       <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-h-[calc(100dvh-11rem)] md:max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-4 !top-[calc(50%-40px)] md:!top-[50%] !bg-[var(--negro)] !border-[var(--gris)]">
           <DialogHeader>
             <DialogTitle className="text-center">
               {modalMode === "create" ? t("budgets.add") : t("budgets.edit")}

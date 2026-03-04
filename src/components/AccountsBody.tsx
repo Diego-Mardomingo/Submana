@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAccounts } from "@/hooks/useAccounts";
 import {
   useCreateAccount,
@@ -71,6 +71,7 @@ const formatCurrency = (n: number) => {
 
 export default function AccountsBody() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const lang = useLang();
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
@@ -167,6 +168,13 @@ export default function AccountsBody() {
     setIsModalOpen(false);
     resetForm();
   };
+
+  useEffect(() => {
+    if (searchParams.get("open") === "create") {
+      openModal("create");
+      router.replace("/accounts", { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -441,7 +449,7 @@ export default function AccountsBody() {
 
       <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) { closeModal(); setBankSelectOpen(false); bankSelectOpenRef.current = false; } else setIsModalOpen(true); }}>
         <DialogContent
-          className="sm:max-w-md max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-[calc(80px+env(safe-area-inset-bottom,0px)+1rem)]"
+          className="sm:max-w-md max-h-[calc(100dvh-11rem)] md:max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-4 !top-[calc(50%-40px)] md:!top-[50%]"
           onInteractOutside={(e) => {
             if (bankSelectOpenRef.current) e.preventDefault();
           }}

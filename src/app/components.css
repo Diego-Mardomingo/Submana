@@ -4305,3 +4305,141 @@ html[data-theme="light"] .budget-card-badge--general {
     justify-content: center;
   }
 }
+
+/* Add Shortcuts Overlay */
+.add-shortcuts-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: rgba(15, 16, 18, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: add-shortcuts-fade-in 0.25s ease-out forwards;
+}
+
+.add-shortcuts-overlay.add-shortcuts-overlay--closing {
+  animation: add-shortcuts-fade-out 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes add-shortcuts-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes add-shortcuts-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.add-shortcuts-bubbles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  max-width: 320px;
+  width: 100%;
+  animation: add-shortcuts-bubbles-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: center center;
+}
+
+.add-shortcuts-bubble--span-2 {
+  grid-column: 1 / -1;
+}
+
+.add-shortcuts-bubbles.add-shortcuts-bubbles--closing {
+  animation: add-shortcuts-bubbles-out 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Apertura: de escala pequeña + abajo hacia centro */
+@keyframes add-shortcuts-bubbles-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6) translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Cierre: inversa exacta, de centro hacia escala pequeña + abajo */
+@keyframes add-shortcuts-bubbles-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.6) translateY(40px);
+  }
+}
+
+.add-shortcuts-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem 0.75rem;
+  background: var(--gris-oscuro) !important;
+  border: 1px solid var(--gris);
+  border-radius: 16px;
+  color: var(--blanco);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s, border-color 0.2s;
+  animation: add-shortcuts-bubble-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.add-shortcuts-bubble:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-muted);
+  transform: scale(1.02);
+}
+
+.add-shortcuts-bubble:active {
+  transform: scale(0.98);
+}
+
+.add-shortcuts-bubble-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--accent);
+}
+
+.add-shortcuts-bubble:hover .add-shortcuts-bubble-icon {
+  color: var(--accent);
+}
+
+.add-shortcuts-bubble-label {
+  text-align: center;
+  line-height: 1.2;
+}
+
+@keyframes add-shortcuts-bubble-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+/* Los modales de import/feedback deben aparecer por encima del overlay de atajos */
+.add-shortcuts-dialog-elevated {
+  z-index: 2147483647 !important;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -20,6 +20,7 @@ interface BankStatementUploadProps {
   accountId: string;
   bankProvider: BankProvider;
   onSuccess?: (result: ImportTransactionsResponse) => void;
+  autoOpenFilePicker?: boolean;
 }
 
 type UploadState = "idle" | "parsing" | "preview" | "importing" | "success" | "error";
@@ -277,12 +278,14 @@ export default function BankStatementUpload({
   accountId,
   bankProvider,
   onSuccess,
+  autoOpenFilePicker = false,
 }: BankStatementUploadProps) {
   const lang = useLang();
   const t = useTranslations(lang);
   const router = useRouter();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const autoOpenAttemptedRef = useRef(false);
 
   const [state, setState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -503,6 +506,15 @@ export default function BankStatementUpload({
     const d = new Date(dateStr);
     return d.toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
   };
+
+  useEffect(() => {
+    if (!autoOpenFilePicker || autoOpenAttemptedRef.current || state !== "idle") return;
+    autoOpenAttemptedRef.current = true;
+    const timer = window.setTimeout(() => {
+      fileInputRef.current?.click();
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [autoOpenFilePicker, state]);
 
   return (
     <div className="bank-statement-upload">

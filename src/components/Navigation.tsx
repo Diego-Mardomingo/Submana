@@ -14,6 +14,7 @@ import {
   Wallet,
   ChevronUp,
   ChevronDown,
+  Plus,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
 import styles from "./Navigation.module.css";
 
 const iconProps = { size: 20, strokeWidth: 1.5 };
@@ -71,8 +73,10 @@ export default function Navigation() {
   const currentPath = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
 
   const [expanded, setExpanded] = useState(false);
+  const [showAddShortcuts, setShowAddShortcuts] = useState(false);
 
   const closeExpand = useCallback(() => setExpanded(false), []);
+  const closeAddShortcuts = useCallback(() => setShowAddShortcuts(false), []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -105,22 +109,28 @@ export default function Navigation() {
     extra,
     label,
     shortcut,
+    onClick: onNavClick,
   }: {
     href: string;
     children: React.ReactNode;
     extra?: boolean;
     label: string;
     shortcut: string;
+    onClick?: () => void;
   }) => {
     const isActive = currentPath === href;
     const displayShortcut = shortcut.toLowerCase() === "tab" ? "⇥ TAB" : shortcut.toUpperCase();
     const tooltipShortcut = shortcut.toLowerCase() === "tab" ? "Tab" : shortcut.toUpperCase();
+    const handleClick = () => {
+      closeExpand();
+      onNavClick?.();
+    };
     const linkEl = (
       <Link
         href={href}
         prefetch={true}
         className={`${styles.navItem} ${isActive ? styles.active : ""} ${extra ? styles.extraItem : ""}`}
-        onClick={closeExpand}
+        onClick={handleClick}
       >
         {children}
         <kbd className={styles.shortcutBadge}>{displayShortcut}</kbd>
@@ -158,39 +168,65 @@ export default function Navigation() {
               </div>
             </Link>
           </div>
-          <div className={styles.navItemsWrapper}>
-            {navItems.map((item) => (
-              <NavLink
-                key={item.href}
-                href={item.href}
-                label={t(item.labelKey)}
-                extra={item.extra}
-                shortcut={item.shortcut}
-              >
-                <item.icon {...iconProps} />
-                <span>{t(item.labelKey)}</span>
-              </NavLink>
-            ))}
-            {isMobile ? (
-              <Button
-                type="button"
-                variant="ghost"
-                className={cn(styles.navItem, styles.moreBtn)}
-                onClick={() => setExpanded((e) => !e)}
-                aria-label={t("nav.menu")}
-              >
-                <div className={styles.iconContainer}>
-                  {expanded ? (
-                    <ChevronDown {...iconProps} />
-                  ) : (
+          <div
+            className={cn(
+              styles.navItemsWrapper,
+              isMobile && !expanded && styles.navItemsWrapperWithNotch
+            )}
+          >
+            {isMobile && !expanded ? (
+              <>
+                <NavLink href="/" label={t("nav.home")} shortcut="f" onClick={closeAddShortcuts}>
+                  <House {...iconProps} />
+                  <span>{t("nav.home")}</span>
+                </NavLink>
+                <NavLink href="/dashboard" label={t("nav.dashboard")} shortcut="d" onClick={closeAddShortcuts}>
+                  <LayoutDashboard {...iconProps} />
+                  <span>{t("nav.dashboard")}</span>
+                </NavLink>
+                <button
+                  type="button"
+                  className={styles.navNotch}
+                  onClick={() => setShowAddShortcuts(true)}
+                  aria-label="Add"
+                >
+                  <svg className={styles.navNotchShape} viewBox="0 0 120 56" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 0 C28 0 24 40 60 40 C96 40 92 0 120 0 Z" fill="var(--accent)" />
+                  </svg>
+                  <Plus className={styles.navNotchIcon} strokeWidth={2.5} />
+                </button>
+                <NavLink href="/transactions" label={t("nav.transactions")} shortcut="q" onClick={closeAddShortcuts}>
+                  <TransactionsIcon {...iconProps} />
+                  <span>{t("nav.transactions")}</span>
+                </NavLink>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={cn(styles.navItem, styles.moreBtn)}
+                  onClick={() => { closeAddShortcuts(); setExpanded((e) => !e); }}
+                  aria-label={t("nav.menu")}
+                >
+                  <div className={styles.iconContainer}>
                     <ChevronUp {...iconProps} />
-                  )}
-                </div>
-                <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
-              </Button>
+                  </div>
+                  <span>{t("nav.menu")}</span>
+                </Button>
+              </>
             ) : (
-              <Tooltip>
-                <TooltipTrigger asChild>
+              <>
+                {navItems.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    href={item.href}
+                    label={t(item.labelKey)}
+                    extra={item.extra}
+                    shortcut={item.shortcut}
+                  >
+                    <item.icon {...iconProps} />
+                    <span>{t(item.labelKey)}</span>
+                  </NavLink>
+                ))}
+                {isMobile ? (
                   <Button
                     type="button"
                     variant="ghost"
@@ -207,11 +243,32 @@ export default function Navigation() {
                     </div>
                     <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={8}>
-                  {expanded ? t("nav.close") : t("nav.menu")}
-                </TooltipContent>
-              </Tooltip>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className={cn(styles.navItem, styles.moreBtn)}
+                        onClick={() => setExpanded((e) => !e)}
+                        aria-label={t("nav.menu")}
+                      >
+                        <div className={styles.iconContainer}>
+                          {expanded ? (
+                            <ChevronDown {...iconProps} />
+                          ) : (
+                            <ChevronUp {...iconProps} />
+                          )}
+                        </div>
+                        <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>
+                      {expanded ? t("nav.close") : t("nav.menu")}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -224,6 +281,7 @@ export default function Navigation() {
         tabIndex={0}
         aria-label="Close menu"
       />
+      <AddShortcutsOverlay open={showAddShortcuts} onClose={() => setShowAddShortcuts(false)} />
     </>
   );
 }

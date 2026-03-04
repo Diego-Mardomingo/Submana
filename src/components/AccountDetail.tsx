@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useDeleteAccount } from "@/hooks/useAccountMutations";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { parseDateString } from "@/lib/date";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +59,10 @@ export default function AccountDetail({ account }: { account: Account }) {
   const lang = useLang();
   const t = useTranslations(lang);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const importSectionRef = useRef<HTMLDivElement>(null);
+  const shouldScrollToImport = searchParams.get("import") === "1";
+  const shouldAutoOpenFilePicker = searchParams.get("autoupload") === "1";
   const [showDelete, setShowDelete] = useState(false);
   const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
   const [showDeleteTx, setShowDeleteTx] = useState(false);
@@ -104,6 +108,19 @@ export default function AccountDetail({ account }: { account: Account }) {
       : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     return `${day} ${months[d.getMonth()]}`;
   };
+
+  useEffect(() => {
+    if ((!shouldScrollToImport && !shouldAutoOpenFilePicker) || !importSectionRef.current) {
+      return;
+    }
+    if (shouldScrollToImport) {
+      importSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    const cleanupTimer = window.setTimeout(() => {
+      router.replace(`/account/${account.id}`, { scroll: false });
+    }, 350);
+    return () => window.clearTimeout(cleanupTimer);
+  }, [shouldScrollToImport, shouldAutoOpenFilePicker, router, account.id]);
 
   const groupTransactionsByMonthAndDay = (txs: TransactionItem[]) => {
     const sorted = [...txs].sort((a, b) => parseDateString(b.date).getTime() - parseDateString(a.date).getTime());
@@ -390,10 +407,13 @@ export default function AccountDetail({ account }: { account: Account }) {
         </div>
 
         {account.bank_provider && (account.bank_provider === "trade_republic" || account.bank_provider === "revolut" || account.bank_provider === "bbva" || account.bank_provider === "imagin") && (
-          <BankStatementUpload
-            accountId={account.id}
-            bankProvider={account.bank_provider as BankProvider}
-          />
+          <div ref={importSectionRef}>
+            <BankStatementUpload
+              accountId={account.id}
+              bankProvider={account.bank_provider as BankProvider}
+              autoOpenFilePicker={shouldAutoOpenFilePicker}
+            />
+          </div>
         )}
 
         <div className="account-transactions-section">
