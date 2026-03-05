@@ -25,6 +25,32 @@ ChartJS.register(
   Legend,
 );
 
+if (typeof window !== "undefined") {
+  const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  if (isTouch) {
+    ChartJS.defaults.events = ["click"];
+  }
+
+  ChartJS.register({
+    id: "dismissOnScroll",
+    beforeInit(chart: ChartJS) {
+      const handler = () => {
+        const tooltip = chart.tooltip;
+        if (tooltip && tooltip.getActiveElements().length) {
+          tooltip.setActiveElements([], { x: 0, y: 0 });
+          chart.update("none");
+        }
+      };
+      window.addEventListener("scroll", handler, { passive: true, capture: true });
+      const origDestroy = chart.destroy.bind(chart);
+      chart.destroy = () => {
+        window.removeEventListener("scroll", handler, { capture: true });
+        origDestroy();
+      };
+    },
+  });
+}
+
 function getCSSVar(name: string): string {
   if (typeof document === "undefined") return "";
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
