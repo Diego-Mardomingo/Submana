@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { detectTransferIds } from "@/lib/transferDetection";
 
 export interface CategoryRow {
   id: string;
@@ -63,15 +64,32 @@ export async function computeBudgetSpent(
 ): Promise<number> {
   const { start, end } = getMonthRange(year, month);
 
+  const { data: allExpenses } = await supabase
+    .from("transactions")
+    .select("id, amount, date, account_id")
+    .eq("user_id", userId)
+    .eq("type", "expense")
+    .gte("date", start)
+    .lte("date", end);
+
+  const { data: allIncomes } = await supabase
+    .from("transactions")
+    .select("id, amount, date, account_id")
+    .eq("user_id", userId)
+    .eq("type", "income")
+    .gte("date", start)
+    .lte("date", end);
+
+  const combined = [
+    ...(allExpenses ?? []).map((r) => ({ id: r.id, amount: Number(r.amount), type: "expense", date: r.date, account_id: r.account_id })),
+    ...(allIncomes ?? []).map((r) => ({ id: r.id, amount: Number(r.amount), type: "income", date: r.date, account_id: r.account_id })),
+  ];
+  const transferIds = detectTransferIds(combined);
+
   if (categoryIds.length === 0) {
-    const { data } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .eq("type", "expense")
-      .gte("date", start)
-      .lte("date", end);
-    const total = (data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
+    const total = (allExpenses ?? [])
+      .filter((row) => !transferIds.has(row.id))
+      .reduce((sum, row) => sum + Number(row.amount), 0);
     return total;
   }
 
@@ -80,13 +98,15 @@ export async function computeBudgetSpent(
 
   const { data } = await supabase
     .from("transactions")
-    .select("amount")
+    .select("id, amount")
     .eq("user_id", userId)
     .eq("type", "expense")
     .gte("date", start)
     .lte("date", end)
     .or(`category_id.in.(${effectiveIds.join(",")}),subcategory_id.in.(${effectiveIds.join(",")})`);
 
-  const total = (data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
+  const total = (data ?? [])
+    .filter((row) => !transferIds.has(row.id))
+    .reduce((sum, row) => sum + Number(row.amount), 0);
   return total;
 }

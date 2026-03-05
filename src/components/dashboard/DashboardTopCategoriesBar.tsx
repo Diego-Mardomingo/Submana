@@ -1,20 +1,18 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { CHART_COLORS } from "./chartColors";
+import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { ChartMobileHint } from "./ChartMobileHint";
+import { resolveChartPalette, tooltipConfig, axisConfig, formatK } from "@/lib/chartConfig";
+import { detectTransferIds } from "@/lib/transferDetection";
 
-type Tx = { amount?: number; type?: string; category_id?: string | null; subcategory_id?: string | null };
+type Tx = { id: string; amount?: number; type?: string; date?: string; category_id?: string | null; subcategory_id?: string | null; account_id?: string };
 
 function buildCategoryMaps(
   defaultCats: CategoryWithSubs[],
@@ -42,10 +40,15 @@ function buildCategoryMaps(
 export default function DashboardTopCategoriesBar() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch } = useChartTooltipControl();
   const now = new Date();
   const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: categoriesData, isLoading: catLoading } = useCategories();
+  const defaultPalette = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
+  const [colors, setColors] = useState<string[]>(defaultPalette);
+
+  useEffect(() => {
+    setColors(resolveChartPalette());
+  }, []);
 
   const chartData = useMemo(() => {
     const defaultCats = categoriesData?.defaultCategories ?? [];
@@ -53,8 +56,11 @@ export default function DashboardTopCategoriesBar() {
     const { idToName, subToParent } = buildCategoryMaps(defaultCats, userCats, lang);
     const byCategory = new Map<string, number>();
 
-    for (const tx of transactions as Tx[]) {
-      if (tx.type !== "expense") continue;
+    const txList = transactions as Tx[];
+    const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+
+    for (const tx of txList) {
+      if (tx.type !== "expense" || transferIds.has(tx.id)) continue;
       const amt = Number(tx.amount) || 0;
       const parentId =
         tx.category_id ??
@@ -72,6 +78,41 @@ export default function DashboardTopCategoriesBar() {
       .sort((a, b) => b.value - a.value)
       .slice(0, 5);
   }, [transactions, categoriesData, lang, t]);
+
+  const barData = useMemo(() => ({
+    labels: chartData.map((d) => d.name),
+    datasets: [{
+      data: chartData.map((d) => d.value),
+      backgroundColor: chartData.map((_, i) => colors[i % colors.length]),
+      borderRadius: 4,
+    }],
+  }), [chartData, colors]);
+
+  const barOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: "y" as const,
+    interaction: { mode: "index" as const, intersect: false },
+    plugins: {
+      tooltip: {
+        ...tooltipConfig(),
+        callbacks: {
+          label: (ctx: { parsed: { x: number | null } }) => formatCurrency(ctx.parsed.x ?? 0),
+        },
+      },
+      legend: { display: false },
+    },
+    scales: {
+      x: {
+        ...axisConfig(),
+        ticks: { ...axisConfig().ticks, callback: formatK },
+      },
+      y: {
+        ...axisConfig(),
+        ticks: { ...axisConfig().ticks, font: { size: 11 } },
+      },
+    },
+  }), []);
 
   const isLoading = txLoading || catLoading;
 
@@ -113,21 +154,9 @@ export default function DashboardTopCategoriesBar() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full" ref={containerRef}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 8, left: 0, bottom: 4 }}>
-              <XAxis type="number" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-              <Tooltip
-                trigger={isTouch ? "click" : "hover"}
-                formatter={(value: number) => [formatCurrency(value), ""]}
-                {...chartTooltipStyle}
-              />
-              <Bar dataKey="value" fill={CHART_COLORS[0]} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="dashboard-chart w-full">
+          <Bar data={barData} options={barOptions} />
         </div>
-        {isTouch && <ChartMobileHint type="tap" />}
       </CardContent>
     </Card>
   );

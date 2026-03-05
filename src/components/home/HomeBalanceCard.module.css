@@ -50,10 +50,11 @@
 }
 
 .accounts {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 0.75rem 0;
-  padding: 1.25rem 2rem 1.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0;
+  padding: 1.25rem 1rem 1.5rem;
   width: 100%;
 }
 
@@ -62,48 +63,52 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 0.35rem;
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
-  border-right: 1px solid var(--gris);
+  gap: 0.3rem;
+  padding: 0.5rem 1rem;
   min-width: 0;
+  flex: 0 1 auto;
+  position: relative;
 }
 
-.account:first-child {
-  padding-left: 0;
-}
-
-.account:last-child {
-  border-right: none;
-  padding-right: 0;
+/* Separador vertical entre cuentas en desktop */
+.account + .account::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 15%;
+  height: 70%;
+  width: 1px;
+  background: var(--gris);
 }
 
 .accountLabelRow {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin: 0;
+  max-width: 100%;
 }
 
 .accountDot {
-  width: 0.6rem;
-  height: 0.6rem;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .accountLabel {
-  font-size: clamp(0.7rem, 1.4vw, 0.9rem);
+  font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--gris-claro);
   margin: 0;
+  white-space: nowrap;
 }
 
 .accountValue {
-  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-size: clamp(1.1rem, 2.5vw, 1.5rem);
   font-weight: 700;
   color: var(--blanco);
   margin: 0;
@@ -128,29 +133,25 @@
     width: calc(100% - 3rem);
   }
   .accounts {
-    padding: 1rem 1.5rem 1.25rem;
+    padding: 0.85rem 0.5rem 1.25rem;
   }
   .account {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    gap: 0.3rem;
-  }
-  .accountLabelRow {
-    gap: 0.4rem;
+    padding: 0.4rem 0.6rem;
+    gap: 0.2rem;
   }
   .accountDot {
-    width: 0.5rem;
-    height: 0.5rem;
+    width: 0.45rem;
+    height: 0.45rem;
   }
   .accountLabel {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
   }
   .accountValue {
-    font-size: clamp(1.1rem, 3vw, 1.4rem);
+    font-size: clamp(0.95rem, 2.2vw, 1.15rem);
   }
 }
 
-/* Móvil (hasta 480px) - 2 columnas para cuentas */
+/* Móvil (hasta 480px) - lista vertical */
 @media (max-width: 480px) {
   .top {
     padding: 1.25rem 1rem 0;
@@ -167,31 +168,37 @@
     width: calc(100% - 2rem);
   }
   .accounts {
-    padding: 0.85rem 1rem 1.25rem;
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 0;
+    padding: 0.5rem 1rem 1rem;
   }
   .account {
-    padding: 0.6rem;
-    gap: 0.3rem;
-    border-right: none;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    text-align: left;
+    padding: 0.6rem 0.25rem;
+    gap: 0.5rem;
+    width: 100%;
     border-bottom: 1px solid var(--gris);
   }
-  .account:nth-child(odd) {
-    border-right: 1px solid var(--gris);
-  }
-  .account:nth-child(even) {
-    border-right: none;
-  }
-  .account:nth-last-child(1),
-  .account:nth-last-child(2):nth-child(odd) {
+  .account:last-child {
     border-bottom: none;
   }
-  .account:last-child:nth-child(odd) {
-    border-right: none;
+  /* Quitar el separador vertical de desktop */
+  .account + .account::before {
+    display: none;
   }
   .accountLabelRow {
+    justify-content: flex-start;
     gap: 0.35rem;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .accountLabel {
+    white-space: normal;
+    word-break: break-word;
   }
   .accountDot {
     width: 0.5rem;
@@ -201,7 +208,8 @@
     font-size: 0.7rem;
   }
   .accountValue {
-    font-size: clamp(1.1rem, 5vw, 1.35rem);
+    font-size: 1.1rem;
+    flex-shrink: 0;
   }
 }
 
@@ -222,12 +230,15 @@
     width: calc(100% - 1.5rem);
   }
   .accounts {
-    padding: 0.65rem 0.75rem 1rem;
+    padding: 0.4rem 0.75rem 0.85rem;
+  }
+  .account {
+    padding: 0.5rem 0.15rem;
   }
   .accountLabel {
     font-size: 0.65rem;
   }
   .accountValue {
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 }

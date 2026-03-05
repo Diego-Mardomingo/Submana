@@ -547,37 +547,6 @@ button:not(:disabled),
   user-select: none;
 }
 
-/* En móviles, las gráficas permiten scroll vertical y zoom */
-@media (pointer: coarse) {
-  .dashboard-chart .recharts-surface,
-  .dashboard-chart-tall .recharts-surface,
-  .dashboard-chart-small .recharts-surface {
-    touch-action: pan-y pinch-zoom;
-  }
-}
-
-/* Transición suave para tooltips de gráficos */
-.recharts-tooltip-wrapper {
-  transition: opacity 100ms ease-out;
-  pointer-events: none;
-}
-
-/* En móviles, hint de interacción para gráficos */
-.chart-touch-hint {
-  display: none;
-  font-size: 11px;
-  color: var(--muted-foreground);
-  text-align: center;
-  padding: 4px 0;
-  opacity: 0.8;
-}
-
-@media (pointer: coarse) {
-  .chart-touch-hint {
-    display: block;
-  }
-}
-
 /* Hint de swipe para paneles con filtros */
 .swipe-hint {
   display: none;

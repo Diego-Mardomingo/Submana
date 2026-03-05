@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
@@ -17,16 +17,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { Settings2 } from "lucide-react";
-import { ChartMobileHint } from "./ChartMobileHint";
+import { tooltipConfig, axisConfig, gridConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { detectTransferIds } from "@/lib/transferDetection";
 
-type Tx = { amount?: number; type?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
 
 const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -35,35 +34,47 @@ export default function DashboardMonthlyTrendBars() {
   const lang = useLang();
   const t = useTranslations(lang);
   const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
-  
+  const [chartColors, setChartColors] = useState({ success: "#10b981", danger: "#ef4444" });
+  useEffect(() => {
+    const c = getChartColors();
+    setChartColors({
+      success: c.success || "#10b981",
+      danger: c.danger || "#ef4444",
+    });
+  }, []);
+
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [customRange, setCustomRange] = useState<DateRange | null>(null);
-  
+
+  const now = new Date();
+  const defaultEndYear = now.getFullYear();
+  const defaultEndMonth = now.getMonth() + 1;
+  const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  const defaultStartYear = startDate.getFullYear();
+  const defaultStartMonth = startDate.getMonth() + 1;
+
+  const [customRange, setCustomRange] = useState<DateRange>({
+    startYear: defaultStartYear,
+    startMonth: defaultStartMonth,
+    endYear: defaultEndYear,
+    endMonth: defaultEndMonth,
+  });
+
   const { transactionsByMonth, monthLabels, availableRange, isLoading } = useTransactionsRange(
     undefined,
-    customRange ?? undefined
+    customRange
   );
-  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
-  
-  // Estado temporal para el selector
+
   const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
   const [tempEnd, setTempEnd] = useState<{ year: number; month: number } | null>(null);
-  
-  // Inicializar valores temporales al abrir el popover
+
   const handlePopoverOpenChange = (open: boolean) => {
-    if (open && availableRange) {
-      setTempStart(customRange 
-        ? { year: customRange.startYear, month: customRange.startMonth }
-        : { year: availableRange.startYear, month: availableRange.startMonth }
-      );
-      setTempEnd(customRange
-        ? { year: customRange.endYear, month: customRange.endMonth }
-        : { year: availableRange.endYear, month: availableRange.endMonth }
-      );
+    if (open) {
+      setTempStart({ year: customRange.startYear, month: customRange.startMonth });
+      setTempEnd({ year: customRange.endYear, month: customRange.endMonth });
     }
     setPopoverOpen(open);
   };
-  
+
   const handleApplyRange = () => {
     if (tempStart && tempEnd) {
       setCustomRange({
@@ -75,13 +86,17 @@ export default function DashboardMonthlyTrendBars() {
     }
     setPopoverOpen(false);
   };
-  
+
   const handleResetRange = () => {
-    setCustomRange(null);
+    setCustomRange({
+      startYear: defaultStartYear,
+      startMonth: defaultStartMonth,
+      endYear: defaultEndYear,
+      endMonth: defaultEndMonth,
+    });
     setPopoverOpen(false);
   };
-  
-  // Generar años disponibles
+
   const availableYears = useMemo(() => {
     if (!availableRange) return [];
     const years: number[] = [];
@@ -94,9 +109,11 @@ export default function DashboardMonthlyTrendBars() {
   const chartData = useMemo(() => {
     return monthLabels.map(({ key, label }) => {
       const txs = (transactionsByMonth[key] ?? []) as Tx[];
+      const transferIds = detectTransferIds(txs.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
       let income = 0;
       let expense = 0;
       for (const tx of txs) {
+        if (transferIds.has(tx.id)) continue;
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") income += amt;
         else expense += amt;
@@ -105,9 +122,51 @@ export default function DashboardMonthlyTrendBars() {
     });
   }, [transactionsByMonth, monthLabels]);
 
+  const barData = useMemo(() => ({
+    labels: chartData.map((d) => d.name),
+    datasets: [
+      {
+        label: lang === "es" ? "Ingresos" : "Income",
+        data: chartData.map((d) => d.income),
+        backgroundColor: chartColors.success,
+        borderRadius: 4,
+      },
+      {
+        label: lang === "es" ? "Gastos" : "Expense",
+        data: chartData.map((d) => d.expense),
+        backgroundColor: chartColors.danger,
+        borderRadius: 4,
+      },
+    ],
+  }), [chartData, lang, chartColors]);
+
+  const barOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index" as const, intersect: false },
+    plugins: {
+      tooltip: {
+        ...tooltipConfig(),
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
+        },
+      },
+      legend: {
+        labels: { font: { size: 12 }, usePointStyle: true, pointStyle: "rectRounded" },
+      },
+    },
+    scales: {
+      x: { ...axisConfig() },
+      y: {
+        ...axisConfig(),
+        ticks: { ...axisConfig().ticks, callback: formatK },
+      },
+    },
+  }), []);
+
   const rangeSelectorContent = availableRange && tempStart && tempEnd && (
     <div className="space-y-4">
-      {/* Desde */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-muted-foreground">
           {lang === "es" ? "Desde" : "From"}
@@ -142,7 +201,6 @@ export default function DashboardMonthlyTrendBars() {
         </div>
       </div>
 
-      {/* Hasta */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-muted-foreground">
           {lang === "es" ? "Hasta" : "To"}
@@ -177,20 +235,11 @@ export default function DashboardMonthlyTrendBars() {
         </div>
       </div>
 
-      {/* Botones de acción */}
       <div className="flex gap-2 justify-end pt-2 border-t">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleResetRange}
-        >
+        <Button variant="ghost" size="sm" onClick={handleResetRange}>
           {lang === "es" ? "Restablecer" : "Reset"}
         </Button>
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleApplyRange}
-        >
+        <Button variant="default" size="sm" onClick={handleApplyRange}>
           {lang === "es" ? "Aplicar" : "Apply"}
         </Button>
       </div>
@@ -226,7 +275,7 @@ export default function DashboardMonthlyTrendBars() {
             <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
               <PopoverTrigger asChild>
                 <Button
-                  variant={customRange || popoverOpen ? "secondary" : "ghost"}
+                  variant={popoverOpen ? "secondary" : "ghost"}
                   size="icon-xs"
                   title={lang === "es" ? "Configurar rango" : "Configure range"}
                 >
@@ -249,26 +298,9 @@ export default function DashboardMonthlyTrendBars() {
         </CardAction>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart-tall w-full" ref={containerRef}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 4, left: -15, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
-              <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" width={45} tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v))} />
-              <Tooltip
-                key={tooltipKey}
-                trigger={isTouch ? "click" : "hover"}
-                formatter={(value: number) => [formatCurrency(value), ""]}
-                labelFormatter={(label) => label}
-                {...chartTooltipStyle}
-              />
-              <Legend wrapperStyle={{ fontSize: "12px" }} />
-              <Bar dataKey="income" fill="var(--success)" name={lang === "es" ? "Ingresos" : "Income"} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="expense" fill="var(--danger)" name={lang === "es" ? "Gastos" : "Expense"} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="dashboard-chart-tall w-full">
+          <Bar data={barData} options={barOptions} />
         </div>
-        {isTouch && <ChartMobileHint type="tap" />}
       </CardContent>
     </Card>
   );

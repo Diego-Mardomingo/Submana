@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AddButton } from "@/components/ui/add-button";
 import { Spinner } from "@/components/ui/spinner";
+import { detectTransferIds } from "@/lib/transferDetection";
 
 type TransactionItem = {
   id: string;
@@ -32,6 +33,7 @@ type TransactionItem = {
   amount: number;
   type: string;
   description?: string;
+  account_id?: string;
   account?: { name: string; color?: string };
   category_id?: string | null;
   subcategory_id?: string | null;
@@ -271,8 +273,9 @@ export default function TransactionsBody() {
   };
 
   const txList = transactions as TransactionItem[];
-  const totalIncome = txList.filter((tx) => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount), 0);
-  const totalExpense = txList.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const transferIds = useMemo(() => detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount), type: tx.type, date: tx.date, account_id: tx.account_id }))), [txList]);
+  const totalIncome = txList.filter((tx) => tx.type === "income" && !transferIds.has(tx.id)).reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const totalExpense = txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id)).reduce((sum, tx) => sum + Number(tx.amount), 0);
   const totalBalance = totalIncome - totalExpense;
 
   const grouped = txList.reduce(

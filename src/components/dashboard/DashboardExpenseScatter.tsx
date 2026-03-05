@@ -1,37 +1,118 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef, useCallback } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
-import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, ZAxis } from "recharts";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Scatter } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
+import { tooltipConfig, axisConfig, formatK } from "@/lib/chartConfig";
+import { detectTransferIds } from "@/lib/transferDetection";
+import styles from "./DashboardMonthNav.module.css";
 
-type Tx = { amount?: number; type?: string; date?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
 
 export default function DashboardExpenseScatter() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
-  const now = new Date();
-  const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  const nav = useMonthNavigation(lang);
+  const { data: transactions = [], isLoading } = useTransactions(nav.year, nav.month);
+  const dangerRef = useRef("");
+
+  const cardRefCallback = useCallback(
+    (node: HTMLDivElement | null) => { nav.setSwipeElement(node); },
+    [nav.setSwipeElement]
+  );
+
+  useEffect(() => {
+    dangerRef.current = getComputedStyle(document.documentElement).getPropertyValue("--danger").trim();
+  }, []);
+
+  const daysInMonth = new Date(nav.year, nav.month, 0).getDate();
 
   const chartData = useMemo(() => {
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    return (transactions as Tx[])
-      .filter((tx) => tx.type === "expense" && tx.date)
+    const year = nav.year;
+    const month = nav.month - 1;
+    const txList = transactions as Tx[];
+    const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    return txList
+      .filter((tx) => tx.type === "expense" && !transferIds.has(tx.id) && tx.date)
       .map((tx) => {
         const d = new Date(tx.date!);
         if (d.getFullYear() !== year || d.getMonth() !== month) return null;
         const amount = Number(tx.amount) || 0;
-        return { x: d.getDate(), y: amount, z: Math.min(amount / 50, 10) };
+        return { x: d.getDate(), y: amount };
       })
-      .filter((p): p is { x: number; y: number; z: number } => p !== null);
-  }, [transactions]);
+      .filter((p): p is { x: number; y: number } => p !== null);
+  }, [transactions, nav.year, nav.month]);
+
+  const scatterData = useMemo(() => ({
+    datasets: [{
+      data: chartData,
+      backgroundColor: (dangerRef.current || "#ef4444") + "B3",
+      pointRadius: chartData.map((p) => Math.max(3, Math.min(p.y / 50, 12))),
+      pointHoverRadius: 8,
+    }],
+  }), [chartData]);
+
+  const scatterOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "nearest" as const, intersect: true },
+    plugins: {
+      tooltip: {
+        ...tooltipConfig(),
+        callbacks: {
+          label: (ctx: { parsed: { x: number | null; y: number | null } }) => {
+            const dayLabel = lang === "es" ? "Día" : "Day";
+            const amtLabel = lang === "es" ? "Importe" : "Amount";
+            return [`${dayLabel}: ${ctx.parsed.x ?? 0}`, `${amtLabel}: ${formatCurrency(ctx.parsed.y ?? 0)}`];
+          },
+        },
+      },
+      legend: { display: false },
+    },
+    scales: {
+      x: {
+        ...axisConfig(),
+        type: "linear" as const,
+        min: 1,
+        max: daysInMonth,
+        title: { display: false },
+        ticks: { ...axisConfig().ticks, stepSize: 5 },
+      },
+      y: {
+        ...axisConfig(),
+        ticks: { ...axisConfig().ticks, callback: formatK },
+      },
+    },
+  }), [lang, daysInMonth]);
+
+  const monthNav = (
+    <div className={styles.monthNav}>
+      {!isMobile && (
+        <Button variant="ghost" size="icon" onClick={nav.goToPrevMonth} className={styles.navButton} aria-label="Previous month">
+          <ChevronLeft className="size-4" strokeWidth={1.5} />
+        </Button>
+      )}
+      <button type="button" onClick={nav.goToCurrentMonth} className={styles.monthLabel} title={nav.isCurrentMonth ? undefined : t("calendar.today")}>
+        <span>{nav.monthLabel}</span>
+        {!nav.isCurrentMonth && <span className={styles.currentIndicator}>●</span>}
+      </button>
+      {!isMobile && (
+        <Button variant="ghost" size="icon" onClick={nav.goToNextMonth} className={styles.navButton} aria-label="Next month">
+          <ChevronRight className="size-4" strokeWidth={1.5} />
+        </Button>
+      )}
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -41,8 +122,11 @@ export default function DashboardExpenseScatter() {
             {t("dashboard.expenseByDay")}
           </CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center justify-center py-12">
-          <Spinner className="size-6 text-muted-foreground" />
+        <CardContent>
+          {monthNav}
+          <div className="flex items-center justify-center py-12">
+            <Spinner className="size-6 text-muted-foreground" />
+          </div>
         </CardContent>
       </Card>
     );
@@ -50,13 +134,14 @@ export default function DashboardExpenseScatter() {
 
   if (chartData.length === 0) {
     return (
-      <Card className="dashboard-card">
+      <Card className="dashboard-card" ref={cardRefCallback}>
         <CardHeader>
           <CardTitle className="text-base font-semibold text-muted-foreground">
             {t("dashboard.expenseByDay")}
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {monthNav}
           <p className="py-8 text-center text-sm text-muted-foreground">{t("home.noExpensesThisMonth")}</p>
         </CardContent>
       </Card>
@@ -64,7 +149,7 @@ export default function DashboardExpenseScatter() {
   }
 
   return (
-    <Card className="dashboard-card">
+    <Card className="dashboard-card" ref={cardRefCallback}>
       <CardHeader>
         <CardTitle className="text-base font-semibold text-muted-foreground">
           {t("dashboard.expenseByDay")}
@@ -74,39 +159,9 @@ export default function DashboardExpenseScatter() {
         </p>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full" ref={containerRef}>
-          <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <XAxis dataKey="x" type="number" name="day" domain={[1, 31]} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-              <YAxis dataKey="y" type="number" name="amount" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <ZAxis dataKey="z" range={[50, 400]} />
-              <Tooltip
-                key={tooltipKey}
-                trigger={isTouch ? "click" : "hover"}
-                cursor={{ strokeDasharray: "3 3" }}
-                content={({ active, payload }) => {
-                  if (!active || !payload?.length) return null;
-                  const p = payload[0].payload;
-                  return (
-                    <div
-                      style={{
-                        backgroundColor: "var(--card)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                        padding: "10px 14px",
-                        color: "var(--blanco)",
-                        fontSize: "12px",
-                      }}
-                    >
-                      <div>{lang === "es" ? "Día" : "Day"}: {p.x}</div>
-                      <div>{lang === "es" ? "Importe" : "Amount"}: {formatCurrency(p.y)}</div>
-                    </div>
-                  );
-                }}
-              />
-              <Scatter data={chartData} fill="var(--danger)" fillOpacity={0.7} />
-            </ScatterChart>
-          </ResponsiveContainer>
+        {monthNav}
+        <div className="dashboard-chart w-full">
+          <Scatter data={scatterData} options={scatterOptions} />
         </div>
       </CardContent>
     </Card>

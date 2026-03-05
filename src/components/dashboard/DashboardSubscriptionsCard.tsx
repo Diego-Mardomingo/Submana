@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { CHART_COLORS } from "./chartColors";
+import { Doughnut } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
+import { resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
 
 type Sub = { id: string; service_name: string; cost?: number; frequency?: string; frequency_value?: number; end_date?: string | null };
 
@@ -36,17 +35,52 @@ export default function DashboardSubscriptionsCard() {
   const lang = useLang();
   const t = useTranslations(lang);
   const { data: subscriptions = [], isLoading } = useSubscriptions();
+  const defaultPalette = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
+  const [colors, setColors] = useState<string[]>(defaultPalette);
+
+  useEffect(() => {
+    setColors(resolveChartPalette());
+  }, []);
 
   const { chartData, total } = useMemo(() => {
     const active = (subscriptions as Sub[]).filter(isActive);
-    const data = active.map((s, i) => ({
+    const data = active.map((s) => ({
       name: s.service_name,
       value: Math.round(getMonthlyCost(s) * 100) / 100,
-      color: CHART_COLORS[i % CHART_COLORS.length],
     }));
     const total = data.reduce((s, d) => s + d.value, 0);
     return { chartData: data, total };
   }, [subscriptions]);
+
+  const doughnutData = useMemo(() => ({
+    labels: chartData.map((d) => d.name),
+    datasets: [{
+      data: chartData.map((d) => d.value),
+      backgroundColor: chartData.map((_, i) => colors[i % colors.length]),
+      borderWidth: 0,
+      hoverOffset: 6,
+    }],
+  }), [chartData, colors]);
+
+  const doughnutOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "50%",
+    plugins: {
+      tooltip: {
+        ...tooltipConfig(),
+        callbacks: {
+          label: (ctx: { label?: string; parsed: number }) => {
+            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : "0";
+            return `${ctx.label}: ${formatCurrency(ctx.parsed)} (${pct}%)`;
+          },
+        },
+      },
+      legend: {
+        labels: { font: { size: 11 }, boxWidth: 8, usePointStyle: true, pointStyle: "circle" },
+      },
+    },
+  }), [total]);
 
   if (isLoading) {
     return (
@@ -90,33 +124,7 @@ export default function DashboardSubscriptionsCard() {
       </CardHeader>
       <CardContent>
         <div className="dashboard-chart-small w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius="50%"
-                outerRadius="80%"
-                paddingAngle={2}
-                stroke="transparent"
-              >
-                {chartData.map((entry, i) => (
-                  <Cell key={i} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => [
-                  formatCurrency(value),
-                  total > 0 ? `${((value / total) * 100).toFixed(1)}%` : "",
-                ]}
-                {...chartTooltipStyle}
-              />
-              <Legend wrapperStyle={{ fontSize: "11px" }} iconSize={8} />
-            </PieChart>
-          </ResponsiveContainer>
+          <Doughnut data={doughnutData} options={doughnutOptions} />
         </div>
       </CardContent>
     </Card>

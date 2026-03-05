@@ -1,10 +1,9 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef, useEffect } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
-import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
 import { formatCurrency } from "@/lib/format";
 import {
   Card,
@@ -13,34 +12,25 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Doughnut } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
+import { detectTransferIds } from "@/lib/transferDetection";
+import navStyles from "@/components/dashboard/DashboardMonthNav.module.css";
 import styles from "./HomeCategoryDonutCard.module.css";
 
-/* Variables CSS del tema (--chart-* ya son colores completos: accent, success, info, warning, teal) */
-const CATEGORY_COLORS = [
-  "var(--chart-1)",
-  "var(--chart-2)",
-  "var(--chart-3)",
-  "var(--chart-4)",
-  "var(--chart-5)",
-  "var(--danger)",
-  "#ec4899",
-  "#8b5cf6",
-  "#06b6d4",
-  "#f97316",
-];
-
 type Tx = {
+  id: string;
   amount?: number;
   type?: string;
+  date?: string;
   category_id?: string | null;
   subcategory_id?: string | null;
+  account_id?: string;
 };
 
 function buildCategoryMaps(
@@ -71,7 +61,11 @@ export default function HomeCategoryDonutCard() {
   const lang = useLang();
   const t = useTranslations(lang);
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const { containerRef: chartContainerRef, isTouch, tooltipKey } = useChartTooltipControl();
+  const colorsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    colorsRef.current = resolveChartPalette();
+  }, []);
 
   const nav = useMonthNavigation(lang);
 
@@ -91,16 +85,14 @@ export default function HomeCategoryDonutCard() {
   const { chartData, totalExpense } = useMemo(() => {
     const defaultCats = categoriesData?.defaultCategories ?? [];
     const userCats = categoriesData?.userCategories ?? [];
-    const { idToName, subToParent } = buildCategoryMaps(
-      defaultCats,
-      userCats,
-      lang
-    );
+    const { idToName, subToParent } = buildCategoryMaps(defaultCats, userCats, lang);
 
     const byCategory = new Map<string, number>();
+    const txList = transactions as Tx[];
+    const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
 
-    for (const tx of transactions as Tx[]) {
-      if (tx.type !== "expense") continue;
+    for (const tx of txList) {
+      if (tx.type !== "expense" || transferIds.has(tx.id)) continue;
       const amt = Number(tx.amount) || 0;
       const parentId =
         tx.category_id ??
@@ -123,6 +115,54 @@ export default function HomeCategoryDonutCard() {
 
   const isInitialLoading = (txLoading && transactions.length === 0) || (catLoading && !categoriesData);
   const isRefreshing = (txFetching || catFetching) && !isInitialLoading;
+
+  const colors = colorsRef.current.length > 0 ? colorsRef.current : resolveChartPalette();
+
+  const labelsWithPct = useMemo(() =>
+    chartData.map((d) => {
+      const pct = totalExpense > 0 ? ((d.value / totalExpense) * 100).toFixed(0) : "0";
+      return `${d.name} (${pct}%)`;
+    }),
+  [chartData, totalExpense]);
+
+  const doughnutData = useMemo(() => ({
+    labels: labelsWithPct,
+    datasets: [
+      {
+        data: chartData.map((d) => d.value),
+        backgroundColor: chartData.map((_, i) => colors[i % colors.length]),
+        borderWidth: 0,
+        hoverOffset: 6,
+      },
+    ],
+  }), [chartData, labelsWithPct, colors]);
+
+  const doughnutOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: "55%",
+    plugins: {
+      tooltip: {
+        ...tooltipConfig(),
+        callbacks: {
+          label: (ctx: { label?: string; parsed: number }) => {
+            const name = chartData[ctx.parsed] ? chartData[ctx.parsed].name : ctx.label ?? "";
+            const pct = totalExpense > 0 ? ((ctx.parsed / totalExpense) * 100).toFixed(1) : "0";
+            return `${name}: ${formatCurrency(ctx.parsed)} (${pct}%)`;
+          },
+        },
+      },
+      legend: {
+        position: "right" as const,
+        labels: {
+          boxWidth: isMobile ? 6 : 8,
+          usePointStyle: true,
+          pointStyle: "circle" as const,
+          font: { size: isMobile ? 9 : 11 },
+        },
+      },
+    },
+  }), [isMobile, totalExpense, chartData]);
 
   if (isInitialLoading) {
     return (
@@ -147,13 +187,13 @@ export default function HomeCategoryDonutCard() {
         </CardTitle>
       </CardHeader>
       <CardContent style={{ opacity: isRefreshing ? 0.7 : 1, transition: "opacity 0.2s" }}>
-        <div className={styles.monthNav}>
+        <div className={navStyles.monthNav}>
           {!isMobile && (
             <Button
               variant="ghost"
               size="icon"
               onClick={nav.goToPrevMonth}
-              className={styles.navButton}
+              className={navStyles.navButton}
               aria-label="Previous month"
             >
               <ChevronLeft className="size-4" strokeWidth={1.5} />
@@ -162,12 +202,12 @@ export default function HomeCategoryDonutCard() {
           <button
             type="button"
             onClick={nav.goToCurrentMonth}
-            className={styles.monthLabel}
+            className={navStyles.monthLabel}
             title={nav.isCurrentMonth ? undefined : t("calendar.today")}
           >
             <span>{nav.monthLabel}</span>
             {!nav.isCurrentMonth && (
-              <span className={styles.currentIndicator}>●</span>
+              <span className={navStyles.currentIndicator}>●</span>
             )}
           </button>
           {!isMobile && (
@@ -175,7 +215,7 @@ export default function HomeCategoryDonutCard() {
               variant="ghost"
               size="icon"
               onClick={nav.goToNextMonth}
-              className={styles.navButton}
+              className={navStyles.navButton}
               aria-label="Next month"
             >
               <ChevronRight className="size-4" strokeWidth={1.5} />
@@ -187,56 +227,8 @@ export default function HomeCategoryDonutCard() {
             {t("home.noExpensesThisMonth")}
           </p>
         ) : (
-          <div className={styles.chartWrapper} ref={chartContainerRef}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="55%"
-                  outerRadius="85%"
-                  paddingAngle={1}
-                  stroke="transparent"
-                >
-                  {chartData.map((_, index) => (
-                    <Cell
-                      key={index}
-                      fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  key={tooltipKey}
-                  trigger={isTouch ? "click" : "hover"}
-                  formatter={(value: number) => [
-                    formatCurrency(value),
-                    totalExpense > 0
-                      ? `${((value / totalExpense) * 100).toFixed(1)}%`
-                      : "",
-                  ]}
-                  {...chartTooltipStyle}
-                />
-                <Legend
-                  layout="vertical"
-                  align="right"
-                  verticalAlign="middle"
-                  iconSize={isMobile ? 6 : 8}
-                  iconType="circle"
-                  wrapperStyle={{ fontSize: isMobile ? "0.6rem" : undefined }}
-                  formatter={(value, _entry) => {
-                    const item = chartData.find((d) => d.name === value);
-                    const pct =
-                      item && totalExpense > 0
-                        ? ((item.value / totalExpense) * 100).toFixed(0)
-                        : "0";
-                    return `${value} (${pct}%)`;
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className={styles.chartWrapper}>
+            <Doughnut data={doughnutData} options={doughnutOptions} />
           </div>
         )}
       </CardContent>

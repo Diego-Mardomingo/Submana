@@ -43,7 +43,7 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
     placeholderData: keepPreviousData,
   });
 
-  const { transactionsByMonth, monthLabels, availableRange } = (() => {
+  const { transactionsByMonth, monthLabels, availableRange, allByMonth, allKeys: sortedAllKeys } = (() => {
     const byMonth = new Map<string, unknown[]>();
 
     for (const tx of allTransactions as { date?: string }[]) {
@@ -57,7 +57,6 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
 
     const allKeys = Array.from(byMonth.keys()).sort();
     
-    // Calcular rango disponible
     let availableRange: DateRange | null = null;
     if (allKeys.length > 0) {
       const [firstYear, firstMonth] = allKeys[0].split("-").map(Number);
@@ -70,7 +69,6 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
       };
     }
     
-    // Filtrar por rango si se proporciona
     let filteredKeys = allKeys;
     if (range) {
       const startKey = `${range.startYear}-${String(range.startMonth).padStart(2, "0")}`;
@@ -90,13 +88,20 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
       });
     }
 
-    return { transactionsByMonth, monthLabels, availableRange };
+    const allByMonth: Record<string, unknown[]> = {};
+    for (const key of allKeys) {
+      allByMonth[key] = byMonth.get(key) ?? [];
+    }
+
+    return { transactionsByMonth, monthLabels, availableRange, allByMonth, allKeys };
   })();
 
   return {
     transactionsByMonth,
     monthLabels,
     availableRange,
+    allByMonth,
+    allKeys: sortedAllKeys,
     isLoading,
     isError,
   };

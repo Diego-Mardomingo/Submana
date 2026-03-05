@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
@@ -17,38 +17,40 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { useAccounts } from "@/hooks/useAccounts";
 import { Line } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { Settings2 } from "lucide-react";
-import { tooltipConfig, axisConfig, gridConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { tooltipConfig, axisConfig, gridConfig, formatK } from "@/lib/chartConfig";
 
 type Tx = { amount?: number; type?: string };
 
 const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export default function DashboardBalanceTrendLine() {
+interface Props {
+  accountId: string;
+  accountName: string;
+  accountColor: string;
+  accountBalance: number;
+}
+
+export default function DashboardAccountTrendLine({ accountId, accountName, accountColor, accountBalance }: Props) {
   const lang = useLang();
-  const t = useTranslations(lang);
   const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
-  const [accent, setAccent] = useState("#6366f1");
+  const colorRef = useRef(accountColor);
 
   useEffect(() => {
-    setAccent(getChartColors().accent || "#6366f1");
-  }, []);
+    colorRef.current = accountColor;
+  }, [accountColor]);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
 
   const { transactionsByMonth, monthLabels, availableRange, allByMonth, allKeys, isLoading } = useTransactionsRange(
-    undefined,
+    accountId,
     customRange ?? undefined
   );
-
-  const { data: accounts = [] } = useAccounts();
 
   const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
   const [tempEnd, setTempEnd] = useState<{ year: number; month: number } | null>(null);
@@ -90,10 +92,6 @@ export default function DashboardBalanceTrendLine() {
   }, [availableRange]);
 
   const chartData = useMemo(() => {
-    const currentTotalBalance = accounts.reduce(
-      (sum: number, acc: { balance?: number }) => sum + Number(acc.balance ?? 0), 0
-    );
-
     let netAllTransactions = 0;
     for (const key of allKeys) {
       const txs = (allByMonth[key] ?? []) as Tx[];
@@ -104,7 +102,7 @@ export default function DashboardBalanceTrendLine() {
       }
     }
 
-    const balanceBeforeAllTx = currentTotalBalance - netAllTransactions;
+    const balanceBeforeAllTx = accountBalance - netAllTransactions;
 
     const firstVisibleKey = monthLabels.length > 0 ? monthLabels[0].key : null;
     let preRangeBalance = balanceBeforeAllTx;
@@ -130,22 +128,24 @@ export default function DashboardBalanceTrendLine() {
       }
       return { name: label, balance: Math.round(cumulative * 100) / 100 };
     });
-  }, [transactionsByMonth, monthLabels, accounts, allByMonth, allKeys]);
+  }, [transactionsByMonth, monthLabels, accountBalance, allByMonth, allKeys]);
+
+  const color = colorRef.current || "#6366f1";
 
   const lineData = useMemo(() => ({
     labels: chartData.map((d) => d.name),
     datasets: [{
       data: chartData.map((d) => d.balance),
-      borderColor: accent,
-      backgroundColor: accent + "20",
+      borderColor: color,
+      backgroundColor: color + "20",
       borderWidth: 2,
-      pointBackgroundColor: accent,
+      pointBackgroundColor: color,
       pointRadius: 3,
       pointHoverRadius: 6,
       fill: true,
       tension: 0.3,
     }],
-  }), [chartData, accent]);
+  }), [chartData, color]);
 
   const lineOptions = useMemo(() => ({
     responsive: true,
@@ -222,16 +222,32 @@ export default function DashboardBalanceTrendLine() {
     </div>
   );
 
+  const titleContent = (
+    <CardTitle className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+      <span className="inline-block size-3 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+      {accountName}
+    </CardTitle>
+  );
+
   if (isLoading) {
     return (
       <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-muted-foreground">
-            {t("dashboard.balanceTrend")}
-          </CardTitle>
-        </CardHeader>
+        <CardHeader>{titleContent}</CardHeader>
         <CardContent className="flex items-center justify-center py-12">
           <Spinner className="size-6 text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (chartData.length === 0) {
+    return (
+      <Card className="dashboard-card">
+        <CardHeader>{titleContent}</CardHeader>
+        <CardContent>
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {lang === "es" ? "Sin transacciones" : "No transactions"}
+          </p>
         </CardContent>
       </Card>
     );
@@ -240,9 +256,7 @@ export default function DashboardBalanceTrendLine() {
   return (
     <Card className="dashboard-card">
       <CardHeader>
-        <CardTitle className="text-base font-semibold text-muted-foreground">
-          {t("dashboard.balanceTrend")}
-        </CardTitle>
+        {titleContent}
         <CardAction>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground hidden sm:inline">

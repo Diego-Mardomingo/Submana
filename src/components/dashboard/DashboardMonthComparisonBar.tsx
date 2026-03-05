@@ -1,25 +1,27 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { chartTooltipStyle } from "@/components/ui/chart-tooltip";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { useChartTooltipControl } from "@/hooks/useChartTooltipControl";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { ChartMobileHint } from "./ChartMobileHint";
+import { tooltipConfig, axisConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { detectTransferIds } from "@/lib/transferDetection";
 
-type Tx = { amount?: number; type?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
 
 function useMonthlyTotals(year: number, month: number) {
   const { data: transactions = [], isLoading } = useTransactions(year, month);
   return useMemo(() => {
+    const txList = transactions as Tx[];
+    const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
     let income = 0;
     let expense = 0;
-    for (const tx of transactions as Tx[]) {
+    for (const tx of txList) {
+      if (transferIds.has(tx.id)) continue;
       const amt = Number(tx.amount) || 0;
       if (tx.type === "income") income += amt;
       else expense += amt;
@@ -31,26 +33,73 @@ function useMonthlyTotals(year: number, month: number) {
 export default function DashboardMonthComparisonBar() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { containerRef, isTouch, tooltipKey } = useChartTooltipControl();
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
   const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
 
+  const [chartColors, setChartColors] = useState({ success: "#10b981", accent: "#6366f1" });
+  useEffect(() => {
+    const c = getChartColors();
+    setChartColors({
+      success: c.success || "#10b981",
+      accent: c.accent || "#6366f1",
+    });
+  }, []);
+
   const current = useMonthlyTotals(currentYear, currentMonth);
   const previous = useMonthlyTotals(prevYear, prevMonth);
 
-  const chartData = useMemo(() => {
+  const chartLabels = useMemo(() => {
     const incomeLabel = lang === "es" ? "Ingresos" : "Income";
     const expenseLabel = lang === "es" ? "Gastos" : "Expense";
-    const balanceLabel = lang === "es" ? "Balance" : "Balance";
-    return [
-      { metric: incomeLabel, current: current.income, previous: previous.income },
-      { metric: expenseLabel, current: current.expense, previous: previous.expense },
-      { metric: balanceLabel, current: current.balance, previous: previous.balance },
-    ];
-  }, [current, previous, lang]);
+    const balanceLabel = "Balance";
+    return [incomeLabel, expenseLabel, balanceLabel];
+  }, [lang]);
+
+  const barData = useMemo(() => ({
+    labels: chartLabels,
+    datasets: [
+      {
+        label: lang === "es" ? "Mes anterior" : "Last month",
+        data: [previous.income, previous.expense, previous.balance],
+        backgroundColor: chartColors.accent + "50",
+        borderRadius: 4,
+      },
+      {
+        label: lang === "es" ? "Este mes" : "This month",
+        data: [current.income, current.expense, current.balance],
+        backgroundColor: chartColors.success,
+        borderRadius: 4,
+      },
+    ],
+  }), [chartLabels, current, previous, lang, chartColors]);
+
+  const barOptions = useMemo(() => ({
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index" as const, intersect: false },
+    plugins: {
+      tooltip: {
+        ...tooltipConfig(),
+        callbacks: {
+          label: (ctx: { dataset: { label?: string }; parsed: { y: number | null } }) =>
+            `${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y ?? 0)}`,
+        },
+      },
+      legend: {
+        labels: { font: { size: 11 }, usePointStyle: true, pointStyle: "rectRounded" },
+      },
+    },
+    scales: {
+      x: { ...axisConfig(), ticks: { ...axisConfig().ticks, font: { size: 11 } } },
+      y: {
+        ...axisConfig(),
+        ticks: { ...axisConfig().ticks, callback: formatK },
+      },
+    },
+  }), []);
 
   const isLoading = current.isLoading || previous.isLoading;
 
@@ -77,24 +126,9 @@ export default function DashboardMonthComparisonBar() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full" ref={containerRef}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <XAxis dataKey="metric" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
-              <YAxis tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-              <Tooltip
-                key={tooltipKey}
-                trigger={isTouch ? "click" : "hover"}
-                formatter={(value: number) => [formatCurrency(value), ""]}
-                {...chartTooltipStyle}
-              />
-              <Legend />
-              <Bar dataKey="current" fill="var(--accent)" name={lang === "es" ? "Este mes" : "This month"} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="previous" fill="var(--muted-foreground)" name={lang === "es" ? "Mes anterior" : "Last month"} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <div className="dashboard-chart w-full">
+          <Bar data={barData} options={barOptions} />
         </div>
-        {isTouch && <ChartMobileHint type="tap" />}
       </CardContent>
     </Card>
   );

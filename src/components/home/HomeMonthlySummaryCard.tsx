@@ -18,16 +18,20 @@ import { useLang } from "@/hooks/useLang";
 import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { detectTransferIds } from "@/lib/transferDetection";
 import styles from "./HomeMonthlySummaryCard.module.css";
 
-type Tx = { amount?: number; type?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
 
 function useMonthlyTotals(year: number, month: number) {
   const { data: transactions = [], isLoading, isFetching, isPlaceholderData } = useTransactions(year, month);
   return useMemo(() => {
+    const txList = transactions as Tx[];
+    const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
     let income = 0;
     let expense = 0;
-    for (const tx of transactions as Tx[]) {
+    for (const tx of txList) {
+      if (transferIds.has(tx.id)) continue;
       const amt = Number(tx.amount) || 0;
       if (tx.type === "income") income += amt;
       else expense += amt;
