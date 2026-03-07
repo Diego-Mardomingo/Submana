@@ -58,8 +58,18 @@ function buildCategoryMaps(
   return { idToName, subToParent };
 }
 
-/** Stable color index per category id: only for ids present in the chart, sorted by id so same category = same color every month. */
-function buildStableColorIndexForPresent(ids: string[]): Map<string, number> {
+/** Stable color index per category id: uses ALL categories (default + user) so same id always gets same color across months. */
+function buildCategoryIdToColorIndex(
+  defaultCats: CategoryWithSubs[],
+  userCats: CategoryWithSubs[]
+): Map<string, number> {
+  const ids: string[] = [];
+  const walk = (list: CategoryWithSubs[]) => {
+    for (const parent of list) ids.push(parent.id);
+  };
+  walk(defaultCats);
+  walk(userCats);
+  ids.push("__uncategorized__");
   const sorted = [...new Set(ids)].sort((a, b) => {
     if (a === "__uncategorized__") return 1;
     if (b === "__uncategorized__") return -1;
@@ -127,7 +137,7 @@ export default function HomeCategoryDonutCard() {
     }));
 
     data.sort((a, b) => b.value - a.value);
-    const categoryIdToColorIndex = buildStableColorIndexForPresent(data.map((d) => d.id));
+    const categoryIdToColorIndex = buildCategoryIdToColorIndex(defaultCats, userCats);
     return { chartData: data, totalExpense: total, categoryIdToColorIndex };
   }, [transactions, categoriesData, lang, t]);
 
@@ -166,10 +176,12 @@ export default function HomeCategoryDonutCard() {
       tooltip: {
         ...tooltipConfig(),
         callbacks: {
-          label: (ctx: { label?: string; parsed: number }) => {
-            const name = chartData[ctx.parsed] ? chartData[ctx.parsed].name : ctx.label ?? "";
-            const pct = totalExpense > 0 ? ((ctx.parsed / totalExpense) * 100).toFixed(1) : "0";
-            return `${name}: ${formatCurrency(ctx.parsed)} (${pct}%)`;
+          label: (ctx: { dataIndex: number; parsed: number; label?: string }) => {
+            const item = chartData[ctx.dataIndex];
+            const name = item?.name ?? ctx.label ?? "";
+            const value = typeof ctx.parsed === "number" ? ctx.parsed : Number(ctx.parsed);
+            const pct = totalExpense > 0 ? ((value / totalExpense) * 100).toFixed(1) : "0";
+            return `${name}: ${formatCurrency(value)} (${pct}%)`;
           },
         },
       },

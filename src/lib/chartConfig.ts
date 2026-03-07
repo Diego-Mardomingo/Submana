@@ -82,6 +82,16 @@ export const CHART_PALETTE = [
   "#8b5cf6",
   "#06b6d4",
   "#f97316",
+  "#84cc16",
+  "#14b8a6",
+  "#6366f1",
+  "#e11d48",
+  "#0ea5e9",
+  "#a855f7",
+  "#f43f5e",
+  "#22d3ee",
+  "#4ade80",
+  "#fb923c",
 ];
 
 export function resolveChartPalette(): string[] {
