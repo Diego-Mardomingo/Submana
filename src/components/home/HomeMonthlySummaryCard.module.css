@@ -103,6 +103,7 @@
 
 .row {
   display: flex;
+  flex-direction: row;
   align-items: stretch;
   width: 100%;
 }
@@ -110,6 +111,7 @@
 .incomeSection,
 .expenseSection {
   flex: 1;
+  min-width: 0; /* Permite que flex se contraiga para evitar overflow */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -224,10 +226,11 @@
   }
 }
 
-/* Móvil (hasta 480px) */
+/* Móvil (hasta 480px): apilar verticalmente para evitar que se corte el € en Gastos */
 @media (max-width: 480px) {
   .row {
-    gap: 0.2rem;
+    flex-direction: column;
+    gap: 0.5rem;
   }
   .incomeSection,
   .expenseSection {
@@ -235,10 +238,13 @@
     padding: 0.5rem 0;
   }
   .incomeSection {
-    padding-right: 0.6rem;
+    padding-right: 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--gris);
   }
   .expenseSection {
-    padding-left: 0.6rem;
+    padding-left: 0;
+    border-left: none;
   }
   .label {
     font-size: 0.7rem;
@@ -262,18 +268,18 @@
   }
 }
 
-/* Móvil pequeño (hasta 360px) */
+/* Móvil muy pequeño (hasta 360px) */
 @media (max-width: 360px) {
+  .row {
+    gap: 0.4rem;
+  }
   .incomeSection,
   .expenseSection {
     gap: 0.25rem;
     padding: 0.4rem 0;
   }
   .incomeSection {
-    padding-right: 0.5rem;
-  }
-  .expenseSection {
-    padding-left: 0.5rem;
+    padding-bottom: 0.6rem;
   }
   .label {
     font-size: 0.65rem;
