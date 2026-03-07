@@ -67,9 +67,8 @@ export const categoryIcons: Record<string, React.FC<IconProps>> = {
   ),
   shopping: createIcon(
     <>
-      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-      <line x1="3" y1="6" x2="21" y2="6" />
-      <path d="M16 10a4 4 0 0 1-8 0" />
+      <path d="M4 7h16v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7" />
+      <path d="M9 7V5a3 3 0 0 1 6 0v2" />
     </>
   ),
   finance: createIcon(
@@ -314,7 +313,7 @@ export const defaultCategories = [
   {
     name: "Educación",
     nameEn: "Education",
-    icon: "education",
+    icon: "🎓",
     subcategories: [
       { name: "Cursos", nameEn: "Courses", icon: "courses" },
       { name: "Libros", nameEn: "Books", icon: "books" },
@@ -323,7 +322,7 @@ export const defaultCategories = [
   {
     name: "Compras",
     nameEn: "Shopping",
-    icon: "shopping",
+    icon: "🛍️",
     subcategories: [
       { name: "Ropa", nameEn: "Clothing", icon: "clothing" },
       { name: "Tecnología", nameEn: "Technology", icon: "tech" },
@@ -350,7 +349,23 @@ export const defaultCategories = [
   },
 ];
 
+const EMOJI_REGEX = /^[\p{Emoji}\p{Emoji_Modifier}\p{Emoji_Presentation}\p{Extended_Pictographic}]+$/u;
+
 export function getCategoryIcon(iconKey: string | undefined, size = 24, className?: string) {
+  if (iconKey && !categoryIcons[iconKey]) {
+    if (EMOJI_REGEX.test(iconKey.trim()) || iconKey.length <= 4) {
+      return (
+        <span
+          className={className}
+          style={{ fontSize: size, lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+          role="img"
+          aria-hidden
+        >
+          {iconKey}
+        </span>
+      );
+    }
+  }
   const Icon = categoryIcons[iconKey || "category"] || categoryIcons.category;
   return <Icon size={size} className={className} />;
 }

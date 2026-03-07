@@ -35,11 +35,13 @@ function buildMaps(
     for (const parent of list) {
       const name = lang === "en" && parent.name_en ? parent.name_en : parent.name;
       idToName.set(parent.id, name);
-      if (parent.icon) idToIcon.set(parent.id, parent.icon);
+      const iconKey = parent.emoji ?? parent.icon;
+      if (iconKey) idToIcon.set(parent.id, iconKey);
       for (const sub of parent.subcategories ?? []) {
         const subName = lang === "en" && sub.name_en ? sub.name_en : sub.name;
         idToName.set(sub.id, subName);
-        if (sub.icon) idToIcon.set(sub.id, sub.icon);
+        const subIconKey = sub.emoji ?? sub.icon;
+        if (subIconKey) idToIcon.set(sub.id, subIconKey);
         subToParent.set(sub.id, parent.id);
       }
     }
