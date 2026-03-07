@@ -41,7 +41,16 @@ export async function POST(request: NextRequest) {
     return jsonError("Account not found or access denied", 404);
   }
 
-  const hashes = transactions.map((t) => t.external_hash).filter(Boolean);
+  // Deduplicar dentro del lote por external_hash (fecha + importe + descripción = duplicado exacto, no insertar)
+  const seenHashes = new Set<string>();
+  const dedupedTransactions = transactions.filter((t) => {
+    if (!t.external_hash) return false;
+    if (seenHashes.has(t.external_hash)) return false;
+    seenHashes.add(t.external_hash);
+    return true;
+  });
+
+  const hashes = dedupedTransactions.map((t) => t.external_hash).filter(Boolean);
   
   let existingHashes: Set<string> = new Set();
   if (hashes.length > 0) {
@@ -58,7 +67,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const newTransactions = transactions.filter(
+  const newTransactions = dedupedTransactions.filter(
     (t) => t.external_hash && !existingHashes.has(t.external_hash)
   );
 

@@ -95,7 +95,16 @@ export async function POST(request: NextRequest) {
     })
   );
 
-  const hashes = transactionsWithNewHash.map((t) => t.external_hash).filter(Boolean);
+  // Deduplicar dentro del lote por external_hash (fecha + importe + descripción = duplicado exacto)
+  const seenHashes = new Set<string>();
+  const dedupedTransactions = transactionsWithNewHash.filter((t) => {
+    if (!t.external_hash) return false;
+    if (seenHashes.has(t.external_hash)) return false;
+    seenHashes.add(t.external_hash);
+    return true;
+  });
+
+  const hashes = dedupedTransactions.map((t) => t.external_hash).filter(Boolean);
   
   let existingHashes: Set<string> = new Set();
   if (hashes.length > 0) {
@@ -112,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const newTransactions = transactionsWithNewHash.filter(
+  const newTransactions = dedupedTransactions.filter(
     (t) => t.external_hash && !existingHashes.has(t.external_hash)
   );
 
