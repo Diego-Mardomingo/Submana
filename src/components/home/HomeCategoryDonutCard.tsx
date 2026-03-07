@@ -58,6 +58,18 @@ function buildCategoryMaps(
   return { idToName, subToParent };
 }
 
+/** Stable color index per category id: only for ids present in the chart, sorted by id so same category = same color every month. */
+function buildStableColorIndexForPresent(ids: string[]): Map<string, number> {
+  const sorted = [...new Set(ids)].sort((a, b) => {
+    if (a === "__uncategorized__") return 1;
+    if (b === "__uncategorized__") return -1;
+    return a.localeCompare(b);
+  });
+  const map = new Map<string, number>();
+  sorted.forEach((id, i) => map.set(id, i));
+  return map;
+}
+
 export default function HomeCategoryDonutCard() {
   const lang = useLang();
   const t = useTranslations(lang);
@@ -83,7 +95,7 @@ export default function HomeCategoryDonutCard() {
   );
   const { data: categoriesData, isLoading: catLoading, isFetching: catFetching } = useCategories();
 
-  const { chartData, totalExpense } = useMemo(() => {
+  const { chartData, totalExpense, categoryIdToColorIndex } = useMemo(() => {
     const defaultCats = categoriesData?.defaultCategories ?? [];
     const userCats = categoriesData?.userCategories ?? [];
     const { idToName, subToParent } = buildCategoryMaps(defaultCats, userCats, lang);
@@ -115,7 +127,8 @@ export default function HomeCategoryDonutCard() {
     }));
 
     data.sort((a, b) => b.value - a.value);
-    return { chartData: data, totalExpense: total };
+    const categoryIdToColorIndex = buildStableColorIndexForPresent(data.map((d) => d.id));
+    return { chartData: data, totalExpense: total, categoryIdToColorIndex };
   }, [transactions, categoriesData, lang, t]);
 
   const isInitialLoading = (txLoading && transactions.length === 0) || (catLoading && !categoriesData);
@@ -135,12 +148,15 @@ export default function HomeCategoryDonutCard() {
     datasets: [
       {
         data: chartData.map((d) => d.value),
-        backgroundColor: chartData.map((_, i) => colors[i % colors.length]),
+        backgroundColor: chartData.map((d) => {
+          const idx = categoryIdToColorIndex.get(d.id) ?? 0;
+          return colors[idx % colors.length];
+        }),
         borderWidth: 0,
         hoverOffset: 6,
       },
     ],
-  }), [chartData, labelsWithPct, colors]);
+  }), [chartData, labelsWithPct, colors, categoryIdToColorIndex]);
 
   const doughnutOptions = useMemo(() => ({
     responsive: true,
