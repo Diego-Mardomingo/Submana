@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, memo } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
 import { useCategories } from "@/hooks/useCategories";
@@ -69,6 +70,7 @@ type TransactionCardProps = {
   subcategoryEmoji: string | null;
   incomeLabel: string;
   expenseLabel: string;
+  editHref: string;
   onBeforeEdit?: () => void;
 };
 
@@ -78,11 +80,12 @@ const TransactionCard = memo(function TransactionCard({
   subcategoryEmoji,
   incomeLabel,
   expenseLabel,
+  editHref,
   onBeforeEdit,
 }: TransactionCardProps) {
   return (
     <Link
-      href={`/transactions/edit/${tx.id}`}
+      href={editHref}
       className={`tx-card tx-card-${tx.type}`}
       style={{ viewTransitionName: `tx-card-${tx.id}` }}
       onClick={() => onBeforeEdit?.()}
@@ -147,15 +150,31 @@ const TransactionCard = memo(function TransactionCard({
 });
 
 export default function TransactionsBody() {
-  useScrollRestore();
   const lang = useLang();
   const t = useTranslations(lang);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
+  const urlYear = searchParams.get("year");
+  const urlMonth = searchParams.get("month");
+  const [year, setYear] = useState(() => {
+    if (urlYear) {
+      const y = parseInt(urlYear, 10);
+      if (!isNaN(y) && y >= 2000 && y <= 2100) return y;
+    }
+    return now.getFullYear();
+  });
+  const [month, setMonth] = useState(() => {
+    if (urlMonth) {
+      const m = parseInt(urlMonth, 10);
+      if (!isNaN(m) && m >= 1 && m <= 12) return m - 1;
+    }
+    return now.getMonth();
+  });
 
   const { data: transactions = [], isLoading, isFetching } = useTransactions(year, month + 1);
+  useScrollRestore({ ready: !isLoading });
   const { data: categoriesData } = useCategories();
   const deleteTx = useDeleteTransaction();
 
@@ -185,6 +204,18 @@ export default function TransactionsBody() {
     walk(categoriesData?.userCategories ?? []);
     return m;
   }, [categoriesData]);
+  // Sync year/month from URL when navigating back from edit
+  useEffect(() => {
+    if (urlYear && urlMonth) {
+      const y = parseInt(urlYear, 10);
+      const m = parseInt(urlMonth, 10);
+      if (!isNaN(y) && y >= 2000 && y <= 2100 && !isNaN(m) && m >= 1 && m <= 12) {
+        setYear(y);
+        setMonth(m - 1);
+      }
+    }
+  }, [urlYear, urlMonth]);
+
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -250,12 +281,16 @@ export default function TransactionsBody() {
     }
     setMonth(newMonth);
     setYear(newYear);
+    router.replace(`/transactions?year=${newYear}&month=${newMonth + 1}`, { scroll: false });
   };
 
   const handleToday = () => {
     const today = new Date();
-    setYear(today.getFullYear());
-    setMonth(today.getMonth());
+    const newYear = today.getFullYear();
+    const newMonth = today.getMonth();
+    setYear(newYear);
+    setMonth(newMonth);
+    router.replace(`/transactions?year=${newYear}&month=${newMonth + 1}`, { scroll: false });
   };
 
   changeMonthRef.current = changeMonth;
@@ -305,6 +340,7 @@ export default function TransactionsBody() {
   const sortedDates = Object.keys(grouped).sort((a, b) => parseDateString(b).getTime() - parseDateString(a).getTime());
 
   const hasTransactions = txList.length > 0;
+  const transactionsReturnPath = `/transactions?year=${year}&month=${month + 1}`;
 
   if (isLoading) {
     return (
@@ -472,10 +508,10 @@ export default function TransactionsBody() {
                     actions={
                       <div className="tx-card-actions-reveal flex items-center gap-2">
                         <Link
-                          href={`/transactions/edit/${tx.id}`}
+                          href={`/transactions/edit/${tx.id}?returnTo=${encodeURIComponent(transactionsReturnPath)}`}
                           className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
                           aria-label={t("common.edit")}
-                          onClick={() => saveScrollForReturn("/transactions")}
+                          onClick={() => saveScrollForReturn(transactionsReturnPath)}
                         >
                           <Pencil className="size-5" />
                         </Link>
@@ -504,7 +540,8 @@ export default function TransactionsBody() {
                       }
                       incomeLabel={t("transactions.income")}
                       expenseLabel={t("transactions.expense")}
-                      onBeforeEdit={() => saveScrollForReturn("/transactions")}
+                      editHref={`/transactions/edit/${tx.id}?returnTo=${encodeURIComponent(transactionsReturnPath)}`}
+                      onBeforeEdit={() => saveScrollForReturn(transactionsReturnPath)}
                     />
                   </SwipeToReveal>
                 ))}
