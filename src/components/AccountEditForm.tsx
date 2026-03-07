@@ -6,6 +6,7 @@ import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useRouter } from "next/navigation";
 import IconPicker from "@/components/IconPicker";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -22,12 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
 import { BANK_PROVIDER_LIST, getBankProvider } from "@/lib/bankProviders";
 
@@ -88,35 +83,22 @@ export default function AccountEditForm({ account }: { account: Account }) {
     }
   };
 
+  const handleCancel = () => router.push(`/account/${account.id}`);
+
   return (
     <>
       <h1 className="title" style={{ marginBottom: 24 }}>
         {t("accounts.edit")}
       </h1>
 
-      <form onSubmit={handleSubmit} className="subs-form">
-        <div className="subs-form-section">
-          <div className="flex items-center gap-2">
-            <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button" className="text-muted-foreground hover:text-foreground p-1 -m-1">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 16v-4" />
-                      <path d="M12 8h.01" />
-                    </svg>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[160px]">
-                  <p>{t("accounts.bankProviderTooltip")}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label">{t("accounts.bankProvider")}</Label>
+          <p className="text-xs text-muted-foreground max-w-[200px] -mt-1">
+            {t("accounts.bankProviderTooltip")}
+          </p>
           <Select value={bankProvider || "none"} onValueChange={handleBankProviderChange}>
-            <SelectTrigger className="!h-10">
+            <SelectTrigger className="h-10">
               <SelectValue placeholder={t("accounts.bankProviderNone")}>
                 {bankProvider ? (
                   <div className="flex items-center gap-2">
@@ -146,69 +128,75 @@ export default function AccountEditForm({ account }: { account: Account }) {
           </Select>
         </div>
 
-        <div className="subs-form-section">
+        <div className="flex flex-col gap-2">
           <Label className="subs-form-label" optional>{t("sub.icon")}</Label>
           <IconPicker defaultIcon={icon} onIconSelect={setIcon} />
         </div>
 
-        <div className="subs-form-section">
-          <Label className="subs-form-label" required>{t("settings.name")}</Label>
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label" htmlFor="acc-name" required>{t("settings.name")}</Label>
           <Input
+            id="acc-name"
             type="text"
-            placeholder="Ex. Main Bank"
+            required
+            placeholder="Santander"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            required
-            className="!h-10"
+            className="h-10"
           />
         </div>
 
-        <div className="subs-form-row">
-          <div className="subs-form-section">
-            <Label className="subs-form-label" required>{t("accounts.balance")}</Label>
-            <CurrencyInput
-              placeholder="0,00"
-              value={balance}
-              onChange={setBalance}
-              className="!h-10"
-            />
-          </div>
-          <div className="subs-form-section">
-            <Label className="subs-form-label">{t("common.color")}</Label>
-            <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="size-10 rounded-lg cursor-pointer border border-input"
-                  style={{ backgroundColor: color }}
-                />
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start" side="top">
-                <div className="grid grid-cols-4 gap-2">
-                  {colors.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className="size-7 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                      style={{
-                        backgroundColor: c,
-                        border: color === c ? "2px solid var(--blanco)" : "none",
-                      }}
-                      onClick={() => {
-                        setColor(c);
-                        setColorPickerOpen(false);
-                      }}
-                    />
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label" htmlFor="acc-balance" optional>{t("accounts.balance")}</Label>
+          <CurrencyInput
+            id="acc-balance"
+            placeholder="0,00"
+            value={balance}
+            onChange={setBalance}
+            className="h-10"
+          />
         </div>
 
-        <SubmitButton pending={updateAccount.isPending} isEdit>
-          {t("common.save")}
-        </SubmitButton>
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label">{t("common.color")}</Label>
+          <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="size-10 rounded-lg cursor-pointer border border-input"
+                style={{ backgroundColor: color }}
+              />
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3" align="start" side="top">
+              <div className="grid grid-cols-4 gap-2">
+                {colors.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="size-6 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                    style={{
+                      backgroundColor: c,
+                      border: color === c ? "2px solid var(--blanco)" : "none",
+                    }}
+                    onClick={() => {
+                      setColor(c);
+                      setColorPickerOpen(false);
+                    }}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+
+        <div className="flex justify-center gap-3 sm:justify-center">
+          <Button type="button" variant="outline" onClick={handleCancel}>
+            {t("common.cancel")}
+          </Button>
+          <SubmitButton pending={updateAccount.isPending} isEdit className="gap-2">
+            {t("common.save")}
+          </SubmitButton>
+        </div>
       </form>
     </>
   );
