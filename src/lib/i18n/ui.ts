@@ -10,6 +10,7 @@ export type UIKey = keyof (typeof ui)[typeof defaultLang];
 
 export const ui = {
   en: {
+    "nav.add": "Add",
     "nav.home": "Home",
     "nav.dashboard": "Dashboard",
     "nav.subscriptions": "Subscriptions",
@@ -242,6 +243,7 @@ export const ui = {
     "addShortcuts.noAccountsImport": "No accounts configured for statement upload",
   },
   es: {
+    "nav.add": "Añadir",
     "nav.home": "Inicio",
     "nav.dashboard": "Panel",
     "nav.subscriptions": "Suscripciones",

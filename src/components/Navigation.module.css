@@ -310,6 +310,24 @@
     display: none;
   }
 
+  .navAddBtn {
+    width: 100%;
+    justify-content: flex-start;
+    position: relative;
+  }
+
+  .navAddBtn .shortcutBadge {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: white;
+    opacity: 1;
+  }
+
+  .navAddBtn:hover .shortcutBadge {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.5);
+  }
+
   .navItem {
     position: relative;
   }

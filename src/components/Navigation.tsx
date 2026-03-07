@@ -85,6 +85,12 @@ export default function Navigation() {
 
       if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
 
+      if (e.key.toLowerCase() === "w") {
+        e.preventDefault();
+        setShowAddShortcuts(true);
+        return;
+      }
+
       const item = navItems.find((n) =>
         n.shortcut.toLowerCase() === e.key.toLowerCase()
       );
@@ -214,6 +220,25 @@ export default function Navigation() {
               </>
             ) : (
               <>
+                {!isMobile && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn("add-btn", styles.navAddBtn)}
+                        onClick={() => setShowAddShortcuts(true)}
+                        aria-label={t("nav.add")}
+                      >
+                        <Plus className="h-5 w-5" strokeWidth={2.5} />
+                        <span>{t("nav.add")}</span>
+                        <kbd className={styles.shortcutBadge}>W</kbd>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={8}>
+                      {t("nav.add")} (W)
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 {navItems.map((item) => (
                   <NavLink
                     key={item.href}
