@@ -1717,7 +1717,7 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
   justify-content: center;
   width: 28px;
   min-height: 40px;
-  cursor: grab;
+  cursor: grab !important; /* Manita para arrastrar; la regla global button pone pointer */
   color: var(--gris-claro);
   background: rgba(255, 255, 255, 0.05);
   border: none;
@@ -1732,7 +1732,7 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
 }
 
 .sortable-handle:active {
-  cursor: grabbing;
+  cursor: grabbing !important;
 }
 
 .sortable-item--dragging {
