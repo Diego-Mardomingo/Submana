@@ -26,6 +26,7 @@ import {
 import { AddButton } from "@/components/ui/add-button";
 import { Spinner } from "@/components/ui/spinner";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
 
 type TransactionItem = {
   id: string;
@@ -274,8 +275,16 @@ export default function TransactionsBody() {
 
   const txList = transactions as TransactionItem[];
   const transferIds = useMemo(() => detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount), type: tx.type, date: tx.date, account_id: tx.account_id }))), [txList]);
-  const totalIncome = txList.filter((tx) => tx.type === "income" && !transferIds.has(tx.id)).reduce((sum, tx) => sum + Number(tx.amount), 0);
-  const totalExpense = txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id)).reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const metricsContext = useMemo(() => ({
+    defaultCategories: categoriesData?.defaultCategories ?? [],
+    userCategories: categoriesData?.userCategories ?? [],
+  }), [categoriesData]);
+  const forMetrics = useMemo(() => filterForMetrics(
+    txList.filter((tx) => !transferIds.has(tx.id)),
+    metricsContext
+  ), [txList, transferIds, metricsContext]);
+  const totalIncome = forMetrics.filter((tx) => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount), 0);
+  const totalExpense = forMetrics.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount), 0);
   const totalBalance = totalIncome - totalExpense;
 
   const grouped = txList.reduce(

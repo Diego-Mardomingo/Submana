@@ -32,6 +32,8 @@ import {
 import BankStatementUpload from "@/components/BankStatementUpload";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
+import { useCategories } from "@/hooks/useCategories";
+import { filterForMetrics } from "@/lib/metricsFilters";
 import { Pencil, Trash2 } from "lucide-react";
 import type { BankProvider } from "@/lib/bankProviders";
 
@@ -53,6 +55,8 @@ interface TransactionItem {
   description?: string;
   category?: { name: string } | null;
   subcategory?: { name: string } | null;
+  category_id?: string | null;
+  subcategory_id?: string | null;
 }
 
 export default function AccountDetail({ account }: { account: Account }) {
@@ -74,6 +78,7 @@ export default function AccountDetail({ account }: { account: Account }) {
     undefined,
     account.id
   );
+  const { data: categoriesData } = useCategories();
 
   const formatCurrency = (n: number) => {
     const formatted = new Intl.NumberFormat("es-ES", {
@@ -146,6 +151,33 @@ export default function AccountDetail({ account }: { account: Account }) {
 
   const groupedTransactions = groupTransactionsByMonthAndDay(transactions as TransactionItem[]);
 
+  const subToParent = useMemo(() => {
+    const m = new Map<string, string>();
+    const walk = (list: Array<{ id: string; subcategories?: Array<{ id: string }> }>) => {
+      for (const p of list) {
+        for (const s of p.subcategories ?? []) m.set(s.id, p.id);
+      }
+    };
+    walk(categoriesData?.defaultCategories ?? []);
+    walk(categoriesData?.userCategories ?? []);
+    return m;
+  }, [categoriesData]);
+
+  const categoryIdToEmoji = useMemo(() => {
+    const m = new Map<string, string>();
+    const walk = (list: Array<{ id: string; emoji?: string | null; subcategories?: Array<{ id: string; emoji?: string | null }> }>) => {
+      for (const p of list) {
+        if (p.emoji) m.set(p.id, p.emoji);
+        for (const s of p.subcategories ?? []) {
+          if (s.emoji) m.set(s.id, s.emoji);
+        }
+      }
+    };
+    walk(categoriesData?.defaultCategories ?? []);
+    walk(categoriesData?.userCategories ?? []);
+    return m;
+  }, [categoriesData]);
+
   const now = new Date();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
@@ -179,10 +211,15 @@ export default function AccountDetail({ account }: { account: Account }) {
         const d = parseDateString(tx.date);
         return d.getFullYear() === year && d.getMonth() === month;
       });
-      const income = monthTxs
+      const ctx = {
+        defaultCategories: categoriesData?.defaultCategories ?? [],
+        userCategories: categoriesData?.userCategories ?? [],
+      };
+      const forMetrics = filterForMetrics(monthTxs, ctx);
+      const income = forMetrics
         .filter((tx) => tx.type === "income")
         .reduce((sum, tx) => sum + Number(tx.amount), 0);
-      const expense = monthTxs
+      const expense = forMetrics
         .filter((tx) => tx.type === "expense")
         .reduce((sum, tx) => sum + Number(tx.amount), 0);
       return {
@@ -190,11 +227,11 @@ export default function AccountDetail({ account }: { account: Account }) {
         expense,
         balance: income - expense,
         count: monthTxs.length,
-        incomeCount: monthTxs.filter((tx) => tx.type === "income").length,
-        expenseCount: monthTxs.filter((tx) => tx.type === "expense").length,
+        incomeCount: forMetrics.filter((tx) => tx.type === "income").length,
+        expenseCount: forMetrics.filter((tx) => tx.type === "expense").length,
       };
     },
-    [transactions]
+    [transactions, categoriesData]
   );
 
   const formatMonthYearDisplay = (year: number, month: number) => {
@@ -489,7 +526,25 @@ export default function AccountDetail({ account }: { account: Account }) {
                                 <div className="account-transaction-footer">
                                   {(tx.category?.name || tx.subcategory?.name) ? (
                                     <span className="account-transaction-category">
-                                      {[tx.category?.name, tx.subcategory?.name].filter(Boolean).join(" › ")}
+                                      {tx.category?.name && (
+                                        <>
+                                          {categoryIdToEmoji.get(tx.category_id ?? "") && (
+                                            <span className="tx-card-category-emoji">{categoryIdToEmoji.get(tx.category_id ?? "")}</span>
+                                          )}
+                                          {tx.category.name}
+                                        </>
+                                      )}
+                                      {tx.category?.name && tx.subcategory?.name && " › "}
+                                      {tx.subcategory?.name && (
+                                        <>
+                                          {(categoryIdToEmoji.get(tx.subcategory_id ?? "") ?? categoryIdToEmoji.get(subToParent.get(tx.subcategory_id ?? "") ?? "")) && (
+                                            <span className="tx-card-category-emoji">
+                                              {categoryIdToEmoji.get(tx.subcategory_id ?? "") ?? categoryIdToEmoji.get(subToParent.get(tx.subcategory_id ?? "") ?? "")}
+                                            </span>
+                                          )}
+                                          {tx.subcategory.name}
+                                        </>
+                                      )}
                                     </span>
                                   ) : (
                                     <span />

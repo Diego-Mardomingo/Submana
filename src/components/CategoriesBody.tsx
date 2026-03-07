@@ -146,9 +146,10 @@ export default function CategoriesBody() {
     isLast = false,
     isArchived = false
   ) => {
+    const excludeFromMetrics = (cat as CategoryItem & { exclude_from_metrics?: boolean }).exclude_from_metrics;
     const canEdit = !cat.isDefault;
-    const canAddSub = !isSubcategory;
-    const canArchive = cat.isDefault && !isArchived;
+    const canAddSub = !isSubcategory && !excludeFromMetrics;
+    const canArchive = cat.isDefault && !isArchived && !excludeFromMetrics;
 
     const actions = (
       <div className="cat-row-actions">
@@ -255,7 +256,12 @@ export default function CategoriesBody() {
         <div className="cat-row-main">
           <span className="cat-row-icon cat-row-emoji">{cat.emoji || "🏷️"}</span>
           <span className="cat-row-name">{getCategoryName(cat as CategoryWithSubs)}</span>
-          {cat.isDefault && !isArchived && (
+          {excludeFromMetrics && !isArchived && (
+            <span className="cat-row-badge cat-row-badge-exclude">
+              {t("categories.excludeFromMetricsBadge")}
+            </span>
+          )}
+          {cat.isDefault && !isArchived && !excludeFromMetrics && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -268,6 +274,11 @@ export default function CategoriesBody() {
             </TooltipProvider>
           )}
         </div>
+        {excludeFromMetrics && !isArchived && (
+          <p className="mt-2 text-sm text-muted-foreground bg-muted/60 rounded-lg px-3 py-2">
+            {t("categories.excludeFromMetricsInfo")}
+          </p>
+        )}
       </>
     );
 

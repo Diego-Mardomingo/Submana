@@ -22,8 +22,10 @@ import { Line } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { Settings2 } from "lucide-react";
 import { tooltipConfig, axisConfig, gridConfig, formatK } from "@/lib/chartConfig";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 
-type Tx = { amount?: number; type?: string };
+type Tx = { id?: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -51,6 +53,7 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
     accountId,
     customRange ?? undefined
   );
+  const { data: categoriesData } = useCategories();
 
   const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
   const [tempEnd, setTempEnd] = useState<{ year: number; month: number } | null>(null);
@@ -92,10 +95,16 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
   }, [availableRange]);
 
   const chartData = useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
+
     let netAllTransactions = 0;
     for (const key of allKeys) {
       const txs = (allByMonth[key] ?? []) as Tx[];
-      for (const tx of txs) {
+      const forMetrics = filterForMetrics(txs, ctx);
+      for (const tx of forMetrics) {
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") netAllTransactions += amt;
         else netAllTransactions -= amt;
@@ -110,7 +119,8 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
       for (const key of allKeys) {
         if (key >= firstVisibleKey) break;
         const txs = (allByMonth[key] ?? []) as Tx[];
-        for (const tx of txs) {
+        const forMetrics = filterForMetrics(txs, ctx);
+        for (const tx of forMetrics) {
           const amt = Number(tx.amount) || 0;
           if (tx.type === "income") preRangeBalance += amt;
           else preRangeBalance -= amt;
@@ -121,14 +131,15 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
     let cumulative = preRangeBalance;
     return monthLabels.map(({ key, label }) => {
       const txs = (transactionsByMonth[key] ?? []) as Tx[];
-      for (const tx of txs) {
+      const forMetrics = filterForMetrics(txs, ctx);
+      for (const tx of forMetrics) {
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") cumulative += amt;
         else cumulative -= amt;
       }
       return { name: label, balance: Math.round(cumulative * 100) / 100 };
     });
-  }, [transactionsByMonth, monthLabels, accountBalance, allByMonth, allKeys]);
+  }, [transactionsByMonth, monthLabels, accountBalance, allByMonth, allKeys, categoriesData]);
 
   const color = colorRef.current || "#6366f1";
 

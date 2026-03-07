@@ -11,8 +11,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { tooltipConfig, getChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 
-type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 export default function DashboardAnnualSavingsProjection() {
   const lang = useLang();
@@ -29,6 +31,7 @@ export default function DashboardAnnualSavingsProjection() {
   };
 
   const { transactionsByMonth, monthLabels, isLoading } = useTransactionsRange(undefined, range);
+  const { data: categoriesData } = useCategories();
 
   const [colors, setColors] = useState({ success: "#10b981", danger: "#ef4444" });
   useEffect(() => {
@@ -40,6 +43,10 @@ export default function DashboardAnnualSavingsProjection() {
   }, []);
 
   const data = useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
     const monthlySavings: number[] = [];
     let totalSaved = 0;
 
@@ -53,11 +60,11 @@ export default function DashboardAnnualSavingsProjection() {
       const transferIds = detectTransferIds(
         txs.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id }))
       );
+      const forMetrics = filterForMetrics(txs.filter((tx) => !transferIds.has(tx.id)), ctx);
 
       let income = 0;
       let expense = 0;
-      for (const tx of txs) {
-        if (transferIds.has(tx.id)) continue;
+      for (const tx of forMetrics) {
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") income += amt;
         else expense += amt;
@@ -80,7 +87,7 @@ export default function DashboardAnnualSavingsProjection() {
       projectedTotal: Math.round(projectedTotal * 100) / 100,
       completedMonths,
     };
-  }, [transactionsByMonth, monthLabels, currentMonth]);
+  }, [transactionsByMonth, monthLabels, currentMonth, categoriesData]);
 
   const sparkColor = data.totalSaved >= 0 ? colors.success : colors.danger;
 

@@ -19,19 +19,29 @@ import { TrendingUp, TrendingDown, ChevronLeft, ChevronRight } from "lucide-reac
 import { Spinner } from "@/components/ui/spinner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 import styles from "./HomeMonthlySummaryCard.module.css";
 
-type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 function useMonthlyTotals(year: number, month: number) {
   const { data: transactions = [], isLoading, isFetching, isPlaceholderData } = useTransactions(year, month);
+  const { data: categoriesData } = useCategories();
   return useMemo(() => {
     const txList = transactions as Tx[];
     const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
+    const forMetrics = filterForMetrics(
+      txList.filter((tx) => !transferIds.has(tx.id)),
+      ctx
+    );
     let income = 0;
     let expense = 0;
-    for (const tx of txList) {
-      if (transferIds.has(tx.id)) continue;
+    for (const tx of forMetrics) {
       const amt = Number(tx.amount) || 0;
       if (tx.type === "income") income += amt;
       else expense += amt;
@@ -41,7 +51,7 @@ function useMonthlyTotals(year: number, month: number) {
     // isRefreshing: hay datos pero se están actualizando
     const isRefreshing = isFetching && !isInitialLoading;
     return { income, expense, balance: income - expense, isInitialLoading, isRefreshing, isPlaceholderData };
-  }, [transactions, isLoading, isFetching, isPlaceholderData]);
+  }, [transactions, categoriesData, isLoading, isFetching, isPlaceholderData]);
 }
 
 export default function HomeMonthlySummaryCard() {

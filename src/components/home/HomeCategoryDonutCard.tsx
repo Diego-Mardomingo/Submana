@@ -20,6 +20,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
 import navStyles from "@/components/dashboard/DashboardMonthNav.module.css";
 import styles from "./HomeCategoryDonutCard.module.css";
 
@@ -86,13 +87,17 @@ export default function HomeCategoryDonutCard() {
     const defaultCats = categoriesData?.defaultCategories ?? [];
     const userCats = categoriesData?.userCategories ?? [];
     const { idToName, subToParent } = buildCategoryMaps(defaultCats, userCats, lang);
+    const ctx = { defaultCategories: defaultCats, userCategories: userCats };
 
     const byCategory = new Map<string, number>();
     const txList = transactions as Tx[];
     const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const forMetrics = filterForMetrics(
+      txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id)),
+      ctx
+    );
 
-    for (const tx of txList) {
-      if (tx.type !== "expense" || transferIds.has(tx.id)) continue;
+    for (const tx of forMetrics) {
       const amt = Number(tx.amount) || 0;
       const parentId =
         tx.category_id ??

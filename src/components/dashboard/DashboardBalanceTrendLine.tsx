@@ -24,8 +24,11 @@ import { Line } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { Settings2 } from "lucide-react";
 import { tooltipConfig, axisConfig, gridConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 
-type Tx = { amount?: number; type?: string };
+type Tx = { id?: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -47,7 +50,7 @@ export default function DashboardBalanceTrendLine() {
     undefined,
     customRange ?? undefined
   );
-
+  const { data: categoriesData } = useCategories();
   const { data: accounts = [] } = useAccounts();
 
   const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
@@ -90,6 +93,11 @@ export default function DashboardBalanceTrendLine() {
   }, [availableRange]);
 
   const chartData = useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
+
     const currentTotalBalance = accounts.reduce(
       (sum: number, acc: { balance?: number }) => sum + Number(acc.balance ?? 0), 0
     );
@@ -97,7 +105,9 @@ export default function DashboardBalanceTrendLine() {
     let netAllTransactions = 0;
     for (const key of allKeys) {
       const txs = (allByMonth[key] ?? []) as Tx[];
-      for (const tx of txs) {
+      const transferIds = detectTransferIds(txs.map((tx) => ({ id: tx.id ?? "", amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+      const forMetrics = filterForMetrics(txs.filter((tx) => !transferIds.has(tx.id ?? "")), ctx);
+      for (const tx of forMetrics) {
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") netAllTransactions += amt;
         else netAllTransactions -= amt;
@@ -112,7 +122,9 @@ export default function DashboardBalanceTrendLine() {
       for (const key of allKeys) {
         if (key >= firstVisibleKey) break;
         const txs = (allByMonth[key] ?? []) as Tx[];
-        for (const tx of txs) {
+        const transferIds = detectTransferIds(txs.map((tx) => ({ id: tx.id ?? "", amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+        const forMetrics = filterForMetrics(txs.filter((tx) => !transferIds.has(tx.id ?? "")), ctx);
+        for (const tx of forMetrics) {
           const amt = Number(tx.amount) || 0;
           if (tx.type === "income") preRangeBalance += amt;
           else preRangeBalance -= amt;
@@ -123,14 +135,16 @@ export default function DashboardBalanceTrendLine() {
     let cumulative = preRangeBalance;
     return monthLabels.map(({ key, label }) => {
       const txs = (transactionsByMonth[key] ?? []) as Tx[];
-      for (const tx of txs) {
+      const transferIds = detectTransferIds(txs.map((tx) => ({ id: tx.id ?? "", amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+      const forMetrics = filterForMetrics(txs.filter((tx) => !transferIds.has(tx.id ?? "")), ctx);
+      for (const tx of forMetrics) {
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") cumulative += amt;
         else cumulative -= amt;
       }
       return { name: label, balance: Math.round(cumulative * 100) / 100 };
     });
-  }, [transactionsByMonth, monthLabels, accounts, allByMonth, allKeys]);
+  }, [transactionsByMonth, monthLabels, accounts, allByMonth, allKeys, categoriesData]);
 
   const lineData = useMemo(() => ({
     labels: chartData.map((d) => d.name),

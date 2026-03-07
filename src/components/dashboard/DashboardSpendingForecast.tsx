@@ -10,39 +10,52 @@ import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 
-type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 export default function DashboardSpendingForecast() {
   const lang = useLang();
   const t = useTranslations(lang);
   const now = new Date();
   const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
+  const { data: categoriesData } = useCategories();
 
   const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
   const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
   const { data: prevTransactions = [] } = useTransactions(prevYear, prevMonth);
 
   const forecast = useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
     const today = new Date();
     const dayOfMonth = today.getDate();
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
     const txList = transactions as Tx[];
     const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const forMetrics = filterForMetrics(
+      txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id)),
+      ctx
+    );
 
     let totalSpent = 0;
-    for (const tx of txList) {
-      if (tx.type !== "expense" || transferIds.has(tx.id)) continue;
+    for (const tx of forMetrics) {
       totalSpent += Number(tx.amount) || 0;
     }
 
     const prevList = prevTransactions as Tx[];
     const prevTransferIds = detectTransferIds(prevList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const prevForMetrics = filterForMetrics(
+      prevList.filter((tx) => tx.type === "expense" && !prevTransferIds.has(tx.id)),
+      ctx
+    );
 
     let prevTotal = 0;
-    for (const tx of prevList) {
-      if (tx.type !== "expense" || prevTransferIds.has(tx.id)) continue;
+    for (const tx of prevForMetrics) {
       prevTotal += Number(tx.amount) || 0;
     }
 
@@ -61,7 +74,7 @@ export default function DashboardSpendingForecast() {
       progressPct,
       projectedVsPrev,
     };
-  }, [transactions, prevTransactions]);
+  }, [transactions, prevTransactions, categoriesData]);
 
   if (isLoading) {
     return (

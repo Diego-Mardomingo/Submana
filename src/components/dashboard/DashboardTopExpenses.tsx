@@ -9,6 +9,7 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { Spinner } from "@/components/ui/spinner";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 
 type Tx = {
@@ -67,10 +68,12 @@ export default function DashboardTopExpenses() {
     const transferIds = detectTransferIds(
       txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id }))
     );
-
-    const expenses = txList
-      .filter((tx) => tx.type === "expense" && !transferIds.has(tx.id))
-      .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
+    const ctx = { defaultCategories: defaultCats, userCategories: userCats };
+    const expenses = filterForMetrics(
+      txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id)),
+      ctx
+    )
+    .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0))
       .slice(0, 5);
 
     return expenses.map((tx) => {

@@ -42,7 +42,7 @@ export async function GET(
   const now = new Date();
   const { data: categoriesRows } = await supabase
     .from("categories")
-    .select("id, parent_id")
+    .select("id, parent_id, exclude_from_metrics")
     .or("user_id.eq." + user.id + ",user_id.is.null");
   const allCategories: CategoryRow[] = categoriesRows ?? [];
   const spent = await computeBudgetSpent(
@@ -146,7 +146,7 @@ export async function PATCH(
   const now = new Date();
   const { data: categoriesRows } = await supabase
     .from("categories")
-    .select("id, parent_id")
+    .select("id, parent_id, exclude_from_metrics")
     .or("user_id.eq." + user.id + ",user_id.is.null");
   const allCategories: CategoryRow[] = categoriesRows ?? [];
   const spent = await computeBudgetSpent(

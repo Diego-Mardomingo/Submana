@@ -4,6 +4,7 @@ import { detectTransferIds } from "@/lib/transferDetection";
 export interface CategoryRow {
   id: string;
   parent_id: string | null;
+  exclude_from_metrics?: boolean;
 }
 
 /**
@@ -49,10 +50,20 @@ export function getMonthRange(year: number, month: number): { start: string; end
   };
 }
 
+/** IDs of categories (and subcategories) that exclude transactions from metrics */
+function getExcludedFromMetricsIds(categories: CategoryRow[]): Set<string> {
+  const ids = new Set<string>();
+  for (const c of categories) {
+    if (c.exclude_from_metrics) ids.add(c.id);
+  }
+  return ids;
+}
+
 /**
  * Compute total spent for a budget in a given month.
  * - If categoryIds is empty (general budget), sum all expenses for the user in the month.
  * - Otherwise sum expenses where category_id or subcategory_id is in the effective category set.
+ * - Excludes transactions whose category has exclude_from_metrics.
  */
 export async function computeBudgetSpent(
   supabase: SupabaseClient,
@@ -63,10 +74,24 @@ export async function computeBudgetSpent(
   month: number
 ): Promise<number> {
   const { start, end } = getMonthRange(year, month);
+  const excludedIds = getExcludedFromMetricsIds(allCategories);
+  const subToParent = new Map<string, string>();
+  for (const c of allCategories) {
+    if (c.parent_id) subToParent.set(c.id, c.parent_id);
+  }
+  const isExcluded = (catId: string | null, subId: string | null) => {
+    if (catId && excludedIds.has(catId)) return true;
+    if (subId) {
+      if (excludedIds.has(subId)) return true;
+      const parent = subToParent.get(subId);
+      if (parent && excludedIds.has(parent)) return true;
+    }
+    return false;
+  };
 
   const { data: allExpenses } = await supabase
     .from("transactions")
-    .select("id, amount, date, account_id")
+    .select("id, amount, date, account_id, category_id, subcategory_id")
     .eq("user_id", userId)
     .eq("type", "expense")
     .gte("date", start)
@@ -88,7 +113,7 @@ export async function computeBudgetSpent(
 
   if (categoryIds.length === 0) {
     const total = (allExpenses ?? [])
-      .filter((row) => !transferIds.has(row.id))
+      .filter((row) => !transferIds.has(row.id) && !isExcluded(row.category_id ?? null, row.subcategory_id ?? null))
       .reduce((sum, row) => sum + Number(row.amount), 0);
     return total;
   }
@@ -98,7 +123,7 @@ export async function computeBudgetSpent(
 
   const { data } = await supabase
     .from("transactions")
-    .select("id, amount")
+    .select("id, amount, category_id, subcategory_id")
     .eq("user_id", userId)
     .eq("type", "expense")
     .gte("date", start)
@@ -106,7 +131,7 @@ export async function computeBudgetSpent(
     .or(`category_id.in.(${effectiveIds.join(",")}),subcategory_id.in.(${effectiveIds.join(",")})`);
 
   const total = (data ?? [])
-    .filter((row) => !transferIds.has(row.id))
+    .filter((row) => !transferIds.has(row.id) && !isExcluded(row.category_id ?? null, row.subcategory_id ?? null))
     .reduce((sum, row) => sum + Number(row.amount), 0);
   return total;
 }

@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
   const { data: categoriesRows } = await supabase
     .from("categories")
-    .select("id, parent_id")
+    .select("id, parent_id, exclude_from_metrics")
     .or("user_id.eq." + user.id + ",user_id.is.null");
   const allCategories: CategoryRow[] = categoriesRows ?? [];
 
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
     const spentDate = new Date();
     const { data: categoriesRows } = await supabase
       .from("categories")
-      .select("id, parent_id")
+      .select("id, parent_id, exclude_from_metrics")
       .or("user_id.eq." + user.id + ",user_id.is.null");
     const allCategories: CategoryRow[] = categoriesRows ?? [];
     const spent = await computeBudgetSpent(

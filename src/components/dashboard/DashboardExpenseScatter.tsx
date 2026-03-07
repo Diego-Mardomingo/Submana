@@ -14,9 +14,11 @@ import { Scatter } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { tooltipConfig, axisConfig, formatK } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 import styles from "./DashboardMonthNav.module.css";
 
-type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 export default function DashboardExpenseScatter() {
   const lang = useLang();
@@ -24,6 +26,7 @@ export default function DashboardExpenseScatter() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const nav = useMonthNavigation(lang);
   const { data: transactions = [], isLoading } = useTransactions(nav.year, nav.month);
+  const { data: categoriesData } = useCategories();
   const dangerRef = useRef("");
 
   const cardRefCallback = useCallback(
@@ -38,12 +41,19 @@ export default function DashboardExpenseScatter() {
   const daysInMonth = new Date(nav.year, nav.month, 0).getDate();
 
   const chartData = useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
     const year = nav.year;
     const month = nav.month - 1;
     const txList = transactions as Tx[];
     const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
-    return txList
-      .filter((tx) => tx.type === "expense" && !transferIds.has(tx.id) && tx.date)
+    const forMetrics = filterForMetrics(
+      txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id) && tx.date),
+      ctx
+    );
+    return forMetrics
       .map((tx) => {
         const d = new Date(tx.date!);
         if (d.getFullYear() !== year || d.getMonth() !== month) return null;
@@ -51,7 +61,7 @@ export default function DashboardExpenseScatter() {
         return { x: d.getDate(), y: amount };
       })
       .filter((p): p is { x: number; y: number } => p !== null);
-  }, [transactions, nav.year, nav.month]);
+  }, [transactions, categoriesData, nav.year, nav.month]);
 
   const scatterData = useMemo(() => ({
     datasets: [{

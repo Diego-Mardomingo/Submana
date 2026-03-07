@@ -2208,6 +2208,12 @@ html[data-theme="light"] .budget-card-badge--general {
   cursor: help;
 }
 
+.cat-row-badge-exclude {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.06) 100%);
+  color: var(--danger);
+  margin-left: 6px;
+}
+
 /* SwipeToReveal - reusable for categories, transactions */
 .swipe-to-reveal {
   overflow: hidden;

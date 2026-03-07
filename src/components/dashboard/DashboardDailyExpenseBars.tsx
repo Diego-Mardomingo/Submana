@@ -14,9 +14,11 @@ import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { tooltipConfig, axisConfig, formatK } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 import styles from "./DashboardMonthNav.module.css";
 
-type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 type Period = "week" | "month" | "year";
 
 const WEEKDAY_KEYS = ["calendar.monday", "calendar.tuesday", "calendar.wednesday", "calendar.thursday", "calendar.friday", "calendar.saturday", "calendar.sunday"] as const;
@@ -48,13 +50,22 @@ export default function DashboardDailyExpenseBars() {
     nav.year,
     undefined
   );
+  const { data: categoriesData } = useCategories();
 
   const transactions = period === "year" ? yearTx : monthTx;
   const isLoading = period === "year" ? loadingYear : loadingMonth;
 
   const { labels, values, title } = useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
     const txList = transactions as Tx[];
     const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const forMetrics = filterForMetrics(
+      txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id)),
+      ctx
+    );
 
     if (period === "week") {
       const refDate = new Date(nav.year, nav.month - 1, 1);
@@ -74,8 +85,7 @@ export default function DashboardDailyExpenseBars() {
       const byDay = new Map<number, number>();
       for (let i = 0; i < 7; i++) byDay.set(i, 0);
 
-      for (const tx of txList) {
-        if (tx.type !== "expense" || transferIds.has(tx.id)) continue;
+      for (const tx of forMetrics) {
         const d = tx.date ? new Date(tx.date) : null;
         if (!d || d < weekStart || d > weekEnd) continue;
         const dayIndex = Math.floor((d.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
@@ -95,8 +105,7 @@ export default function DashboardDailyExpenseBars() {
       const byDay = new Map<number, number>();
       for (let i = 1; i <= daysInMonth; i++) byDay.set(i, 0);
 
-      for (const tx of txList) {
-        if (tx.type !== "expense" || transferIds.has(tx.id)) continue;
+      for (const tx of forMetrics) {
         const d = tx.date ? new Date(tx.date) : null;
         if (!d || d.getMonth() !== month || d.getFullYear() !== year) continue;
         const day = d.getDate();
@@ -112,8 +121,7 @@ export default function DashboardDailyExpenseBars() {
     const byMonth = new Map<number, number>();
     for (let i = 0; i < 12; i++) byMonth.set(i, 0);
 
-    for (const tx of txList) {
-      if (tx.type !== "expense" || transferIds.has(tx.id)) continue;
+    for (const tx of forMetrics) {
       const d = tx.date ? new Date(tx.date) : null;
       if (!d || d.getFullYear() !== year) continue;
       const monthIdx = d.getMonth();
@@ -123,7 +131,7 @@ export default function DashboardDailyExpenseBars() {
     const labels = Array.from({ length: 12 }, (_, i) => t(MONTH_KEYS[i]).slice(0, 3));
     const values = Array.from({ length: 12 }, (_, i) => Math.round((byMonth.get(i) ?? 0) * 100) / 100);
     return { labels, values, title: t("dashboard.expenseYearly") };
-  }, [transactions, t, period, nav.year, nav.month]);
+  }, [transactions, categoriesData, t, period, nav.year, nav.month]);
 
   const barData = useMemo(() => ({
     labels,

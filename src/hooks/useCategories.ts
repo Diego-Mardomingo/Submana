@@ -11,6 +11,7 @@ export interface CategoryItem {
   icon?: string;
   parent_id?: string | null;
   isDefault: boolean;
+  exclude_from_metrics?: boolean;
 }
 
 export interface CategoryWithSubs extends CategoryItem {

@@ -14,9 +14,11 @@ import { Line } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { tooltipConfig, getChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 import styles from "./DashboardMonthNav.module.css";
 
-type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 export default function DashboardCashFlowSummary() {
   const lang = useLang();
@@ -30,6 +32,7 @@ export default function DashboardCashFlowSummary() {
   );
 
   const { data: transactions = [], isLoading } = useTransactions(nav.year, nav.month);
+  const { data: categoriesData } = useCategories();
 
   const prevYear = nav.month === 1 ? nav.year - 1 : nav.year;
   const prevMonth = nav.month === 1 ? 12 : nav.month - 1;
@@ -46,12 +49,19 @@ export default function DashboardCashFlowSummary() {
   }, []);
 
   const data = useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
     const txList = transactions as Tx[];
     const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const forMetrics = filterForMetrics(
+      txList.filter((tx) => !transferIds.has(tx.id)),
+      ctx
+    );
 
     let income = 0, expense = 0;
-    for (const tx of txList) {
-      if (transferIds.has(tx.id)) continue;
+    for (const tx of forMetrics) {
       const amt = Number(tx.amount) || 0;
       if (tx.type === "income") income += amt;
       else expense += amt;
@@ -59,10 +69,13 @@ export default function DashboardCashFlowSummary() {
 
     const prevList = prevTransactions as Tx[];
     const prevTransferIds = detectTransferIds(prevList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const prevForMetrics = filterForMetrics(
+      prevList.filter((tx) => !prevTransferIds.has(tx.id)),
+      ctx
+    );
 
     let prevIncome = 0, prevExpense = 0;
-    for (const tx of prevList) {
-      if (prevTransferIds.has(tx.id)) continue;
+    for (const tx of prevForMetrics) {
       const amt = Number(tx.amount) || 0;
       if (tx.type === "income") prevIncome += amt;
       else prevExpense += amt;
@@ -74,8 +87,8 @@ export default function DashboardCashFlowSummary() {
 
     const daysInMonth = new Date(nav.year, nav.month, 0).getDate();
     const dailyNet = new Array(daysInMonth).fill(0);
-    for (const tx of txList) {
-      if (transferIds.has(tx.id) || !tx.date) continue;
+    for (const tx of forMetrics) {
+      if (!tx.date) continue;
       const d = new Date(tx.date);
       const day = d.getDate() - 1;
       if (day >= 0 && day < daysInMonth) {
@@ -97,7 +110,7 @@ export default function DashboardCashFlowSummary() {
       change: Math.round(change * 10) / 10,
       sparkline,
     };
-  }, [transactions, prevTransactions, nav.year, nav.month]);
+  }, [transactions, prevTransactions, categoriesData, nav.year, nav.month]);
 
   const sparkColor = data.net >= 0 ? colors.success : colors.danger;
 

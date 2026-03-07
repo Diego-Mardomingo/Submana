@@ -241,6 +241,16 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
               ))}
             </SelectContent>
           </Select>
+          {(categoryId && categoryId !== "none") && (() => {
+            const selectedCat = parents.find((p) => p.id === categoryId);
+            const selectedSub = subcategories.find((s) => s.id === subcategoryId);
+            const hasExclude = selectedCat?.exclude_from_metrics || selectedSub?.exclude_from_metrics;
+            return hasExclude ? (
+              <p className="mt-2 text-sm text-muted-foreground bg-muted/60 rounded-lg px-3 py-2">
+                {t("categories.excludeFromMetricsInfo")}
+              </p>
+            ) : null;
+          })()}
         </div>
 
         {/* Subcategory */}

@@ -10,24 +10,34 @@ import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { tooltipConfig, axisConfig, formatK, getChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
+import { filterForMetrics } from "@/lib/metricsFilters";
+import { useCategories } from "@/hooks/useCategories";
 
-type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string };
+type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 function useMonthlyTotals(year: number, month: number) {
   const { data: transactions = [], isLoading } = useTransactions(year, month);
+  const { data: categoriesData } = useCategories();
   return useMemo(() => {
+    const ctx = {
+      defaultCategories: categoriesData?.defaultCategories ?? [],
+      userCategories: categoriesData?.userCategories ?? [],
+    };
     const txList = transactions as Tx[];
     const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
+    const forMetrics = filterForMetrics(
+      txList.filter((tx) => !transferIds.has(tx.id)),
+      ctx
+    );
     let income = 0;
     let expense = 0;
-    for (const tx of txList) {
-      if (transferIds.has(tx.id)) continue;
+    for (const tx of forMetrics) {
       const amt = Number(tx.amount) || 0;
       if (tx.type === "income") income += amt;
       else expense += amt;
     }
     return { income, expense, balance: income - expense, isLoading };
-  }, [transactions, isLoading]);
+  }, [transactions, categoriesData, isLoading]);
 }
 
 export default function DashboardMonthComparisonBar() {

@@ -35,12 +35,13 @@ export async function POST(
 
   const { data: cat } = await supabase
     .from("categories")
-    .select("id, user_id, parent_id")
+    .select("id, user_id, parent_id, exclude_from_metrics")
     .eq("id", id)
     .single();
 
   if (!cat) return jsonError("not_found", 404);
   if (cat.user_id !== null) return jsonError("can_only_archive_system", 400);
+  if (cat.exclude_from_metrics === true) return jsonError("cannot_archive_exclude_metrics", 400);
 
   const body = await request.json().catch(() => ({}));
   const archiveChildren = body.archive_children !== false;

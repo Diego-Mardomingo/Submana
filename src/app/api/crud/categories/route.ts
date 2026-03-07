@@ -112,19 +112,27 @@ export async function GET(request: NextRequest) {
   const systemParents = systemCats.filter((c) => !c.parent_id);
   const systemChildren = systemCats.filter((c) => c.parent_id);
 
-  const structuredSystem = systemParents.map((parent) => {
-    const sysSubs = systemChildren
-      .filter((c) => c.parent_id === parent.id)
-      .map((c) => ({ ...c, isDefault: true }));
-    const usrSubs = userChildrenSystemParent
-      .filter((c) => c.parent_id === parent.id)
-      .map((c) => ({ ...c, isDefault: false }));
-    return {
-      ...parent,
-      isDefault: true,
-      subcategories: [...sysSubs, ...usrSubs],
-    };
-  });
+  const structuredSystem = systemParents
+    .map((parent) => {
+      const sysSubs = systemChildren
+        .filter((c) => c.parent_id === parent.id)
+        .map((c) => ({ ...c, isDefault: true }));
+      const usrSubs = userChildrenSystemParent
+        .filter((c) => c.parent_id === parent.id)
+        .map((c) => ({ ...c, isDefault: false }));
+      return {
+        ...parent,
+        isDefault: true,
+        subcategories: [...sysSubs, ...usrSubs],
+      };
+    })
+    .sort((a, b) => {
+      const aExclude = (a as { exclude_from_metrics?: boolean }).exclude_from_metrics;
+      const bExclude = (b as { exclude_from_metrics?: boolean }).exclude_from_metrics;
+      if (aExclude && !bExclude) return 1;
+      if (!aExclude && bExclude) return -1;
+      return 0;
+    });
 
   return jsonCachedResponse({
     data: {
