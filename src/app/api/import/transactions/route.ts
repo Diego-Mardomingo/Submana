@@ -52,18 +52,18 @@ export async function POST(request: NextRequest) {
 
   const hashes = dedupedTransactions.map((t) => t.external_hash).filter(Boolean);
   
-  let existingHashes: Set<string> = new Set();
-  if (hashes.length > 0) {
-    const { data: existingTransactions } = await supabase
+  // Consultar en lotes para evitar "URI too long" con .in() y muchos hashes
+  const BATCH_SIZE = 80;
+  const existingHashes = new Set<string>();
+  for (let i = 0; i < hashes.length; i += BATCH_SIZE) {
+    const batch = hashes.slice(i, i + BATCH_SIZE);
+    const { data } = await supabase
       .from("transactions")
       .select("external_hash")
       .eq("account_id", account_id)
-      .in("external_hash", hashes);
-
-    if (existingTransactions) {
-      existingHashes = new Set(
-        existingTransactions.map((t) => t.external_hash).filter(Boolean)
-      );
+      .in("external_hash", batch);
+    if (data) {
+      data.forEach((t) => t.external_hash && existingHashes.add(t.external_hash));
     }
   }
 
@@ -99,21 +99,24 @@ export async function POST(request: NextRequest) {
     const categoryMap: Record<string, { category_id: string | null; subcategory_id: string | null }> = {};
 
     if (uniqueDescriptions.length > 0) {
-      const { data: existingWithCategories } = await supabase
-        .from("transactions")
-        .select("description, category_id, subcategory_id, date")
-        .eq("user_id", user.id)
-        .in("description", uniqueDescriptions)
-        .not("category_id", "is", null)
-        .order("date", { ascending: false });
+      for (let i = 0; i < uniqueDescriptions.length; i += BATCH_SIZE) {
+        const batch = uniqueDescriptions.slice(i, i + BATCH_SIZE);
+        const { data: existingWithCategories } = await supabase
+          .from("transactions")
+          .select("description, category_id, subcategory_id, date")
+          .eq("user_id", user.id)
+          .in("description", batch)
+          .not("category_id", "is", null)
+          .order("date", { ascending: false });
 
-      if (existingWithCategories) {
-        for (const tx of existingWithCategories) {
-          if (tx.description && !categoryMap[tx.description]) {
-            categoryMap[tx.description] = {
-              category_id: tx.category_id,
-              subcategory_id: tx.subcategory_id,
-            };
+        if (existingWithCategories) {
+          for (const tx of existingWithCategories) {
+            if (tx.description && !categoryMap[tx.description]) {
+              categoryMap[tx.description] = {
+                category_id: tx.category_id,
+                subcategory_id: tx.subcategory_id,
+              };
+            }
           }
         }
       }
@@ -157,25 +160,33 @@ export async function POST(request: NextRequest) {
   const possibleDuplicates: PossibleDuplicate[] = [];
 
   if (imported > 0) {
-    const insertedHashes = newTransactions.map(t => t.external_hash);
-    
-    const { data: recentlyInserted } = await supabase
-      .from("transactions")
-      .select("id, external_hash, date, amount, description")
-      .eq("account_id", account_id)
-      .in("external_hash", insertedHashes);
+    const insertedHashes = newTransactions.map(t => t.external_hash).filter(Boolean);
+    const recentlyInserted: Array<{ id: string; external_hash: string | null; date: string; amount: number; description: string | null }> = [];
+    for (let i = 0; i < insertedHashes.length; i += BATCH_SIZE) {
+      const batch = insertedHashes.slice(i, i + BATCH_SIZE);
+      const { data } = await supabase
+        .from("transactions")
+        .select("id, external_hash, date, amount, description")
+        .eq("account_id", account_id)
+        .in("external_hash", batch);
+      if (data) recentlyInserted.push(...data);
+    }
 
-    if (recentlyInserted && recentlyInserted.length > 0) {
+    if (recentlyInserted.length > 0) {
       const insertedHashSet = new Set(insertedHashes);
       const uniqueDates = [...new Set(recentlyInserted.map(t => t.date))];
-      
-      const { data: existingByDate } = await supabase
-        .from("transactions")
-        .select("id, date, amount, description, external_hash")
-        .eq("account_id", account_id)
-        .in("date", uniqueDates);
+      const existingByDate: Array<{ id: string; date: string; amount: number; description: string | null; external_hash: string | null }> = [];
+      for (let i = 0; i < uniqueDates.length; i += BATCH_SIZE) {
+        const batch = uniqueDates.slice(i, i + BATCH_SIZE);
+        const { data } = await supabase
+          .from("transactions")
+          .select("id, date, amount, description, external_hash")
+          .eq("account_id", account_id)
+          .in("date", batch);
+        if (data) existingByDate.push(...data);
+      }
 
-      if (existingByDate && existingByDate.length > 0) {
+      if (existingByDate.length > 0) {
         const existingNotInserted = existingByDate.filter(
           t => !t.external_hash || !insertedHashSet.has(t.external_hash)
         );

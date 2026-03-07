@@ -105,20 +105,17 @@ export async function POST(request: NextRequest) {
   });
 
   const hashes = dedupedTransactions.map((t) => t.external_hash).filter(Boolean);
-  
-  let existingHashes: Set<string> = new Set();
-  if (hashes.length > 0) {
-    const { data: existingTransactions } = await supabase
+
+  const BATCH_SIZE = 80;
+  const existingHashes = new Set<string>();
+  for (let i = 0; i < hashes.length; i += BATCH_SIZE) {
+    const batch = hashes.slice(i, i + BATCH_SIZE);
+    const { data } = await supabase
       .from("transactions")
       .select("external_hash")
       .eq("account_id", depositAccount.id)
-      .in("external_hash", hashes);
-
-    if (existingTransactions) {
-      existingHashes = new Set(
-        existingTransactions.map((t) => t.external_hash).filter(Boolean)
-      );
-    }
+      .in("external_hash", batch);
+    if (data) data.forEach((t) => t.external_hash && existingHashes.add(t.external_hash));
   }
 
   const newTransactions = dedupedTransactions.filter(
@@ -181,25 +178,33 @@ export async function POST(request: NextRequest) {
   const possibleDuplicates: PossibleDuplicate[] = [];
 
   if (imported > 0) {
-    const insertedHashes = newTransactions.map(t => t.external_hash);
-    
-    const { data: recentlyInserted } = await supabase
-      .from("transactions")
-      .select("id, external_hash, date, amount, description")
-      .eq("account_id", depositAccount.id)
-      .in("external_hash", insertedHashes);
-
-    if (recentlyInserted && recentlyInserted.length > 0) {
-      const insertedHashSet = new Set(insertedHashes);
-      const uniqueDates = [...new Set(recentlyInserted.map(t => t.date))];
-
-      const { data: existingByDate } = await supabase
+    const insertedHashes = newTransactions.map((t) => t.external_hash).filter(Boolean);
+    const recentlyInserted: Array<{ id: string; external_hash: string | null; date: string; amount: number; description: string | null }> = [];
+    for (let i = 0; i < insertedHashes.length; i += BATCH_SIZE) {
+      const batch = insertedHashes.slice(i, i + BATCH_SIZE);
+      const { data } = await supabase
         .from("transactions")
-        .select("id, date, amount, description, external_hash")
+        .select("id, external_hash, date, amount, description")
         .eq("account_id", depositAccount.id)
-        .in("date", uniqueDates);
+        .in("external_hash", batch);
+      if (data) recentlyInserted.push(...data);
+    }
 
-      if (existingByDate && existingByDate.length > 0) {
+    if (recentlyInserted.length > 0) {
+      const insertedHashSet = new Set(insertedHashes);
+      const uniqueDates = [...new Set(recentlyInserted.map((t) => t.date))];
+      const existingByDate: Array<{ id: string; date: string; amount: number; description: string | null; external_hash: string | null }> = [];
+      for (let i = 0; i < uniqueDates.length; i += BATCH_SIZE) {
+        const batch = uniqueDates.slice(i, i + BATCH_SIZE);
+        const { data } = await supabase
+          .from("transactions")
+          .select("id, date, amount, description, external_hash")
+          .eq("account_id", depositAccount.id)
+          .in("date", batch);
+        if (data) existingByDate.push(...data);
+      }
+
+      if (existingByDate.length > 0) {
         const existingNotInserted = existingByDate.filter(
           t => !t.external_hash || !insertedHashSet.has(t.external_hash)
         );

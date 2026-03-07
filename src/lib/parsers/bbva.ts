@@ -33,10 +33,17 @@ function findHeaderRow(jsonData: unknown[][]): number {
   return -1;
 }
 
-function getColumnIndices(headers: string[]): { fechaValor: number; concepto: number; movimiento: number; importe: number; disponible: number } | null {
+function getColumnIndices(headers: string[]): {
+  fecha: number;
+  concepto: number;
+  movimiento: number;
+  importe: number;
+  disponible: number;
+} | null {
   if (!Array.isArray(headers)) return null;
   const lower = headers.map((h) => String(h ?? "").toLowerCase().trim());
-  let fechaValor = -1;
+  let fecha = -1;
+  let fechaValorFallback = -1;
   let concepto = -1;
   let movimiento = -1;
   let importe = -1;
@@ -45,7 +52,11 @@ function getColumnIndices(headers: string[]): { fechaValor: number; concepto: nu
   for (let i = 0; i < lower.length; i++) {
     const h = String(lower[i] ?? "");
     if (!h) continue;
-    if (h.includes("fecha valor")) fechaValor = i;
+    // "Fecha" exacta = fecha de la transacción (usar siempre para consistencia entre formatos)
+    if (h === "fecha") fecha = i;
+    // "Fecha valor" / "F.Valor" = fallback si no hay columna "Fecha"
+    else if (h.includes("fecha valor") || h === "f.valor" || h === "f. valor")
+      fechaValorFallback = i;
     else if (h === "concepto") concepto = i;
     else if (h === "movimiento") movimiento = i;
     else if (h === "importe") importe = i;
@@ -53,11 +64,8 @@ function getColumnIndices(headers: string[]): { fechaValor: number; concepto: nu
   }
 
   if (concepto >= 0 && importe >= 0) {
-    if (fechaValor < 0) {
-      const fechaIdx = lower.findIndex((h) => h === "fecha");
-      fechaValor = fechaIdx >= 0 ? fechaIdx : concepto - 2;
-    }
-    return { fechaValor, concepto, movimiento, importe, disponible };
+    if (fecha < 0) fecha = fechaValorFallback >= 0 ? fechaValorFallback : concepto - 2;
+    return { fecha, concepto, movimiento, importe, disponible };
   }
   return null;
 }
@@ -74,7 +82,7 @@ function parseBBVADate(value: string): string | null {
 
 function parseRow(
   row: unknown[],
-  indices: { fechaValor: number; concepto: number; movimiento: number; importe: number; disponible: number }
+  indices: { fecha: number; concepto: number; movimiento: number; importe: number; disponible: number }
 ): BBVARawTransaction | null {
   const get = (i: number) => {
     const val = row[i];
@@ -82,13 +90,13 @@ function parseRow(
     return String(val).trim();
   };
 
-  const fechaValor = get(indices.fechaValor);
+  const fechaStr = get(indices.fecha);
   const concepto = get(indices.concepto);
   const movimiento = get(indices.movimiento);
   const importeVal = row[indices.importe];
   const disponibleVal = row[indices.disponible];
 
-  const dateStr = parseBBVADate(fechaValor);
+  const dateStr = parseBBVADate(fechaStr);
   if (!dateStr) return null;
 
   let amount = 0;
@@ -215,13 +223,13 @@ export async function normalizeBBVATransactions(
 
     const hash = await generateTransactionHash(
       accountId,
-      tx.fechaValor,
+      tx.fecha,
       amount,
       description
     );
 
     result.push({
-      date: tx.fechaValor,
+      date: tx.fecha,
       amount,
       type: isIncome ? "income" : "expense",
       description,
