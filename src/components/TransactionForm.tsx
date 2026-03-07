@@ -97,7 +97,7 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
       } else {
         await createTx.mutateAsync(payload);
       }
-      router.replace(returnTo || "/transactions");
+      router.replace(returnTo || "/transactions", { scroll: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     }

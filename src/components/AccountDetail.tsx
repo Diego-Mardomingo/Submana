@@ -34,6 +34,8 @@ import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
 import { useCategories } from "@/hooks/useCategories";
 import { filterForMetrics } from "@/lib/metricsFilters";
+import { saveScrollForReturn } from "@/lib/scrollRestore";
+import { useScrollRestore } from "@/hooks/useScrollRestore";
 import { Pencil, Trash2 } from "lucide-react";
 import type { BankProvider } from "@/lib/bankProviders";
 
@@ -60,6 +62,7 @@ interface TransactionItem {
 }
 
 export default function AccountDetail({ account }: { account: Account }) {
+  useScrollRestore();
   const lang = useLang();
   const t = useTranslations(lang);
   const router = useRouter();
@@ -501,6 +504,7 @@ export default function AccountDetail({ account }: { account: Account }) {
                                     href={`/transactions/edit/${tx.id}?returnTo=${encodeURIComponent(`/account/${account.id}`)}`}
                                     className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
                                     aria-label={t("common.edit")}
+                                    onClick={() => saveScrollForReturn(`/account/${account.id}`)}
                                   >
                                     <Pencil className="size-5" />
                                   </Link>

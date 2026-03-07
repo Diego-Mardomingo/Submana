@@ -27,6 +27,8 @@ import { AddButton } from "@/components/ui/add-button";
 import { Spinner } from "@/components/ui/spinner";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
+import { saveScrollForReturn } from "@/lib/scrollRestore";
+import { useScrollRestore } from "@/hooks/useScrollRestore";
 
 type TransactionItem = {
   id: string;
@@ -67,6 +69,7 @@ type TransactionCardProps = {
   subcategoryEmoji: string | null;
   incomeLabel: string;
   expenseLabel: string;
+  onBeforeEdit?: () => void;
 };
 
 const TransactionCard = memo(function TransactionCard({
@@ -75,12 +78,14 @@ const TransactionCard = memo(function TransactionCard({
   subcategoryEmoji,
   incomeLabel,
   expenseLabel,
+  onBeforeEdit,
 }: TransactionCardProps) {
   return (
     <Link
       href={`/transactions/edit/${tx.id}`}
       className={`tx-card tx-card-${tx.type}`}
       style={{ viewTransitionName: `tx-card-${tx.id}` }}
+      onClick={() => onBeforeEdit?.()}
     >
       <div className="tx-card-icon">
         {tx.type === "income" ? (
@@ -142,6 +147,7 @@ const TransactionCard = memo(function TransactionCard({
 });
 
 export default function TransactionsBody() {
+  useScrollRestore();
   const lang = useLang();
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
@@ -469,6 +475,7 @@ export default function TransactionsBody() {
                           href={`/transactions/edit/${tx.id}`}
                           className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
                           aria-label={t("common.edit")}
+                          onClick={() => saveScrollForReturn("/transactions")}
                         >
                           <Pencil className="size-5" />
                         </Link>
@@ -497,6 +504,7 @@ export default function TransactionsBody() {
                       }
                       incomeLabel={t("transactions.income")}
                       expenseLabel={t("transactions.expense")}
+                      onBeforeEdit={() => saveScrollForReturn("/transactions")}
                     />
                   </SwipeToReveal>
                 ))}
