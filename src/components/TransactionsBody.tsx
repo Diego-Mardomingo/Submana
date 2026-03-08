@@ -30,6 +30,7 @@ import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { saveScrollForReturn } from "@/lib/scrollRestore";
 import { useScrollRestore } from "@/hooks/useScrollRestore";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 
 type TransactionItem = {
   id: string;
@@ -140,7 +141,7 @@ const TransactionCard = memo(function TransactionCard({
       </div>
       <div className={`tx-card-amount tx-card-amount-${tx.type}`}>
         {tx.type === "income" ? "+" : "-"}
-        {formatCurrency(Number(tx.amount))}
+        <SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
       </div>
       <svg className="tx-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M9 18l6-6-6-6" />
@@ -451,7 +452,9 @@ export default function TransactionsBody() {
               </div>
               <div className="info-stat-content">
                 <span className="info-stat-label">{t("transactions.monthlyIncome")}</span>
-                <span className="info-stat-value info-stat-value-income">{formatCurrency(totalIncome)}</span>
+                <span className="info-stat-value info-stat-value-income">
+                  <SensitiveAmount>{formatCurrency(totalIncome)}</SensitiveAmount>
+                </span>
               </div>
             </div>
             <div className="info-stat-card info-stat-expense">
@@ -463,7 +466,9 @@ export default function TransactionsBody() {
               </div>
               <div className="info-stat-content">
                 <span className="info-stat-label">{t("transactions.monthlyExpense")}</span>
-                <span className="info-stat-value info-stat-value-expense">{formatCurrency(totalExpense)}</span>
+                <span className="info-stat-value info-stat-value-expense">
+                  <SensitiveAmount>{formatCurrency(totalExpense)}</SensitiveAmount>
+                </span>
               </div>
             </div>
           </div>
@@ -473,7 +478,10 @@ export default function TransactionsBody() {
             </div>
             <div className="info-stat-content">
               <span className="info-stat-label">{t("transactions.monthlyBalance")}</span>
-              <span className="info-stat-value info-stat-value-balance">{totalBalance >= 0 ? "+" : ""}{formatCurrency(totalBalance)}</span>
+              <span className="info-stat-value info-stat-value-balance">
+                {totalBalance >= 0 ? "+" : ""}
+                <SensitiveAmount>{formatCurrency(totalBalance)}</SensitiveAmount>
+              </span>
             </div>
           </div>
         </div>

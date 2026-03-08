@@ -58,6 +58,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SortableContainer, SortableItem } from "@/components/sortable";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useReorder } from "@/hooks/useReorder";
 
 const formatCurrency = (n: number) => {
@@ -325,7 +326,9 @@ export default function AccountsBody() {
             </div>
             <div className="info-stat-content">
               <span className="info-stat-label">{lang === "es" ? "Balance Total" : "Total Balance"}</span>
-              <span className="info-stat-value">{formatCurrency(totalBalance)}</span>
+              <span className="info-stat-value">
+                <SensitiveAmount>{formatCurrency(totalBalance)}</SensitiveAmount>
+              </span>
             </div>
           </div>
         </div>
@@ -370,7 +373,9 @@ export default function AccountsBody() {
                   </div>
                   <div className="account-info">
                     <h3 className="account-name">{activeItem.name}</h3>
-                    <p className="account-balance">{formatCurrency(Number(activeItem.balance))}</p>
+                    <p className="account-balance">
+                      <SensitiveAmount>{formatCurrency(Number(activeItem.balance))}</SensitiveAmount>
+                    </p>
                   </div>
                 </div>
               </div>
@@ -415,7 +420,9 @@ export default function AccountsBody() {
                   </div>
                   <div className="account-info">
                     <h3 className="account-name">{account.name}</h3>
-                    <p className="account-balance">{formatCurrency(Number(account.balance))}</p>
+                    <p className="account-balance">
+                      <SensitiveAmount>{formatCurrency(Number(account.balance))}</SensitiveAmount>
+                    </p>
                   </div>
                 </div>
                 <TooltipProvider>

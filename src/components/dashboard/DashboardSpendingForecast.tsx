@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
@@ -111,14 +112,17 @@ export default function DashboardSpendingForecast() {
             <span className="text-muted-foreground">
               {lang === "es" ? "Gastado" : "Spent"}
             </span>
-            <span className="font-semibold">{formatCurrency(forecast.totalSpent)}</span>
+            <span className="font-semibold">
+              <SensitiveAmount>{formatCurrency(forecast.totalSpent)}</SensitiveAmount>
+            </span>
           </div>
           {forecast.prevTotal > 0 && (
             <Progress value={forecast.progressPct} className="h-2" />
           )}
           {forecast.prevTotal > 0 && (
             <p className="text-xs text-muted-foreground text-right">
-              {lang === "es" ? "vs mes anterior" : "vs last month"}: {formatCurrency(forecast.prevTotal)}
+              {lang === "es" ? "vs mes anterior" : "vs last month"}:{" "}
+              <SensitiveAmount>{formatCurrency(forecast.prevTotal)}</SensitiveAmount>
             </p>
           )}
         </div>
@@ -128,14 +132,18 @@ export default function DashboardSpendingForecast() {
             <p className="text-xs text-muted-foreground">
               {lang === "es" ? "Media diaria" : "Daily avg"}
             </p>
-            <p className="text-sm font-semibold">{formatCurrency(forecast.dailyAvg)}</p>
+            <p className="text-sm font-semibold">
+              <SensitiveAmount>{formatCurrency(forecast.dailyAvg)}</SensitiveAmount>
+            </p>
           </div>
           <div className="rounded-lg bg-muted/50 p-3 space-y-1">
             <p className="text-xs text-muted-foreground">
               {lang === "es" ? "Proyección" : "Projected"}
             </p>
             <div className="flex items-center gap-1">
-              <p className="text-sm font-semibold">{formatCurrency(forecast.projected)}</p>
+              <p className="text-sm font-semibold">
+                <SensitiveAmount>{formatCurrency(forecast.projected)}</SensitiveAmount>
+              </p>
               {forecast.prevTotal > 0 && (
                 isOver
                   ? <TrendingUp className="size-3.5 text-danger" strokeWidth={2} />

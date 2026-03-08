@@ -30,7 +30,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
 import { useLangContext } from "@/contexts/LangContext";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +56,7 @@ function getEffectiveTheme(theme: Theme): "light" | "dark" {
 
 export default function SettingsBody() {
   const { lang, setLang } = useLangContext();
+  const { privacyModeEnabled, setPrivacyModeEnabled } = usePrivacyMode();
   const t = useTranslations(lang);
   const [supabase] = useState(() =>
     createBrowserClient(
@@ -294,6 +297,23 @@ export default function SettingsBody() {
                   </TooltipTrigger>
                   <TooltipContent side="top">Español</TooltipContent>
                 </Tooltip>
+              </div>
+            </div>
+            <div className="settings-setting-item">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label className="settings-setting-label text-foreground font-semibold block">
+                    {t("settings.privacyMode")}
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {t("settings.privacyModeDesc")}
+                  </p>
+                </div>
+                <Switch
+                  checked={privacyModeEnabled}
+                  onCheckedChange={setPrivacyModeEnabled}
+                  aria-label={t("settings.privacyMode")}
+                />
               </div>
             </div>
           </CardContent>

@@ -1298,6 +1298,25 @@ button:not(:disabled),
   to { transform: rotate(360deg); }
 }
 
+@keyframes sensitive-amount-progress-shrink {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* Blur proporcional al tamaño de fuente: más intenso en valores grandes */
+.sensitive-amount-blur {
+  filter: blur(clamp(5px, 0.28em, 20px));
+  -webkit-filter: blur(clamp(5px, 0.28em, 20px));
+}
+
+/* Degradado para textos con gradient: debe estar en el mismo elemento que el blur */
+.sensitive-amount-gradient {
+  background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 50%, var(--accent-hover) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
 /* ── Settings (astro parity + shadcn) ── */
 .settings-page {
   max-width: 520px;

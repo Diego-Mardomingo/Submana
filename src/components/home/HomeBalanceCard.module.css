@@ -32,13 +32,10 @@
   font-size: clamp(2.5rem, 8vw, 4.5rem);
   font-weight: 800;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 50%, var(--accent-hover) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   margin: 0;
   line-height: 1.1;
   white-space: nowrap;
+  /* Gradiente aplicado en SensitiveAmount para que blur funcione correctamente */
 }
 
 .divider {

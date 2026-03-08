@@ -5,16 +5,19 @@ import { getQueryClient } from "@/lib/queryClient";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { LangProvider } from "@/contexts/LangContext";
+import { PrivacyModeProvider } from "@/contexts/PrivacyModeContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
   return (
     <QueryClientProvider client={queryClient}>
       <LangProvider>
+        <PrivacyModeProvider>
         <TooltipProvider>
           {children}
           <Toaster richColors closeButton />
         </TooltipProvider>
+        </PrivacyModeProvider>
       </LangProvider>
     </QueryClientProvider>
   );

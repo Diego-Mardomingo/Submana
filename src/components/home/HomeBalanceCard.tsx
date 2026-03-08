@@ -2,6 +2,7 @@
 
 import { useAccounts } from "@/hooks/useAccounts";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
@@ -42,7 +43,9 @@ export default function HomeBalanceCard() {
       <CardContent className={styles.wrapper} style={{ opacity: isRefreshing ? 0.7 : 1, transition: "opacity 0.2s" }}>
         <div className={styles.top}>
           <p className={styles.label}>{t("home.totalBalance")}</p>
-          <p className={styles.total}>{formatCurrency(totalBalance)}</p>
+          <p className={styles.total}>
+            <SensitiveAmount applyGradient>{formatCurrency(totalBalance)}</SensitiveAmount>
+          </p>
         </div>
         {accounts.length > 0 && (
           <>
@@ -63,7 +66,7 @@ export default function HomeBalanceCard() {
                     </p>
                   </div>
                   <p className={styles.accountValue}>
-                    {formatCurrency(Number(acc.balance ?? 0))}
+                    <SensitiveAmount>{formatCurrency(Number(acc.balance ?? 0))}</SensitiveAmount>
                   </p>
                 </div>
               ))}

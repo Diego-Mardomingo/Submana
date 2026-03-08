@@ -22,6 +22,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Pencil, XCircle, Trash2 } from "lucide-react";
 import { AddButton } from "@/components/ui/add-button";
 import { toDateString } from "@/lib/date";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useState, memo } from "react";
 
 type Sub = {
@@ -91,7 +92,9 @@ const SubscriptionCardContent = memo(function SubscriptionCardContent({
               {isActive ? activeLabel : inactiveLabel}
             </span>
           </div>
-          <span className="subs-card-cost">{formattedCost}</span>
+          <span className="subs-card-cost">
+            <SensitiveAmount>{formattedCost}</SensitiveAmount>
+          </span>
         </div>
         {isActive && (
           <svg className="subs-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -304,7 +307,9 @@ export default function SubscriptionsBody() {
             </div>
             <div className="info-stat-content">
               <span className="info-stat-label">{t("sub.monthlyCost")}</span>
-              <span className="info-stat-value">{formatCurrency(totalMonthly)}</span>
+              <span className="info-stat-value">
+                <SensitiveAmount>{formatCurrency(totalMonthly)}</SensitiveAmount>
+              </span>
             </div>
           </div>
           <div className="info-stat-card">
@@ -316,7 +321,9 @@ export default function SubscriptionsBody() {
             </div>
             <div className="info-stat-content">
               <span className="info-stat-label">{t("sub.annualCost")}</span>
-              <span className="info-stat-value">{formatCurrency(totalYearly)}</span>
+              <span className="info-stat-value">
+                <SensitiveAmount>{formatCurrency(totalYearly)}</SensitiveAmount>
+              </span>
             </div>
           </div>
         </div>

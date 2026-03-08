@@ -10,6 +10,7 @@ import {
   TrendingDown,
   Repeat,
 } from "lucide-react";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -141,7 +142,7 @@ export default function CalendarDayList({
                         </span>
                       </div>
                       <span className="calendar-day-card-amount calendar-day-card-amount-expense shrink-0">
-                        -{formatCurrency(Number(sub.cost))}
+                        -<SensitiveAmount>{formatCurrency(Number(sub.cost))}</SensitiveAmount>
                       </span>
                     </CardContent>
                   </Card>
@@ -187,7 +188,7 @@ export default function CalendarDayList({
                         )}
                       >
                         {tx.type === "income" ? "+" : "-"}
-                        {formatCurrency(Number(tx.amount))}
+                        <SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
                       </span>
                     </CardContent>
                   </Card>

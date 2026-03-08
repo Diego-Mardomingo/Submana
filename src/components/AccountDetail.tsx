@@ -38,6 +38,7 @@ import { saveScrollForReturn } from "@/lib/scrollRestore";
 import { useScrollRestore } from "@/hooks/useScrollRestore";
 import { Pencil, Trash2 } from "lucide-react";
 import type { BankProvider } from "@/lib/bankProviders";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 
 interface Account {
   id: string;
@@ -331,7 +332,7 @@ export default function AccountDetail({ account }: { account: Account }) {
           </div>
           <h1 className="account-detail-name">{account.name}</h1>
           <div className="account-detail-balance">
-            {formatCurrency(Number(account.balance))}
+            <SensitiveAmount>{formatCurrency(Number(account.balance))}</SensitiveAmount>
           </div>
           {account.is_default && (
             <span className="account-badge-default">
@@ -383,7 +384,8 @@ export default function AccountDetail({ account }: { account: Account }) {
                       <div className={`account-stat-card balance ${balanceClass}`}>
                         <span className="account-stat-label">{lang === "es" ? "Balance del Mes" : "Month Balance"}</span>
                         <span className="account-stat-value account-stat-value-balance">
-                          {stats.balance >= 0 ? "+" : ""}{formatCurrency(stats.balance)}
+                          {stats.balance >= 0 ? "+" : ""}
+                          <SensitiveAmount>{formatCurrency(stats.balance)}</SensitiveAmount>
                         </span>
                       </div>
                       <div className="account-stat-card account-stat-transactions">
@@ -407,11 +409,15 @@ export default function AccountDetail({ account }: { account: Account }) {
                       </div>
                       <div className="account-stat-card income">
                         <span className="account-stat-label">{lang === "es" ? "Ingresos" : "Income"}</span>
-                        <span className="account-stat-value">{formatCurrency(stats.income)}</span>
+                        <span className="account-stat-value">
+                          <SensitiveAmount>{formatCurrency(stats.income)}</SensitiveAmount>
+                        </span>
                       </div>
                       <div className="account-stat-card expense">
                         <span className="account-stat-label">{lang === "es" ? "Gastos" : "Expenses"}</span>
-                        <span className="account-stat-value">{formatCurrency(stats.expense)}</span>
+                        <span className="account-stat-value">
+                          <SensitiveAmount>{formatCurrency(stats.expense)}</SensitiveAmount>
+                        </span>
                       </div>
                     </div>
                   </CarouselItem>
@@ -554,7 +560,8 @@ export default function AccountDetail({ account }: { account: Account }) {
                                     <span />
                                   )}
                                   <span className={`account-transaction-amount ${tx.type}`}>
-                                    {tx.type === "income" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
+                                    {tx.type === "income" ? "+" : "-"}
+                                    <SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
                                   </span>
                                 </div>
                               </div>
@@ -621,7 +628,7 @@ export default function AccountDetail({ account }: { account: Account }) {
                 <span>
                   {txToDelete.description || (txToDelete.type === "income" ? t("transactions.income") : t("transactions.expense"))}
                   {" - "}
-                  {formatCurrency(Number(txToDelete.amount))}
+                  <SensitiveAmount>{formatCurrency(Number(txToDelete.amount))}</SensitiveAmount>
                 </span>
               )}
             </AlertDialogDescription>

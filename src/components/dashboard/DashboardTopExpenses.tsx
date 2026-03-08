@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
@@ -148,7 +149,7 @@ export default function DashboardTopExpenses() {
               <p className="text-xs text-muted-foreground">{tx.dateStr}{tx.catName ? ` · ${tx.catName}` : ""}</p>
             </div>
             <span className="text-sm font-semibold tabular-nums text-danger">
-              -{formatCurrency(tx.amount)}
+              -<SensitiveAmount>{formatCurrency(tx.amount)}</SensitiveAmount>
             </span>
           </div>
         ))}

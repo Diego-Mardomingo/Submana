@@ -8,6 +8,7 @@ import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useRouter } from "next/navigation";
 import { toDateString } from "@/lib/date";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
   Dialog,
   DialogContent,
@@ -191,7 +192,9 @@ export default function SubscriptionDetail({ sub }: { sub: Sub }) {
           </div>
           <h1 className="subs-detail-name">{sub.service_name}</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span className="subs-detail-cost">{formatCurrency(Number(sub.cost))}</span>
+            <span className="subs-detail-cost">
+              <SensitiveAmount>{formatCurrency(Number(sub.cost))}</SensitiveAmount>
+            </span>
             <span className="subs-detail-freq">/ {getFreqLabel(sub.frequency, sub.frequency_value || 1)}</span>
           </div>
           <span className={`subs-badge ${active ? "subs-badge-active" : "subs-badge-inactive"}`}>
@@ -220,7 +223,7 @@ export default function SubscriptionDetail({ sub }: { sub: Sub }) {
           <div className="subs-detail-card">
             <span className="subs-detail-card-label">{t("sub.totalSpent")}</span>
             <span className="subs-detail-card-value" style={{ color: "var(--accent)" }}>
-              {formatCurrency(totalSpent)}
+              <SensitiveAmount>{formatCurrency(totalSpent)}</SensitiveAmount>
             </span>
           </div>
           <div className="subs-detail-card">

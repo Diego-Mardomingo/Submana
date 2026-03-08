@@ -5,6 +5,7 @@ import { useBudgets, type BudgetWithSpent } from "@/hooks/useBudgets";
 import { useCategories, type CategoryWithSubs, type CategoryItem } from "@/hooks/useCategories";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
   Card,
   CardContent,
@@ -173,7 +174,9 @@ export default function HomeBudgetsCard() {
                     </span>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {formatCurrency(spent)} / {formatCurrency(amount)}
+                    <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
+                    {" / "}
+                    <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
                   </div>
                   <Progress
                     value={progressValue}

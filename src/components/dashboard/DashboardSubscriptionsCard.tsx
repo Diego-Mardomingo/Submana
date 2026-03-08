@@ -3,6 +3,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
@@ -120,7 +121,9 @@ export default function DashboardSubscriptionsCard() {
         <CardTitle className="text-base font-semibold text-muted-foreground">
           {t("dashboard.subscriptions")}
         </CardTitle>
-        <p className="text-xs text-muted-foreground">{t("sub.monthlyCost")}: {formatCurrency(total)}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("sub.monthlyCost")}: <SensitiveAmount>{formatCurrency(total)}</SensitiveAmount>
+        </p>
       </CardHeader>
       <CardContent>
         <div className="dashboard-chart-small w-full">

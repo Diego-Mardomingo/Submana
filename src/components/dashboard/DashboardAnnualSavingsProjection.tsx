@@ -3,6 +3,7 @@
 import { useMemo, useEffect, useState } from "react";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
@@ -169,7 +170,8 @@ export default function DashboardAnnualSavingsProjection() {
         <div className="flex items-center gap-2">
           <TrendIcon className={`size-5 ${trendColor}`} strokeWidth={2} />
           <span className={`text-2xl font-bold ${trendColor}`}>
-            {data.totalSaved >= 0 ? "+" : ""}{formatCurrency(data.totalSaved)}
+            {data.totalSaved >= 0 ? "+" : ""}
+            <SensitiveAmount>{formatCurrency(data.totalSaved)}</SensitiveAmount>
           </span>
         </div>
 
@@ -183,7 +185,8 @@ export default function DashboardAnnualSavingsProjection() {
               {lang === "es" ? "Media mensual" : "Monthly avg"}
             </p>
             <p className={`text-sm font-semibold ${data.avgMonthlySavings >= 0 ? "text-success" : "text-danger"}`}>
-              {data.avgMonthlySavings >= 0 ? "+" : ""}{formatCurrency(data.avgMonthlySavings)}
+              {data.avgMonthlySavings >= 0 ? "+" : ""}
+              <SensitiveAmount>{formatCurrency(data.avgMonthlySavings)}</SensitiveAmount>
             </p>
           </div>
           <div className="rounded-lg bg-muted/50 p-3 space-y-1">
@@ -191,7 +194,8 @@ export default function DashboardAnnualSavingsProjection() {
               {t("dashboard.projectedYear")}
             </p>
             <p className={`text-sm font-semibold ${data.projectedTotal >= 0 ? "text-success" : "text-danger"}`}>
-              {data.projectedTotal >= 0 ? "+" : ""}{formatCurrency(data.projectedTotal)}
+              {data.projectedTotal >= 0 ? "+" : ""}
+              <SensitiveAmount>{formatCurrency(data.projectedTotal)}</SensitiveAmount>
             </p>
           </div>
         </div>

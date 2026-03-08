@@ -4,6 +4,7 @@ import { useMemo, useEffect, useState, useCallback } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -203,7 +204,8 @@ export default function DashboardCashFlowSummary() {
         <div className="flex items-center gap-2">
           <TrendIcon className={`size-5 ${trendColor}`} strokeWidth={2} />
           <span className={`text-2xl font-bold ${trendColor}`}>
-            {data.net >= 0 ? "+" : ""}{formatCurrency(data.net)}
+            {data.net >= 0 ? "+" : ""}
+            <SensitiveAmount>{formatCurrency(data.net)}</SensitiveAmount>
           </span>
         </div>
 
@@ -216,11 +218,15 @@ export default function DashboardCashFlowSummary() {
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs text-muted-foreground">{lang === "es" ? "Ingresos" : "Income"}</p>
-            <p className="font-semibold text-success">+{formatCurrency(data.income)}</p>
+            <p className="font-semibold text-success">
+              +<SensitiveAmount>{formatCurrency(data.income)}</SensitiveAmount>
+            </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">{lang === "es" ? "Gastos" : "Expenses"}</p>
-            <p className="font-semibold text-danger">-{formatCurrency(data.expense)}</p>
+            <p className="font-semibold text-danger">
+              -<SensitiveAmount>{formatCurrency(data.expense)}</SensitiveAmount>
+            </p>
           </div>
         </div>
 

@@ -110,14 +110,11 @@
 .spent_value {
   font-weight: 800;
   font-size: 1.5rem;
-  background: linear-gradient(135deg, var(--accent-light) 0%, var(--accent) 50%, var(--accent-hover) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.2rem;
+  /* Gradiente aplicado en SensitiveAmount para que blur funcione correctamente */
 }
 
 /* Calendar filter button with gradient */

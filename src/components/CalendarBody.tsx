@@ -23,6 +23,7 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { useCalendarAccountFilter } from "@/contexts/CalendarFilterContext";
 import CalendarAccountFilter from "./CalendarAccountFilter";
 import { cn } from "@/lib/utils";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -377,11 +378,13 @@ export default function CalendarBody() {
             {isLoading ? (
               <Spinner className="size-5 text-primary" />
             ) : (
-              <AnimatedNumber
-                value={getSpentValue()}
-                formatFn={formatCurrency}
-                duration={350}
-              />
+              <SensitiveAmount applyGradient>
+                <AnimatedNumber
+                  value={getSpentValue()}
+                  formatFn={formatCurrency}
+                  duration={350}
+                />
+              </SensitiveAmount>
             )}
           </div>
         </div>

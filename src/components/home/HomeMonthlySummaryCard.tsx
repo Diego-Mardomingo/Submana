@@ -4,6 +4,7 @@ import { useMemo, useCallback } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
   Card,
   CardContent,
@@ -167,12 +168,14 @@ export default function HomeMonthlySummaryCard() {
         <div className={styles.row}>
           <div className={styles.incomeSection}>
             <p className={styles.label}>{t("home.totalIncome")}</p>
-            <p className={styles.incomeValue}>+{formatCurrency(current.income)}</p>
+            <p className={styles.incomeValue}>
+              +<SensitiveAmount>{formatCurrency(current.income)}</SensitiveAmount>
+            </p>
           </div>
           <div className={styles.expenseSection}>
             <p className={styles.label}>{t("home.totalExpenses")}</p>
             <p className={styles.expenseValue}>
-              -{formatCurrency(current.expense)}
+              -<SensitiveAmount>{formatCurrency(current.expense)}</SensitiveAmount>
             </p>
           </div>
         </div>
@@ -190,7 +193,7 @@ export default function HomeMonthlySummaryCard() {
             }}
           >
             {current.balance >= 0 ? "+" : ""}
-            {formatCurrency(current.balance)}
+            <SensitiveAmount>{formatCurrency(current.balance)}</SensitiveAmount>
           </p>
           <p className={styles.balanceLabel}>{t("home.monthlyBalance")}</p>
         </div>

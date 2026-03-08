@@ -15,6 +15,7 @@ import { parseBBVAExcel, normalizeBBVATransactions } from "@/lib/parsers/bbva";
 import { parseImaginCSV, normalizeImaginTransactions } from "@/lib/parsers/imagin";
 import { normalizeAndHashTransactions } from "@/lib/parsers/utils";
 import type { ImportedTransaction, ImportTransactionsResponse, PossibleDuplicate } from "@/lib/parsers/types";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 
 interface BankStatementUploadProps {
   accountId: string;
@@ -207,7 +208,9 @@ function DuplicatesReview({
                   {lang === "es" ? "YA EXISTENTE" : "ALREADY EXISTS"}
                 </div>
                 <div className="duplicate-card-desc">{dup.existing.description}</div>
-                <div className="duplicate-card-amount">{formatCurrency(dup.existing.amount)}</div>
+                <div className="duplicate-card-amount">
+                  <SensitiveAmount>{formatCurrency(dup.existing.amount)}</SensitiveAmount>
+                </div>
               </div>
               
               <div className="duplicate-card-divider" />
@@ -217,7 +220,9 @@ function DuplicatesReview({
                   {lang === "es" ? "NUEVA IMPORTADA" : "NEW IMPORTED"}
                 </div>
                 <div className="duplicate-card-desc">{dup.incoming.description}</div>
-                <div className="duplicate-card-amount">{formatCurrency(dup.incoming.amount)}</div>
+                <div className="duplicate-card-amount">
+                  <SensitiveAmount>{formatCurrency(dup.incoming.amount)}</SensitiveAmount>
+                </div>
               </div>
             </div>
             
@@ -598,7 +603,8 @@ export default function BankStatementUpload({
                       <span className="bank-statement-preview-desc">{tx.description}</span>
                     </div>
                     <span className={`bank-statement-preview-amount ${tx.type}`}>
-                      {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
+                      {tx.type === "income" ? "+" : "-"}
+                      <SensitiveAmount>{formatCurrency(tx.amount)}</SensitiveAmount>
                     </span>
                   </div>
                 ))}
@@ -631,7 +637,8 @@ export default function BankStatementUpload({
                       <span className="bank-statement-preview-desc">{tx.description}</span>
                     </div>
                     <span className={`bank-statement-preview-amount ${tx.type}`}>
-                      {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
+                      {tx.type === "income" ? "+" : "-"}
+                      <SensitiveAmount>{formatCurrency(tx.amount)}</SensitiveAmount>
                     </span>
                   </div>
                 ))}

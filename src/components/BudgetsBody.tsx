@@ -47,6 +47,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
 import { SortableContainer, SortableItem } from "@/components/sortable";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useReorder } from "@/hooks/useReorder";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -347,7 +348,11 @@ export default function BudgetsBody() {
                         <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
                       )}
                     </div>
-                    <p className="budget-card-summary">{formatCurrency(spent)} / {formatCurrency(amount)}</p>
+                    <p className="budget-card-summary">
+                      <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
+                      {" / "}
+                      <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
+                    </p>
                   </div>
                 );
               }}
@@ -360,9 +365,6 @@ export default function BudgetsBody() {
                 const progressValue = amount > 0 ? Math.min(100, pct) : 0;
                 const pctWarning = pct >= 80 && !over;
                 const accent = budget.color || "var(--accent)";
-                const summaryText = over
-                  ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
-                  : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
                 const parentIds = getParentIds(budget.categoryIds ?? []);
                 const firstCategoryEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
                 const cardContent = (
@@ -394,14 +396,25 @@ export default function BudgetsBody() {
                     <p className="budget-card-summary">
                       {over ? (
                         <>
-                          {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
+                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
+                          {" / "}
+                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
+                          {" → "}
+                          <SensitiveAmount>{formatCurrency(spent - amount)}</SensitiveAmount>
+                          {" · "}
                           <span className="budget-card-summary-exceeded">
                             <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
                             {t("budgets.exceeded")}
                           </span>
                         </>
                       ) : (
-                        summaryText
+                        <>
+                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
+                          {" / "}
+                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
+                          {" → "}
+                          <SensitiveAmount>{formatCurrency(remaining)}</SensitiveAmount>
+                        </>
                       )}
                     </p>
                     <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
@@ -478,7 +491,11 @@ export default function BudgetsBody() {
                       <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
                     )}
                   </div>
-                  <p className="budget-card-summary">{formatCurrency(spent)} / {formatCurrency(amount)}</p>
+                  <p className="budget-card-summary">
+                    <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
+                    {" / "}
+                    <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
+                  </p>
                 </div>
               );
             }}
@@ -490,9 +507,6 @@ export default function BudgetsBody() {
               const pct = amount > 0 ? (spent / amount) * 100 : 0;
               const progressValue = amount > 0 ? Math.min(100, pct) : 0;
               const pctWarning = pct >= 80 && !over;
-              const summaryText = over
-                ? `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(spent - amount)} · ${t("budgets.exceeded")}`
-                : `${formatCurrency(spent)} / ${formatCurrency(amount)} → ${formatCurrency(remaining)}`;
               const parentIdsDesktop = getParentIds(budget.categoryIds ?? []);
               return (
                 <SortableItem key={budget.id} id={budget.id}>
@@ -540,14 +554,25 @@ export default function BudgetsBody() {
                     <p className="budget-card-summary">
                       {over ? (
                         <>
-                          {formatCurrency(spent)} / {formatCurrency(amount)} → {formatCurrency(spent - amount)} ·{" "}
+                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
+                          {" / "}
+                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
+                          {" → "}
+                          <SensitiveAmount>{formatCurrency(spent - amount)}</SensitiveAmount>
+                          {" · "}
                           <span className="budget-card-summary-exceeded">
                             <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
                             {t("budgets.exceeded")}
                           </span>
                         </>
                       ) : (
-                        summaryText
+                        <>
+                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
+                          {" / "}
+                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
+                          {" → "}
+                          <SensitiveAmount>{formatCurrency(remaining)}</SensitiveAmount>
+                        </>
                       )}
                     </p>
                     <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
