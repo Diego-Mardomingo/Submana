@@ -165,7 +165,7 @@ export default function SettingsBody() {
       : "";
   const exampleAccountId = accounts[0]?.id ?? "YOUR_ACCOUNT_ID";
   const exampleBody = JSON.stringify(
-    { amount: 10.5, description: "Café", accountId: exampleAccountId },
+    { amount: "10.5", description: "Café", accountId: exampleAccountId },
     null,
     2
   );
