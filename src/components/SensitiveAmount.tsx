@@ -69,6 +69,9 @@ export function SensitiveAmount({
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
       if (!privacyModeEnabled) return;
+      // Evitar que el clic se propague a enlaces o contenedores padres
+      e.preventDefault();
+      e.stopPropagation();
       if (revealing) {
         endReveal();
         return;
