@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useLayoutEffect } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import { Sun, Moon, Monitor, LogOut } from "lucide-react";
+import { Sun, Moon, Monitor, LogOut, ChevronDown, Copy, KeyRound } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAccounts } from "@/hooks/useAccounts";
 import { Logo } from "@/components/Logo";
 import {
   Card,
@@ -72,6 +74,11 @@ export default function SettingsBody() {
   const [theme, setTheme] = useState<Theme>("system");
   const [sliderTransitionReady, setSliderTransitionReady] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [automationOpen, setAutomationOpen] = useState(false);
+  const [automationHasToken, setAutomationHasToken] = useState<boolean | null>(null);
+  const [tokenJustGenerated, setTokenJustGenerated] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const { data: accounts = [] } = useAccounts();
 
   useLayoutEffect(() => {
     const t = getTheme();
@@ -89,6 +96,16 @@ export default function SettingsBody() {
       setLoading(false);
     });
   }, [supabase]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/automation/token")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { hasToken?: boolean } | null) => {
+        if (data && typeof data.hasToken === "boolean") setAutomationHasToken(data.hasToken);
+      })
+      .catch(() => setAutomationHasToken(false));
+  }, [user]);
 
   useEffect(() => {
     if (theme !== "system") return;
@@ -121,6 +138,37 @@ export default function SettingsBody() {
     setSignOutOpen(false);
     window.location.href = "/login";
   };
+
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyFeedback(key);
+      setTimeout(() => setCopyFeedback(null), 2000);
+    } catch {
+      setCopyFeedback(null);
+    }
+  };
+
+  const handleGenerateToken = async () => {
+    const res = await fetch("/api/automation/token", { method: "POST" });
+    if (!res.ok) return;
+    const data = (await res.json()) as { token?: string };
+    if (data.token) {
+      setTokenJustGenerated(data.token);
+      setAutomationHasToken(true);
+    }
+  };
+
+  const automationEndpointUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/api/automation/quick-transaction`
+      : "";
+  const exampleAccountId = accounts[0]?.id ?? "YOUR_ACCOUNT_ID";
+  const exampleBody = JSON.stringify(
+    { amount: 10.5, description: "Café", accountId: exampleAccountId },
+    null,
+    2
+  );
 
   return (
     <div className="settings-page animate-in fade-in duration-300">
@@ -317,6 +365,130 @@ export default function SettingsBody() {
               </div>
             </div>
           </CardContent>
+        </Card>
+
+        <Card className="settings-section-card border-border">
+          <Collapsible open={automationOpen} onOpenChange={setAutomationOpen}>
+            <CollapsibleTrigger className="subs-collapsible-trigger w-full rounded-lg px-4 py-3 text-left hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="size-4 text-muted-foreground" />
+                  <span className="settings-section-title text-base font-medium">
+                    {t("settings.automation.title")}
+                  </span>
+                </div>
+                <ChevronDown
+                  className={cn("size-4 text-muted-foreground transition-transform", automationOpen && "rotate-180")}
+                />
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardHeader className="pb-2 pt-4">
+                <CardDescription className="text-muted-foreground text-sm">
+                  {t("settings.automation.desc")}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5 pb-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("settings.automation.tokenLabel")}</Label>
+                  {tokenJustGenerated !== null ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">
+                        {tokenJustGenerated}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(tokenJustGenerated, "token")}
+                      >
+                        <Copy className="size-3.5 mr-1" />
+                        {copyFeedback === "token" ? t("settings.automation.copied") : t("settings.automation.copyToken")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleGenerateToken}
+                      >
+                        {automationHasToken ? t("settings.automation.regenerateToken") : t("settings.automation.generateToken")}
+                      </Button>
+                      {automationHasToken && (
+                        <span className="text-sm text-muted-foreground">{t("settings.automation.tokenConfigured")}</span>
+                      )}
+                    </div>
+                  )}
+                  {tokenJustGenerated !== null && (
+                    <p className="text-xs text-muted-foreground">{t("settings.automation.tokenOnlyOnce")}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("settings.automation.endpointUrl")}</Label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">
+                      {automationEndpointUrl || "..."}
+                    </code>
+                    {automationEndpointUrl && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyToClipboard(automationEndpointUrl, "url")}
+                      >
+                        <Copy className="size-3.5 mr-1" />
+                        {copyFeedback === "url" ? t("settings.automation.copied") : t("settings.automation.copyUrl")}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("settings.automation.requestBody")}</Label>
+                  <pre className="rounded bg-muted p-3 text-xs overflow-x-auto">
+                    <code>{exampleBody}</code>
+                  </pre>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(exampleBody, "body")}
+                  >
+                    <Copy className="size-3.5 mr-1" />
+                    {copyFeedback === "body" ? t("settings.automation.copied") : t("settings.automation.copyBody")}
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("settings.automation.accountsList")}</Label>
+                  {accounts.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{t("accounts.noAccounts")}</p>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {accounts.map((acc: { id: string; name?: string }) => (
+                        <li key={acc.id} className="flex items-center justify-between gap-2 rounded bg-muted/50 px-3 py-2">
+                          <span className="text-sm truncate">{acc.name ?? acc.id}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 h-8"
+                            onClick={() => copyToClipboard(acc.id, `id-${acc.id}`)}
+                          >
+                            <Copy className="size-3.5 mr-1" />
+                            {copyFeedback === `id-${acc.id}` ? t("settings.automation.copied") : t("settings.automation.copyId")}
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
 
         <Card className="settings-section-card border-border">
