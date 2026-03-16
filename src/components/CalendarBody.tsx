@@ -102,8 +102,22 @@ export default function CalendarBody() {
   const queryClient = useQueryClient();
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(new Date().getMonth());
+  const [clientToday, setClientToday] = useState<{
+    year: number;
+    month: number;
+    date: number;
+  } | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const scrollTargetRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const d = new Date();
+    setClientToday({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      date: d.getDate(),
+    });
+  }, []);
 
   const scrollToDay = (dayNumber: number) => {
     const doScroll = () => {
@@ -300,12 +314,12 @@ export default function CalendarBody() {
     return spent;
   };
 
-  const now = new Date();
-  const todayYear = now.getFullYear();
-  const todayMonth = now.getMonth();
-  const todayDate = now.getDate();
   const getIsToday = (dayNumber: number) =>
-    year === todayYear && month === todayMonth && dayNumber === todayDate;
+    clientToday === null
+      ? false
+      : year === clientToday.year &&
+        month === clientToday.month &&
+        dayNumber === clientToday.date;
   const swipeZoneRef = useRef<HTMLDivElement>(null);
   useCalendarSwipe(swipeZoneRef, {
     onSwipeLeft: () => changeMonth(1),
