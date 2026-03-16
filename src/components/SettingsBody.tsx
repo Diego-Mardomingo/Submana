@@ -367,32 +367,32 @@ export default function SettingsBody() {
           </CardContent>
         </Card>
 
-        <Card className="settings-section-card border-border">
+        <Card className="settings-section-card border-border min-w-0 overflow-hidden">
           <Collapsible open={automationOpen} onOpenChange={setAutomationOpen}>
-            <CollapsibleTrigger className="subs-collapsible-trigger w-full rounded-lg px-4 py-3 text-left hover:bg-muted/50 transition-colors">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <KeyRound className="size-4 text-muted-foreground" />
-                  <span className="settings-section-title text-base font-medium">
+            <CollapsibleTrigger className="subs-collapsible-trigger w-full rounded-lg px-4 py-3 text-left hover:bg-muted/50 transition-colors min-w-0">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <KeyRound className="size-4 text-muted-foreground shrink-0" />
+                  <span className="settings-section-title text-base font-medium break-words">
                     {t("settings.automation.title")}
                   </span>
                 </div>
                 <ChevronDown
-                  className={cn("size-4 text-muted-foreground transition-transform", automationOpen && "rotate-180")}
+                  className={cn("size-4 text-muted-foreground shrink-0 transition-transform", automationOpen && "rotate-180")}
                 />
               </div>
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardHeader className="pb-2 pt-4">
-                <CardDescription className="text-muted-foreground text-sm">
+                <CardDescription className="text-muted-foreground text-sm break-words">
                   {t("settings.automation.desc")}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-5 pb-6">
-                <div className="space-y-2">
+              <CardContent className="space-y-5 pb-6 min-w-0">
+                <div className="space-y-2 min-w-0">
                   <Label className="text-sm font-medium">{t("settings.automation.tokenLabel")}</Label>
                   {tokenJustGenerated !== null ? (
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
                       <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">
                         {tokenJustGenerated}
                       </code>
@@ -426,9 +426,9 @@ export default function SettingsBody() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label className="text-sm font-medium">{t("settings.automation.endpointUrl")}</Label>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">
                       {automationEndpointUrl || "..."}
                     </code>
@@ -446,11 +446,13 @@ export default function SettingsBody() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label className="text-sm font-medium">{t("settings.automation.requestBody")}</Label>
-                  <pre className="rounded bg-muted p-3 text-xs overflow-x-auto">
-                    <code>{exampleBody}</code>
-                  </pre>
+                  <div className="max-w-full rounded bg-muted overflow-hidden">
+                    <pre className="rounded bg-muted p-3 text-xs max-w-full whitespace-pre-wrap break-all">
+                      <code>{exampleBody}</code>
+                    </pre>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
@@ -462,15 +464,15 @@ export default function SettingsBody() {
                   </Button>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 min-w-0">
                   <Label className="text-sm font-medium">{t("settings.automation.accountsList")}</Label>
                   {accounts.length === 0 ? (
                     <p className="text-sm text-muted-foreground">{t("accounts.noAccounts")}</p>
                   ) : (
-                    <ul className="space-y-1.5">
+                    <ul className="space-y-1.5 min-w-0">
                       {accounts.map((acc: { id: string; name?: string }) => (
-                        <li key={acc.id} className="flex items-center justify-between gap-2 rounded bg-muted/50 px-3 py-2">
-                          <span className="text-sm truncate">{acc.name ?? acc.id}</span>
+                        <li key={acc.id} className="flex items-center justify-between gap-2 rounded bg-muted/50 px-3 py-2 min-w-0">
+                          <span className="text-sm truncate min-w-0">{acc.name ?? acc.id}</span>
                           <Button
                             type="button"
                             variant="ghost"

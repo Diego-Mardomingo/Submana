@@ -1354,6 +1354,8 @@ button:not(:disabled),
   flex-direction: column;
   gap: 1.25rem;
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   padding-bottom: 1rem;
 }
 
@@ -1407,6 +1409,8 @@ button:not(:disabled),
 .settings-section-card {
   background: var(--card-subtle-gradient), var(--gris-oscuro);
   border: 1px solid var(--gris);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .settings-section-title {
