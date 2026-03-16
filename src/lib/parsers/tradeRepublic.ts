@@ -1,4 +1,5 @@
 import type { TradeRepublicCashTransaction, ParsedPDFResult } from "./types";
+import { parseGermanDate, parseEuropeanNumber } from "./utils";
 
 interface TextItem {
   text: string;
@@ -273,6 +274,7 @@ export async function parseTradeRepublicPDF(
   options: ParseOptions = {}
 ): Promise<ParsedPDFResult> {
   const { onProgress, onStatus } = options;
+  let statementYear: string | null = null;
 
   onStatus?.("Loading PDF library...");
 
@@ -299,6 +301,18 @@ export async function parseTradeRepublicPDF(
 
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
+
+    if (!statementYear) {
+      const pageTextForYear = textContent.items
+        .filter((item) => "str" in item)
+        .map((item) => (item as { str: string }).str)
+        .join(" ");
+
+      const yearMatch = pageTextForYear.match(/20\d{2}/);
+      if (yearMatch) {
+        statementYear = yearMatch[0];
+      }
+    }
 
     const pageItems: TextItem[] = textContent.items
       .filter((item) => "str" in item && "transform" in item)
@@ -391,6 +405,20 @@ export async function parseTradeRepublicPDF(
     }
   }
 
+  if (statementYear) {
+    for (const tx of allCashTransactions) {
+      if (!tx.datum) continue;
+      const existing = parseGermanDate(tx.datum);
+      if (existing) continue;
+
+      const candidate = `${tx.datum.trim()} ${statementYear}`;
+      const parsedWithYear = parseGermanDate(candidate);
+      if (parsedWithYear) {
+        tx.datum = candidate;
+      }
+    }
+  }
+
   onStatus?.(`Found ${allCashTransactions.length} transactions`);
 
   let finalBalance: number | undefined;
@@ -398,23 +426,48 @@ export async function parseTradeRepublicPDF(
   for (let pageNum = pdf.numPages; pageNum >= 1; pageNum--) {
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
-    const pageText = textContent.items
+    const pageTextRaw = textContent.items
       .filter((item) => "str" in item)
       .map((item) => (item as { str: string }).str)
       .join(" ");
 
-    if (pageText.toUpperCase().includes("RESUMEN DEL BALANCE") || 
-        pageText.toUpperCase().includes("BALANCE OVERVIEW") ||
-        pageText.toUpperCase().includes("KONTOÜBERSICHT")) {
-      const balanceMatch = pageText.match(/(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€/g);
+    const upper = pageTextRaw.toUpperCase();
+
+    if (
+      upper.includes("RESUMEN DEL BALANCE") ||
+      upper.includes("BALANCE OVERVIEW") ||
+      upper.includes("KONTOÜBERSICHT")
+    ) {
+      const markers = [
+        "RESUMEN DEL BALANCE",
+        "BALANCE OVERVIEW",
+        "KONTOÜBERSICHT",
+      ];
+
+      let startIndex = -1;
+      for (const marker of markers) {
+        const idx = upper.indexOf(marker);
+        if (idx !== -1 && (startIndex === -1 || idx < startIndex)) {
+          startIndex = idx;
+        }
+      }
+
+      let searchText = pageTextRaw;
+      if (startIndex !== -1) {
+        searchText = pageTextRaw.slice(startIndex);
+      }
+
+      const endNotesIdx = searchText
+        .toUpperCase()
+        .indexOf("NOTAS SOBRE EL EXTRACTO DE CUENTA");
+      if (endNotesIdx !== -1) {
+        searchText = searchText.slice(0, endNotesIdx);
+      }
+
+      const balanceMatch = searchText.match(/(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€/g);
       if (balanceMatch && balanceMatch.length > 0) {
         const lastBalance = balanceMatch[balanceMatch.length - 1];
-        const balanceStr = lastBalance
-          .replace(/€/g, "")
-          .replace(/\s/g, "")
-          .replace(/\./g, "")
-          .replace(",", ".");
-        const parsed = parseFloat(balanceStr);
+        const parsed = parseEuropeanNumber(lastBalance);
         if (!isNaN(parsed)) {
           finalBalance = parsed;
           break;
@@ -435,18 +488,13 @@ export async function parseTradeRepublicPDF(
       return new Date(dateStr);
     };
     
-    const sortedByDate = [...allCashTransactions].sort((a, b) => 
+    const sortedByDate = [...allCashTransactions].sort((a, b) =>
       parseDate(b.datum).getTime() - parseDate(a.datum).getTime()
     );
     
     const lastTx = sortedByDate[0];
     if (lastTx?.saldo) {
-      const balanceStr = lastTx.saldo
-        .replace(/€/g, "")
-        .replace(/\s|\u202f/g, "")
-        .replace(/\./g, "")
-        .replace(",", ".");
-      const parsed = parseFloat(balanceStr);
+      const parsed = parseEuropeanNumber(lastTx.saldo);
       if (!isNaN(parsed)) {
         finalBalance = parsed;
       }
