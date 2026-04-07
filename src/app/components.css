@@ -1321,6 +1321,7 @@ html[data-theme="light"] .budget-card-badge--general {
 
 .account-detail-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   justify-content: center;
   align-items: stretch;
@@ -1365,6 +1366,30 @@ html[data-theme="light"] .budget-card-badge--general {
 .account-detail-actions .btn-delete:hover {
   background: var(--danger);
   color: white;
+  transform: translateY(-1px);
+}
+
+.account-detail-actions .btn-clear-tx {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  height: auto;
+  border: 1px solid var(--gris);
+  background: transparent;
+  color: var(--blanco);
+}
+
+.account-detail-actions .btn-clear-tx:hover:not(:disabled) {
+  background: var(--gris-oscuro);
+  border-color: var(--gris-claro);
   transform: translateY(-1px);
 }
 

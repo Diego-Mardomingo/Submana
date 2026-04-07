@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -34,11 +35,13 @@ export async function GET(request: NextRequest) {
   if (yearParam && monthParam) {
     const year = parseInt(yearParam, 10);
     const month = parseInt(monthParam, 10); // 1-12 from client
-    const monthStr = String(month).padStart(2, "0");
-    const lastDay = new Date(year, month, 0).getDate();
-    const startDate = `${year}-${monthStr}-01`;
-    const endDate = `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
-    query = query.gte("date", startDate).lte("date", endDate);
+    const { startIso, endExclusiveIso } = calendarMonthsUtcHalfOpenRange(
+      year,
+      month,
+      year,
+      month
+    );
+    query = query.gte("date", startIso).lt("date", endExclusiveIso);
   }
 
   if (accountIdParam) {

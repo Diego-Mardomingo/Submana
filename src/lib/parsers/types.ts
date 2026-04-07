@@ -1,9 +1,16 @@
+/**
+ * import_source_fingerprint: stable per bank row (no account id); server derives import_line_id.
+ * external_hash: semantic fingerprint for heuristics / categories (date + amount + description).
+ */
 export interface ImportedTransaction {
   date: string;
   amount: number;
   type: "income" | "expense";
   description: string;
   external_hash: string;
+  import_source_fingerprint: string;
+  /** Saldo de cuenta según extracto (p. ej. Revolut); opcional. */
+  statement_balance?: number;
 }
 
 export interface ImportTransactionsRequest {
@@ -13,6 +20,8 @@ export interface ImportTransactionsRequest {
 }
 
 export interface PossibleDuplicate {
+  /** SHA-256 for import_duplicate_decisions (same as buildDuplicateConflictKey). */
+  conflict_key: string;
   incoming: {
     id: string;
     date: string;

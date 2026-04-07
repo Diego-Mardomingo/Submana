@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
-import { parseDateString } from "@/lib/date";
+import { calendarDayInAppTimeZone, parseDateString } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, House, Trash2, Euro, Loader2, Pencil } from "lucide-react";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
@@ -174,8 +174,12 @@ export default function TransactionsBody() {
     return now.getMonth();
   });
 
-  const { data: transactions = [], isLoading, isFetching } = useTransactions(year, month + 1);
-  useScrollRestore({ ready: !isLoading });
+  const { data: transactions = [], isLoading, isFetching, isPlaceholderData } = useTransactions(
+    year,
+    month + 1
+  );
+  const monthDataReady = !isLoading && !isPlaceholderData;
+  useScrollRestore({ ready: monthDataReady });
   const { data: categoriesData } = useCategories();
   const deleteTx = useDeleteTransaction();
 
@@ -235,7 +239,7 @@ export default function TransactionsBody() {
 
   // Registrar swipe solo cuando el área existe en el DOM (tras dejar de cargar) y estamos en móvil
   useEffect(() => {
-    if (!isMobile || isLoading || !swipeAreaRef.current) return;
+    if (!isMobile || isLoading || isPlaceholderData || !swipeAreaRef.current) return;
     const el = swipeAreaRef.current;
     const onStart = (e: TouchEvent) => {
       touchStartX.current = e.touches[0].clientX;
@@ -255,7 +259,7 @@ export default function TransactionsBody() {
       el.removeEventListener("touchstart", onStart);
       el.removeEventListener("touchend", onEnd);
     };
-  }, [isMobile, isLoading]);
+  }, [isMobile, isLoading, isPlaceholderData]);
 
   const formatDate = (dateStr: string) => {
     const d = parseDateString(dateStr);
@@ -331,7 +335,7 @@ export default function TransactionsBody() {
 
   const grouped = txList.reduce(
     (acc, tx) => {
-      const date = tx.date.split("T")[0];
+      const date = calendarDayInAppTimeZone(tx.date);
       if (!acc[date]) acc[date] = [];
       acc[date].push(tx);
       return acc;
@@ -413,7 +417,7 @@ export default function TransactionsBody() {
           >
             <span className="tx-month-name">{months[month]}</span>
             <span className="tx-month-year">{year}</span>
-            {isFetching ? (
+            {isFetching || isPlaceholderData ? (
               <Loader2 className="tx-month-loading size-5 animate-spin text-muted-foreground" aria-hidden />
             ) : (
               <House className="tx-month-home" strokeWidth={1.5} aria-hidden />
@@ -431,16 +435,34 @@ export default function TransactionsBody() {
           </Button>
         </div>
 
-        {/* Indicador de carga cuando los datos pueden ser del mes anterior */}
-        {isFetching && !isLoading && (
+        {/* Indicador de carga al cambiar de mes (placeholder o fetch en curso) */}
+        {((isFetching && !isLoading) || isPlaceholderData) && (
           <div className="tx-month-loading-bar" role="status" aria-label={lang === "es" ? "Cargando datos del mes" : "Loading month data"}>
             <Loader2 className="size-4 animate-spin" />
             <span>{lang === "es" ? "Cargando..." : "Loading..."}</span>
           </div>
         )}
 
+        {/* Skeleton mientras el listado aún es del mes anterior (keepPreviousData) */}
+        {isPlaceholderData && (
+          <>
+            <div className="tx-stats-panel tx-month-content">
+              <div className="info-stats-row">
+                <div className="skeleton" style={{ height: 90, borderRadius: 18 }} />
+                <div className="skeleton" style={{ height: 90, borderRadius: 18 }} />
+              </div>
+              <div className="skeleton" style={{ height: 90, borderRadius: 18 }} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
+              <div className="skeleton" style={{ height: 72, borderRadius: 14 }} />
+              <div className="skeleton" style={{ height: 72, borderRadius: 14 }} />
+              <div className="skeleton" style={{ height: 72, borderRadius: 14 }} />
+            </div>
+          </>
+        )}
+
         {/* Stats Cards */}
-      {hasTransactions && (
+      {monthDataReady && hasTransactions && (
         <div className="tx-stats-panel tx-month-content" key={`stats-${year}-${month}`}>
           <div className="info-stats-row">
             <div className="info-stat-card info-stat-income">
@@ -487,7 +509,7 @@ export default function TransactionsBody() {
         </div>
       )}
 
-      {!hasTransactions ? (
+      {monthDataReady && !hasTransactions ? (
         <div className="tx-empty-month tx-month-content" key={`empty-${year}-${month}`}>
           <div className="tx-empty-month-icon">
             <TransactionsIcon className="size-10" />
@@ -497,7 +519,7 @@ export default function TransactionsBody() {
       ) : null}
       </div>
 
-      {hasTransactions ? (
+      {monthDataReady && hasTransactions ? (
         <div className="tx-sections tx-month-content" key={`list-${year}-${month}`}>
           {sortedDates.map((date) => (
             <section className="subs-section" key={date}>

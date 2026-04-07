@@ -1,6 +1,14 @@
 import * as XLSX from "xlsx";
 import type { ImportedTransaction } from "./types";
+import {
+	assignOccurrenceIndices,
+	buildImportSourceFingerprint,
+} from "./importKeys";
 import { generateTransactionHash } from "./utils";
+import {
+	parseRevolutFechaInicioToIsoUtc,
+	revolutFechaInicioToMs,
+} from "@/lib/revolutDate";
 
 interface RevolutRawTransaction {
   tipo: string;
@@ -169,6 +177,10 @@ function parseRow(row: string[], headerMapping: Record<number, keyof RevolutRawT
     }
   }
   
+  if (tx.comision === undefined) tx.comision = 0;
+  if (tx.saldo === undefined) tx.saldo = 0;
+  if (tx.estado === undefined) tx.estado = "";
+  
   if (!tx.fechaInicio || tx.importe === undefined) {
     return null;
   }
@@ -186,7 +198,7 @@ function getBalanceByProduct(transactions: RevolutRawTransaction[], producto: st
   }
   
   const sortedByDate = [...filtered].sort((a, b) => 
-    new Date(b.fechaInicio).getTime() - new Date(a.fechaInicio).getTime()
+    revolutFechaInicioToMs(b.fechaInicio) - revolutFechaInicioToMs(a.fechaInicio)
   );
   
   return sortedByDate[0].saldo;
@@ -241,7 +253,7 @@ export async function parseRevolutCSV(
   
   for (let i = 1; i < rows.length; i++) {
     const tx = parseRow(rows[i], headerMapping);
-    if (tx && tx.estado?.toUpperCase() === "COMPLETADO") {
+    if (tx) {
       transactions.push(tx);
     }
   }
@@ -251,7 +263,7 @@ export async function parseRevolutCSV(
   
   const sortByDate = (txs: RevolutRawTransaction[]) => 
     [...txs].sort((a, b) => 
-      new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
+      revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
     );
 
   const sortedTransactions = sortByDate(transactions);
@@ -305,7 +317,7 @@ export async function parseRevolutExcel(
   for (let i = 1; i < jsonData.length; i++) {
     const row = jsonData[i].map(cell => String(cell ?? ""));
     const tx = parseRow(row, headerMapping, true);
-    if (tx && tx.estado?.toUpperCase() === "COMPLETADO") {
+    if (tx) {
       transactions.push(tx);
     }
   }
@@ -315,7 +327,7 @@ export async function parseRevolutExcel(
   
   const sortByDate = (txs: RevolutRawTransaction[]) => 
     [...txs].sort((a, b) => 
-      new Date(a.fechaInicio).getTime() - new Date(b.fechaInicio).getTime()
+      revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
     );
 
   const sortedTransactions = sortByDate(transactions);
@@ -333,105 +345,88 @@ export async function parseRevolutExcel(
   };
 }
 
-function normalizeRevolutDescription(tx: RevolutRawTransaction): string {
-  const desc = (tx.descripcion || "").trim();
-  const tipo = (tx.tipo || "").toLowerCase();
-  
-  if (desc.match(/^transferencia\s+de\s+/i)) {
-    const name = desc.replace(/^transferencia\s+de\s+/i, "").trim();
-    return `Transferencia - ${capitalizeWords(name)}`;
-  }
-  
-  if (desc.match(/^to\s+/i)) {
-    const name = desc.replace(/^to\s+/i, "").trim();
-    return `Transferencia - ${capitalizeWords(name)}`;
-  }
-  
-  if (desc.match(/interest\s+earned/i) || tipo === "intereses") {
-    return "Intereses";
-  }
-  
-  if (desc.match(/cuenta\s+remunerada/i)) {
-    if (desc.match(/^a\s+eur/i) || desc.match(/^a\s+/i)) {
-      return "A cuenta remunerada";
-    }
-    if (desc.match(/^desde/i)) {
-      return "Desde cuenta remunerada";
-    }
-    return "Cuenta remunerada";
-  }
-  
-  if (desc.match(/recarga/i) || tipo === "recargas") {
-    return "Recarga";
-  }
-  
-  if (desc.match(/^pago\s+/i) || tipo === "pago con tarjeta") {
-    const merchant = desc.replace(/^pago\s+(con\s+tarjeta\s+)?/i, "").trim();
-    if (merchant) {
-      return capitalizeWords(merchant);
-    }
-    return "Pago con tarjeta";
-  }
-  
-  return capitalizeWords(desc) || capitalizeWords(tipo) || "Transacción";
+function revolutNetAmount(tx: RevolutRawTransaction): number {
+  return tx.importe - (tx.comision ?? 0);
 }
 
-function capitalizeWords(str: string): string {
-  return str
-    .toLowerCase()
-    .split(" ")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function parseRevolutDate(dateStr: string): string {
-  const match = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (match) {
-    return `${match[1]}-${match[2]}-${match[3]}`;
-  }
-  
-  const dateObj = new Date(dateStr);
-  if (!isNaN(dateObj.getTime())) {
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-    const day = String(dateObj.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
-  
-  return "";
+/** Huella estable por fila del extracto (sin account id). Importe neto; sin columna State. */
+export function buildRevolutStableRowFingerprint(tx: RevolutRawTransaction): string {
+	const norm = (s: string) =>
+		(s || "")
+			.trim()
+			.replace(/\s+/g, " ")
+			.toLowerCase();
+	const net = revolutNetAmount(tx);
+	const parts = [
+		"revolut",
+		norm(tx.tipo),
+		norm(tx.producto),
+		norm(tx.fechaInicio),
+		norm(tx.fechaFin),
+		norm(tx.descripcion),
+		net.toFixed(2),
+		norm(tx.divisa),
+		tx.saldo.toFixed(2),
+	];
+	return parts.join("|");
 }
 
 export async function normalizeRevolutTransactions(
   transactions: RevolutRawTransaction[],
   accountId: string
 ): Promise<ImportedTransaction[]> {
-  const result: ImportedTransaction[] = [];
-  
+  const prepared: Array<{
+    dateStr: string;
+    amount: number;
+    isIncome: boolean;
+    description: string;
+    hash: string;
+    baseFp: string;
+    statement_balance: number;
+  }> = [];
+
   for (const tx of transactions) {
-    const dateStr = parseRevolutDate(tx.fechaInicio);
+    const dateStr = parseRevolutFechaInicioToIsoUtc(tx.fechaInicio);
     if (!dateStr) continue;
-    
-    const amount = Math.abs(tx.importe);
-    if (amount === 0) continue;
-    
-    const isIncome = tx.importe > 0;
-    const description = normalizeRevolutDescription(tx);
-    
+
+    const net = revolutNetAmount(tx);
+    if (net === 0) continue;
+
+    const amount = Math.abs(net);
+    const isIncome = net > 0;
+    const description = fixCorruptedEncoding(tx.descripcion || "").trim();
+
     const hash = await generateTransactionHash(
       accountId,
       dateStr,
       amount,
       description
     );
-    
-    result.push({
-      date: dateStr,
+
+    prepared.push({
+      dateStr,
       amount,
-      type: isIncome ? "income" : "expense",
+      isIncome,
       description,
-      external_hash: hash,
+      hash,
+      baseFp: buildRevolutStableRowFingerprint(tx),
+      statement_balance: tx.saldo,
     });
   }
-  
-  return result;
+
+  const baseFingerprints = prepared.map((p) => p.baseFp);
+  const occurrences = assignOccurrenceIndices(baseFingerprints);
+
+  return prepared.map((p, i) => ({
+    date: p.dateStr,
+    amount: p.amount,
+    type: p.isIncome ? "income" : "expense",
+    description: p.description,
+    external_hash: p.hash,
+    import_source_fingerprint: buildImportSourceFingerprint(
+      p.baseFp,
+      occurrences[i]!
+    ),
+    statement_balance: p.statement_balance,
+  }));
 }

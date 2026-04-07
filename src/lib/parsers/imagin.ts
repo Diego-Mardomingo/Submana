@@ -1,4 +1,8 @@
 import type { ImportedTransaction } from "./types";
+import {
+	assignOccurrenceIndices,
+	buildImportSourceFingerprint,
+} from "./importKeys";
 import { generateTransactionHash, parseEuropeanNumber } from "./utils";
 
 interface ImaginRawTransaction {
@@ -163,11 +167,34 @@ export async function parseImaginCSV(
   };
 }
 
+function buildImaginStableRowFingerprint(tx: ImaginRawTransaction): string {
+	const norm = (s: string) =>
+		(s || "")
+			.trim()
+			.replace(/\s+/g, " ")
+			.toLowerCase();
+	const parts = [
+		"imagin",
+		norm(tx.concepto),
+		tx.fecha,
+		tx.importe.toFixed(2),
+		tx.saldo.toFixed(2),
+	];
+	return parts.join("|");
+}
+
 export async function normalizeImaginTransactions(
   transactions: ImaginRawTransaction[],
   accountId: string
 ): Promise<ImportedTransaction[]> {
-  const result: ImportedTransaction[] = [];
+  const rows: Array<{
+    date: string;
+    amount: number;
+    type: "income" | "expense";
+    description: string;
+    hash: string;
+    baseFp: string;
+  }> = [];
 
   for (const tx of transactions) {
     const amount = Math.abs(tx.importe);
@@ -183,14 +210,24 @@ export async function normalizeImaginTransactions(
       description
     );
 
-    result.push({
+    rows.push({
       date: tx.fecha,
       amount,
       type: isIncome ? "income" : "expense",
       description,
-      external_hash: hash,
+      hash,
+      baseFp: buildImaginStableRowFingerprint(tx),
     });
   }
 
-  return result;
+  const occ = assignOccurrenceIndices(rows.map((r) => r.baseFp));
+
+  return rows.map((r, i) => ({
+    date: r.date,
+    amount: r.amount,
+    type: r.type,
+    description: r.description,
+    external_hash: r.hash,
+    import_source_fingerprint: buildImportSourceFingerprint(r.baseFp, occ[i]!),
+  }));
 }

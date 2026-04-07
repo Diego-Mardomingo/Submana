@@ -30,11 +30,15 @@ interface MultiAccountImportResult {
   actual?: ImportTransactionsResponse;
   deposit?: ImportTransactionsResponse;
   depositAccountCreated?: boolean;
+  /** Cuenta remunerada Revolut (para decisiones de duplicados). */
+  depositAccountId?: string;
 }
 
+type DuplicateWithAccount = PossibleDuplicate & { accountId: string };
+
 interface DuplicatesReviewProps {
-  actualDuplicates: PossibleDuplicate[];
-  depositDuplicates: PossibleDuplicate[];
+  actualDuplicates: DuplicateWithAccount[];
+  depositDuplicates: DuplicateWithAccount[];
   lang: "es" | "en";
   formatCurrency: (n: number) => string;
   formatDate: (d: string) => string;
@@ -52,15 +56,39 @@ function DuplicatesReview({
   const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
   const [removing, setRemoving] = useState<string | null>(null);
 
-  const getPairKey = (dup: PossibleDuplicate) => `${dup.incoming.id}-${dup.existing.id}`;
+  const getPairKey = (dup: DuplicateWithAccount) => `${dup.accountId}-${dup.incoming.id}-${dup.existing.id}`;
 
-  const handleRemoveTransaction = async (transactionId: string, pairKey: string) => {
+  async function saveDuplicateDecision(
+    accountId: string,
+    conflictKey: string,
+    resolution: "keep_existing" | "keep_import"
+  ) {
+    await fetch("/api/import/duplicate-decisions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ account_id: accountId, conflict_key: conflictKey, resolution }),
+    });
+  }
+
+  async function clearDuplicateDecision(accountId: string, conflictKey: string) {
+    const params = new URLSearchParams({ account_id: accountId, conflict_key: conflictKey });
+    await fetch(`/api/import/duplicate-decisions?${params.toString()}`, { method: "DELETE" });
+  }
+
+  const handleRemoveTransaction = async (
+    transactionId: string,
+    pairKey: string,
+    options?: { accountId?: string; conflictKey?: string; resolution?: "keep_existing" | "keep_import" }
+  ) => {
     setRemoving(transactionId);
     try {
       const res = await fetch(`/api/crud/transactions/${transactionId}`, {
         method: "DELETE",
       });
       if (res.ok) {
+        if (options?.accountId && options?.conflictKey && options?.resolution) {
+          await saveDuplicateDecision(options.accountId, options.conflictKey, options.resolution);
+        }
         setDismissedPairs(prev => new Set([...prev, pairKey]));
         onDuplicateRemoved();
       }
@@ -71,14 +99,30 @@ function DuplicatesReview({
     }
   };
 
-  const handleKeepBoth = (pairKey: string) => {
+  const handleKeepBoth = async (
+    dup: DuplicateWithAccount & { accountLabel?: string },
+    pairKey: string
+  ) => {
+    try {
+      await clearDuplicateDecision(dup.accountId, dup.conflict_key);
+    } catch (e) {
+      console.error(e);
+    }
     setDismissedPairs(prev => new Set([...prev, pairKey]));
   };
 
-  const allDuplicates = [
-    ...actualDuplicates.map(d => ({ ...d, account: lang === "es" ? "Cuenta Principal" : "Main Account" })),
-    ...depositDuplicates.map(d => ({ ...d, account: lang === "es" ? "Cuenta Remunerada" : "Savings Account" })),
-  ].filter(d => !dismissedPairs.has(getPairKey(d)));
+  type DupRow = DuplicateWithAccount & { accountLabel: string };
+
+  const allDuplicates: DupRow[] = [
+    ...actualDuplicates.map((d) => ({
+      ...d,
+      accountLabel: lang === "es" ? "Cuenta Principal" : "Main Account",
+    })),
+    ...depositDuplicates.map((d) => ({
+      ...d,
+      accountLabel: lang === "es" ? "Cuenta Remunerada" : "Savings Account",
+    })),
+  ].filter((d) => !dismissedPairs.has(getPairKey(d)));
 
   const [bulkAction, setBulkAction] = useState<"undo" | "remove_existing" | "keep_all" | null>(null);
 
@@ -87,7 +131,10 @@ function DuplicatesReview({
     setBulkAction("undo");
     try {
       for (const d of allDuplicates) {
-        await fetch(`/api/crud/transactions/${d.incoming.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/crud/transactions/${d.incoming.id}`, { method: "DELETE" });
+        if (res.ok) {
+          await saveDuplicateDecision(d.accountId, d.conflict_key, "keep_existing");
+        }
       }
       setDismissedPairs(prev => new Set([...prev, ...allDuplicates.map(d => getPairKey(d))]));
       onDuplicateRemoved();
@@ -103,7 +150,10 @@ function DuplicatesReview({
     setBulkAction("remove_existing");
     try {
       for (const d of allDuplicates) {
-        await fetch(`/api/crud/transactions/${d.existing.id}`, { method: "DELETE" });
+        const res = await fetch(`/api/crud/transactions/${d.existing.id}`, { method: "DELETE" });
+        if (res.ok) {
+          await saveDuplicateDecision(d.accountId, d.conflict_key, "keep_import");
+        }
       }
       setDismissedPairs(prev => new Set([...prev, ...allDuplicates.map(d => getPairKey(d))]));
       onDuplicateRemoved();
@@ -114,7 +164,14 @@ function DuplicatesReview({
     }
   };
 
-  const handleBulkKeepAll = () => {
+  const handleBulkKeepAll = async () => {
+    try {
+      for (const d of allDuplicates) {
+        await clearDuplicateDecision(d.accountId, d.conflict_key);
+      }
+    } catch (e) {
+      console.error(e);
+    }
     setDismissedPairs(prev => new Set([...prev, ...allDuplicates.map(d => getPairKey(d))]));
   };
 
@@ -198,7 +255,7 @@ function DuplicatesReview({
         {allDuplicates.map((dup, idx) => (
           <div key={idx} className="duplicate-card">
             <div className="duplicate-card-meta">
-              <span className="duplicate-card-account">{dup.account}</span>
+              <span className="duplicate-card-account">{dup.accountLabel}</span>
               <span className="duplicate-card-date">{formatDate(dup.incoming.date)}</span>
             </div>
             
@@ -230,7 +287,13 @@ function DuplicatesReview({
               <button
                 type="button"
                 className="duplicate-btn duplicate-btn-undo"
-                onClick={() => handleRemoveTransaction(dup.incoming.id, getPairKey(dup))}
+                onClick={() =>
+                  handleRemoveTransaction(dup.incoming.id, getPairKey(dup), {
+                    accountId: dup.accountId,
+                    conflictKey: dup.conflict_key,
+                    resolution: "keep_existing",
+                  })
+                }
                 disabled={removing !== null}
               >
                 {removing === dup.incoming.id ? (
@@ -247,7 +310,13 @@ function DuplicatesReview({
               <button
                 type="button"
                 className="duplicate-btn duplicate-btn-remove"
-                onClick={() => handleRemoveTransaction(dup.existing.id, getPairKey(dup))}
+                onClick={() =>
+                  handleRemoveTransaction(dup.existing.id, getPairKey(dup), {
+                    accountId: dup.accountId,
+                    conflictKey: dup.conflict_key,
+                    resolution: "keep_import",
+                  })
+                }
                 disabled={removing !== null}
               >
                 {removing === dup.existing.id ? (
@@ -264,7 +333,7 @@ function DuplicatesReview({
               <button
                 type="button"
                 className="duplicate-btn duplicate-btn-keep"
-                onClick={() => handleKeepBoth(getPairKey(dup))}
+                onClick={() => handleKeepBoth(dup, getPairKey(dup))}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20 6L9 17l-5-5"/>
@@ -466,6 +535,7 @@ export default function BankStatementUpload({
         }
         result.deposit = json.data.importResult as ImportTransactionsResponse;
         result.depositAccountCreated = json.data.accountCreated;
+        result.depositAccountId = json.data.accountId as string;
       }
 
       setImportResult(result);
@@ -509,7 +579,15 @@ export default function BankStatementUpload({
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString(lang === "es" ? "es-ES" : "en-US");
+    if (Number.isNaN(d.getTime())) return dateStr;
+    const locale = lang === "es" ? "es-ES" : "en-US";
+    const hasTime =
+      /T\d{2}:\d{2}/.test(dateStr) ||
+      (dateStr.length > 10 && /\d{2}:\d{2}/.test(dateStr));
+    if (hasTime) {
+      return d.toLocaleString(locale, { dateStyle: "short", timeStyle: "medium" });
+    }
+    return d.toLocaleDateString(locale);
   };
 
   useEffect(() => {
@@ -739,8 +817,16 @@ export default function BankStatementUpload({
           
           {((importResult.actual?.possibleDuplicates?.length ?? 0) > 0 || (importResult.deposit?.possibleDuplicates?.length ?? 0) > 0) && (
             <DuplicatesReview 
-              actualDuplicates={importResult.actual?.possibleDuplicates || []}
-              depositDuplicates={importResult.deposit?.possibleDuplicates || []}
+              actualDuplicates={(importResult.actual?.possibleDuplicates || []).map((d) => ({
+                ...d,
+                accountId,
+              }))}
+              depositDuplicates={(importResult.deposit?.possibleDuplicates || [])
+                .map((d) => ({
+                  ...d,
+                  accountId: importResult.depositAccountId ?? "",
+                }))
+                .filter((d) => d.accountId.length > 0)}
               lang={lang}
               formatCurrency={formatCurrency}
               formatDate={formatDate}

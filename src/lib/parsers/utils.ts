@@ -1,4 +1,8 @@
 import type { ImportedTransaction, TradeRepublicCashTransaction } from "./types";
+import {
+	assignOccurrenceIndices,
+	buildImportSourceFingerprint,
+} from "./importKeys";
 
 export async function generateTransactionHash(
   accountId: string,
@@ -207,10 +211,28 @@ function capitalizeWords(str: string): string {
     .join(" ");
 }
 
+export function buildTradeRepublicStableRowFingerprint(tx: TradeRepublicCashTransaction): string {
+	const norm = (s: string) =>
+		(s || "")
+			.trim()
+			.replace(/\s+/g, " ")
+			.toLowerCase();
+	const parts = [
+		"trade_republic",
+		norm(tx.datum),
+		norm(tx.typ),
+		norm(tx.beschreibung),
+		norm(tx.zahlungseingang),
+		norm(tx.zahlungsausgang),
+		norm(tx.saldo),
+	];
+	return parts.join("|");
+}
+
 export function normalizeTradeRepublicTransaction(
   tx: TradeRepublicCashTransaction,
-  accountId: string
-): Omit<ImportedTransaction, "external_hash"> | null {
+  _accountId: string
+): Omit<ImportedTransaction, "external_hash" | "import_source_fingerprint"> | null {
   const dateStr = parseGermanDate(tx.datum);
   if (!dateStr) return null;
 
@@ -237,7 +259,11 @@ export async function normalizeAndHashTransactions(
   transactions: TradeRepublicCashTransaction[],
   accountId: string
 ): Promise<ImportedTransaction[]> {
-  const result: ImportedTransaction[] = [];
+  const rows: Array<{
+    normalized: Omit<ImportedTransaction, "external_hash" | "import_source_fingerprint">;
+    hash: string;
+    baseFp: string;
+  }> = [];
 
   for (const tx of transactions) {
     const normalized = normalizeTradeRepublicTransaction(tx, accountId);
@@ -250,11 +276,18 @@ export async function normalizeAndHashTransactions(
       normalized.description
     );
 
-    result.push({
-      ...normalized,
-      external_hash: hash,
+    rows.push({
+      normalized,
+      hash,
+      baseFp: buildTradeRepublicStableRowFingerprint(tx),
     });
   }
 
-  return result;
+  const occ = assignOccurrenceIndices(rows.map((r) => r.baseFp));
+
+  return rows.map((r, i) => ({
+    ...r.normalized,
+    external_hash: r.hash,
+    import_source_fingerprint: buildImportSourceFingerprint(r.baseFp, occ[i]!),
+  }));
 }

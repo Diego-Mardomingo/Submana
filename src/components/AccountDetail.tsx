@@ -36,7 +36,26 @@ import { useCategories } from "@/hooks/useCategories";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { saveScrollForReturn } from "@/lib/scrollRestore";
 import { useScrollRestore } from "@/hooks/useScrollRestore";
-import { Pencil, Trash2 } from "lucide-react";
+import { ListX, Pencil, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useDeleteAccountTransactions } from "@/hooks/useDeleteAccountTransactions";
+import { useAccounts } from "@/hooks/useAccounts";
 import type { BankProvider } from "@/lib/bankProviders";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 
@@ -62,6 +81,11 @@ interface TransactionItem {
   subcategory_id?: string | null;
 }
 
+function transactionMonthKey(dateStr: string) {
+  const d = parseDateString(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function AccountDetail({ account }: { account: Account }) {
   useScrollRestore();
   const lang = useLang();
@@ -74,8 +98,14 @@ export default function AccountDetail({ account }: { account: Account }) {
   const [showDelete, setShowDelete] = useState(false);
   const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
   const [showDeleteTx, setShowDeleteTx] = useState(false);
+  const [showBulkDeleteTx, setShowBulkDeleteTx] = useState(false);
+  const [bulkDeleteMode, setBulkDeleteMode] = useState<"all" | "range">("all");
+  const [rangeStartKey, setRangeStartKey] = useState("");
+  const [rangeEndKey, setRangeEndKey] = useState("");
+  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
   const deleteAccount = useDeleteAccount();
   const deleteTransaction = useDeleteTransaction();
+  const deleteAccountTransactions = useDeleteAccountTransactions();
 
   const { data: transactions = [], isLoading: txLoading } = useTransactions(
     undefined,
@@ -83,6 +113,13 @@ export default function AccountDetail({ account }: { account: Account }) {
     account.id
   );
   const { data: categoriesData } = useCategories();
+  const { data: accountsList } = useAccounts();
+
+  const displayBalance = useMemo(() => {
+    const list = accountsList as Account[] | undefined;
+    const fromCache = list?.find((a) => a.id === account.id)?.balance;
+    return fromCache !== undefined ? Number(fromCache) : Number(account.balance);
+  }, [accountsList, account.id, account.balance]);
 
   const formatCurrency = (n: number) => {
     const formatted = new Intl.NumberFormat("es-ES", {
@@ -154,6 +191,67 @@ export default function AccountDetail({ account }: { account: Account }) {
   };
 
   const groupedTransactions = groupTransactionsByMonthAndDay(transactions as TransactionItem[]);
+
+  const monthsWithTransactions = useMemo(() => {
+    const txs = transactions as TransactionItem[];
+    const keys = new Set<string>();
+    for (const tx of txs) {
+      keys.add(transactionMonthKey(tx.date));
+    }
+    return Array.from(keys)
+      .sort()
+      .map((key) => {
+        const [y, m] = key.split("-").map(Number);
+        return { key, year: y, month1to12: m };
+      });
+  }, [transactions]);
+
+  const bulkDeleteCount = useMemo(() => {
+    const txs = transactions as TransactionItem[];
+    if (bulkDeleteMode === "all") return txs.length;
+    if (!rangeStartKey || !rangeEndKey || rangeStartKey > rangeEndKey) return 0;
+    return txs.filter((tx) => {
+      const k = transactionMonthKey(tx.date);
+      return k >= rangeStartKey && k <= rangeEndKey;
+    }).length;
+  }, [transactions, bulkDeleteMode, rangeStartKey, rangeEndKey]);
+
+  const handleBulkDeleteConfirm = useCallback(async () => {
+    setBulkDeleteError(null);
+    try {
+      if (bulkDeleteMode === "all") {
+        await deleteAccountTransactions.mutateAsync({
+          accountId: account.id,
+          payload: { mode: "all" },
+        });
+      } else {
+        const [sy, sm] = rangeStartKey.split("-").map(Number);
+        const [ey, em] = rangeEndKey.split("-").map(Number);
+        await deleteAccountTransactions.mutateAsync({
+          accountId: account.id,
+          payload: {
+            mode: "range",
+            startYear: sy,
+            startMonth: sm,
+            endYear: ey,
+            endMonth: em,
+          },
+        });
+      }
+      router.refresh();
+      setShowBulkDeleteTx(false);
+    } catch {
+      setBulkDeleteError(t("accounts.deleteTransactionsError"));
+    }
+  }, [
+    bulkDeleteMode,
+    rangeStartKey,
+    rangeEndKey,
+    account.id,
+    deleteAccountTransactions,
+    router,
+    t,
+  ]);
 
   const subToParent = useMemo(() => {
     const m = new Map<string, string>();
@@ -332,7 +430,7 @@ export default function AccountDetail({ account }: { account: Account }) {
           </div>
           <h1 className="account-detail-name">{account.name}</h1>
           <div className="account-detail-balance">
-            <SensitiveAmount>{formatCurrency(Number(account.balance))}</SensitiveAmount>
+            <SensitiveAmount>{formatCurrency(displayBalance)}</SensitiveAmount>
           </div>
           {account.is_default && (
             <span className="account-badge-default">
@@ -437,6 +535,24 @@ export default function AccountDetail({ account }: { account: Account }) {
             </svg>
             {t("common.edit")}
           </Link>
+          <Button
+            type="button"
+            variant="outline"
+            className="btn-clear-tx"
+            disabled={txLoading || (transactions as TransactionItem[]).length === 0}
+            onClick={() => {
+              setBulkDeleteError(null);
+              if (monthsWithTransactions.length > 0) {
+                setRangeStartKey(monthsWithTransactions[0].key);
+                setRangeEndKey(monthsWithTransactions[monthsWithTransactions.length - 1].key);
+              }
+              setBulkDeleteMode("all");
+              setShowBulkDeleteTx(true);
+            }}
+          >
+            <ListX className="size-[18px]" aria-hidden />
+            {t("accounts.deleteTransactions")}
+          </Button>
           <Button
             variant="destructive"
             onClick={() => setShowDelete(true)}
@@ -652,6 +768,112 @@ export default function AccountDetail({ account }: { account: Account }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={showBulkDeleteTx}
+        onOpenChange={(open) => {
+          setShowBulkDeleteTx(open);
+          if (!open) setBulkDeleteError(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("accounts.deleteTransactionsTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("accounts.deleteTransactionsConfirm").replace("{count}", String(bulkDeleteCount))}
+            </DialogDescription>
+          </DialogHeader>
+          {bulkDeleteError && (
+            <p className="text-destructive text-sm" role="alert">
+              {bulkDeleteError}
+            </p>
+          )}
+          <RadioGroup
+            className="gap-4"
+            value={bulkDeleteMode}
+            onValueChange={(v) => setBulkDeleteMode(v as "all" | "range")}
+          >
+            <div className="flex items-center gap-3">
+              <RadioGroupItem value="all" id="bulk-delete-all" />
+              <Label htmlFor="bulk-delete-all" className="font-normal">
+                {t("accounts.deleteTransactionsAll")}
+              </Label>
+            </div>
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <RadioGroupItem value="range" id="bulk-delete-range" />
+                <Label htmlFor="bulk-delete-range" className="font-normal">
+                  {t("accounts.deleteTransactionsRange")}
+                </Label>
+              </div>
+              {bulkDeleteMode === "range" && (
+                <div className="grid gap-4 pl-7 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label className="text-muted-foreground text-xs">
+                      {t("accounts.deleteTransactionsStartMonth")}
+                    </Label>
+                    <Select
+                      value={rangeStartKey}
+                      onValueChange={(v) => {
+                        setRangeStartKey(v);
+                        if (v > rangeEndKey) setRangeEndKey(v);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthsWithTransactions.map((m) => (
+                          <SelectItem key={`start-${m.key}`} value={m.key}>
+                            {formatMonthYearDisplay(m.year, m.month1to12 - 1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label className="text-muted-foreground text-xs">
+                      {t("accounts.deleteTransactionsEndMonth")}
+                    </Label>
+                    <Select
+                      value={rangeEndKey}
+                      onValueChange={(v) => {
+                        setRangeEndKey(v);
+                        if (v < rangeStartKey) setRangeStartKey(v);
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {monthsWithTransactions.map((m) => (
+                          <SelectItem key={`end-${m.key}`} value={m.key}>
+                            {formatMonthYearDisplay(m.year, m.month1to12 - 1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </div>
+          </RadioGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setShowBulkDeleteTx(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={bulkDeleteCount === 0 || deleteAccountTransactions.isPending}
+              onClick={() => void handleBulkDeleteConfirm()}
+            >
+              {deleteAccountTransactions.isPending && <Spinner className="mr-2 size-4" />}
+              {t("common.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
