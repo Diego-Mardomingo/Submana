@@ -4030,7 +4030,7 @@ html[data-theme="light"] .budget-card-badge--general {
   display: flex;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 }
 
 .bank-statement-success,

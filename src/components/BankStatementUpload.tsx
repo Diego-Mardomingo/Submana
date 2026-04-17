@@ -672,6 +672,24 @@ export default function BankStatementUpload({
 
       {state === "preview" && (
         <div className="bank-statement-preview">
+          <div className="bank-statement-preview-actions">
+            <Button 
+              variant="outline" 
+              onClick={handleReset}
+              className="border-zinc-300 dark:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
+            >
+              {lang === "es" ? "Cancelar" : "Cancel"}
+            </Button>
+            <Button onClick={handleImport}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {lang === "es" ? "Importar" : "Import"} ({transactions.length + depositTransactions.length})
+            </Button>
+          </div>
+
           {transactions.length > 0 && (
             <>
               <div className="bank-statement-preview-header">
@@ -736,24 +754,6 @@ export default function BankStatementUpload({
               </div>
             </>
           )}
-          
-          <div className="bank-statement-preview-actions">
-            <Button 
-              variant="outline" 
-              onClick={handleReset}
-              className="border-zinc-300 dark:border-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100"
-            >
-              {lang === "es" ? "Cancelar" : "Cancel"}
-            </Button>
-            <Button onClick={handleImport}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              {lang === "es" ? "Importar" : "Import"} ({transactions.length + depositTransactions.length})
-            </Button>
-          </div>
         </div>
       )}
 
