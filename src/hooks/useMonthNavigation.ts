@@ -9,17 +9,6 @@ const SWIPE_RATIO = 2.5;
 const TAP_THRESHOLD = 10;
 const SWIPE_TIMEOUT = 300;
 
-export type MonthNavigation = {
-  year: number;
-  month: number; // 1-12
-  isCurrentMonth: boolean;
-  monthLabel: string;
-  goToPrevMonth: () => void;
-  goToNextMonth: () => void;
-  goToCurrentMonth: () => void;
-  setSwipeElement: (el: HTMLElement | null) => void;
-};
-
 const MONTH_NAMES_EN = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
@@ -30,10 +19,76 @@ const MONTH_NAMES_ES = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
+export type NavigationUnit = "week" | "month" | "year";
+
+type UseMonthNavigationOptions = {
+  periodUnit?: NavigationUnit;
+  swipeUnit?: NavigationUnit;
+};
+
+export type MonthNavigation = {
+  date: Date;
+  year: number;
+  month: number; // 1-12
+  isCurrentMonth: boolean;
+  isCurrentWeek: boolean;
+  isCurrentYear: boolean;
+  isCurrentPeriod: boolean;
+  weekStart: Date;
+  weekEnd: Date;
+  monthLabel: string;
+  weekLabel: string;
+  yearLabel: string;
+  periodLabel: string;
+  goToPrevWeek: () => void;
+  goToNextWeek: () => void;
+  goToCurrentWeek: () => void;
+  goToPrevMonth: () => void;
+  goToNextMonth: () => void;
+  goToCurrentMonth: () => void;
+  goToPrevYear: () => void;
+  goToNextYear: () => void;
+  goToCurrentYear: () => void;
+  goToPrevPeriod: () => void;
+  goToNextPeriod: () => void;
+  goToCurrentPeriod: () => void;
+  setSwipeElement: (el: HTMLElement | null) => void;
+};
+
+function startOfDay(date: Date): Date {
+  const normalized = new Date(date);
+  normalized.setHours(12, 0, 0, 0);
+  return normalized;
+}
+
+function getWeekRange(date: Date): { start: Date; end: Date } {
+  const base = startOfDay(date);
+  const dayOfWeek = base.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const start = new Date(base);
+  start.setDate(base.getDate() + mondayOffset);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function formatWeekLabel(start: Date, end: Date, lang: string): string {
+  const locale = lang === "es" ? "es-ES" : "en-US";
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const sameMonth = sameYear && start.getMonth() === end.getMonth();
+  const startFmt = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(start);
+  const endFmt = new Intl.DateTimeFormat(
+    locale,
+    sameMonth ? { day: "numeric", year: "numeric" } : { day: "numeric", month: "short", year: "numeric" }
+  ).format(end);
+  return `${startFmt} - ${endFmt}`;
+}
+
 async function prefetchMonth(queryClient: ReturnType<typeof useQueryClient>, year: number, month: number) {
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-  
-  // Prefetch transacciones
+
   queryClient.prefetchQuery({
     queryKey: queryKeys.transactions.list({ year, month }),
     queryFn: async () => {
@@ -47,8 +102,7 @@ async function prefetchMonth(queryClient: ReturnType<typeof useQueryClient>, yea
     },
     staleTime: 10 * 60 * 1000,
   });
-  
-  // Prefetch presupuestos
+
   queryClient.prefetchQuery({
     queryKey: queryKeys.budgets.list({ month: monthStr }),
     queryFn: async () => {
@@ -61,25 +115,36 @@ async function prefetchMonth(queryClient: ReturnType<typeof useQueryClient>, yea
   });
 }
 
-export function useMonthNavigation(lang: string = "en"): MonthNavigation {
+export function useMonthNavigation(lang: string = "en", options: UseMonthNavigationOptions = {}): MonthNavigation {
+  const periodUnit = options.periodUnit ?? "month";
+  const swipeUnit = options.swipeUnit ?? periodUnit;
   const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1); // 1-12
+  const [currentDate, setCurrentDate] = useState<Date>(() => startOfDay(now));
   const [swipeElement, setSwipeElement] = useState<HTMLElement | null>(null);
   const queryClient = useQueryClient();
-
   const startRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
-  const isCurrentMonth =
-    year === now.getFullYear() && month === now.getMonth() + 1;
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth() + 1;
+
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+  const isCurrentYear = year === now.getFullYear();
+  const currentWeek = getWeekRange(now);
+  const selectedWeek = getWeekRange(currentDate);
+  const isCurrentWeek = selectedWeek.start.getTime() === currentWeek.start.getTime();
+  const isCurrentPeriod =
+    periodUnit === "week" ? isCurrentWeek : periodUnit === "year" ? isCurrentYear : isCurrentMonth;
 
   const monthNames = lang === "es" ? MONTH_NAMES_ES : MONTH_NAMES_EN;
   const monthLabel = `${monthNames[month - 1]} ${year}`;
+  const weekLabel = formatWeekLabel(selectedWeek.start, selectedWeek.end, lang);
+  const yearLabel = String(year);
+  const periodLabel = periodUnit === "week" ? weekLabel : periodUnit === "year" ? yearLabel : monthLabel;
 
   const goToPrevMonth = useCallback(() => {
     let newMonth: number;
     let newYear: number;
-    
+
     if (month === 1) {
       newMonth = 12;
       newYear = year - 1;
@@ -87,20 +152,20 @@ export function useMonthNavigation(lang: string = "en"): MonthNavigation {
       newMonth = month - 1;
       newYear = year;
     }
-    
-    setMonth(newMonth);
-    setYear(newYear);
-    
-    // Prefetch el mes anterior al nuevo (para swipe continuo)
-    const prefetchMonth_num = newMonth === 1 ? 12 : newMonth - 1;
+
+    const nextDate = new Date(currentDate);
+    nextDate.setFullYear(newYear, newMonth - 1);
+    setCurrentDate(startOfDay(nextDate));
+
+    const prefetchMonthNum = newMonth === 1 ? 12 : newMonth - 1;
     const prefetchYear = newMonth === 1 ? newYear - 1 : newYear;
-    prefetchMonth(queryClient, prefetchYear, prefetchMonth_num);
-  }, [month, year, queryClient]);
+    prefetchMonth(queryClient, prefetchYear, prefetchMonthNum);
+  }, [month, year, queryClient, currentDate]);
 
   const goToNextMonth = useCallback(() => {
     let newMonth: number;
     let newYear: number;
-    
+
     if (month === 12) {
       newMonth = 1;
       newYear = year + 1;
@@ -108,21 +173,87 @@ export function useMonthNavigation(lang: string = "en"): MonthNavigation {
       newMonth = month + 1;
       newYear = year;
     }
-    
-    setMonth(newMonth);
-    setYear(newYear);
-    
-    // Prefetch el mes siguiente al nuevo (para swipe continuo)
-    const prefetchMonth_num = newMonth === 12 ? 1 : newMonth + 1;
+
+    const nextDate = new Date(currentDate);
+    nextDate.setFullYear(newYear, newMonth - 1);
+    setCurrentDate(startOfDay(nextDate));
+
+    const prefetchMonthNum = newMonth === 12 ? 1 : newMonth + 1;
     const prefetchYear = newMonth === 12 ? newYear + 1 : newYear;
-    prefetchMonth(queryClient, prefetchYear, prefetchMonth_num);
-  }, [month, year, queryClient]);
+    prefetchMonth(queryClient, prefetchYear, prefetchMonthNum);
+  }, [month, year, queryClient, currentDate]);
 
   const goToCurrentMonth = useCallback(() => {
-    const now = new Date();
-    setYear(now.getFullYear());
-    setMonth(now.getMonth() + 1);
+    setCurrentDate(startOfDay(new Date()));
   }, []);
+
+  const goToPrevWeek = useCallback(() => {
+    const nextDate = new Date(currentDate);
+    nextDate.setDate(nextDate.getDate() - 7);
+    setCurrentDate(startOfDay(nextDate));
+  }, [currentDate]);
+
+  const goToNextWeek = useCallback(() => {
+    const nextDate = new Date(currentDate);
+    nextDate.setDate(nextDate.getDate() + 7);
+    setCurrentDate(startOfDay(nextDate));
+  }, [currentDate]);
+
+  const goToCurrentWeek = useCallback(() => {
+    setCurrentDate(startOfDay(new Date()));
+  }, []);
+
+  const goToPrevYear = useCallback(() => {
+    const nextDate = new Date(currentDate);
+    nextDate.setFullYear(nextDate.getFullYear() - 1);
+    setCurrentDate(startOfDay(nextDate));
+  }, [currentDate]);
+
+  const goToNextYear = useCallback(() => {
+    const nextDate = new Date(currentDate);
+    nextDate.setFullYear(nextDate.getFullYear() + 1);
+    setCurrentDate(startOfDay(nextDate));
+  }, [currentDate]);
+
+  const goToCurrentYear = useCallback(() => {
+    setCurrentDate(startOfDay(new Date()));
+  }, []);
+
+  const goToPrevPeriod = useCallback(() => {
+    if (periodUnit === "week") {
+      goToPrevWeek();
+      return;
+    }
+    if (periodUnit === "year") {
+      goToPrevYear();
+      return;
+    }
+    goToPrevMonth();
+  }, [periodUnit, goToPrevWeek, goToPrevYear, goToPrevMonth]);
+
+  const goToNextPeriod = useCallback(() => {
+    if (periodUnit === "week") {
+      goToNextWeek();
+      return;
+    }
+    if (periodUnit === "year") {
+      goToNextYear();
+      return;
+    }
+    goToNextMonth();
+  }, [periodUnit, goToNextWeek, goToNextYear, goToNextMonth]);
+
+  const goToCurrentPeriod = useCallback(() => {
+    if (periodUnit === "week") {
+      goToCurrentWeek();
+      return;
+    }
+    if (periodUnit === "year") {
+      goToCurrentYear();
+      return;
+    }
+    goToCurrentMonth();
+  }, [periodUnit, goToCurrentWeek, goToCurrentYear, goToCurrentMonth]);
 
   useEffect(() => {
     if (!swipeElement) return;
@@ -180,7 +311,17 @@ export function useMonthNavigation(lang: string = "en"): MonthNavigation {
 
       if (isValidSwipe) {
         if (deltaX > 0) {
-          goToPrevMonth();
+          if (swipeUnit === "week") {
+            goToPrevWeek();
+          } else if (swipeUnit === "year") {
+            goToPrevYear();
+          } else {
+            goToPrevMonth();
+          }
+        } else if (swipeUnit === "week") {
+          goToNextWeek();
+        } else if (swipeUnit === "year") {
+          goToNextYear();
         } else {
           goToNextMonth();
         }
@@ -200,16 +341,43 @@ export function useMonthNavigation(lang: string = "en"): MonthNavigation {
       swipeElement.removeEventListener("touchmove", handleTouchMove);
       swipeElement.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [swipeElement, goToPrevMonth, goToNextMonth]);
+  }, [
+    swipeElement,
+    swipeUnit,
+    goToPrevWeek,
+    goToNextWeek,
+    goToPrevMonth,
+    goToNextMonth,
+    goToPrevYear,
+    goToNextYear,
+  ]);
 
   return {
+    date: currentDate,
     year,
     month,
     isCurrentMonth,
+    isCurrentWeek,
+    isCurrentYear,
+    isCurrentPeriod,
+    weekStart: selectedWeek.start,
+    weekEnd: selectedWeek.end,
     monthLabel,
+    weekLabel,
+    yearLabel,
+    periodLabel,
+    goToPrevWeek,
+    goToNextWeek,
+    goToCurrentWeek,
     goToPrevMonth,
     goToNextMonth,
     goToCurrentMonth,
+    goToPrevYear,
+    goToNextYear,
+    goToCurrentYear,
+    goToPrevPeriod,
+    goToNextPeriod,
+    goToCurrentPeriod,
     setSwipeElement,
   };
 }

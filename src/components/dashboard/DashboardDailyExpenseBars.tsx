@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
@@ -28,18 +28,14 @@ export default function DashboardDailyExpenseBars() {
   const lang = useLang();
   const t = useTranslations(lang);
   const [period, setPeriod] = useState<Period>("month");
+  const dangerColor = "var(--danger)";
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const nav = useMonthNavigation(lang);
-  const dangerRef = useRef("");
+  const nav = useMonthNavigation(lang, { periodUnit: period, swipeUnit: period });
 
   const cardRefCallback = useCallback(
     (node: HTMLDivElement | null) => { nav.setSwipeElement(node); },
-    [nav.setSwipeElement]
+    [nav]
   );
-
-  useEffect(() => {
-    dangerRef.current = getComputedStyle(document.documentElement).getPropertyValue("--danger").trim();
-  }, []);
 
   const { data: monthTx = [], isLoading: loadingMonth } = useTransactions(
     nav.year,
@@ -50,10 +46,30 @@ export default function DashboardDailyExpenseBars() {
     nav.year,
     undefined
   );
+  const { data: weekStartYearTx = [], isLoading: loadingWeekStartYear } = useTransactions(
+    nav.weekStart.getFullYear(),
+    undefined
+  );
+  const { data: weekEndYearTx = [], isLoading: loadingWeekEndYear } = useTransactions(
+    nav.weekEnd.getFullYear(),
+    undefined
+  );
   const { data: categoriesData } = useCategories();
 
-  const transactions = period === "year" ? yearTx : monthTx;
-  const isLoading = period === "year" ? loadingYear : loadingMonth;
+  const weekTx = useMemo(() => {
+    const merged = new Map<string, Tx>();
+    for (const tx of weekStartYearTx as Tx[]) merged.set(tx.id, tx);
+    for (const tx of weekEndYearTx as Tx[]) merged.set(tx.id, tx);
+    return Array.from(merged.values());
+  }, [weekStartYearTx, weekEndYearTx]);
+
+  const transactions = period === "year" ? yearTx : period === "week" ? weekTx : monthTx;
+  const isLoading =
+    period === "year"
+      ? loadingYear
+      : period === "week"
+        ? loadingWeekStartYear || loadingWeekEndYear
+        : loadingMonth;
 
   const { labels, values, title } = useMemo(() => {
     const ctx = {
@@ -68,19 +84,8 @@ export default function DashboardDailyExpenseBars() {
     );
 
     if (period === "week") {
-      const refDate = new Date(nav.year, nav.month - 1, 1);
-      const today = new Date();
-      const isCurrentMonth = nav.year === today.getFullYear() && nav.month === today.getMonth() + 1;
-      const anchor = isCurrentMonth ? today : refDate;
-
-      const dayOfWeek = anchor.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const weekStart = new Date(anchor);
-      weekStart.setDate(anchor.getDate() + mondayOffset);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
+      const weekStart = nav.weekStart;
+      const weekEnd = nav.weekEnd;
 
       const byDay = new Map<number, number>();
       for (let i = 0; i < 7; i++) byDay.set(i, 0);
@@ -131,22 +136,22 @@ export default function DashboardDailyExpenseBars() {
     const labels = Array.from({ length: 12 }, (_, i) => t(MONTH_KEYS[i]).slice(0, 3));
     const values = Array.from({ length: 12 }, (_, i) => Math.round((byMonth.get(i) ?? 0) * 100) / 100);
     return { labels, values, title: t("dashboard.expenseYearly") };
-  }, [transactions, categoriesData, t, period, nav.year, nav.month]);
+  }, [transactions, categoriesData, t, period, nav.year, nav.month, nav.weekStart, nav.weekEnd]);
 
   const barData = useMemo(() => ({
     labels,
     datasets: [{
       data: values,
-      backgroundColor: dangerRef.current || "var(--danger)",
+      backgroundColor: dangerColor,
       borderRadius: 4,
     }],
-  }), [labels, values]);
+  }), [labels, values, dangerColor]);
 
-  const getMaxTicksLimit = () => {
+  const maxTicksLimit = useMemo(() => {
     if (period === "week") return 7;
     if (period === "month") return isMobile ? 8 : 15;
     return isMobile ? 6 : 12;
-  };
+  }, [period, isMobile]);
 
   const barOptions = useMemo(() => ({
     responsive: true,
@@ -164,14 +169,14 @@ export default function DashboardDailyExpenseBars() {
     scales: {
       x: {
         ...axisConfig(),
-        ticks: { ...axisConfig().ticks, maxTicksLimit: getMaxTicksLimit(), font: { size: period === "month" ? 8 : 10 } },
+        ticks: { ...axisConfig().ticks, maxTicksLimit, font: { size: period === "month" ? 8 : 10 } },
       },
       y: {
         ...axisConfig(),
         ticks: { ...axisConfig().ticks, callback: formatK },
       },
     },
-  }), [period, isMobile]);
+  }), [period, maxTicksLimit]);
 
   const periodButtons = (
     <CardAction>
@@ -196,16 +201,16 @@ export default function DashboardDailyExpenseBars() {
   const monthNav = (
     <div className={styles.monthNav}>
       {!isMobile && (
-        <Button variant="ghost" size="icon" onClick={nav.goToPrevMonth} className={styles.navButton} aria-label="Previous month">
+        <Button variant="ghost" size="icon" onClick={nav.goToPrevPeriod} className={styles.navButton} aria-label="Previous period">
           <ChevronLeft className="size-4" strokeWidth={1.5} />
         </Button>
       )}
-      <button type="button" onClick={nav.goToCurrentMonth} className={styles.monthLabel} title={nav.isCurrentMonth ? undefined : t("calendar.today")}>
-        <span>{nav.monthLabel}</span>
-        {!nav.isCurrentMonth && <span className={styles.currentIndicator}>●</span>}
+      <button type="button" onClick={nav.goToCurrentPeriod} className={styles.monthLabel} title={nav.isCurrentPeriod ? undefined : t("calendar.today")}>
+        <span>{nav.periodLabel}</span>
+        {!nav.isCurrentPeriod && <span className={styles.currentIndicator}>●</span>}
       </button>
       {!isMobile && (
-        <Button variant="ghost" size="icon" onClick={nav.goToNextMonth} className={styles.navButton} aria-label="Next month">
+        <Button variant="ghost" size="icon" onClick={nav.goToNextPeriod} className={styles.navButton} aria-label="Next period">
           <ChevronRight className="size-4" strokeWidth={1.5} />
         </Button>
       )}

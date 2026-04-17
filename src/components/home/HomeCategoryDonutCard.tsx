@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useRef, useEffect } from "react";
+import { useMemo, useCallback, useState } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
@@ -10,6 +10,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardAction,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -33,6 +34,7 @@ type Tx = {
   subcategory_id?: string | null;
   account_id?: string;
 };
+type Period = "month" | "year";
 
 function buildCategoryMaps(
   defaultCats: CategoryWithSubs[],
@@ -83,27 +85,29 @@ function buildCategoryIdToColorIndex(
 export default function HomeCategoryDonutCard() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const [period, setPeriod] = useState<Period>("month");
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const colorsRef = useRef<string[]>([]);
+  const chartColors = useMemo(() => resolveChartPalette(), []);
 
-  useEffect(() => {
-    colorsRef.current = resolveChartPalette();
-  }, []);
-
-  const nav = useMonthNavigation(lang);
+  const nav = useMonthNavigation(lang, { periodUnit: period, swipeUnit: period });
 
   const cardRefCallback = useCallback(
     (node: HTMLDivElement | null) => {
       nav.setSwipeElement(node);
     },
-    [nav.setSwipeElement]
+    [nav]
   );
 
-  const { data: transactions = [], isLoading: txLoading, isFetching: txFetching } = useTransactions(
+  const { data: monthTransactions = [], isLoading: monthTxLoading, isFetching: monthTxFetching } = useTransactions(
     nav.year,
     nav.month
   );
+  const { data: yearTransactions = [], isLoading: yearTxLoading, isFetching: yearTxFetching } = useTransactions(
+    nav.year,
+    undefined
+  );
   const { data: categoriesData, isLoading: catLoading, isFetching: catFetching } = useCategories();
+  const transactions = period === "year" ? yearTransactions : monthTransactions;
 
   const { chartData, totalExpense, categoryIdToColorIndex } = useMemo(() => {
     const defaultCats = categoriesData?.defaultCategories ?? [];
@@ -141,10 +145,12 @@ export default function HomeCategoryDonutCard() {
     return { chartData: data, totalExpense: total, categoryIdToColorIndex };
   }, [transactions, categoriesData, lang, t]);
 
+  const txLoading = period === "year" ? yearTxLoading : monthTxLoading;
+  const txFetching = period === "year" ? yearTxFetching : monthTxFetching;
   const isInitialLoading = (txLoading && transactions.length === 0) || (catLoading && !categoriesData);
   const isRefreshing = (txFetching || catFetching) && !isInitialLoading;
 
-  const colors = colorsRef.current.length > 0 ? colorsRef.current : resolveChartPalette();
+  const colors = chartColors.length > 0 ? chartColors : resolveChartPalette();
 
   const labelsWithPct = useMemo(() =>
     chartData.map((d) => {
@@ -197,6 +203,26 @@ export default function HomeCategoryDonutCard() {
     },
   }), [isMobile, totalExpense, chartData]);
 
+  const periodButtons = (
+    <CardAction>
+      <div className="flex gap-1">
+        {(["month", "year"] as Period[]).map((p) => (
+          <button
+            key={p}
+            onClick={() => setPeriod(p)}
+            className={`px-2 py-0.5 text-xs rounded-md transition-colors ${
+              period === p
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            {t(`dashboard.period${p.charAt(0).toUpperCase() + p.slice(1)}` as "dashboard.periodMonth")}
+          </button>
+        ))}
+      </div>
+    </CardAction>
+  );
+
   if (isInitialLoading) {
     return (
       <Card className="home-card">
@@ -204,6 +230,7 @@ export default function HomeCategoryDonutCard() {
           <CardTitle className="text-base font-semibold text-muted-foreground">
             {t("home.expensesByCategory")}
           </CardTitle>
+          {periodButtons}
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
           <Spinner className="size-6 text-muted-foreground" />
@@ -218,6 +245,7 @@ export default function HomeCategoryDonutCard() {
         <CardTitle className="text-base font-semibold text-muted-foreground">
           {t("home.expensesByCategory")}
         </CardTitle>
+        {periodButtons}
       </CardHeader>
       <CardContent style={{ opacity: isRefreshing ? 0.7 : 1, transition: "opacity 0.2s" }}>
         <div className={navStyles.monthNav}>
@@ -225,21 +253,21 @@ export default function HomeCategoryDonutCard() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={nav.goToPrevMonth}
+              onClick={nav.goToPrevPeriod}
               className={navStyles.navButton}
-              aria-label="Previous month"
+              aria-label="Previous period"
             >
               <ChevronLeft className="size-4" strokeWidth={1.5} />
             </Button>
           )}
           <button
             type="button"
-            onClick={nav.goToCurrentMonth}
+            onClick={nav.goToCurrentPeriod}
             className={navStyles.monthLabel}
-            title={nav.isCurrentMonth ? undefined : t("calendar.today")}
+            title={nav.isCurrentPeriod ? undefined : t("calendar.today")}
           >
-            <span>{nav.monthLabel}</span>
-            {!nav.isCurrentMonth && (
+            <span>{nav.periodLabel}</span>
+            {!nav.isCurrentPeriod && (
               <span className={navStyles.currentIndicator}>●</span>
             )}
           </button>
@@ -247,9 +275,9 @@ export default function HomeCategoryDonutCard() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={nav.goToNextMonth}
+              onClick={nav.goToNextPeriod}
               className={navStyles.navButton}
-              aria-label="Next month"
+              aria-label="Next period"
             >
               <ChevronRight className="size-4" strokeWidth={1.5} />
             </Button>
@@ -257,7 +285,7 @@ export default function HomeCategoryDonutCard() {
         </div>
         {chartData.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            {t("home.noExpensesThisMonth")}
+            {period === "year" ? t("home.noExpensesThisYear") : t("home.noExpensesThisMonth")}
           </p>
         ) : (
           <div className={styles.chartWrapper}>
