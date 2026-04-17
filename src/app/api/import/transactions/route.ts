@@ -194,23 +194,6 @@ export async function POST(request: NextRequest) {
 
 	let imported = 0;
 	let balanceChange = 0;
-	let latestImportedDate: string | null = null;
-
-	for (const r of candidateRows) {
-		if (!latestImportedDate || r.tx.date > latestImportedDate) {
-			latestImportedDate = r.tx.date;
-		}
-	}
-
-	const { data: latestExisting } = await supabase
-		.from("transactions")
-		.select("date")
-		.eq("account_id", account_id)
-		.order("date", { ascending: false })
-		.limit(1)
-		.single();
-
-	const latestExistingDate = latestExisting?.date as string | undefined;
 
 	if (candidateRows.length > 0) {
 		const uniqueDescriptions = [
@@ -320,13 +303,11 @@ export async function POST(request: NextRequest) {
 	}
 
 	let newBalance: number = Number(account.balance);
-	const shouldUseFinalBalance =
+	const hasFinalBalance =
 		final_balance !== undefined &&
-		final_balance !== null &&
-		latestImportedDate &&
-		(!latestExistingDate || latestImportedDate >= latestExistingDate);
+		final_balance !== null;
 
-	if (shouldUseFinalBalance) {
+	if (hasFinalBalance) {
 		newBalance = final_balance!;
 		await supabase
 			.from("accounts")

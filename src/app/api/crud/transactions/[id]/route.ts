@@ -108,11 +108,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const supabase = await createClient();
+  const skipBalanceAdjust =
+    request.nextUrl.searchParams.get("skip_balance_adjust") === "1";
   const {
     data: { user },
     error: authError,
@@ -142,7 +144,7 @@ export async function DELETE(
     return jsonError(error.message, 500);
   }
 
-  if (transaction && transaction.account_id) {
+  if (!skipBalanceAdjust && transaction && transaction.account_id) {
     const { data: account } = await supabase
       .from("accounts")
       .select("balance")

@@ -82,7 +82,7 @@ function DuplicatesReview({
   ) => {
     setRemoving(transactionId);
     try {
-      const res = await fetch(`/api/crud/transactions/${transactionId}`, {
+      const res = await fetch(`/api/crud/transactions/${transactionId}?skip_balance_adjust=1`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -131,7 +131,10 @@ function DuplicatesReview({
     setBulkAction("undo");
     try {
       for (const d of allDuplicates) {
-        const res = await fetch(`/api/crud/transactions/${d.incoming.id}`, { method: "DELETE" });
+        const res = await fetch(
+          `/api/crud/transactions/${d.incoming.id}?skip_balance_adjust=1`,
+          { method: "DELETE" }
+        );
         if (res.ok) {
           await saveDuplicateDecision(d.accountId, d.conflict_key, "keep_existing");
         }
@@ -150,7 +153,10 @@ function DuplicatesReview({
     setBulkAction("remove_existing");
     try {
       for (const d of allDuplicates) {
-        const res = await fetch(`/api/crud/transactions/${d.existing.id}`, { method: "DELETE" });
+        const res = await fetch(
+          `/api/crud/transactions/${d.existing.id}?skip_balance_adjust=1`,
+          { method: "DELETE" }
+        );
         if (res.ok) {
           await saveDuplicateDecision(d.accountId, d.conflict_key, "keep_import");
         }
