@@ -20,7 +20,7 @@ interface RevolutRawTransaction {
   comision: number;
   divisa: string;
   estado: string;
-  saldo: number;
+  saldo: number | null;
 }
 
 interface ParseRevolutOptions {
@@ -167,7 +167,15 @@ function parseRow(row: string[], headerMapping: Record<number, keyof RevolutRawT
       value = fixCorruptedEncoding(value);
     }
     
-    if (field === "importe" || field === "comision" || field === "saldo") {
+    if (field === "saldo") {
+      const normalized = value.replace(",", ".").trim();
+      if (normalized === "") {
+        tx.saldo = null;
+      } else {
+        const num = parseFloat(normalized);
+        tx.saldo = isNaN(num) ? null : num;
+      }
+    } else if (field === "importe" || field === "comision") {
       const num = parseFloat(value.replace(",", "."));
       tx[field] = isNaN(num) ? 0 : num;
     } else if ((field === "fechaInicio" || field === "fechaFin") && isExcel) {
@@ -178,7 +186,7 @@ function parseRow(row: string[], headerMapping: Record<number, keyof RevolutRawT
   }
   
   if (tx.comision === undefined) tx.comision = 0;
-  if (tx.saldo === undefined) tx.saldo = 0;
+  if (tx.saldo === undefined) tx.saldo = null;
   if (tx.estado === undefined) tx.estado = "";
   
   if (!tx.fechaInicio || tx.importe === undefined) {
@@ -196,12 +204,27 @@ function getBalanceByProduct(transactions: RevolutRawTransaction[], producto: st
   if (filtered.length === 0) {
     return undefined;
   }
-  
-  const sortedByDate = [...filtered].sort((a, b) => 
-    revolutFechaInicioToMs(b.fechaInicio) - revolutFechaInicioToMs(a.fechaInicio)
+
+  const sortedByDateAsc = [...filtered].sort((a, b) => 
+    revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
   );
-  
-  return sortedByDate[0].saldo;
+
+  let runningBalance: number | undefined;
+
+  for (const tx of sortedByDateAsc) {
+    if (tx.saldo !== null && Number.isFinite(tx.saldo)) {
+      runningBalance = tx.saldo;
+      continue;
+    }
+
+    // Si Revolut no informa saldo (p.ej. operación pendiente),
+    // continuamos desde el último saldo conocido aplicando el neto.
+    if (runningBalance !== undefined) {
+      runningBalance += revolutNetAmount(tx);
+    }
+  }
+
+  return runningBalance;
 }
 
 function separateTransactionsByProduct(transactions: RevolutRawTransaction[]): {
@@ -366,7 +389,7 @@ export function buildRevolutStableRowFingerprint(tx: RevolutRawTransaction): str
 		norm(tx.descripcion),
 		net.toFixed(2),
 		norm(tx.divisa),
-		tx.saldo.toFixed(2),
+		tx.saldo === null ? "" : tx.saldo.toFixed(2),
 	];
 	return parts.join("|");
 }
@@ -382,7 +405,7 @@ export async function normalizeRevolutTransactions(
     description: string;
     hash: string;
     baseFp: string;
-    statement_balance: number;
+    statement_balance?: number;
   }> = [];
 
   for (const tx of transactions) {
@@ -410,7 +433,7 @@ export async function normalizeRevolutTransactions(
       description,
       hash,
       baseFp: buildRevolutStableRowFingerprint(tx),
-      statement_balance: tx.saldo,
+      statement_balance: tx.saldo ?? undefined,
     });
   }
 
