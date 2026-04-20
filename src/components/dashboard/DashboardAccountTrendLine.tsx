@@ -24,6 +24,7 @@ import { Settings2 } from "lucide-react";
 import { tooltipConfig, axisConfig, gridConfig, formatK } from "@/lib/chartConfig";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
+import { useBalanceTrendRange } from "@/contexts/BalanceTrendRangeContext";
 
 type Tx = { id?: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -41,6 +42,7 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
   const lang = useLang();
   const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
   const colorRef = useRef(accountColor);
+  const { sharedRange, registerAvailableRange } = useBalanceTrendRange();
 
   useEffect(() => {
     colorRef.current = accountColor;
@@ -49,11 +51,17 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
 
+  const effectiveRange = customRange ?? sharedRange ?? undefined;
+
   const { transactionsByMonth, monthLabels, availableRange, allByMonth, allKeys, isLoading } = useTransactionsRange(
     accountId,
-    customRange ?? undefined
+    effectiveRange
   );
   const { data: categoriesData } = useCategories();
+
+  useEffect(() => {
+    if (availableRange) registerAvailableRange(accountId, availableRange);
+  }, [availableRange, registerAvailableRange, accountId]);
 
   const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
   const [tempEnd, setTempEnd] = useState<{ year: number; month: number } | null>(null);

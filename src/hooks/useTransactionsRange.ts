@@ -30,6 +30,30 @@ export interface DateRange {
   endMonth: number; // 1-12
 }
 
+function ymKey(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function keysBetween(range: DateRange): string[] {
+  const res: string[] = [];
+  let y = range.startYear;
+  let m = range.startMonth;
+  const endKey = ymKey(range.endYear, range.endMonth);
+  while (true) {
+    const k = ymKey(y, m);
+    res.push(k);
+    if (k === endKey) break;
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+    // safety valve in case of invalid range
+    if (res.length > 2400) break;
+  }
+  return res;
+}
+
 /**
  * Fetches ALL transactions from the database (no date filter).
  * Aggregates by month on the client. Works with 1 month or 5+ years of data.
@@ -49,7 +73,7 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
     for (const tx of allTransactions as { date?: string }[]) {
       const d = tx.date ? new Date(tx.date) : null;
       if (!d || isNaN(d.getTime())) continue;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const key = ymKey(d.getFullYear(), d.getMonth() + 1);
       const arr = byMonth.get(key) ?? [];
       arr.push(tx);
       byMonth.set(key, arr);
@@ -71,9 +95,7 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
     
     let filteredKeys = allKeys;
     if (range) {
-      const startKey = `${range.startYear}-${String(range.startMonth).padStart(2, "0")}`;
-      const endKey = `${range.endYear}-${String(range.endMonth).padStart(2, "0")}`;
-      filteredKeys = allKeys.filter(key => key >= startKey && key <= endKey);
+      filteredKeys = keysBetween(range);
     }
 
     const transactionsByMonth: Record<string, unknown[]> = {};

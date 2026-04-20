@@ -27,6 +27,7 @@ import { tooltipConfig, axisConfig, gridConfig, formatK, getChartColors } from "
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
+import { useBalanceTrendRange } from "@/contexts/BalanceTrendRangeContext";
 
 type Tx = { id?: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -38,6 +39,7 @@ export default function DashboardBalanceTrendLine() {
   const t = useTranslations(lang);
   const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
   const [accent, setAccent] = useState("#6366f1");
+  const { sharedRange, registerAvailableRange } = useBalanceTrendRange();
 
   useEffect(() => {
     setAccent(getChartColors().accent || "#6366f1");
@@ -46,12 +48,18 @@ export default function DashboardBalanceTrendLine() {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
 
+  const effectiveRange = customRange ?? sharedRange ?? undefined;
+
   const { transactionsByMonth, monthLabels, availableRange, allByMonth, allKeys, isLoading } = useTransactionsRange(
     undefined,
-    customRange ?? undefined
+    effectiveRange
   );
   const { data: categoriesData } = useCategories();
   const { data: accounts = [] } = useAccounts();
+
+  useEffect(() => {
+    if (availableRange) registerAvailableRange("__total__", availableRange);
+  }, [availableRange, registerAvailableRange]);
 
   const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
   const [tempEnd, setTempEnd] = useState<{ year: number; month: number } | null>(null);

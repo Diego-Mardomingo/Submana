@@ -12,6 +12,7 @@ import HomeBudgetsCard from "@/components/home/HomeBudgetsCard";
 import { ChartSkeleton } from "@/components/dashboard/ChartSkeleton";
 import DashboardAccountTrendLine from "@/components/dashboard/DashboardAccountTrendLine";
 import "@/lib/chartConfig";
+import { BalanceTrendRangeProvider } from "@/contexts/BalanceTrendRangeContext";
 
 const HomeCategoryDonutCard = dynamic(
   () => import("@/components/home/HomeCategoryDonutCard"),
@@ -152,20 +153,22 @@ export default function DashboardPage() {
             <DashboardCashFlowSummary />
           </div>
 
-          <div className="dashboard-grid-full" data-card-id="16">
-            <DashboardBalanceTrendLine />
-          </div>
-
-          {accounts.map((acc: { id: string; name: string; color?: string; balance?: number }, idx: number) => (
-            <div key={acc.id} className="dashboard-grid-full" data-card-id={`${17 + idx}`}>
-              <DashboardAccountTrendLine
-                accountId={acc.id}
-                accountName={acc.name}
-                accountColor={acc.color ?? "var(--accent)"}
-                accountBalance={Number(acc.balance ?? 0)}
-              />
+          <BalanceTrendRangeProvider>
+            <div className="dashboard-grid-full" data-card-id="16">
+              <DashboardBalanceTrendLine />
             </div>
-          ))}
+
+            {accounts.map((acc: { id: string; name: string; color?: string; balance?: number }, idx: number) => (
+              <div key={acc.id} className="dashboard-grid-full" data-card-id={`${17 + idx}`}>
+                <DashboardAccountTrendLine
+                  accountId={acc.id}
+                  accountName={acc.name}
+                  accountColor={acc.color ?? "var(--accent)"}
+                  accountBalance={Number(acc.balance ?? 0)}
+                />
+              </div>
+            ))}
+          </BalanceTrendRangeProvider>
         </div>
       </section>
     </div>
