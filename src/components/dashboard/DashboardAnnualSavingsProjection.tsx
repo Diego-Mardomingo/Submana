@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect, useState } from "react";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
+import { useAccounts } from "@/hooks/useAccounts";
 import { formatCurrency } from "@/lib/format";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ export default function DashboardAnnualSavingsProjection() {
 
   const { transactionsByMonth, monthLabels, isLoading } = useTransactionsRange(undefined, range);
   const { data: categoriesData } = useCategories();
+  const { data: accounts = [] } = useAccounts();
 
   const [colors, setColors] = useState({ success: "#10b981", danger: "#ef4444" });
   useEffect(() => {
@@ -86,9 +88,18 @@ export default function DashboardAnnualSavingsProjection() {
       avgMonthlySavings: Math.round(avgMonthlySavings * 100) / 100,
       projectedAnnual: Math.round(projectedAnnual * 100) / 100,
       projectedTotal: Math.round(projectedTotal * 100) / 100,
+      projectedRemaining: Math.round((avgMonthlySavings * remainingMonths) * 100) / 100,
       completedMonths,
     };
   }, [transactionsByMonth, monthLabels, currentMonth, categoriesData]);
+
+  const currentBalance = useMemo(() => {
+    return (accounts as { id: string; balance?: number }[]).reduce((sum, acc) => sum + Number(acc.balance ?? 0), 0);
+  }, [accounts]);
+
+  const estimatedEndOfYearBalance = useMemo(() => {
+    return Math.round((currentBalance + data.projectedRemaining) * 100) / 100;
+  }, [currentBalance, data.projectedRemaining]);
 
   const sparkColor = data.totalSaved >= 0 ? colors.success : colors.danger;
 
@@ -198,13 +209,16 @@ export default function DashboardAnnualSavingsProjection() {
               <SensitiveAmount>{formatCurrency(data.projectedTotal)}</SensitiveAmount>
             </p>
           </div>
+          <div className="rounded-lg bg-muted/50 p-3 space-y-1 col-span-2">
+            <p className="text-xs text-muted-foreground">
+              {lang === "es" ? "Balance estimado fin de año" : "Estimated year-end balance"}
+            </p>
+            <p className="text-sm font-semibold">
+              <SensitiveAmount>{formatCurrency(estimatedEndOfYearBalance)}</SensitiveAmount>
+            </p>
+          </div>
         </div>
 
-        {data.completedMonths > 1 && (
-          <div className="h-20">
-            <Line data={sparkData} options={sparkOptions} />
-          </div>
-        )}
       </CardContent>
     </Card>
   );

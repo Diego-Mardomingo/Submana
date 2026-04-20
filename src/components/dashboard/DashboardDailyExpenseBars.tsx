@@ -12,7 +12,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { tooltipConfig, axisConfig, formatK } from "@/lib/chartConfig";
+import { tooltipConfig, axisConfig, formatK, getChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
@@ -28,7 +28,7 @@ export default function DashboardDailyExpenseBars() {
   const lang = useLang();
   const t = useTranslations(lang);
   const [period, setPeriod] = useState<Period>("month");
-  const dangerColor = "var(--danger)";
+  const dangerColor = useMemo(() => getChartColors().danger || "#ef4444", []);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const nav = useMonthNavigation(lang, { periodUnit: period, swipeUnit: period });
 

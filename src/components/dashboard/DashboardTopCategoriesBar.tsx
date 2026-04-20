@@ -7,9 +7,9 @@ import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { Bar } from "react-chartjs-2";
+import { Doughnut } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { resolveChartPalette, tooltipConfig, axisConfig, formatK } from "@/lib/chartConfig";
+import { resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 
@@ -84,40 +84,38 @@ export default function DashboardTopCategoriesBar() {
       .slice(0, 5);
   }, [transactions, categoriesData, lang, t]);
 
-  const barData = useMemo(() => ({
+  const total = useMemo(() => chartData.reduce((s, d) => s + d.value, 0), [chartData]);
+
+  const doughnutData = useMemo(() => ({
     labels: chartData.map((d) => d.name),
     datasets: [{
       data: chartData.map((d) => d.value),
       backgroundColor: chartData.map((_, i) => colors[i % colors.length]),
-      borderRadius: 4,
+      borderWidth: 0,
+      hoverOffset: 6,
     }],
   }), [chartData, colors]);
 
-  const barOptions = useMemo(() => ({
+  const doughnutOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    indexAxis: "y" as const,
-    interaction: { mode: "index" as const, intersect: false },
+    cutout: "55%",
     plugins: {
       tooltip: {
         ...tooltipConfig(),
         callbacks: {
-          label: (ctx: { parsed: { x: number | null } }) => formatCurrency(ctx.parsed.x ?? 0),
+          label: (ctx: { label?: string; parsed: number }) => {
+            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : "0";
+            return `${ctx.label}: ${formatCurrency(ctx.parsed)} (${pct}%)`;
+          },
         },
       },
-      legend: { display: false },
-    },
-    scales: {
-      x: {
-        ...axisConfig(),
-        ticks: { ...axisConfig().ticks, callback: formatK },
-      },
-      y: {
-        ...axisConfig(),
-        ticks: { ...axisConfig().ticks, font: { size: 11 } },
+      legend: {
+        position: "right" as const,
+        labels: { font: { size: 11 }, boxWidth: 8, usePointStyle: true, pointStyle: "circle" },
       },
     },
-  }), []);
+  }), [total]);
 
   const isLoading = txLoading || catLoading;
 
@@ -159,8 +157,8 @@ export default function DashboardTopCategoriesBar() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart w-full">
-          <Bar data={barData} options={barOptions} />
+        <div className="dashboard-chart-small w-full">
+          <Doughnut data={doughnutData} options={doughnutOptions} />
         </div>
       </CardContent>
     </Card>

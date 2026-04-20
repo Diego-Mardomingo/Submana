@@ -6,9 +6,9 @@ import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { Doughnut } from "react-chartjs-2";
+import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { tooltipConfig, resolveChartPalette } from "@/lib/chartConfig";
+import { axisConfig, formatK, resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
 
 type Account = { id: string; name: string; balance?: number; color?: string };
 
@@ -28,42 +28,56 @@ export default function DashboardBalanceByAccountDonut() {
       .filter((a) => Number(a.balance ?? 0) !== 0)
       .map((a, i) => ({
         name: a.name,
-        value: Math.abs(Number(a.balance ?? 0)),
+        value: Number(a.balance ?? 0),
         color: a.color ?? colors[i % colors.length] ?? colors[0],
       }));
   }, [accounts, colors]);
 
-  const total = chartData.reduce((s, d) => s + d.value, 0);
+  const totalAbs = useMemo(() => chartData.reduce((s, d) => s + Math.abs(d.value), 0), [chartData]);
 
-  const doughnutData = useMemo(() => ({
+  const barData = useMemo(() => ({
     labels: chartData.map((d) => d.name),
     datasets: [{
       data: chartData.map((d) => d.value),
       backgroundColor: chartData.map((d) => d.color),
-      borderWidth: 0,
-      hoverOffset: 6,
+      borderRadius: 8,
+      borderSkipped: false as const,
+      barThickness: 14,
+      maxBarThickness: 18,
     }],
   }), [chartData]);
 
-  const doughnutOptions = useMemo(() => ({
+  const barOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    cutout: "50%",
+    indexAxis: "y" as const,
+    interaction: { mode: "index" as const, intersect: false },
     plugins: {
       tooltip: {
         ...tooltipConfig(),
         callbacks: {
-          label: (ctx: { label?: string; parsed: number }) => {
-            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : "0";
-            return `${ctx.label}: ${formatCurrency(ctx.parsed)} (${pct}%)`;
+          label: (ctx: { label?: string; parsed: { x: number | null } }) => {
+            const v = ctx.parsed.x ?? 0;
+            const pct = totalAbs > 0 ? ((Math.abs(v) / totalAbs) * 100).toFixed(1) : "0";
+            return `${ctx.label}: ${formatCurrency(v)} (${pct}%)`;
           },
         },
       },
       legend: {
-        labels: { font: { size: 11 }, boxWidth: 8, usePointStyle: true, pointStyle: "circle" },
+        display: false,
       },
     },
-  }), [total]);
+    scales: {
+      x: {
+        ...axisConfig(),
+        ticks: { ...axisConfig().ticks, callback: formatK },
+      },
+      y: {
+        ...axisConfig(),
+        ticks: { ...axisConfig().ticks, font: { size: 11 } },
+      },
+    },
+  }), [totalAbs]);
 
   if (isLoading) {
     return (
@@ -103,8 +117,8 @@ export default function DashboardBalanceByAccountDonut() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="dashboard-chart-small w-full">
-          <Doughnut data={doughnutData} options={doughnutOptions} />
+        <div className="dashboard-chart w-full">
+          <Bar data={barData} options={barOptions} />
         </div>
       </CardContent>
     </Card>
