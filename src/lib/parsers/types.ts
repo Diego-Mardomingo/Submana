@@ -20,7 +20,7 @@ export interface ImportTransactionsRequest {
 }
 
 export interface PossibleDuplicate {
-  /** SHA-256 for import_duplicate_decisions (same as buildDuplicateConflictKey). */
+  /** SHA-256 for import_duplicate_decisions (same as buildDuplicateConflictKey: día + importe + tipo). */
   conflict_key: string;
   incoming: {
     id: string;

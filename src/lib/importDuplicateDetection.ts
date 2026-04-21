@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PossibleDuplicate } from "@/lib/parsers/types";
-import { buildDuplicateConflictKey } from "@/lib/parsers/importKeys";
+import {
+	buildDuplicateConflictKey,
+	buildDuplicateConflictKeyLegacy,
+} from "@/lib/parsers/importKeys";
 import {
 	amountsEqualExactCents,
 	calendarDateKeyForDuplicate,
@@ -19,6 +22,7 @@ export async function collectPossibleDuplicatesManualVsImport(args: {
 		import_line_id: string | null;
 		date: string;
 		amount: number | string;
+		type: string;
 		description: string | null;
 		external_hash: string | null;
 	}>;
@@ -33,11 +37,12 @@ export async function collectPossibleDuplicatesManualVsImport(args: {
 
 		const { data: manualSameAmount } = await supabase
 			.from("transactions")
-			.select("id, date, amount, description, import_line_id")
+			.select("id, date, amount, type, description, import_line_id")
 			.eq("account_id", accountId)
 			.eq("user_id", userId)
 			.is("import_line_id", null)
-			.eq("amount", inserted.amount);
+			.eq("amount", inserted.amount)
+			.eq("type", inserted.type);
 
 		const candidates = (manualSameAmount || []).filter((row) =>
 			amountsEqualExactCents(Number(row.amount), Number(inserted.amount))
@@ -54,9 +59,19 @@ export async function collectPossibleDuplicatesManualVsImport(args: {
 			const conflict_key = await buildDuplicateConflictKey(
 				accountId,
 				String(inserted.date),
+				Number(inserted.amount),
+				String(inserted.type)
+			);
+			const legacy_conflict_key = await buildDuplicateConflictKeyLegacy(
+				accountId,
+				String(inserted.date),
 				Number(inserted.amount)
 			);
-			if (decisionMap.has(conflict_key) || seenConflictKeys.has(conflict_key)) {
+			if (
+				decisionMap.has(conflict_key) ||
+				decisionMap.has(legacy_conflict_key) ||
+				seenConflictKeys.has(conflict_key)
+			) {
 				continue;
 			}
 			seenConflictKeys.add(conflict_key);

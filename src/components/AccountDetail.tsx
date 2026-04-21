@@ -58,6 +58,7 @@ import { useDeleteAccountTransactions } from "@/hooks/useDeleteAccountTransactio
 import { useAccounts } from "@/hooks/useAccounts";
 import type { BankProvider } from "@/lib/bankProviders";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { detectTransferIds } from "@/lib/transferDetection";
 
 interface Account {
   id: string;
@@ -74,6 +75,7 @@ interface TransactionItem {
   date: string;
   amount: number;
   type: string;
+  account_id?: string;
   description?: string;
   category?: { name: string } | null;
   subcategory?: { name: string } | null;
@@ -112,6 +114,7 @@ export default function AccountDetail({ account }: { account: Account }) {
     undefined,
     account.id
   );
+  const { data: allTransactions = [] } = useTransactions();
   const { data: categoriesData } = useCategories();
   const { data: accountsList } = useAccounts();
 
@@ -307,6 +310,19 @@ export default function AccountDetail({ account }: { account: Account }) {
     return result.length ? result : [{ year: currentYear, month: currentMonth }];
   }, [transactions, currentYear, currentMonth]);
 
+  const transferIds = useMemo(() => {
+    const allTx = allTransactions as TransactionItem[];
+    return detectTransferIds(
+      allTx.map((tx) => ({
+        id: tx.id,
+        amount: Number(tx.amount) || 0,
+        type: tx.type || "",
+        date: tx.date || "",
+        account_id: tx.account_id,
+      }))
+    );
+  }, [allTransactions]);
+
   const getMonthStats = useCallback(
     (year: number, month: number) => {
       const monthTxs = (transactions as TransactionItem[]).filter((tx) => {
@@ -317,7 +333,10 @@ export default function AccountDetail({ account }: { account: Account }) {
         defaultCategories: categoriesData?.defaultCategories ?? [],
         userCategories: categoriesData?.userCategories ?? [],
       };
-      const forMetrics = filterForMetrics(monthTxs, ctx);
+      const forMetrics = filterForMetrics(
+        monthTxs.filter((tx) => !transferIds.has(tx.id)),
+        ctx
+      );
       const income = forMetrics
         .filter((tx) => tx.type === "income")
         .reduce((sum, tx) => sum + Number(tx.amount), 0);
@@ -333,7 +352,7 @@ export default function AccountDetail({ account }: { account: Account }) {
         expenseCount: forMetrics.filter((tx) => tx.type === "expense").length,
       };
     },
-    [transactions, categoriesData]
+    [transactions, categoriesData, transferIds]
   );
 
   const formatMonthYearDisplay = (year: number, month: number) => {

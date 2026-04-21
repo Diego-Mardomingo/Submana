@@ -9,6 +9,7 @@ import type {
 import { generateTransactionHash } from "@/lib/parsers/utils";
 import {
 	buildDuplicateConflictKey,
+	buildDuplicateConflictKeyLegacy,
 	buildImportLineId,
 } from "@/lib/parsers/importKeys";
 import { collectPossibleDuplicatesManualVsImport } from "@/lib/importDuplicateDetection";
@@ -205,9 +206,16 @@ export async function POST(request: NextRequest) {
 		const conflictKey = await buildDuplicateConflictKey(
 			depositId,
 			tx.date,
+			tx.amount,
+			tx.type
+		);
+		const legacyConflictKey = await buildDuplicateConflictKeyLegacy(
+			depositId,
+			tx.date,
 			tx.amount
 		);
-		const resolution = decisionMap.get(conflictKey);
+		const resolution =
+			decisionMap.get(conflictKey) ?? decisionMap.get(legacyConflictKey);
 
 		if (resolution === "keep_existing") {
 			continue;
@@ -216,11 +224,12 @@ export async function POST(request: NextRequest) {
 		if (resolution === "keep_import") {
 			const { data: clash } = await supabase
 				.from("transactions")
-				.select("id, amount, date")
+				.select("id, amount, date, type")
 				.eq("account_id", depositId)
 				.eq("user_id", user.id)
 				.is("import_line_id", null)
-				.eq("amount", tx.amount);
+				.eq("amount", tx.amount)
+				.eq("type", tx.type);
 			if (clash && clash.length > 0) {
 				const txDay = calendarDateKeyForDuplicate(tx.date);
 				for (const c of clash) {
@@ -288,6 +297,7 @@ export async function POST(request: NextRequest) {
 			import_line_id: string | null;
 			date: string;
 			amount: number;
+			type: string;
 			description: string | null;
 			external_hash: string | null;
 		}> = [];
@@ -295,7 +305,7 @@ export async function POST(request: NextRequest) {
 			const batch = insertedLineIds.slice(i, i + BATCH_SIZE);
 			const { data } = await supabase
 				.from("transactions")
-				.select("id, import_line_id, date, amount, description, external_hash")
+				.select("id, import_line_id, date, amount, type, description, external_hash")
 				.eq("account_id", depositId)
 				.in("import_line_id", batch);
 			if (data) recentlyInserted.push(...data);

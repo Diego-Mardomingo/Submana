@@ -196,6 +196,66 @@ function parseRow(row: string[], headerMapping: Record<number, keyof RevolutRawT
   return tx as RevolutRawTransaction;
 }
 
+function roundToCents(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function hasUsableProvidedBalance(tx: RevolutRawTransaction): boolean {
+  return tx.saldo !== null && Number.isFinite(tx.saldo) && tx.saldo !== 0;
+}
+
+/**
+ * Deriva un saldo "estable" por fila para evitar huellas vacías en pendientes.
+ * - Si una fila trae saldo usable, se respeta.
+ * - Si no lo trae (null/0), se calcula desde el último saldo conocido previo.
+ * - Si las primeras filas no tienen saldo pero más adelante sí, se rellena hacia atrás.
+ * - Si no existe ningún saldo usable en todo el lote, se calcula acumulado desde 0.
+ */
+function computeNormalizedBalances(transactions: RevolutRawTransaction[]): Map<RevolutRawTransaction, number> {
+  const balances = new Map<RevolutRawTransaction, number>();
+  if (transactions.length === 0) return balances;
+
+  const sortedByDateAsc = [...transactions].sort((a, b) =>
+    revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
+  );
+
+  let runningBalance: number | undefined;
+  for (const tx of sortedByDateAsc) {
+    if (hasUsableProvidedBalance(tx)) {
+      runningBalance = tx.saldo as number;
+      balances.set(tx, roundToCents(runningBalance));
+      continue;
+    }
+
+    if (runningBalance !== undefined) {
+      runningBalance = roundToCents(runningBalance + revolutNetAmount(tx));
+      balances.set(tx, runningBalance);
+    }
+  }
+
+  const firstKnownIdx = sortedByDateAsc.findIndex((tx) => balances.has(tx));
+  if (firstKnownIdx === -1) {
+    // Sin ancla de saldo en todo el extracto: acumulamos desde 0 para huella estable.
+    runningBalance = 0;
+    for (const tx of sortedByDateAsc) {
+      runningBalance = roundToCents(runningBalance + revolutNetAmount(tx));
+      balances.set(tx, runningBalance);
+    }
+    return balances;
+  }
+
+  for (let i = firstKnownIdx - 1; i >= 0; i--) {
+    const currentTx = sortedByDateAsc[i];
+    const nextTx = sortedByDateAsc[i + 1];
+    const nextBalance = balances.get(nextTx);
+    if (nextBalance === undefined) continue;
+    // balance(i+1) = balance(i) + net(i+1) => balance(i) = balance(i+1) - net(i+1)
+    balances.set(currentTx, roundToCents(nextBalance - revolutNetAmount(nextTx)));
+  }
+
+  return balances;
+}
+
 function getBalanceByProduct(transactions: RevolutRawTransaction[], producto: string): number | undefined {
   const filtered = transactions.filter(tx => 
     tx.producto?.toLowerCase() === producto.toLowerCase()
@@ -205,26 +265,12 @@ function getBalanceByProduct(transactions: RevolutRawTransaction[], producto: st
     return undefined;
   }
 
-  const sortedByDateAsc = [...filtered].sort((a, b) => 
+  const normalizedBalances = computeNormalizedBalances(filtered);
+  const sortedByDateAsc = [...filtered].sort((a, b) =>
     revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
   );
-
-  let runningBalance: number | undefined;
-
-  for (const tx of sortedByDateAsc) {
-    if (tx.saldo !== null && Number.isFinite(tx.saldo)) {
-      runningBalance = tx.saldo;
-      continue;
-    }
-
-    // Si Revolut no informa saldo (p.ej. operación pendiente),
-    // continuamos desde el último saldo conocido aplicando el neto.
-    if (runningBalance !== undefined) {
-      runningBalance += revolutNetAmount(tx);
-    }
-  }
-
-  return runningBalance;
+  const lastTx = sortedByDateAsc[sortedByDateAsc.length - 1];
+  return lastTx ? normalizedBalances.get(lastTx) : undefined;
 }
 
 function separateTransactionsByProduct(transactions: RevolutRawTransaction[]): {
@@ -373,7 +419,10 @@ function revolutNetAmount(tx: RevolutRawTransaction): number {
 }
 
 /** Huella estable por fila del extracto (sin account id). Importe neto; sin columna State. */
-export function buildRevolutStableRowFingerprint(tx: RevolutRawTransaction): string {
+export function buildRevolutStableRowFingerprint(
+  tx: RevolutRawTransaction,
+  normalizedBalance?: number
+): string {
 	const norm = (s: string) =>
 		(s || "")
 			.trim()
@@ -385,11 +434,10 @@ export function buildRevolutStableRowFingerprint(tx: RevolutRawTransaction): str
 		norm(tx.tipo),
 		norm(tx.producto),
 		norm(tx.fechaInicio),
-		norm(tx.fechaFin),
 		norm(tx.descripcion),
 		net.toFixed(2),
 		norm(tx.divisa),
-		tx.saldo === null ? "" : tx.saldo.toFixed(2),
+		normalizedBalance === undefined ? "" : normalizedBalance.toFixed(2),
 	];
 	return parts.join("|");
 }
@@ -398,6 +446,7 @@ export async function normalizeRevolutTransactions(
   transactions: RevolutRawTransaction[],
   accountId: string
 ): Promise<ImportedTransaction[]> {
+  const normalizedBalances = computeNormalizedBalances(transactions);
   const prepared: Array<{
     dateStr: string;
     amount: number;
@@ -419,6 +468,8 @@ export async function normalizeRevolutTransactions(
     const isIncome = net > 0;
     const description = fixCorruptedEncoding(tx.descripcion || "").trim();
 
+    const normalizedStatementBalance = normalizedBalances.get(tx);
+
     const hash = await generateTransactionHash(
       accountId,
       dateStr,
@@ -432,8 +483,8 @@ export async function normalizeRevolutTransactions(
       isIncome,
       description,
       hash,
-      baseFp: buildRevolutStableRowFingerprint(tx),
-      statement_balance: tx.saldo ?? undefined,
+      baseFp: buildRevolutStableRowFingerprint(tx, normalizedStatementBalance),
+      statement_balance: normalizedStatementBalance,
     });
   }
 

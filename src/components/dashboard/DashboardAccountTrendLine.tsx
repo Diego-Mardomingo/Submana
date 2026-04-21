@@ -25,6 +25,7 @@ import { tooltipConfig, axisConfig, gridConfig, formatK } from "@/lib/chartConfi
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
 import { useBalanceTrendRange } from "@/contexts/BalanceTrendRangeContext";
+import { detectTransferIds } from "@/lib/transferDetection";
 
 type Tx = { id?: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -55,6 +56,10 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
 
   const { transactionsByMonth, monthLabels, availableRange, allByMonth, allKeys, isLoading } = useTransactionsRange(
     accountId,
+    effectiveRange
+  );
+  const { allByMonth: allAccountsByMonth, allKeys: allAccountKeys } = useTransactionsRange(
+    undefined,
     effectiveRange
   );
   const { data: categoriesData } = useCategories();
@@ -108,10 +113,26 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
       userCategories: categoriesData?.userCategories ?? [],
     };
 
+    const allTxForTransferDetection = allAccountKeys.flatMap(
+      (key) => (allAccountsByMonth[key] ?? []) as Tx[]
+    );
+    const transferIds = detectTransferIds(
+      allTxForTransferDetection.map((tx) => ({
+        id: tx.id ?? "",
+        amount: Number(tx.amount) || 0,
+        type: tx.type || "",
+        date: tx.date || "",
+        account_id: tx.account_id,
+      }))
+    );
+
     let netAllTransactions = 0;
     for (const key of allKeys) {
       const txs = (allByMonth[key] ?? []) as Tx[];
-      const forMetrics = filterForMetrics(txs, ctx);
+      const forMetrics = filterForMetrics(
+        txs.filter((tx) => !transferIds.has(tx.id ?? "")),
+        ctx
+      );
       for (const tx of forMetrics) {
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") netAllTransactions += amt;
@@ -127,7 +148,10 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
       for (const key of allKeys) {
         if (key >= firstVisibleKey) break;
         const txs = (allByMonth[key] ?? []) as Tx[];
-        const forMetrics = filterForMetrics(txs, ctx);
+        const forMetrics = filterForMetrics(
+          txs.filter((tx) => !transferIds.has(tx.id ?? "")),
+          ctx
+        );
         for (const tx of forMetrics) {
           const amt = Number(tx.amount) || 0;
           if (tx.type === "income") preRangeBalance += amt;
@@ -139,7 +163,10 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
     let cumulative = preRangeBalance;
     return monthLabels.map(({ key, label }) => {
       const txs = (transactionsByMonth[key] ?? []) as Tx[];
-      const forMetrics = filterForMetrics(txs, ctx);
+      const forMetrics = filterForMetrics(
+        txs.filter((tx) => !transferIds.has(tx.id ?? "")),
+        ctx
+      );
       for (const tx of forMetrics) {
         const amt = Number(tx.amount) || 0;
         if (tx.type === "income") cumulative += amt;
@@ -147,7 +174,16 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
       }
       return { name: label, balance: Math.round(cumulative * 100) / 100 };
     });
-  }, [transactionsByMonth, monthLabels, accountBalance, allByMonth, allKeys, categoriesData]);
+  }, [
+    transactionsByMonth,
+    monthLabels,
+    accountBalance,
+    allByMonth,
+    allKeys,
+    categoriesData,
+    allAccountsByMonth,
+    allAccountKeys,
+  ]);
 
   const color = colorRef.current || "#6366f1";
 

@@ -22,10 +22,23 @@ export async function buildImportLineId(
 
 /**
  * Stable key for “same conflict” across imports (used with import_duplicate_decisions).
- * Solo día calendario + importe exacto (céntimos); la descripción no forma parte de la clave.
+ * Día calendario + importe exacto (céntimos) + tipo (income/expense).
  * Debe coincidir con la ruta duplicate-decisions y la UI.
  */
 export async function buildDuplicateConflictKey(
+	accountId: string,
+	date: string,
+	amount: number,
+	type: string
+): Promise<string> {
+	const dayKey = calendarDateKeyForDuplicate(date);
+	const cents = Math.round(Number(amount) * 100);
+	const normalizedType = (type || "").trim().toLowerCase();
+	return sha256Hex(`${accountId}|${dayKey}|${cents}|${normalizedType}`);
+}
+
+/** Legacy key (día + importe) para compatibilidad de decisiones antiguas. */
+export async function buildDuplicateConflictKeyLegacy(
 	accountId: string,
 	date: string,
 	amount: number
