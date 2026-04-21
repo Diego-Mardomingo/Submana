@@ -256,7 +256,11 @@ function computeNormalizedBalances(transactions: RevolutRawTransaction[]): Map<R
   return balances;
 }
 
-function getBalanceByProduct(transactions: RevolutRawTransaction[], producto: string): number | undefined {
+function getBalanceByProduct(
+  transactions: RevolutRawTransaction[],
+  producto: string,
+  options?: { useInputOrder?: boolean }
+): number | undefined {
   const filtered = transactions.filter(tx => 
     tx.producto?.toLowerCase() === producto.toLowerCase()
   );
@@ -265,12 +269,25 @@ function getBalanceByProduct(transactions: RevolutRawTransaction[], producto: st
     return undefined;
   }
 
+  // Para saldo final de cuenta, el orden del extracto es la referencia real.
+  // Evita errores cuando "Fecha de inicio" no refleja el orden contable final.
+  if (options?.useInputOrder) {
+    for (let i = filtered.length - 1; i >= 0; i--) {
+      const tx = filtered[i]!;
+      if (hasUsableProvidedBalance(tx)) {
+        return roundToCents(tx.saldo as number);
+      }
+    }
+  }
+
   const normalizedBalances = computeNormalizedBalances(filtered);
-  const sortedByDateAsc = [...filtered].sort((a, b) =>
-    revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
-  );
-  const lastTx = sortedByDateAsc[sortedByDateAsc.length - 1];
-  return lastTx ? normalizedBalances.get(lastTx) : undefined;
+  const anchor = options?.useInputOrder
+    ? filtered[filtered.length - 1]
+    : [...filtered].sort((a, b) =>
+        revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
+      )[filtered.length - 1];
+
+  return anchor ? normalizedBalances.get(anchor) : undefined;
 }
 
 function separateTransactionsByProduct(transactions: RevolutRawTransaction[]): {
@@ -335,10 +352,15 @@ export async function parseRevolutCSV(
       revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
     );
 
+  const actualBalance = getBalanceByProduct(transactions, "actual", {
+    useInputOrder: true,
+  });
+  const depositBalance =
+    getBalanceByProduct(transactions, "depósito", { useInputOrder: true }) ??
+    getBalanceByProduct(transactions, "deposito", { useInputOrder: true });
+
   const sortedTransactions = sortByDate(transactions);
   const { actualTransactions, depositTransactions } = separateTransactionsByProduct(sortedTransactions);
-  const actualBalance = getBalanceByProduct(sortedTransactions, "actual");
-  const depositBalance = getBalanceByProduct(sortedTransactions, "depósito") ?? getBalanceByProduct(sortedTransactions, "deposito");
   
   return { 
     transactions: sortedTransactions, 
@@ -399,10 +421,15 @@ export async function parseRevolutExcel(
       revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
     );
 
+  const actualBalance = getBalanceByProduct(transactions, "actual", {
+    useInputOrder: true,
+  });
+  const depositBalance =
+    getBalanceByProduct(transactions, "depósito", { useInputOrder: true }) ??
+    getBalanceByProduct(transactions, "deposito", { useInputOrder: true });
+
   const sortedTransactions = sortByDate(transactions);
   const { actualTransactions, depositTransactions } = separateTransactionsByProduct(sortedTransactions);
-  const actualBalance = getBalanceByProduct(sortedTransactions, "actual");
-  const depositBalance = getBalanceByProduct(sortedTransactions, "depósito") ?? getBalanceByProduct(sortedTransactions, "deposito");
   
   return { 
     transactions: sortedTransactions, 
