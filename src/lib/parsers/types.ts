@@ -42,6 +42,8 @@ export interface ImportTransactionsResponse {
   skipped: number;
   total: number;
   new_balance: number;
+  /** Transacciones marcadas como traspaso interno (categoría "Excluir de métricas"). */
+  internal_transfers_tagged?: number;
   possibleDuplicates?: PossibleDuplicate[];
 }
 

@@ -375,6 +375,9 @@ export default function BankStatementUpload({
   const [finalBalance, setFinalBalance] = useState<number | null>(null);
   const [depositBalance, setDepositBalance] = useState<number | null>(null);
   const [importResult, setImportResult] = useState<MultiAccountImportResult | null>(null);
+  const internalTransfersTagged =
+    (importResult?.actual?.internal_transfers_tagged ?? 0) +
+    (importResult?.deposit?.internal_transfers_tagged ?? 0);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -819,6 +822,14 @@ export default function BankStatementUpload({
                 </span>
               </div>
             </div>
+          )}
+
+          {internalTransfersTagged > 0 && (
+            <p style={{ fontSize: "0.85rem", color: "var(--gris-claro)", marginTop: "1rem", textAlign: "center" }}>
+              {lang === "es"
+                ? `${internalTransfersTagged} movimientos detectados como traspasos entre tus cuentas y excluidos de métricas`
+                : `${internalTransfersTagged} transactions detected as transfers between your accounts and excluded from metrics`}
+            </p>
           )}
           
           {((importResult.actual?.possibleDuplicates?.length ?? 0) > 0 || (importResult.deposit?.possibleDuplicates?.length ?? 0) > 0) && (

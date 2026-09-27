@@ -7,7 +7,11 @@ import {
 	buildDuplicateConflictKeyLegacy,
 	buildImportLineId,
 } from "@/lib/parsers/importKeys";
-import { collectPossibleDuplicatesManualVsImport } from "@/lib/importDuplicateDetection";
+import {
+	collectPossibleDuplicatesManualVsImport,
+	filterAlreadyImportedStatementRows,
+} from "@/lib/importDuplicateDetection";
+import { tagInternalTransfersAfterImport } from "@/lib/importTransferTagging";
 import {
 	amountsEqualExactCents,
 	calendarDateKeyForDuplicate,
@@ -148,9 +152,11 @@ export async function POST(request: NextRequest) {
 		}
 	}
 
-	let candidateRows = batchDeduped.filter(
-		(r) => !existingLineIds.has(r.import_line_id)
-	);
+	let candidateRows = await filterAlreadyImportedStatementRows({
+		supabase,
+		accountId: account_id,
+		rows: batchDeduped.filter((r) => !existingLineIds.has(r.import_line_id)),
+	});
 
 	// Apply saved decisions + keep_import deletions
 	const rowsToInsert: typeof candidateRows = [];
@@ -203,6 +209,7 @@ export async function POST(request: NextRequest) {
 
 	let imported = 0;
 	let balanceChange = 0;
+	let internalTransfersTagged = 0;
 
 	if (candidateRows.length > 0) {
 		const uniqueDescriptions = [
@@ -267,6 +274,12 @@ export async function POST(request: NextRequest) {
 		}
 
 		imported = insertedData?.length || 0;
+
+		internalTransfersTagged = await tagInternalTransfersAfterImport({
+			supabase,
+			userId: user.id,
+			insertedIds: (insertedData || []).map((t) => t.id),
+		});
 
 		for (const r of candidateRows) {
 			const t = r.tx;
@@ -335,6 +348,7 @@ export async function POST(request: NextRequest) {
 		skipped: skippedCount,
 		total: transactions.length,
 		new_balance: newBalance,
+		internal_transfers_tagged: internalTransfersTagged,
 		possibleDuplicates:
 			possibleDuplicates.length > 0 ? possibleDuplicates : undefined,
 	};
