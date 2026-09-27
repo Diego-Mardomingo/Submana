@@ -94,7 +94,8 @@ export async function filterAlreadyImportedStatementRows<
 				.from("transactions")
 				.select("id, date, amount, type, description, statement_balance")
 				.eq("account_id", accountId)
-				.not("import_line_id", "is", null)
+				// Filas importadas; las editadas pierden import_line_id pero conservan el saldo de extracto.
+				.or("import_line_id.not.is.null,statement_balance.not.is.null")
 				.in("amount", amountBatch)
 				.gte("date", fromIso)
 				.lte("date", toIso)

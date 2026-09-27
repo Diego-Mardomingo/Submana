@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
+import { calendarDayInAppTimeZone } from "@/lib/date";
 
 export async function PATCH(
   request: NextRequest,
@@ -58,9 +59,14 @@ export async function PATCH(
     }
   }
 
+  // El formulario envía solo el día; si coincide con el guardado se conserva la hora original.
+  const isSameStoredDay =
+    /^\d{4}-\d{2}-\d{2}$/.test(date) && calendarDayInAppTimeZone(String(oldTx.date)) === date;
+  const effectiveDate = isSameStoredDay ? oldTx.date : date;
+
   const descriptionChanged = (description || null) !== (oldTx.description || null);
   const amountChanged = amount !== Number(oldTx.amount);
-  const dateChanged = date !== oldTx.date;
+  const dateChanged = new Date(effectiveDate).getTime() !== new Date(oldTx.date).getTime();
   const shouldClearHash = oldTx.external_hash && (descriptionChanged || amountChanged || dateChanged);
   const shouldClearImportLineId = oldTx.import_line_id && (descriptionChanged || amountChanged || dateChanged);
 
@@ -69,7 +75,7 @@ export async function PATCH(
     .update({
       amount,
       type,
-      date,
+      date: effectiveDate,
       description: description || null,
       account_id: account_id && account_id !== "" ? account_id : null,
       category_id,
