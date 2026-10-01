@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       .in("id", Array.from(archivedIds))
       .order("name", { ascending: true });
 
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonServerError("/api/crud/categories", error);
 
     const archived = archivedCats ?? [];
     const archivedParents = archived.filter((c) => !c.parent_id);
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         defaultCategories,
         userCategories: [],
       },
-    }, 200, 180, 900);
+    });
   }
 
   const { data: archivedRows } = await supabase
@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
       .order("name", { ascending: true }),
   ]);
 
-  if (userCatsResult.error) return jsonError(userCatsResult.error.message, 500);
-  if (systemCatsResult.error) return jsonError(systemCatsResult.error.message, 500);
+  if (userCatsResult.error) return jsonServerError("/api/crud/categories", userCatsResult.error);
+  if (systemCatsResult.error) return jsonServerError("/api/crud/categories", systemCatsResult.error);
 
   const userCats = userCatsResult.data ?? [];
   const systemCats = (systemCatsResult.data ?? []).filter((c) => !archivedIds.has(c.id));
@@ -139,22 +139,7 @@ export async function GET(request: NextRequest) {
       defaultCategories: structuredSystem,
       userCategories: structuredUser,
     },
-  }, 200, 180, 900);
-}
-
-function buildStructuredCategories(
-  parents: { id: string; name: string; name_en?: string; emoji?: string; parent_id?: string | null }[],
-  children: { id: string; name: string; name_en?: string; emoji?: string; parent_id?: string | null }[]
-) {
-  const tops = parents.filter((c) => !c.parent_id);
-  const subs = children.filter((c) => c.parent_id);
-  return tops.map((parent) => ({
-    ...parent,
-    isDefault: true,
-    subcategories: subs
-      .filter((c) => c.parent_id === parent.id)
-      .map((c) => ({ ...c, isDefault: true })),
-  }));
+  });
 }
 
 type CatWithArchived = {
@@ -209,7 +194,9 @@ export async function POST(request: NextRequest) {
       .select("id, user_id")
       .eq("id", parent_id)
       .single();
-    if (!parent) return jsonError("parent_not_found");
+    if (!parent || (parent.user_id !== null && parent.user_id !== user.id)) {
+      return jsonError("parent_not_found");
+    }
     if (parent.user_id === null) {
       const { data: archived } = await supabase
         .from("user_archived_categories")
@@ -228,7 +215,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/categories", error);
   }
 
   return jsonResponse({ data: insertedData }, 201);

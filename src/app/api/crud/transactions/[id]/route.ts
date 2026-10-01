@@ -1,5 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import {
+  areAccessibleCategories,
+  isOwnedAccount,
+  jsonError,
+  jsonResponse,
+  jsonServerError,
+  parseRequestBody,
+} from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 import { calendarDayInAppTimeZone } from "@/lib/date";
 
@@ -27,8 +34,11 @@ export async function PATCH(
   const category_id = body.category_id && body.category_id !== "" ? body.category_id : null;
   const subcategory_id = body.subcategory_id && body.subcategory_id !== "" ? body.subcategory_id : null;
 
-  if (!id || isNaN(amount) || !type || !date) {
+  if (!id || !Number.isFinite(amount) || amount <= 0 || !date) {
     return jsonError("missing_fields");
+  }
+  if (type !== "income" && type !== "expense") {
+    return jsonError("invalid_type");
   }
 
   const { data: oldTx, error: fetchError } = await supabase
@@ -42,21 +52,12 @@ export async function PATCH(
     return jsonError("transaction_not_found", 404);
   }
 
-  if (oldTx.account_id) {
-    const { data: oldAcc } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", oldTx.account_id)
-      .single();
-    if (oldAcc) {
-      let revertedBalance = Number(oldAcc.balance);
-      if (oldTx.type === "income") revertedBalance -= Number(oldTx.amount);
-      else revertedBalance += Number(oldTx.amount);
-      await supabase
-        .from("accounts")
-        .update({ balance: revertedBalance })
-        .eq("id", oldTx.account_id);
-    }
+  const newAccountId = account_id && account_id !== "" ? account_id : oldTx.account_id;
+  if (!(await isOwnedAccount(supabase, user.id, newAccountId))) {
+    return jsonError("Account not found", 404);
+  }
+  if (!(await areAccessibleCategories(supabase, user.id, [category_id, subcategory_id]))) {
+    return jsonError("invalid_category");
   }
 
   // El formulario envía solo el día; si coincide con el guardado se conserva la hora original.
@@ -70,44 +71,26 @@ export async function PATCH(
   const shouldClearHash = oldTx.external_hash && (descriptionChanged || amountChanged || dateChanged);
   const shouldClearImportLineId = oldTx.import_line_id && (descriptionChanged || amountChanged || dateChanged);
 
-  const { data: updatedTx, error: updateError } = await supabase
-    .from("transactions")
-    .update({
-      amount,
-      type,
-      date: effectiveDate,
-      description: description || null,
-      account_id: account_id && account_id !== "" ? account_id : null,
-      category_id,
-      subcategory_id,
-      ...(shouldClearHash ? { external_hash: null } : {}),
-      ...(shouldClearImportLineId ? { import_line_id: null } : {}),
-    })
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select()
-    .single();
+  // Actualización y ajuste de saldo (cuenta antigua y nueva) en una sola transacción.
+  const { data: updatedTx, error: updateError } = await supabase.rpc("update_transaction_with_balance", {
+    p_id: id,
+    p_user_id: user.id,
+    p_account_id: newAccountId,
+    p_amount: amount,
+    p_type: type,
+    p_date: effectiveDate,
+    p_description: description || null,
+    p_category_id: category_id,
+    p_subcategory_id: subcategory_id,
+    p_clear_external_hash: !!shouldClearHash,
+    p_clear_import_line_id: !!shouldClearImportLineId,
+  });
 
   if (updateError) {
-    return jsonError(updateError.message, 500);
+    return jsonServerError("PATCH /api/crud/transactions/[id]", updateError);
   }
-
-  const newAccountId = account_id && account_id !== "" ? account_id : null;
-  if (newAccountId) {
-    const { data: newAcc } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", newAccountId)
-      .single();
-    if (newAcc) {
-      let newBalance = Number(newAcc.balance);
-      if (type === "income") newBalance += amount;
-      else newBalance -= amount;
-      await supabase
-        .from("accounts")
-        .update({ balance: newBalance })
-        .eq("id", newAccountId);
-    }
+  if (!updatedTx?.id) {
+    return jsonError("transaction_not_found", 404);
   }
 
   return jsonResponse({ data: updatedTx });
@@ -134,38 +117,18 @@ export async function DELETE(
     return jsonError("missing_id");
   }
 
-  const { data: transaction } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  const { error } = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
+  // skip_balance_adjust: al resolver duplicados de una importación el saldo ya es el del extracto.
+  const { data: deleted, error } = await supabase.rpc("delete_transaction_with_balance", {
+    p_id: id,
+    p_user_id: user.id,
+    p_adjust_balance: !skipBalanceAdjust,
+  });
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("DELETE /api/crud/transactions/[id]", error);
   }
-
-  if (!skipBalanceAdjust && transaction && transaction.account_id) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", transaction.account_id)
-      .single();
-    if (account) {
-      let newBalance = Number(account.balance);
-      if (transaction.type === "income")
-        newBalance -= Number(transaction.amount);
-      else newBalance += Number(transaction.amount);
-      await supabase
-        .from("accounts")
-        .update({ balance: newBalance })
-        .eq("id", transaction.account_id);
-    }
+  if (!deleted?.id) {
+    return jsonError("transaction_not_found", 404);
   }
 
   return jsonResponse({ data: { success: true } });

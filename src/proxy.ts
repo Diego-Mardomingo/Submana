@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const protectedPaths = ["/", "/accounts", "/categories", "/subscriptions", "/transactions", "/settings", "/notifications", "/subscription"];
+// Prefijos: "/account" cubre /accounts y /account/[id]; "/subscription" cubre /subscriptions.
+const protectedPaths = ["/", "/account", "/budgets", "/categories", "/dashboard", "/subscription", "/transactions", "/settings", "/notifications"];
 const staticPaths = ["/_next/static", "/_next/image", "/favicon", "/icons", "/sw.js", "/manifest"];
 
 function isProtectedPath(pathname: string) {

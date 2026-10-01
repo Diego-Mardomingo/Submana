@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 
 export async function GET() {
@@ -21,10 +21,10 @@ export async function GET() {
     .order("created_at", { ascending: true });
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/accounts", error);
   }
 
-  return jsonCachedResponse({ data: accounts }, 200, 120, 600);
+  return jsonCachedResponse({ data: accounts });
 }
 
 export async function POST(request: NextRequest) {
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/accounts", error);
   }
 
   return jsonResponse({ data: insertedData }, 201);

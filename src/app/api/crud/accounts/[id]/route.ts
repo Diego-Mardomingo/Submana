@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 
 export async function GET(
@@ -26,10 +26,10 @@ export async function GET(
     .select("*")
     .eq("id", id)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/accounts/[id]", error);
   }
 
   if (!account) {
@@ -61,7 +61,6 @@ export async function PATCH(
 
   const { body } = await parseRequestBody(request);
   const name = body.name;
-  const balance = parseFloat(body.balance || "0");
   const icon = body.icon;
   const color = body.color;
   const bank_provider = body.bank_provider !== undefined ? body.bank_provider : undefined;
@@ -70,7 +69,15 @@ export async function PATCH(
     return jsonError("missing_fields");
   }
 
-  const updateData: Record<string, unknown> = { name, balance, icon, color };
+  const updateData: Record<string, unknown> = { name, icon, color };
+  // Sin "balance" en el cuerpo no se toca el saldo (antes se ponía a 0).
+  if (body.balance !== undefined && body.balance !== "") {
+    const balance = parseFloat(body.balance);
+    if (!Number.isFinite(balance)) {
+      return jsonError("invalid_balance");
+    }
+    updateData.balance = balance;
+  }
   if (bank_provider !== undefined) {
     updateData.bank_provider = bank_provider || null;
   }
@@ -81,10 +88,14 @@ export async function PATCH(
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/accounts/[id]", error);
+  }
+
+  if (!updatedData) {
+    return jsonError("Account not found", 404);
   }
 
   return jsonResponse({ data: updatedData });
@@ -116,7 +127,7 @@ export async function DELETE(
     .eq("user_id", user.id);
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/accounts/[id]", error);
   }
 
   return jsonResponse({ data: { success: true } });

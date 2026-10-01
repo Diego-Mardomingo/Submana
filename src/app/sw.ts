@@ -1,6 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig, RuntimeCaching } from "serwist";
-import { Serwist, CacheFirst, StaleWhileRevalidate, NetworkFirst, ExpirationPlugin } from "serwist";
+import { Serwist, CacheFirst, NetworkFirst, NetworkOnly, ExpirationPlugin } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -24,16 +24,12 @@ const customCache: RuntimeCaching[] = [
     }),
   },
   {
-    matcher: /^\/api\/crud\/.*/i,
-    handler: new StaleWhileRevalidate({
-      cacheName: "api-data",
-      plugins: [
-        new ExpirationPlugin({
-          maxEntries: 64,
-          maxAgeSeconds: 24 * 60 * 60,
-        }),
-      ],
-    }),
+    // Datos financieros por usuario: nunca en Cache Storage. Con stale-while-revalidate
+    // el refetch tras una mutación devolvía la respuesta anterior, y la caché sobrevivía
+    // al cierre de sesión (visible para el siguiente usuario del dispositivo).
+    // Además evita que caigan en la regla "apis" (NetworkFirst) de defaultCache.
+    matcher: ({ sameOrigin, url: { pathname } }) => sameOrigin && pathname.startsWith("/api/"),
+    handler: new NetworkOnly(),
   },
   {
     matcher: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
@@ -93,3 +89,8 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// Purga las cachés de API que versiones anteriores del SW llenaron con datos de usuario.
+self.addEventListener("activate", (event) => {
+  event.waitUntil(Promise.all(["api-data", "apis"].map((name) => caches.delete(name))));
+});

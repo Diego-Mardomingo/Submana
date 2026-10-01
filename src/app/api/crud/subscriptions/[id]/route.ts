@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { isOwnedAccount, jsonError, jsonServerError, jsonResponse } from "@/lib/apiHelpers";
+import { validateSubscriptionFields } from "@/lib/subscriptionValidation";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -81,16 +82,31 @@ export async function PATCH(
     return jsonError("No fields to update", 400);
   }
 
+  const validationError = validateSubscriptionFields(updates);
+  if (validationError) {
+    return jsonError(validationError);
+  }
+  if (
+    typeof updates.account_id === "string" &&
+    !(await isOwnedAccount(supabase, user.id, updates.account_id))
+  ) {
+    return jsonError("Account not found", 404);
+  }
+
   const { data: updatedData, error } = await supabase
     .from("subscriptions")
     .update(updates)
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/subscriptions/[id]", error);
+  }
+
+  if (!updatedData) {
+    return jsonError("Subscription not found", 404);
   }
 
   return jsonResponse({ data: updatedData });
@@ -122,7 +138,7 @@ export async function DELETE(
     .eq("user_id", user.id);
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/subscriptions/[id]", error);
   }
 
   return jsonResponse({ data: { success: true } });

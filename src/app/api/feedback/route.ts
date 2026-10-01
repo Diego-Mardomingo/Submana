@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 
 const ALLOWED_TYPES = ["error", "suggestion"] as const;
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/feedback", error);
   }
 
   return jsonResponse({ data: insertedData }, 201);

@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse } from "@/lib/apiHelpers";
-import { NextRequest } from "next/server";
+import { jsonError, jsonResponse, jsonServerError } from "@/lib/apiHelpers";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { createHash, randomBytes } from "crypto";
 
 function hashToken(token: string): string {
@@ -20,7 +20,7 @@ export async function GET() {
 
   const { data: existing } = await supabase
     .from("api_tokens")
-    .select("id, created_at")
+    .select("id, created_at, last_used_at")
     .eq("user_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -29,12 +29,13 @@ export async function GET() {
     {
       hasToken: !!existing,
       createdAt: existing?.created_at ?? null,
+      lastUsedAt: existing?.last_used_at ?? null,
     },
     200
   );
 }
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -44,6 +45,13 @@ export async function POST(request: NextRequest) {
   if (authError || !user) {
     return jsonError("Unauthorized", 401);
   }
+
+  const limited = await enforceRateLimit(
+    `token-rotation:${user.id}`,
+    RATE_LIMITS.tokenRotation.limit,
+    RATE_LIMITS.tokenRotation.windowSeconds
+  );
+  if (limited) return limited;
 
   const plainToken = randomBytes(32).toString("hex");
   const tokenHash = hashToken(plainToken);
@@ -57,11 +65,11 @@ export async function POST(request: NextRequest) {
   if (existing) {
     const { error: updateError } = await supabase
       .from("api_tokens")
-      .update({ token_hash: tokenHash, created_at: new Date().toISOString() })
+      .update({ token_hash: tokenHash, created_at: new Date().toISOString(), last_used_at: null })
       .eq("id", existing.id);
 
     if (updateError) {
-      return jsonError(updateError.message, 500);
+      return jsonServerError("POST /api/automation/token", updateError);
     }
   } else {
     const { error: insertError } = await supabase.from("api_tokens").insert({
@@ -71,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (insertError) {
-      return jsonError(insertError.message, 500);
+      return jsonServerError("POST /api/automation/token", insertError);
     }
   }
 
@@ -83,4 +91,24 @@ export async function POST(request: NextRequest) {
     },
     201
   );
+}
+
+/** Revoca el token: las automatizaciones que lo usen dejan de funcionar. */
+export async function DELETE() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return jsonError("Unauthorized", 401);
+  }
+
+  const { error } = await supabase.from("api_tokens").delete().eq("user_id", user.id);
+  if (error) {
+    return jsonServerError("DELETE /api/automation/token", error);
+  }
+
+  return jsonResponse({ data: { success: true } });
 }

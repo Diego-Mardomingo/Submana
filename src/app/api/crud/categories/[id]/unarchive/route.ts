@@ -1,41 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
-
-/** Get all system descendant category IDs (children, grandchildren, ...) */
-function getSystemDescendantIds(
-  categories: { id: string; parent_id: string | null; user_id: string | null }[],
-  parentId: string
-): string[] {
-  const ids: string[] = [];
-  const queue = [parentId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    const children = categories.filter((c) => c.parent_id === id && c.user_id === null);
-    for (const c of children) {
-      ids.push(c.id);
-      queue.push(c.id);
-    }
-  }
-  return ids;
-}
-
-/** Get ancestor chain (parent, grandparent, ... up to root) for a category */
-function getAncestorIds(
-  categories: { id: string; parent_id: string | null }[],
-  categoryId: string
-): string[] {
-  const ids: string[] = [];
-  let currentId: string | null = categoryId;
-  const byId = new Map(categories.map((c) => [c.id, c]));
-  while (currentId) {
-    const cat = byId.get(currentId);
-    if (!cat?.parent_id) break;
-    ids.push(cat.parent_id);
-    currentId = cat.parent_id;
-  }
-  return ids;
-}
+import { getSystemDescendantIds, getAncestorIds } from "@/lib/categoryTree";
 
 export async function POST(
   _request: NextRequest,
@@ -86,6 +52,6 @@ export async function POST(
     .eq("user_id", user.id)
     .in("category_id", uniqueIds);
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("/api/crud/categories/[id]/unarchive", error);
   return jsonResponse({ data: { success: true } });
 }

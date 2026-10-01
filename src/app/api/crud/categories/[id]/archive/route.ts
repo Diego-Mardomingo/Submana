@@ -1,23 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
-
-function getSystemDescendantIds(
-  categories: { id: string; parent_id: string | null; user_id: string | null }[],
-  parentId: string
-): string[] {
-  const ids: string[] = [];
-  const queue = [parentId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    const children = categories.filter((c) => c.parent_id === id && c.user_id === null);
-    for (const c of children) {
-      ids.push(c.id);
-      queue.push(c.id);
-    }
-  }
-  return ids;
-}
+import { getSystemDescendantIds } from "@/lib/categoryTree";
 
 export async function POST(
   request: NextRequest,
@@ -61,6 +45,6 @@ export async function POST(
     .from("user_archived_categories")
     .upsert(rows, { onConflict: "user_id,category_id" });
 
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("/api/crud/categories/[id]/archive", error);
   return jsonResponse({ data: { success: true } });
 }
