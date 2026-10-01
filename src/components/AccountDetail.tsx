@@ -22,7 +22,7 @@ import { useLang } from "@/hooks/useLang";
 import { saveScrollForReturn, useScrollRestore } from "@/hooks/useScrollRestore";
 import { useDeleteTransaction, useTransactions, type Transaction } from "@/hooks/useTransactions";
 import type { BankProvider } from "@/lib/bankProviders";
-import { monthKey, parseDateString, shiftMonth } from "@/lib/date";
+import { appNow, monthKey, parseDateString, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { metricTransactions, sumByType } from "@/lib/metricsFilters";
@@ -182,7 +182,7 @@ export default function AccountDetail({ account }: { account: Account }) {
   }, [shouldScrollToImport, shouldAutoOpenFilePicker, router, account.id]);
 
   // Carousel of months, from the first transaction up to the current month.
-  const now = new Date();
+  const now = appNow();
   const currentKey = monthKey(now.getFullYear(), now.getMonth() + 1);
   const byMonth = new Map<string, Map<string, Transaction[]>>();
   for (const tx of transactions) {

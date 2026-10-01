@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { BANK_PROVIDERS } from "@/lib/bankProviders";
 import { importTransactions } from "@/lib/importTransactions";
+import { validateImportPayload } from "@/lib/importValidation";
 import type { ImportedTransaction } from "@/lib/parsers/types";
 import { generateTransactionHash } from "@/lib/parsers/utils";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
 const DEPOSIT_ACCOUNT_NAME = "Revolut Remunerada";
 
@@ -12,18 +14,31 @@ export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const { parent_account_id, transactions, final_balance } = (await request.json()) as {
-    parent_account_id?: string;
-    transactions?: ImportedTransaction[];
-    final_balance?: number | null;
-  };
-  if (!parent_account_id) return jsonError("missing parent_account_id");
-  if (!Array.isArray(transactions) || transactions.length === 0) return jsonError("missing or empty transactions");
+  const limited = await enforceRateLimit(`import:${user.id}`, RATE_LIMITS.import.limit, RATE_LIMITS.import.windowSeconds);
+  if (limited) return limited;
 
-  const { data: parent } = await supabase.from("accounts").select("id").eq("id", parent_account_id).eq("user_id", user.id).single();
+  let body: { parent_account_id?: string; transactions?: ImportedTransaction[]; final_balance?: number | null };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("Invalid JSON body");
+  }
+  const { parent_account_id, transactions, final_balance } = body;
+  if (!parent_account_id) return jsonError("missing parent_account_id");
+  const payloadError = validateImportPayload(transactions, final_balance);
+  if (payloadError) return jsonError(payloadError);
+
+  const { data: parent } = await supabase.from("accounts").select("id").eq("id", parent_account_id).eq("user_id", user.id).maybeSingle();
   if (!parent) return jsonError("Parent account not found", 404);
 
-  let { data: deposit } = await supabase.from("accounts").select("id").eq("user_id", user.id).ilike("name", DEPOSIT_ACCOUNT_NAME).single();
+  let { data: deposit } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("user_id", user.id)
+    .ilike("name", DEPOSIT_ACCOUNT_NAME)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
   const accountCreated = !deposit;
   if (!deposit) {
     const { data, error } = await supabase
@@ -39,7 +54,7 @@ export async function POST(request: NextRequest) {
       })
       .select("id")
       .single();
-    if (error) return jsonError(`Failed to create deposit account: ${error.message}`, 500);
+    if (error || !data) return jsonServerError("import/revolut-deposit create account", error);
     deposit = data;
   }
 
@@ -48,8 +63,9 @@ export async function POST(request: NextRequest) {
     supabase,
     userId: user.id,
     accountId,
+    // The client hashed with a provisional id: the account might not exist yet.
     transactions: await Promise.all(
-      transactions.map(async (tx) => ({
+      transactions!.map(async (tx) => ({
         ...tx,
         external_hash: await generateTransactionHash(accountId, tx.date, tx.amount, tx.description),
       }))
@@ -57,6 +73,6 @@ export async function POST(request: NextRequest) {
     finalBalance: final_balance,
     inheritCategories: false,
   });
-  if ("error" in result) return jsonError(result.error, 500);
+  if ("error" in result) return jsonServerError("import/revolut-deposit", result.error);
   return jsonResponse({ data: { importResult: result, accountCreated, accountId } });
 }

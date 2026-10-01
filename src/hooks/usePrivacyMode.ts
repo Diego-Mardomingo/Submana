@@ -4,9 +4,20 @@ import { createClientStore } from "@/lib/clientStore";
 
 const STORAGE_KEY = "submana-privacy-mode";
 
+// localStorage can throw when site data is blocked; then the setting just isn't persisted.
 const privacyStore = createClientStore(
-  () => localStorage.getItem(STORAGE_KEY) === "true",
-  (enabled) => localStorage.setItem(STORAGE_KEY, String(enabled)),
+  () => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  },
+  (enabled) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, String(enabled));
+    } catch {}
+  },
   false
 );
 

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -28,8 +28,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
-    .single();
-  if (error) return jsonError(error.message, 500);
+    .maybeSingle();
+  if (error) return jsonServerError("crud/categories/[id]", error);
+  if (!data) return jsonError("not_found", 404);
   return jsonResponse({ data });
 }
 
@@ -42,6 +43,6 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   if (denied) return denied;
 
   const { error } = await supabase.from("categories").delete().eq("id", id).eq("user_id", user.id);
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("crud/categories/[id]", error);
   return jsonResponse({ data: { success: true } });
 }

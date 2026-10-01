@@ -8,6 +8,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { useMetricTransactions } from "@/hooks/useTransactions";
 import { axisConfig, formatK, tooltipConfig, useChartTheme } from "@/lib/chartConfig";
+import { toAppDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 
@@ -32,7 +33,7 @@ export default function DashboardDailyExpenseBars() {
   // Without a month the API returns every transaction: enough for the year and week views.
   const all = useMetricTransactions();
   const { data, isLoading } = period === "month" ? month : all;
-  const expenses = data.filter((tx) => tx.type === "expense").map((tx) => ({ date: new Date(tx.date), amount: tx.amount }));
+  const expenses = data.filter((tx) => tx.type === "expense").map((tx) => ({ date: toAppDate(tx.date), amount: tx.amount }));
 
   let labels: string[];
   let bucketOf: (d: Date) => number;

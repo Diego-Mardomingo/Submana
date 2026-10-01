@@ -52,9 +52,15 @@ export function AccountForm({ account, onDone, onCancel, selectOpenRef }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name) return;
-    const input = { ...form, balance: parseCurrencyValue(form.balance), icon: form.icon || undefined, bank_provider: form.bank_provider || null };
-    if (account) await updateAccount.mutateAsync({ id: account.id, ...input });
-    else await createAccount.mutateAsync(input);
+    const { balance: balanceText, ...fields } = form;
+    const balance = parseCurrencyValue(balanceText);
+    const input = { ...fields, icon: form.icon || undefined, bank_provider: form.bank_provider || null };
+    // Only send the balance when it changed: otherwise it would overwrite imports or automations
+    // that happened since the form was opened.
+    const balanceChanged = !account || Math.round(balance * 100) !== Math.round(Number(account.balance ?? 0) * 100);
+    const payload = { ...input, ...(balanceChanged && { balance }) };
+    if (account) await updateAccount.mutateAsync({ id: account.id, ...payload });
+    else await createAccount.mutateAsync(payload);
     onDone();
   };
 

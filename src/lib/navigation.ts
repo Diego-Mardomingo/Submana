@@ -15,3 +15,9 @@ export function getRouteDepth(pathname: string): number {
   const path = pathname.replace(/\/$/, "") || "/";
   return path === "/" ? 0 : 1 + getRouteDepth(getParentRoute(path));
 }
+
+/** Internal paths only ("/x"); prevents open redirects through "//host", "/\host" or "@host". */
+export function safeInternalPath(value: string | null | undefined, fallback = "/") {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.startsWith("/\\")) return fallback;
+  return value;
+}

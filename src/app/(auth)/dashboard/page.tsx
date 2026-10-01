@@ -12,7 +12,7 @@ import { BalanceTrendRangeProvider } from "@/contexts/BalanceTrendRangeContext";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
 import { prefetchMonth } from "@/hooks/useTransactions";
-import { shiftMonth } from "@/lib/date";
+import { appNow, shiftMonth } from "@/lib/date";
 import { useTranslations } from "@/lib/i18n/utils";
 
 // Charts need the browser (canvas, CSS variables): load them client-side with a skeleton.
@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
   // Warm the caches for the month-based widgets (current month ± 2).
   useEffect(() => {
-    const now = new Date();
+    const now = appNow();
     for (let delta = -2; delta <= 2; delta++) {
       const { year, month } = shiftMonth(now.getFullYear(), now.getMonth() + 1, delta);
       prefetchMonth(queryClient, year, month, delta === 0 ? 5 * 60 * 1000 : 15 * 60 * 1000);

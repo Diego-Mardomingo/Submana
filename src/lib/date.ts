@@ -1,4 +1,4 @@
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 /** Time zone used to store transaction instants (timestamptz) and to compute month boundaries. */
 export const APP_TIME_ZONE = "Europe/Madrid";
@@ -30,6 +30,20 @@ export function calendarDayInAppTimeZone(isoDate: string): string {
   return formatInTimeZone(d, APP_TIME_ZONE, "yyyy-MM-dd");
 }
 
+/**
+ * Date whose local getters (getFullYear, getMonth, getDate, getDay, getHours…) return the wall-clock
+ * time in APP_TIME_ZONE regardless of the browser zone. Use it to group transactions by day/month
+ * like the API does.
+ */
+export function toAppDate(value: string | number | Date): Date {
+  return toZonedTime(value, APP_TIME_ZONE);
+}
+
+/** "Now" as wall-clock time in APP_TIME_ZONE (for the current month/day). */
+export function appNow(): Date {
+  return toZonedTime(new Date(), APP_TIME_ZONE);
+}
+
 /** Local-time YYYY-MM-DD (toISOString() would shift the day in UTC+ zones). */
 export function toDateString(date: Date): string {
   return `${monthKey(date.getFullYear(), date.getMonth() + 1)}-${String(date.getDate()).padStart(2, "0")}`;
@@ -37,13 +51,14 @@ export function toDateString(date: Date): string {
 
 /**
  * Parses YYYY-MM-DD as local noon (avoids DST edge cases); strings with a time component
- * (ISO / timestamptz) are returned as that instant.
+ * (ISO / timestamptz) are returned as that instant in APP_TIME_ZONE wall-clock time (see toAppDate),
+ * so the day matches the API's.
  */
 export function parseDateString(str: string): Date {
   if (!str) return new Date();
   if (str.length > 10 || str.includes("T")) {
     const parsed = new Date(str);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
+    if (!Number.isNaN(parsed.getTime())) return toAppDate(parsed);
   }
   const [y, m, d] = str.split("-").map(Number);
   return new Date(y, m - 1, d, 12, 0, 0);

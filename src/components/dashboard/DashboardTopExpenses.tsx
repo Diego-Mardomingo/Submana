@@ -6,13 +6,14 @@ import { useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useMetricTransactions } from "@/hooks/useTransactions";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import { appNow, toAppDate } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 
 export default function DashboardTopExpenses() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const { data: transactions, isLoading } = useMetricTransactions(now.getFullYear(), now.getMonth() + 1);
   const categories = useCategoryLookup();
 
@@ -32,7 +33,7 @@ export default function DashboardTopExpenses() {
         const catId = categories.rootOf(tx);
         const catName = catId ? (categories.name.get(catId) ?? "") : "";
         const iconKey = catId ? categories.icon.get(catId) : undefined;
-        const date = new Date(tx.date).toLocaleDateString(localeOf(lang), { day: "numeric", month: "short" });
+        const date = toAppDate(tx.date).toLocaleDateString(localeOf(lang), { day: "numeric", month: "short" });
         return (
           <div key={tx.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
             <div className="flex-shrink-0 size-8 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">

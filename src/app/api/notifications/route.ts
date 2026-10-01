@@ -1,4 +1,4 @@
-import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 
 export async function GET() {
   const { supabase, user } = await getAuthedClient();
@@ -10,6 +10,6 @@ export async function GET() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(100);
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("notifications", error);
   return jsonResponse({ data });
 }

@@ -7,7 +7,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useTransactionsRange } from "@/hooks/useTransactions";
-import { monthKey } from "@/lib/date";
+import { appNow, monthKey } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { metricTransactions, sumByType } from "@/lib/metricsFilters";
@@ -18,7 +18,7 @@ const signClass = (n: number) => (n >= 0 ? "text-success" : "text-danger");
 export default function DashboardAnnualSavingsProjection() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const year = now.getFullYear();
   const completedMonths = now.getMonth();
   const { byMonth, isLoading } = useTransactionsRange();

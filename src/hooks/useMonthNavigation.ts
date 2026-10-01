@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { shiftMonth } from "@/lib/date";
+import { appNow, shiftMonth } from "@/lib/date";
 import { localeOf, monthName } from "@/lib/format";
 import type { Lang } from "@/lib/i18n/ui";
 import { useSwipe } from "./useSwipe";
@@ -38,7 +38,7 @@ function shiftDate(date: Date, unit: NavigationUnit, delta: number) {
   return new Date(year, month - 1, Math.min(date.getDate(), new Date(year, month, 0).getDate()), 12);
 }
 
-const today = () => shiftDate(new Date(), "week", 0);
+const today = () => shiftDate(appNow(), "week", 0);
 
 /** Week/month/year period selector with swipe support and prefetch of neighbouring months. */
 export function useMonthNavigation(lang: Lang, unit: NavigationUnit = "month") {
@@ -66,7 +66,7 @@ export function useMonthNavigation(lang: Lang, unit: NavigationUnit = "month") {
     weekEnd: week.end,
     label: formatPeriod(date, unit, lang),
     // Same period label (language-independent) as today means we are on the current period.
-    isCurrent: formatPeriod(date, unit, "en") === formatPeriod(new Date(), unit, "en"),
+    isCurrent: formatPeriod(date, unit, "en") === formatPeriod(appNow(), unit, "en"),
     goToPrev,
     goToNext,
     goToCurrent: () => setDate(today()),

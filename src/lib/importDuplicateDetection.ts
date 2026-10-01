@@ -32,7 +32,7 @@ function normalizeDescriptionForCompare(value: string | null): string {
  * (el banco reexporta la hora desplazada o la descripción en otro idioma).
  * Con saldo de extracto en ambas, el saldo manda; si no, se exige misma descripción.
  */
-function isSameStatementRow(
+export function isSameStatementRow(
 	incoming: ReimportComparable,
 	existing: ReimportComparable
 ): boolean {

@@ -9,8 +9,10 @@ import { SubscriptionDialogs, useFrequencyLabel, type SubscriptionAction } from 
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
 import type { Subscription } from "@/hooks/useSubscriptions";
+import { parseDateString } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { isSubscriptionActive, nextPaymentDate, totalSpent } from "@/lib/subscriptions";
 
 /** DD-MM-YYYY */
@@ -32,8 +34,8 @@ export default function SubscriptionDetail({ sub }: { sub: Subscription }) {
   const muted = { color: "var(--gris-claro)" };
 
   const cards: [string, React.ReactNode, React.CSSProperties?][] = [
-    [t("sub.startDate"), formatDay(new Date(sub.start_date))],
-    [t("sub.endDate"), sub.end_date ? formatDay(new Date(sub.end_date)) : es ? "Sin fecha" : "No end date"],
+    [t("sub.startDate"), formatDay(parseDateString(sub.start_date))],
+    [t("sub.endDate"), sub.end_date ? formatDay(parseDateString(sub.end_date)) : es ? "Sin fecha" : "No end date"],
     [t("sub.nextPayment"), nextPayment ? formatDay(nextPayment) : "-", nextPayment ? { color: "var(--accent)" } : muted],
     [t("sub.totalSpent"), <SensitiveAmount key="spent">{formatCurrency(totalSpent(sub))}</SensitiveAmount>, { color: "var(--accent)" }],
     [
@@ -56,7 +58,7 @@ export default function SubscriptionDetail({ sub }: { sub: Subscription }) {
         <div className="subs-detail-header">
           <div className="subs-detail-icon">
             {/* eslint-disable-next-line @next/next/no-img-element -- remote service logos */}
-            {sub.icon && <img src={sub.icon} alt={sub.service_name} />}
+            <img src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt={sub.service_name} />
           </div>
           <h1 className="subs-detail-name">{sub.service_name}</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { areAccessibleCategories, getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { loadBudgetSpentCalculator, readBudgetInput } from "@/lib/budgetHelpers";
 
 export async function GET(request: NextRequest) {
@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   if (!user) return unauthorized();
 
   const monthParam = request.nextUrl.searchParams.get("month"); // YYYY-MM
+  if (monthParam && !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam)) return jsonError("invalid_month");
   const now = new Date();
   const year = monthParam ? parseInt(monthParam.slice(0, 4), 10) : now.getFullYear();
   const month = monthParam ? parseInt(monthParam.slice(5, 7), 10) : now.getMonth() + 1;
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     .eq("user_id", user.id)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("crud/budgets", error);
   if (!budgets.length) return jsonResponse({ data: [] });
 
   const [{ data: links }, spentFor] = await Promise.all([
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     const categoryIds = (links ?? []).filter((l) => l.budget_id === budget.id).map((l) => l.category_id as string);
     return { ...budget, amount: Number(budget.amount), categoryIds, spent: spentFor(categoryIds) };
   });
-  return jsonCachedResponse({ data }, 60, 300);
+  return jsonCachedResponse({ data });
 }
 
 export async function POST(request: NextRequest) {
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
   if (!body) return jsonError("Invalid JSON body");
   const { amount, color, categoryIds = [] } = readBudgetInput(body);
   if (amount === undefined) return jsonError("missing_fields");
+  if (!(await areAccessibleCategories(supabase, user.id, categoryIds))) return jsonError("invalid_category");
 
   const { count } = await supabase.from("budgets").select("*", { count: "exact", head: true }).eq("user_id", user.id);
   const { data: inserted, error } = await supabase
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
     })
     .select()
     .single();
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("crud/budgets", error);
 
   if (categoryIds.length > 0) {
     const { error: relError } = await supabase
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
       .insert(categoryIds.map((category_id) => ({ budget_id: inserted.id, category_id })));
     if (relError) {
       await supabase.from("budgets").delete().eq("id", inserted.id);
-      return jsonError(relError.message, 500);
+      return jsonServerError("crud/budgets", relError);
     }
   }
 

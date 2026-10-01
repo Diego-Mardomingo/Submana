@@ -13,9 +13,10 @@ import { useMounted } from "@/hooks/useMediaQuery";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useSwipe } from "@/hooks/useSwipe";
 import { prefetchMonth, useTransactions } from "@/hooks/useTransactions";
-import { shiftMonth } from "@/lib/date";
+import { appNow, shiftMonth, toAppDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { isPaymentDay } from "@/lib/subscriptions";
 import { cn } from "@/lib/utils";
 import { withViewTransition } from "@/lib/viewTransition";
@@ -35,7 +36,7 @@ export default function CalendarBody() {
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
   const mounted = useMounted();
-  const [{ year, month }, setView] = useState(() => ({ year: new Date().getFullYear(), month: new Date().getMonth() }));
+  const [{ year, month }, setView] = useState(() => ({ year: appNow().getFullYear(), month: appNow().getMonth() }));
   const [listOpen, setListOpen] = useState(false);
   const [scrollTarget, setScrollTarget] = useState<number | null>(null);
   const [swipeZone, setSwipeZone] = useState<HTMLDivElement | null>(null);
@@ -52,7 +53,7 @@ export default function CalendarBody() {
     const next = shiftMonth(year, month + 1, delta);
     goTo({ year: next.year, month: next.month - 1 });
   };
-  const goToToday = () => goTo({ year: new Date().getFullYear(), month: new Date().getMonth() });
+  const goToToday = () => goTo({ year: appNow().getFullYear(), month: appNow().getMonth() });
   const prefetch = (delta: number) => {
     const next = shiftMonth(year, month + 1, delta);
     prefetchMonth(queryClient, next.year, next.month);
@@ -86,7 +87,7 @@ export default function CalendarBody() {
     setListOpen(true);
   };
 
-  const today = new Date();
+  const today = appNow();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const visibleSubs = subscriptions.filter((sub) => !isAccountHidden(sub.account_id));
   const days: DayEntry[] = Array.from({ length: daysInMonth }, (_, i) => {
@@ -96,7 +97,7 @@ export default function CalendarBody() {
       isToday: mounted && year === today.getFullYear() && month === today.getMonth() && dayNumber === today.getDate(),
       subs: visibleSubs.filter((sub) => isPaymentDay(sub, year, month, dayNumber)),
       transactions: transactions.filter((tx) => {
-        const d = new Date(tx.date);
+        const d = toAppDate(tx.date);
         return !isAccountHidden(tx.account_id) && d.getFullYear() === year && d.getMonth() === month && d.getDate() === dayNumber;
       }),
     };
@@ -154,7 +155,7 @@ export default function CalendarBody() {
               dayNumber={day.dayNumber}
               dayStyle={index === 0 ? { gridColumnStart: firstWeekday } : undefined}
               isToday={day.isToday}
-              subIcons={day.subs.map((sub) => sub.icon)}
+              subIcons={day.subs.map((sub) => sub.icon || initialsAvatarDataUri(sub.service_name))}
               transactions={day.transactions}
               onDayClick={scrollToDay}
             />

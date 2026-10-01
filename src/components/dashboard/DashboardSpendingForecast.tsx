@@ -6,7 +6,7 @@ import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Progress } from "@/components/ui/progress";
 import { useLang } from "@/hooks/useLang";
 import { useMetricTransactions } from "@/hooks/useTransactions";
-import { shiftMonth } from "@/lib/date";
+import { appNow, shiftMonth } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
@@ -14,7 +14,7 @@ import { sumByType } from "@/lib/metricsFilters";
 export default function DashboardSpendingForecast() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const prev = shiftMonth(now.getFullYear(), now.getMonth() + 1, -1);
   const { data: transactions, isLoading } = useMetricTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: prevTransactions } = useMetricTransactions(prev.year, prev.month);

@@ -9,7 +9,7 @@ import { useLang } from "@/hooks/useLang";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { useMetricTransactions } from "@/hooks/useTransactions";
 import { tooltipConfig, useChartTheme } from "@/lib/chartConfig";
-import { shiftMonth } from "@/lib/date";
+import { shiftMonth, toAppDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { runningTotals, sumByType } from "@/lib/metricsFilters";
@@ -32,7 +32,7 @@ export default function DashboardCashFlowSummary() {
     // Cumulative net per day of the month.
     const dailyNet = new Array(new Date(nav.year, nav.month, 0).getDate()).fill(0);
     for (const tx of transactions) {
-      const day = new Date(tx.date).getDate() - 1;
+      const day = toAppDate(tx.date).getDate() - 1;
       if (day >= 0 && day < dailyNet.length) dailyNet[day] += tx.type === "income" ? tx.amount : -tx.amount;
     }
     const sparkline = runningTotals(dailyNet);

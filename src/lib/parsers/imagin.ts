@@ -1,5 +1,6 @@
 import type { ImportedTransaction } from "./types";
-import { capitalizeWords, fingerprintText, parseDate, parseDelimited, parseEuropeanNumber, toImportedTransactions, type ParseCallbacks } from "./utils";
+import { parseCSV } from "./csv";
+import { capitalizeWords, fingerprintText, parseDate, parseEuropeanNumber, toImportedTransactions, type ParseCallbacks } from "./utils";
 
 interface ImaginRow {
   concepto: string;
@@ -14,7 +15,7 @@ const parseAmount = (value: string | undefined) => parseEuropeanNumber(String(va
 export async function parseImaginCSV(file: File, { onProgress, onStatus }: ParseCallbacks = {}) {
   onStatus?.("Leyendo archivo CSV...");
   onProgress?.(1, 3);
-  const rows = parseDelimited(await file.text(), ";");
+  const rows = parseCSV(await file.text(), ";");
   if (rows.length < 2) throw new Error("El archivo CSV está vacío o no tiene datos");
 
   onStatus?.("Procesando transacciones...");

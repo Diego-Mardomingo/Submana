@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { getDescendantIds } from "@/lib/categoryTree";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -22,6 +22,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { error } = await supabase
     .from("user_archived_categories")
     .upsert(ids.map((category_id) => ({ user_id: user.id, category_id })), { onConflict: "user_id,category_id" });
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("crud/categories/[id]/archive", error);
   return jsonResponse({ data: { success: true } });
 }

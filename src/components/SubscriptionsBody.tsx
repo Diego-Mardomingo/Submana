@@ -14,6 +14,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { isSubscriptionActive, monthlyCost } from "@/lib/subscriptions";
 
 const CalendarIcon = ({ size, strokeWidth = 2.5, lines }: { size?: number; strokeWidth?: number; lines?: boolean }) => (
@@ -42,7 +43,7 @@ const SubscriptionCard = memo(function SubscriptionCard({ sub, active, freqLabel
       <div className={`subs-card ${active ? "active" : "inactive"}`}>
         <div className="subs-card-icon">
           {/* eslint-disable-next-line @next/next/no-img-element -- remote service logos */}
-          {sub.icon && <img src={sub.icon} alt="" />}
+          <img src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt="" />
         </div>
         <div className="subs-card-content">
           <span className="subs-card-name">{sub.service_name}</span>

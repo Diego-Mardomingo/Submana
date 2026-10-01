@@ -5,7 +5,7 @@ import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { useLang } from "@/hooks/useLang";
 import { useMetricTransactions } from "@/hooks/useTransactions";
 import { axisConfig, formatK, tooltipConfig, useChartTheme } from "@/lib/chartConfig";
-import { shiftMonth } from "@/lib/date";
+import { appNow, shiftMonth } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
@@ -20,7 +20,7 @@ export default function DashboardMonthComparisonBar() {
   const lang = useLang();
   const t = useTranslations(lang);
   const { colors } = useChartTheme();
-  const now = new Date();
+  const now = appNow();
   const prev = shiftMonth(now.getFullYear(), now.getMonth() + 1, -1);
   const current = useMonthTotals(now.getFullYear(), now.getMonth() + 1);
   const previous = useMonthTotals(prev.year, prev.month);

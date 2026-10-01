@@ -10,7 +10,7 @@ const BATCH_SIZE = 80;
 
 type Category = { category_id: string | null; subcategory_id: string | null };
 
-/** Deletes the manual twin of an imported row (user chose "keep import") and reverts its balance effect. */
+/** Deletes the manual twin of an imported row (user chose "keep import") and atomically reverts its balance effect. */
 async function deleteManualTwin(supabase: SupabaseClient, userId: string, accountId: string, tx: ImportedTransaction) {
   const { data: clash } = await supabase
     .from("transactions")
@@ -23,8 +23,7 @@ async function deleteManualTwin(supabase: SupabaseClient, userId: string, accoun
   const day = calendarDayInAppTimeZone(tx.date);
   for (const c of clash ?? []) {
     if (toCents(c.amount) !== toCents(tx.amount) || calendarDayInAppTimeZone(String(c.date)) !== day) continue;
-    const { error } = await supabase.from("transactions").delete().eq("id", c.id).eq("user_id", userId);
-    if (!error) await adjustAccountBalance(supabase, accountId, -signedAmount(c));
+    await supabase.rpc("delete_transaction_with_balance", { p_id: c.id, p_user_id: userId, p_adjust_balance: true });
   }
 }
 
@@ -126,9 +125,10 @@ export async function importTransactions(args: {
     if (duplicates.length > 0) possibleDuplicates = duplicates;
   }
 
-  if (finalBalance != null) await supabase.from("accounts").update({ balance: finalBalance }).eq("id", accountId);
-  else await adjustAccountBalance(supabase, accountId, rows.reduce((sum, r) => sum + signedAmount(r.tx), 0));
-  const { data: account } = await supabase.from("accounts").select("balance").eq("id", accountId).single();
+  // The statement's balance is the source of truth; otherwise apply the net change atomically.
+  if (finalBalance != null) await supabase.from("accounts").update({ balance: finalBalance }).eq("id", accountId).eq("user_id", userId);
+  else await adjustAccountBalance(supabase, userId, accountId, rows.reduce((sum, r) => sum + signedAmount(r.tx), 0));
+  const { data: account } = await supabase.from("accounts").select("balance").eq("id", accountId).eq("user_id", userId).single();
 
   return {
     imported,

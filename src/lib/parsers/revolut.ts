@@ -1,6 +1,7 @@
 import { parseRevolutFechaInicioToIsoUtc, revolutFechaInicioToMs } from "@/lib/revolutDate";
 import type { ImportedTransaction } from "./types";
-import { fingerprintText, parseDelimited, readFirstSheet, toImportedTransactions, type ParseCallbacks } from "./utils";
+import { parseCSV } from "./csv";
+import { fingerprintText, readFirstSheet, toImportedTransactions, type ParseCallbacks } from "./utils";
 
 interface RevolutRow {
   tipo: string;
@@ -42,13 +43,20 @@ function fixEncoding(text: string): string {
 const headerKey = (header: string) =>
   fixEncoding(header).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
 
-/** Excel serial date → "YYYY-MM-DD HH:mm:ss" (local), other values unchanged. */
-function excelDate(value: string): string {
+/** Days between the Excel epoch (1899-12-30) and the Unix epoch. */
+const EXCEL_UNIX_EPOCH_OFFSET_DAYS = 25569;
+
+/**
+ * Excel serial date → "YYYY-MM-DD HH:mm:ss" wall-clock time, other values unchanged. The serial has
+ * no zone, so it is converted in UTC: the local zone's 1899 LMT offset plus DST shifted it by
+ * 1h14m–2h14m and moved late-night transactions to the next day.
+ */
+export function parseExcelDate(value: string): string {
   const serial = parseFloat(value);
   if (isNaN(serial) || serial <= 40000 || serial >= 60000) return value;
-  const d = new Date(new Date(1899, 11, 30).getTime() + serial * 86400000);
+  const d = new Date(Math.round((serial - EXCEL_UNIX_EPOCH_OFFSET_DAYS) * 86400) * 1000);
   const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
 }
 
 function parseRow(cells: string[], mapping: [number, keyof RevolutRow][], isExcel: boolean): RevolutRow | null {
@@ -64,7 +72,7 @@ function parseRow(cells: string[], mapping: [number, keyof RevolutRow][], isExce
       const num = parseFloat(value.replace(",", "."));
       tx[field] = isNaN(num) ? 0 : num;
     } else {
-      tx[field] = field === "fechaInicio" && isExcel ? excelDate(value) : value;
+      tx[field] = field === "fechaInicio" && isExcel ? parseExcelDate(value) : value;
     }
   }
   return tx.fechaInicio && tx.importe !== undefined ? (tx as RevolutRow) : null;
@@ -135,7 +143,7 @@ function splitStatement(cells: string[][], isExcel: boolean, onProgress?: ParseC
 export async function parseRevolutCSV(file: File, { onProgress, onStatus }: ParseCallbacks = {}) {
   onStatus?.("Leyendo archivo CSV...");
   onProgress?.(1, 3);
-  const rows = parseDelimited(await file.text(), ",");
+  const rows = parseCSV(await file.text(), ",");
   if (rows.length < 2) throw new Error("El archivo CSV está vacío o no tiene datos");
   onStatus?.("Procesando transacciones...");
   onProgress?.(2, 3);

@@ -6,13 +6,14 @@ import { useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useMetricTransactions } from "@/hooks/useTransactions";
 import { tooltipConfig, useChartTheme } from "@/lib/chartConfig";
+import { appNow } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 
 export default function DashboardTopCategoriesBar() {
   const t = useTranslations(useLang());
   const { palette } = useChartTheme();
-  const now = new Date();
+  const now = appNow();
   const { data: transactions, isLoading } = useMetricTransactions(now.getFullYear(), now.getMonth() + 1);
   const categories = useCategoryLookup();
 

@@ -16,6 +16,7 @@ import { useLang } from "@/hooks/useLang";
 import { useCreateTransaction, useUpdateTransaction, type Transaction } from "@/hooks/useTransactions";
 import { parseDateString, toDateString } from "@/lib/date";
 import { useTranslations } from "@/lib/i18n/utils";
+import { safeInternalPath } from "@/lib/navigation";
 
 function CategorySelect({ value, onChange, options }: { value: string; onChange: (id: string) => void; options: CategoryItem[] }) {
   return (
@@ -85,7 +86,7 @@ export default function TransactionForm({ transaction, returnTo }: { transaction
     try {
       if (transaction) await updateTx.mutateAsync({ id: transaction.id, ...payload });
       else await createTx.mutateAsync(payload);
-      router.replace(returnTo || "/transactions", { scroll: false });
+      router.replace(safeInternalPath(returnTo, "/transactions"), { scroll: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     }

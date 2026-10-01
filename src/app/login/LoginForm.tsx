@@ -5,10 +5,13 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useLang } from "@/hooks/useLang";
+import { useTranslations } from "@/lib/i18n/utils";
 
 export function LoginForm() {
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
+  const t = useTranslations(useLang());
 
   async function handleOAuth() {
     setIsLoading(true);
@@ -39,14 +42,14 @@ export function LoginForm() {
         <span className="flex shrink-0">
           <Image
             src="/google-logo.png"
-            alt="Logo de Google"
+            alt={t("login.googleLogoAlt")}
             width={24}
             height={24}
             className="size-6 object-contain"
           />
         </span>
         <span className="relative flex min-w-[11rem] flex-1 items-center justify-center">
-          <span className={isLoading ? "invisible" : ""}>Continue with Google</span>
+          <span className={isLoading ? "invisible" : ""}>{t("login.continueWithGoogle")}</span>
           {isLoading && (
             <span className="absolute inset-0 flex items-center justify-center">
               <Spinner className="size-6 text-[var(--accent)]" />

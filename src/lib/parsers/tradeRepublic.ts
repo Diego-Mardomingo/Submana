@@ -125,11 +125,33 @@ function extractRows(items: TextItem[], b: Boundaries): CashRow[] {
   });
 }
 
+const FULL_DATE_PATTERN = /\b\d{1,2}(?:\.\d{1,2}\.|\s+[a-záéíóúüñ]+\.?\s+)20\d{2}\b/gi;
+
+/** Full dates (YYYY-MM-DD) found in a text. */
+const collectFullDates = (text: string) => [...text.matchAll(FULL_DATE_PATTERN)].flatMap((m) => parseDate(m[0]) ?? []);
+
+/**
+ * Year for a date printed without one ("15 dic"): the one that keeps it inside the statement
+ * period (min/max of the header's full dates), so a Dec 2025 – Jan 2026 statement doesn't put
+ * January rows in 2025. Without a period, `fallbackYear`.
+ */
+export function pickYearForPartialDate(partialDate: string, statementDates: string[], fallbackYear: string): string {
+  if (statementDates.length === 0) return fallbackYear;
+  const sorted = [...statementDates].sort();
+  const [periodStart, periodEnd] = [sorted[0], sorted.at(-1)!];
+  for (let year = Number(periodStart.slice(0, 4)); year <= Number(periodEnd.slice(0, 4)); year++) {
+    const parsed = parseDate(`${partialDate} ${year}`);
+    if (parsed && parsed >= periodStart && parsed <= periodEnd) return String(year);
+  }
+  return fallbackYear;
+}
+
 /** Parses the cash transactions table of a Trade Republic PDF statement. */
 export async function parseTradeRepublicPDF(file: File, { onProgress, onStatus }: ParseCallbacks = {}) {
   onStatus?.("Loading PDF library...");
   const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+  // Worker served from our own bundle (same version as the library, no third-party CDN).
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 
   onStatus?.("Reading PDF file...");
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
@@ -138,6 +160,7 @@ export async function parseTradeRepublicPDF(file: File, { onProgress, onStatus }
   const cash: CashRow[] = [];
   const pageTexts: string[] = [];
   let statementYear: string | undefined;
+  const statementDates: string[] = [];
   let boundaries: Boundaries | null = null;
   let inCashTable = false;
 
@@ -146,7 +169,11 @@ export async function parseTradeRepublicPDF(file: File, { onProgress, onStatus }
     onStatus?.(`Processing page ${pageNum} of ${pdf.numPages}`);
     const textItems = (await (await pdf.getPage(pageNum)).getTextContent()).items.filter((item) => "str" in item);
     pageTexts.push(textItems.map((item) => item.str).join(" "));
-    statementYear ??= pageTexts.at(-1)!.match(/20\d{2}/)?.[0];
+    if (!statementYear) {
+      statementYear = pageTexts.at(-1)!.match(/20\d{2}/)?.[0];
+      // Full dates in the header (statement period) decide the year of "dd mmm" rows.
+      if (statementYear) statementDates.push(...collectFullDates(pageTexts.at(-1)!));
+    }
 
     const items: TextItem[] = textItems
       .map((item) => ({ text: item.str, x: item.transform[4], y: item.transform[5], width: item.width, height: item.height }))
@@ -174,9 +201,11 @@ export async function parseTradeRepublicPDF(file: File, { onProgress, onStatus }
     inCashTable = end ? false : processCash || inCashTable;
   }
 
-  // Dates printed without a year ("05 ene") take the statement year.
+  // Dates printed without a year ("05 ene") take the statement year that keeps them inside the period.
   for (const tx of cash) {
-    if (statementYear && tx.datum && !parseDate(tx.datum) && parseDate(`${tx.datum.trim()} ${statementYear}`)) tx.datum = `${tx.datum.trim()} ${statementYear}`;
+    if (!statementYear || !tx.datum || parseDate(tx.datum)) continue;
+    const candidate = `${tx.datum.trim()} ${pickYearForPartialDate(tx.datum.trim(), statementDates, statementYear)}`;
+    if (parseDate(candidate)) tx.datum = candidate;
   }
   onStatus?.(`Found ${cash.length} transactions`);
 

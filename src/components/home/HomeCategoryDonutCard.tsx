@@ -9,6 +9,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { useMetricTransactions } from "@/hooks/useTransactions";
 import { tooltipConfig, useChartTheme } from "@/lib/chartConfig";
+import { toAppDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import styles from "./HomeCategoryDonutCard.module.css";
@@ -29,7 +30,7 @@ export default function HomeCategoryDonutCard() {
 
   const byCategory = new Map<string, number>();
   for (const tx of data) {
-    if (tx.type !== "expense" || (period === "year" && new Date(tx.date).getFullYear() !== nav.year)) continue;
+    if (tx.type !== "expense" || (period === "year" && toAppDate(tx.date).getFullYear() !== nav.year)) continue;
     const id = categories.rootOf(tx) ?? "";
     byCategory.set(id, (byCategory.get(id) ?? 0) + tx.amount);
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeInternalPath } from "@/lib/navigation";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
 
   if (!supabaseError && code) {
     const { error } = await (await createClient()).auth.exchangeCodeForSession(code);
-    if (!error) return NextResponse.redirect(`${origin}${searchParams.get("next") ?? "/"}`);
+    if (!error) return NextResponse.redirect(`${origin}${safeInternalPath(searchParams.get("next"))}`);
     errorDetail = error.message;
   }
 

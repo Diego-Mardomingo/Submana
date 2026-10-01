@@ -54,8 +54,24 @@ export async function parseBBVAExcel(file: File, { onProgress, onStatus }: Parse
 
   onProgress?.(3, 3);
   onStatus?.(`Encontradas ${transactions.length} transacciones`);
+  const finalBalance = findFinalBalance(transactions);
   transactions.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-  return { transactions, finalBalance: transactions.at(-1)?.disponible };
+  return { transactions, finalBalance };
+}
+
+/**
+ * Balance after the last movement of the last day, regardless of file order: it is the only one
+ * whose "disponible" is not the previous balance of another movement that day.
+ */
+export function findFinalBalance(transactions: Pick<BBVARow, "fecha" | "importe" | "disponible">[]): number | undefined {
+  if (transactions.length === 0) return undefined;
+  const lastDay = transactions.reduce((max, tx) => (tx.fecha > max ? tx.fecha : max), transactions[0].fecha);
+  const sameDay = transactions.filter((tx) => tx.fecha === lastDay);
+  const cents = (n: number) => Math.round(n * 100);
+  const previousBalances = new Set(sameDay.map((tx) => cents(tx.disponible - tx.importe)));
+  const last = sameDay.filter((tx) => !previousBalances.has(cents(tx.disponible)));
+  // When the chain is ambiguous, BBVA exports the most recent movement first.
+  return (last.length === 1 ? last[0] : sameDay[0]).disponible;
 }
 
 function describe({ concepto, movimiento }: BBVARow) {

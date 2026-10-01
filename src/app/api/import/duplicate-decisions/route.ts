@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     .upsert({ user_id: user.id, account_id, conflict_key, resolution }, { onConflict: "user_id,account_id,conflict_key" })
     .select()
     .single();
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("import/duplicate-decisions", error);
   return jsonResponse({ data });
 }
 
@@ -35,6 +35,6 @@ export async function DELETE(request: NextRequest) {
     .eq("user_id", user.id)
     .eq("account_id", accountId)
     .eq("conflict_key", conflictKey);
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("import/duplicate-decisions", error);
   return jsonResponse({ data: { success: true } });
 }

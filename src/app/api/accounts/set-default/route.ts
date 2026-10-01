@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, isOwnedAccount, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
@@ -8,8 +8,11 @@ export async function POST(request: NextRequest) {
   const { id } = await parseRequestBody(request);
   if (!id) return jsonError("missing_id");
 
-  await supabase.from("accounts").update({ is_default: false }).eq("user_id", user.id);
+  if (!(await isOwnedAccount(supabase, user.id, id))) return jsonError("Account not found", 404);
+
+  const { error: resetError } = await supabase.from("accounts").update({ is_default: false }).eq("user_id", user.id);
+  if (resetError) return jsonServerError("accounts/set-default", resetError);
   const { error } = await supabase.from("accounts").update({ is_default: true }).eq("id", id).eq("user_id", user.id);
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("accounts/set-default", error);
   return jsonResponse({ data: { success: true } });
 }

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
+import { fetchAllPages } from "@/lib/apiHelpers";
 import { detectTransferIds } from "@/lib/transferDetection";
 
 /**
@@ -9,19 +10,23 @@ import { detectTransferIds } from "@/lib/transferDetection";
  */
 export async function loadBudgetSpentCalculator(supabase: SupabaseClient, userId: string, year: number, month: number) {
   const { startIso, endExclusiveIso } = calendarMonthsUtcHalfOpenRange(year, month, year, month);
-  const [{ data: categories }, { data: transactions }] = await Promise.all([
+  const [{ data: categories }, transactions] = await Promise.all([
     supabase.from("categories").select("id, parent_id, exclude_from_metrics").or(`user_id.eq.${userId},user_id.is.null`),
-    supabase
-      .from("transactions")
-      .select("id, amount, type, date, account_id, category_id, subcategory_id")
-      .eq("user_id", userId)
-      .gte("date", startIso)
-      .lt("date", endExclusiveIso),
+    fetchAllPages((from, to) =>
+      supabase
+        .from("transactions")
+        .select("id, amount, type, date, account_id, category_id, subcategory_id")
+        .eq("user_id", userId)
+        .gte("date", startIso)
+        .lt("date", endExclusiveIso)
+        .order("id")
+        .range(from, to)
+    ),
   ]);
 
   const parentOf = new Map((categories ?? []).filter((c) => c.parent_id).map((c) => [c.id, c.parent_id as string]));
   const excluded = new Set((categories ?? []).filter((c) => c.exclude_from_metrics).map((c) => c.id));
-  const txs = (transactions ?? []).map((tx) => ({ ...tx, amount: Number(tx.amount) }));
+  const txs = transactions.map((tx) => ({ ...tx, amount: Number(tx.amount) }));
   const transferIds = detectTransferIds(txs);
   const expenses = txs.filter((tx) => {
     if (tx.type !== "expense" || transferIds.has(tx.id)) return false;

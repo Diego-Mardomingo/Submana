@@ -103,7 +103,7 @@ export default function SettingsBody() {
   const { data: user, isLoading } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
   const { data: token } = useQuery({
     queryKey: ["automation-token"],
-    queryFn: () => api<{ hasToken: boolean }>("/api/automation/token"),
+    queryFn: () => api<{ hasToken: boolean; lastUsedAt: string | null }>("/api/automation/token"),
     enabled: !!user,
   });
   const [newToken, setNewToken] = useState<string | null>(null);
@@ -119,11 +119,25 @@ export default function SettingsBody() {
   const generateToken = async () => {
     const { token: plain } = await api<{ token: string }>("/api/automation/token", "POST");
     setNewToken(plain);
-    queryClient.setQueryData(["automation-token"], { hasToken: true });
+    queryClient.setQueryData(["automation-token"], { hasToken: true, lastUsedAt: null });
+  };
+
+  const revokeToken = async () => {
+    await api("/api/automation/token", "DELETE");
+    setNewToken(null);
+    queryClient.setQueryData(["automation-token"], { hasToken: false, lastUsedAt: null });
   };
 
   const signOut = async () => {
     await createClient().auth.signOut();
+    // Leave no user data on the device (React Query, pages/RSC cached by the service worker).
+    queryClient.clear();
+    try {
+      const names = await caches.keys();
+      await Promise.all(names.filter((name) => name !== "static-assets" && name !== "fonts").map((name) => caches.delete(name)));
+    } catch {
+      // Cache Storage may be unavailable (private mode); the redirect still happens.
+    }
     window.location.href = "/login";
   };
 
@@ -245,7 +259,18 @@ export default function SettingsBody() {
                         <Button type="button" variant="outline" size="sm" onClick={generateToken}>
                           {t(token?.hasToken ? "settings.automation.regenerateToken" : "settings.automation.generateToken")}
                         </Button>
-                        {token?.hasToken && <span className="text-sm text-muted-foreground">{t("settings.automation.tokenConfigured")}</span>}
+                        {token?.hasToken && (
+                          <>
+                            <Button type="button" variant="ghost" size="sm" onClick={revokeToken}>
+                              {t("settings.automation.revokeToken")}
+                            </Button>
+                            <span className="text-sm text-muted-foreground">
+                              {token.lastUsedAt
+                                ? `${t("settings.automation.lastUsed")} ${new Date(token.lastUsedAt).toLocaleString(lang === "es" ? "es-ES" : "en-US", { dateStyle: "short", timeStyle: "short" })}`
+                                : t("settings.automation.tokenConfigured")}
+                            </span>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

@@ -1,8 +1,14 @@
 import { NextRequest } from "next/server";
-import { adjustAccountBalance, jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonResponse, jsonServerError, parseRequestBody } from "@/lib/apiHelpers";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { createAdminClient, hashToken } from "@/lib/supabase/admin";
 
-/** Creates an expense from an automation (e.g. iOS Shortcut) authenticated with a Bearer token. */
+const clientIp = (request: NextRequest) => request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
+/**
+ * Creates an expense from an automation (e.g. iOS Shortcut) authenticated with a Bearer token.
+ * Uses the service role (no RLS): every check filters by the token's user_id.
+ */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
@@ -21,48 +27,56 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: tokenRow } = await admin.from("api_tokens").select("user_id").eq("token_hash", hashToken(token)).single();
-  if (!tokenRow) return jsonError("Invalid or expired token", 401);
+  const { data: tokenRow } = await admin.from("api_tokens").select("id, user_id").eq("token_hash", hashToken(token)).maybeSingle();
+  if (!tokenRow) {
+    const { limit, windowSeconds } = RATE_LIMITS.automationAuthFailure;
+    return (await enforceRateLimit(`automation-auth-fail:${clientIp(request)}`, limit, windowSeconds)) ?? jsonError("Invalid or expired token", 401);
+  }
   const userId = tokenRow.user_id as string;
 
+  const limited = await enforceRateLimit(`automation:${userId}`, RATE_LIMITS.automation.limit, RATE_LIMITS.automation.windowSeconds);
+  if (limited) return limited;
+  await admin.from("api_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", tokenRow.id);
+
   const body = await parseRequestBody(request);
-  const description = body.description || null;
+  const description = body.description ? body.description.slice(0, 500) : null;
   const accountId = body.accountId || body.account_id || null;
   const amount = body.amount ? parseFloat(body.amount.replace(",", ".")) : NaN;
 
-  const fail = async (message: string, status: number) => {
-    await admin.from("automation_notifications").insert({
+  const notify = (fields: { success: boolean; error_message?: string; transaction_id?: string; account_id?: string | null }) =>
+    admin.from("automation_notifications").insert({
       user_id: userId,
-      success: false,
-      error_message: message,
-      amount: isNaN(amount) ? null : amount,
+      amount: Number.isFinite(amount) ? amount : null,
       description,
-      account_id: accountId,
+      account_id: null,
+      ...fields,
     });
+  const fail = async (message: string, status: number) => {
+    await notify({ success: false, error_message: message });
     return jsonError(message, status);
   };
 
-  if (isNaN(amount)) return fail("Missing or invalid amount", 400);
+  if (!Number.isFinite(amount) || amount <= 0) return fail("Missing or invalid amount", 400);
   if (!accountId) return fail("Missing accountId", 400);
 
-  const { data: account } = await admin.from("accounts").select("id").eq("id", accountId).eq("user_id", userId).single();
+  const { data: account } = await admin.from("accounts").select("id").eq("id", accountId).eq("user_id", userId).maybeSingle();
   if (!account) return fail("Account not found or access denied", 404);
 
-  const { data, error } = await admin
-    .from("transactions")
-    .insert({ user_id: userId, amount, type: "expense", date: new Date().toISOString().slice(0, 10), description, account_id: accountId })
-    .select()
-    .single();
-  if (error) return fail(error.message, 500);
-
-  await adjustAccountBalance(admin, accountId, -amount);
-  await admin.from("automation_notifications").insert({
-    user_id: userId,
-    success: true,
-    transaction_id: data.id,
-    amount,
-    description,
-    account_id: accountId,
+  // Full instant: the UTC day (toISOString().slice(0, 10)) fell on the previous day for
+  // expenses made between 00:00 and 02:00 in Madrid. The RPC also updates the balance atomically.
+  const { data, error } = await admin.rpc("create_transaction_with_balance", {
+    p_user_id: userId,
+    p_account_id: accountId,
+    p_amount: amount,
+    p_type: "expense",
+    p_date: new Date().toISOString(),
+    p_description: description,
   });
+  if (error || !data?.id) {
+    await notify({ success: false, error_message: "Could not create transaction", account_id: accountId });
+    return jsonServerError("automation/quick-transaction", error);
+  }
+
+  await notify({ success: true, transaction_id: data.id, account_id: accountId });
   return jsonResponse({ data }, 201);
 }

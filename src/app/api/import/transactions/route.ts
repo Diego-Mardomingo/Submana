@@ -1,30 +1,38 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { importTransactions } from "@/lib/importTransactions";
+import { validateImportPayload } from "@/lib/importValidation";
 import type { ImportedTransaction } from "@/lib/parsers/types";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const { account_id, transactions, final_balance } = (await request.json()) as {
-    account_id?: string;
-    transactions?: ImportedTransaction[];
-    final_balance?: number | null;
-  };
-  if (!account_id) return jsonError("missing account_id");
-  if (!Array.isArray(transactions) || transactions.length === 0) return jsonError("missing or empty transactions");
+  const limited = await enforceRateLimit(`import:${user.id}`, RATE_LIMITS.import.limit, RATE_LIMITS.import.windowSeconds);
+  if (limited) return limited;
 
-  const { data: account } = await supabase.from("accounts").select("id").eq("id", account_id).eq("user_id", user.id).single();
+  let body: { account_id?: string; transactions?: ImportedTransaction[]; final_balance?: number | null };
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("Invalid JSON body");
+  }
+  const { account_id, transactions, final_balance } = body;
+  if (!account_id) return jsonError("missing account_id");
+  const payloadError = validateImportPayload(transactions, final_balance);
+  if (payloadError) return jsonError(payloadError);
+
+  const { data: account } = await supabase.from("accounts").select("id").eq("id", account_id).eq("user_id", user.id).maybeSingle();
   if (!account) return jsonError("Account not found or access denied", 404);
 
   const result = await importTransactions({
     supabase,
     userId: user.id,
     accountId: account_id,
-    transactions,
+    transactions: transactions!,
     finalBalance: final_balance,
     inheritCategories: true,
   });
-  return "error" in result ? jsonError(result.error, 500) : jsonResponse({ data: result });
+  return "error" in result ? jsonServerError("import/transactions", result.error) : jsonResponse({ data: result });
 }

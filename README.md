@@ -117,6 +117,7 @@ src/
 │   │   └── settings/        # Tema, idioma y sesión
 │   ├── api/                 # Endpoints de la API (CRUD, importación, reorden)
 │   ├── login/               # Página de autenticación OAuth
+│   ├── manifest/            # Manifest PWA dinámico
 │   └── ~offline/            # Página offline (PWA)
 ├── components/
 │   ├── dashboard/           # Widgets del dashboard
@@ -128,7 +129,10 @@ src/
 │   ├── supabase/            # Cliente Supabase (server + browser)
 │   └── i18n/               # Sistema de traducciones ES/EN
 └── contexts/                # Filtro de cuentas del calendario y rango de tendencias
+supabase/migrations/         # RLS, RPCs atómicas de saldo, índices
 ```
+
+Comandos (pnpm): `pnpm dev`, `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 ---
 

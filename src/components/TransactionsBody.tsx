@@ -16,7 +16,7 @@ import { useLang } from "@/hooks/useLang";
 import { saveScrollForReturn, useScrollRestore } from "@/hooks/useScrollRestore";
 import { useSwipe } from "@/hooks/useSwipe";
 import { prefetchMonth, useDeleteTransaction, useTransactions, type Transaction } from "@/hooks/useTransactions";
-import { calendarDayInAppTimeZone, parseDateString, shiftMonth } from "@/lib/date";
+import { appNow, calendarDayInAppTimeZone, parseDateString, shiftMonth } from "@/lib/date";
 import { formatCurrency, localeOf, monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { metricTransactions, sumByType } from "@/lib/metricsFilters";
@@ -108,7 +108,7 @@ function useUrlMonth() {
   const params = useSearchParams();
   const year = parseInt(params.get("year") ?? "", 10);
   const month = parseInt(params.get("month") ?? "", 10);
-  const now = new Date();
+  const now = appNow();
   return year >= 2000 && year <= 2100 && month >= 1 && month <= 12
     ? { year, month }
     : { year: now.getFullYear(), month: now.getMonth() + 1 };
@@ -132,7 +132,7 @@ export default function TransactionsBody() {
   const goTo = (target: { year: number; month: number }) =>
     router.replace(`/transactions?year=${target.year}&month=${target.month}`, { scroll: false });
   const changeMonth = (delta: number) => goTo(shiftMonth(year, month, delta));
-  const goToToday = () => goTo({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
+  const goToToday = () => goTo({ year: appNow().getFullYear(), month: appNow().getMonth() + 1 });
   const prefetch = (delta: number) => {
     const target = shiftMonth(year, month, delta);
     prefetchMonth(queryClient, target.year, target.month);

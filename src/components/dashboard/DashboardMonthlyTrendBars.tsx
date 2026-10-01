@@ -8,14 +8,14 @@ import { useCategories } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactions";
 import { axisConfig, formatK, tooltipConfig, useChartTheme } from "@/lib/chartConfig";
-import { shiftMonth } from "@/lib/date";
+import { appNow, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthKeyLabel } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { metricTransactions, sumByType } from "@/lib/metricsFilters";
 
 /** Last 12 months, current one included. */
 function lastYearRange(): DateRange {
-  const now = new Date();
+  const now = appNow();
   const start = shiftMonth(now.getFullYear(), now.getMonth() + 1, -11);
   return { startYear: start.year, startMonth: start.month, endYear: now.getFullYear(), endMonth: now.getMonth() + 1 };
 }

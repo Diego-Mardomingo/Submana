@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLang } from "@/hooks/useLang";
 import { brandLogo, brandSearchUrl } from "@/lib/bankProviders";
 import { useTranslations } from "@/lib/i18n/utils";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 
 type Brand = { name: string; domain: string; icon: string };
 
@@ -30,7 +31,7 @@ export default function IconPicker({ value, onChange }: { value: string; onChang
 
   const randomAvatar = () => {
     const letter = () => String.fromCharCode(65 + Math.floor(Math.random() * 26));
-    onChange(`https://ui-avatars.com/api/?name=${encodeURIComponent(term || letter() + letter())}&length=2&background=random&color=fff&size=256`);
+    onChange(initialsAvatarDataUri(term || letter() + letter()));
   };
 
   return (

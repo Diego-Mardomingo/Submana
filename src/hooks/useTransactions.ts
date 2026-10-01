@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { keepPreviousData, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { monthKey, shiftMonth } from "@/lib/date";
+import { monthKey, shiftMonth, toAppDate } from "@/lib/date";
 import { metricTransactions } from "@/lib/metricsFilters";
 import { queryKeys } from "@/lib/queryKeys";
 import { fetchBudgets } from "./useBudgets";
@@ -94,7 +94,7 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
   const grouped = useMemo(() => {
     const byMonth = new Map<string, Transaction[]>();
     for (const tx of data) {
-      const d = new Date(tx.date);
+      const d = toAppDate(tx.date);
       if (Number.isNaN(d.getTime())) continue;
       const key = monthKey(d.getFullYear(), d.getMonth() + 1);
       if (!byMonth.has(key)) byMonth.set(key, []);

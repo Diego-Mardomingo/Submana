@@ -18,11 +18,16 @@ export function parseEuropeanNumber(str: string): number {
   return isNaN(value) ? 0 : value;
 }
 
-/** Number from a spreadsheet cell, accepting decimal commas. */
+/**
+ * Number from a spreadsheet cell: numeric cells as-is, text cells in Spanish format ("1.234,56").
+ * Replacing only the comma used to read "1.234,56" as 1.234.
+ */
 export function parseCellNumber(value: unknown): number {
-  if (typeof value === "number") return isNaN(value) ? 0 : value;
-  const parsed = parseFloat(String(value ?? "0").replace(",", "."));
-  return isNaN(parsed) ? 0 : parsed;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const str = String(value ?? "").trim();
+  if (str.includes(",")) return parseEuropeanNumber(str);
+  const parsed = parseFloat(str.replace(/[^\d.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 const MONTHS: Record<string, string> = {
@@ -63,27 +68,6 @@ export const capitalizeWords = (str: string) =>
 
 /** Normalised text used inside row fingerprints. */
 export const fingerprintText = (s: string) => (s || "").trim().replace(/\s+/g, " ").toLowerCase();
-
-/** Rows of a delimited text file (quoted fields allowed, no escaped quotes). */
-export function parseDelimited(content: string, delimiter: string): string[][] {
-  return content
-    .split(/\r?\n/)
-    .filter((line) => line.trim())
-    .map((line) => {
-      const cells: string[] = [];
-      let current = "";
-      let inQuotes = false;
-      for (const char of line) {
-        if (char === '"') inQuotes = !inQuotes;
-        else if (char === delimiter && !inQuotes) {
-          cells.push(current.trim());
-          current = "";
-        } else current += char;
-      }
-      cells.push(current.trim());
-      return cells;
-    });
-}
 
 /** Rows of the first sheet of a spreadsheet file. */
 export async function readFirstSheet(file: File): Promise<unknown[][]> {

@@ -6,6 +6,7 @@ import { useLang } from "@/hooks/useLang";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { useMetricTransactions } from "@/hooks/useTransactions";
 import { axisConfig, formatK, tooltipConfig, useChartTheme } from "@/lib/chartConfig";
+import { toAppDate } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 
@@ -18,7 +19,7 @@ export default function DashboardExpenseScatter() {
 
   const points = transactions
     .filter((tx) => tx.type === "expense")
-    .map((tx) => ({ date: new Date(tx.date), y: tx.amount }))
+    .map((tx) => ({ date: toAppDate(tx.date), y: tx.amount }))
     .filter(({ date }) => date.getFullYear() === nav.year && date.getMonth() === nav.month - 1)
     .map(({ date, y }) => ({ x: date.getDate(), y }));
 

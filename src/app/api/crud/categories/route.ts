@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
 type Category = { id: string; parent_id: string | null; exclude_from_metrics?: boolean };
 
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       .is("user_id", null)
       .in("id", [...archivedIds])
       .order("name", { ascending: true });
-    if (error) return jsonError(error.message, 500);
+    if (error) return jsonServerError("crud/categories", error);
 
     // Archived subcategories whose parent is still active are shown under that (non-archived) parent.
     const children = archived.filter((c) => c.parent_id);
@@ -41,15 +41,15 @@ export async function GET(request: NextRequest) {
       ...(structural ?? []).map((c) => ({ ...c, isArchived: false })),
     ];
     const defaultCategories = withSubcategories(parents, children.map((c) => ({ ...c, isArchived: true })), () => true);
-    return jsonCachedResponse({ data: { defaultCategories, userCategories: [] } }, 180, 900);
+    return jsonCachedResponse({ data: { defaultCategories, userCategories: [] } });
   }
 
   const [userResult, systemResult] = await Promise.all([
     supabase.from("categories").select("*").eq("user_id", user.id).order("name", { ascending: true }),
     supabase.from("categories").select("*").is("user_id", null).order("name", { ascending: true }),
   ]);
-  if (userResult.error) return jsonError(userResult.error.message, 500);
-  if (systemResult.error) return jsonError(systemResult.error.message, 500);
+  if (userResult.error) return jsonServerError("crud/categories", userResult.error);
+  if (systemResult.error) return jsonServerError("crud/categories", systemResult.error);
 
   const userCats: Category[] = userResult.data;
   const systemCats: Category[] = systemResult.data.filter((c) => !archivedIds.has(c.id));
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   const defaultCategories = withSubcategories(systemCats, [...systemCats, ...userCats], isSystem)
     // Exclude-from-metrics categories go last (stable sort keeps alphabetical order otherwise).
     .sort((a, b) => Number(!!a.exclude_from_metrics) - Number(!!b.exclude_from_metrics));
-  return jsonCachedResponse({ data: { defaultCategories, userCategories } }, 180, 900);
+  return jsonCachedResponse({ data: { defaultCategories, userCategories } });
 }
 
 export async function POST(request: NextRequest) {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
   if (parent_id) {
     const { data: parent } = await supabase.from("categories").select("user_id").eq("id", parent_id).single();
-    if (!parent) return jsonError("parent_not_found");
+    if (!parent || (parent.user_id !== null && parent.user_id !== user.id)) return jsonError("parent_not_found");
     if (parent.user_id === null) {
       const { data: archived } = await supabase
         .from("user_archived_categories")
@@ -90,6 +90,6 @@ export async function POST(request: NextRequest) {
     .insert({ user_id: user.id, name: body.name, parent_id, emoji: body.emoji || null })
     .select()
     .single();
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("crud/categories", error);
   return jsonResponse({ data }, 201);
 }

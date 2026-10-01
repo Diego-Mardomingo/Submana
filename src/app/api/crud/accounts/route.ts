@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
 export async function GET() {
   const { supabase, user } = await getAuthedClient();
@@ -11,8 +11,8 @@ export async function GET() {
     .eq("user_id", user.id)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
-  if (error) return jsonError(error.message, 500);
-  return jsonCachedResponse({ data }, 120, 600);
+  if (error) return jsonServerError("crud/accounts", error);
+  return jsonCachedResponse({ data });
 }
 
 export async function POST(request: NextRequest) {
@@ -29,6 +29,6 @@ export async function POST(request: NextRequest) {
     .insert({ user_id: user.id, name, balance, icon, color, bank_provider: body.bank_provider || null, display_order: count ?? 0 })
     .select()
     .single();
-  if (error) return jsonError(error.message, 500);
+  if (error) return jsonServerError("crud/accounts", error);
   return jsonResponse({ data }, 201);
 }
