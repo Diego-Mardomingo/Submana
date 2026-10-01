@@ -5,6 +5,13 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    rules: {
+      // Iconos de cuentas/suscripciones: URLs arbitrarias elegidas por el usuario o data: URIs.
+      // next/image exigiría declarar cada dominio en remotePatterns.
+      "@next/next/no-img-element": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",
