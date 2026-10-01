@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLang } from "@/hooks/useLang";
-import { useTranslations } from "@/lib/i18n/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
@@ -361,7 +360,6 @@ export default function BankStatementUpload({
   autoOpenFilePicker = false,
 }: BankStatementUploadProps) {
   const lang = useLang();
-  const t = useTranslations(lang);
   const router = useRouter();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -382,9 +380,6 @@ export default function BankStatementUpload({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const bank = getBankProvider(bankProvider);
-  if (!bank) return null;
-
-  const acceptedFormats = bank.acceptedFormats.join(",");
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -607,6 +602,10 @@ export default function BankStatementUpload({
     }, 250);
     return () => window.clearTimeout(timer);
   }, [autoOpenFilePicker, state]);
+
+  // Después de todos los hooks: un return anticipado antes cambiaría su orden entre renders.
+  if (!bank) return null;
+  const acceptedFormats = bank.acceptedFormats.join(",");
 
   return (
     <div className="bank-statement-upload">

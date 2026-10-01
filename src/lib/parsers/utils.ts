@@ -122,7 +122,7 @@ export function parseGermanDate(dateStr: string): string | null {
 export function normalizeDescription(rawDescription: string, type: string): string {
   const combined = `${type} ${rawDescription}`.trim();
   
-  let text = combined
+  const text = combined
     .replace(/null$/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();

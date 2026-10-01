@@ -55,19 +55,16 @@ function findCashHeaders(items: TextItem[]): Headers | null {
   const lines = groupTextItemsByLine(items);
   
   let headerLine: TextItem[] | null = null;
-  let headerY = 0;
   
   for (const line of lines) {
     const lineText = line.map(item => item.text.trim()).join(" ").toUpperCase();
     
     const hasDate = lineText.includes("FECHA") || lineText.includes("DATUM") || lineText.includes("DATE") || lineText.includes("DATA");
-    const hasType = lineText.includes("TIPO") || lineText.includes("TYP") || lineText.includes("TYPE");
     const hasDesc = lineText.includes("DESCRIPCIÓN") || lineText.includes("BESCHREIBUNG") || lineText.includes("DESCRIPTION") || lineText.includes("DESCRIZIONE");
     const hasBalance = lineText.includes("BALANCE") || lineText.includes("SALDO");
     
     if (hasDate && hasDesc && hasBalance) {
       headerLine = line;
-      headerY = line[0]?.y || 0;
       break;
     }
   }
@@ -94,7 +91,6 @@ function findCashHeaders(items: TextItem[]): Headers | null {
         const combinedText = combinedItems.map(item => item.text.trim()).join(" ").toUpperCase();
         if (combinedText.includes("BALANCE") || combinedText.includes("SALDO")) {
           headerLine = combinedItems;
-          headerY = baseY;
           break;
         }
       }
@@ -264,6 +260,41 @@ function extractCashTransactionsFromPage(
   return transactions;
 }
 
+const FULL_DATE_PATTERN = /\b\d{1,2}(?:\.\d{1,2}\.|\s+[a-záéíóúüñ]+\.?\s+)20\d{2}\b/gi;
+
+/** Fechas completas (YYYY-MM-DD) que aparecen en un texto. */
+function collectFullDates(text: string): string[] {
+  const result: string[] = [];
+  for (const match of text.matchAll(FULL_DATE_PATTERN)) {
+    const parsed = parseGermanDate(match[0]);
+    if (parsed) result.push(parsed);
+  }
+  return result;
+}
+
+/**
+ * Año para una fecha sin año ("15 dic"). Con el periodo del extracto (min/max de las fechas
+ * completas de la cabecera) se elige el año que la deja dentro del periodo; así un extracto
+ * dic 2025 – ene 2026 no asigna 2025 a las filas de enero. Sin periodo, el primer año hallado.
+ */
+export function pickYearForPartialDate(
+  partialDate: string,
+  statementDates: string[],
+  fallbackYear: string
+): string {
+  if (statementDates.length === 0) return fallbackYear;
+  const sorted = [...statementDates].sort();
+  const periodStart = sorted[0]!;
+  const periodEnd = sorted[sorted.length - 1]!;
+  const firstYear = Number(periodStart.slice(0, 4));
+  const lastYear = Number(periodEnd.slice(0, 4));
+  for (let year = firstYear; year <= lastYear; year++) {
+    const parsed = parseGermanDate(`${partialDate} ${year}`);
+    if (parsed && parsed >= periodStart && parsed <= periodEnd) return String(year);
+  }
+  return fallbackYear;
+}
+
 export interface ParseOptions {
   onProgress?: (current: number, total: number) => void;
   onStatus?: (status: string) => void;
@@ -275,13 +306,18 @@ export async function parseTradeRepublicPDF(
 ): Promise<ParsedPDFResult> {
   const { onProgress, onStatus } = options;
   let statementYear: string | null = null;
+  const statementDates: string[] = [];
 
   onStatus?.("Loading PDF library...");
 
   const pdfjs = await import("pdfjs-dist");
   
   if (typeof window !== "undefined") {
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+    // Worker servido desde el propio bundle (misma versión que la librería, sin CDN de terceros).
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      "pdfjs-dist/build/pdf.worker.min.mjs",
+      import.meta.url
+    ).toString();
   }
 
   onStatus?.("Reading PDF file...");
@@ -311,6 +347,8 @@ export async function parseTradeRepublicPDF(
       const yearMatch = pageTextForYear.match(/20\d{2}/);
       if (yearMatch) {
         statementYear = yearMatch[0];
+        // Fechas completas de la cabecera (periodo del extracto) para asignar el año a filas "dd mmm".
+        statementDates.push(...collectFullDates(pageTextForYear));
       }
     }
 
@@ -411,9 +449,9 @@ export async function parseTradeRepublicPDF(
       const existing = parseGermanDate(tx.datum);
       if (existing) continue;
 
-      const candidate = `${tx.datum.trim()} ${statementYear}`;
-      const parsedWithYear = parseGermanDate(candidate);
-      if (parsedWithYear) {
+      const year = pickYearForPartialDate(tx.datum.trim(), statementDates, statementYear);
+      const candidate = `${tx.datum.trim()} ${year}`;
+      if (parseGermanDate(candidate)) {
         tx.datum = candidate;
       }
     }

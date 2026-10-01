@@ -4,7 +4,7 @@ import {
 	assignOccurrenceIndices,
 	buildImportSourceFingerprint,
 } from "./importKeys";
-import { generateTransactionHash } from "./utils";
+import { generateTransactionHash, parseEuropeanNumber } from "./utils";
 
 interface BBVARawTransaction {
   fechaValor: string;
@@ -84,6 +84,34 @@ function parseBBVADate(value: string): string | null {
   return null;
 }
 
+/**
+ * Celdas numéricas llegan como number; las de texto con formato español ("1.234,56").
+ * parseFloat("1.234,56".replace(",", ".")) daba 1.234.
+ */
+export function parseBBVANumber(value: unknown): number {
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const str = String(value ?? "").trim();
+  if (!str) return 0;
+  if (str.includes(",")) return parseEuropeanNumber(str);
+  const parsed = parseFloat(str.replace(/[^\d.-]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * Saldo tras el último movimiento del último día, sin depender del orden del fichero:
+ * es el único cuyo "disponible" no es el saldo previo de otro movimiento de ese día.
+ */
+export function findFinalBalance(transactions: BBVARawTransaction[]): number | undefined {
+  if (transactions.length === 0) return undefined;
+  const lastDay = transactions.reduce((max, tx) => (tx.fecha > max ? tx.fecha : max), transactions[0].fecha);
+  const sameDay = transactions.filter((tx) => tx.fecha === lastDay);
+  const cents = (n: number) => Math.round(n * 100);
+  const previousBalances = new Set(sameDay.map((tx) => cents(tx.disponible - tx.importe)));
+  const last = sameDay.filter((tx) => !previousBalances.has(cents(tx.disponible)));
+  // Si la cadena es ambigua, BBVA exporta primero el más reciente.
+  return (last.length === 1 ? last[0] : sameDay[0]).disponible;
+}
+
 function parseRow(
   row: unknown[],
   indices: { fecha: number; concepto: number; movimiento: number; importe: number; disponible: number }
@@ -103,21 +131,8 @@ function parseRow(
   const dateStr = parseBBVADate(fechaStr);
   if (!dateStr) return null;
 
-  let amount = 0;
-  if (typeof importeVal === "number" && !isNaN(importeVal)) {
-    amount = importeVal;
-  } else {
-    const parsed = parseFloat(String(importeVal ?? "0").replace(",", "."));
-    amount = isNaN(parsed) ? 0 : parsed;
-  }
-
-  let disponible = 0;
-  if (typeof disponibleVal === "number" && !isNaN(disponibleVal)) {
-    disponible = disponibleVal;
-  } else if (indices.disponible >= 0) {
-    const parsed = parseFloat(String(disponibleVal ?? "0").replace(",", "."));
-    disponible = isNaN(parsed) ? 0 : parsed;
-  }
+  const amount = parseBBVANumber(importeVal);
+  const disponible = indices.disponible >= 0 ? parseBBVANumber(disponibleVal) : 0;
 
   if (amount === 0) return null;
 
@@ -201,10 +216,7 @@ export async function parseBBVAExcel(
     (a, b) => new Date(a.fechaValor).getTime() - new Date(b.fechaValor).getTime()
   );
 
-  const finalBalance =
-    sortedTransactions.length > 0
-      ? sortedTransactions[sortedTransactions.length - 1].disponible
-      : undefined;
+  const finalBalance = findFinalBalance(transactions);
 
   return {
     transactions: sortedTransactions,
