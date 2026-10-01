@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { appNow } from "@/lib/date";
 
 async function fetchTransactions(year: number, month: number) {
   const params = new URLSearchParams();
@@ -51,7 +52,7 @@ export function useDashboardPrefetch() {
   const queryClient = useQueryClient();
   
   useEffect(() => {
-    const now = new Date();
+    const now = appNow();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     

@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
 import { LoginForm } from "./LoginForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { cookies } from "next/headers";
+import { getTranslations } from "@/lib/i18n/utils";
 
 export default async function LoginPage({
   searchParams,
@@ -19,6 +21,8 @@ export default async function LoginPage({
   }
 
   const { error } = await searchParams;
+  const lang = (await cookies()).get("submana-lang")?.value === "es" ? "es" : "en";
+  const t = getTranslations(lang);
 
   return (
     <div className="login-page flex min-h-dvh items-center justify-center p-6">
@@ -28,7 +32,7 @@ export default async function LoginPage({
         {error === "auth_callback_error" && (
           <Alert variant="destructive" className="w-full max-w-[20rem]">
             <AlertDescription className="text-center">
-              Error al iniciar sesión. Contacta con un administrador.
+              {t("login.error")}
             </AlertDescription>
           </Alert>
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,10 +8,11 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { tooltipConfig, axisConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { tooltipConfig, axisConfig, formatK, useChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
+import { appNow } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -43,20 +44,20 @@ function useMonthlyTotals(year: number, month: number) {
 export default function DashboardMonthComparisonBar() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
   const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
 
-  const [chartColors, setChartColors] = useState({ success: "#10b981", accent: "#6366f1" });
-  useEffect(() => {
-    const c = getChartColors();
-    setChartColors({
-      success: c.success || "#10b981",
-      accent: c.accent || "#6366f1",
-    });
-  }, []);
+  const resolvedColors = useChartColors();
+  const chartColors = useMemo(
+    () => ({
+      success: resolvedColors?.success || "#10b981",
+      accent: resolvedColors?.accent || "#6366f1",
+    }),
+    [resolvedColors]
+  );
 
   const current = useMonthlyTotals(currentYear, currentMonth);
   const previous = useMonthlyTotals(prevYear, prevMonth);

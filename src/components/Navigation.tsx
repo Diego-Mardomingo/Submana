@@ -63,6 +63,57 @@ const navItems: NavItem[] = [
   { href: "/settings", shortcut: "x", labelKey: "nav.settings", icon: Settings, extra: true },
 ];
 
+/** Enlace de navegación (a nivel de módulo: definido dentro del componente se remontaba en cada render). */
+function NavLink({
+    href,
+    children,
+    extra,
+    label,
+    shortcut,
+    onClick: onNavClick,
+    currentPath,
+    isMobile,
+    onNavigate,
+  }: {
+    href: string;
+    children: React.ReactNode;
+    extra?: boolean;
+    label: string;
+    shortcut: string;
+    onClick?: () => void;
+    currentPath: string;
+    isMobile: boolean;
+    onNavigate: () => void;
+  }) {
+    const isActive = currentPath === href;
+    const displayShortcut = shortcut.toLowerCase() === "tab" ? "⇥ TAB" : shortcut.toUpperCase();
+    const tooltipShortcut = shortcut.toLowerCase() === "tab" ? "Tab" : shortcut.toUpperCase();
+    const handleClick = () => {
+      onNavigate();
+      onNavClick?.();
+    };
+    const linkEl = (
+      <Link
+        href={href}
+        prefetch={true}
+        className={`${styles.navItem} ${isActive ? styles.active : ""} ${extra ? styles.extraItem : ""}`}
+        onClick={handleClick}
+      >
+        {children}
+        <kbd className={styles.shortcutBadge}>{displayShortcut}</kbd>
+      </Link>
+    );
+    if (isMobile) return linkEl;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+        <TooltipContent side="top" sideOffset={8}>
+          {label} ({tooltipShortcut})
+        </TooltipContent>
+      </Tooltip>
+    );
+}
+
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
@@ -109,49 +160,6 @@ export default function Navigation() {
     mainRoutes.forEach((route) => router.prefetch(route));
   }, [router]);
 
-  const NavLink = ({
-    href,
-    children,
-    extra,
-    label,
-    shortcut,
-    onClick: onNavClick,
-  }: {
-    href: string;
-    children: React.ReactNode;
-    extra?: boolean;
-    label: string;
-    shortcut: string;
-    onClick?: () => void;
-  }) => {
-    const isActive = currentPath === href;
-    const displayShortcut = shortcut.toLowerCase() === "tab" ? "⇥ TAB" : shortcut.toUpperCase();
-    const tooltipShortcut = shortcut.toLowerCase() === "tab" ? "Tab" : shortcut.toUpperCase();
-    const handleClick = () => {
-      closeExpand();
-      onNavClick?.();
-    };
-    const linkEl = (
-      <Link
-        href={href}
-        prefetch={true}
-        className={`${styles.navItem} ${isActive ? styles.active : ""} ${extra ? styles.extraItem : ""}`}
-        onClick={handleClick}
-      >
-        {children}
-        <kbd className={styles.shortcutBadge}>{displayShortcut}</kbd>
-      </Link>
-    );
-    if (isMobile) return linkEl;
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8}>
-          {label} ({tooltipShortcut})
-        </TooltipContent>
-      </Tooltip>
-    );
-  };
 
   return (
     <>
@@ -182,11 +190,11 @@ export default function Navigation() {
           >
             {isMobile && !expanded ? (
               <>
-                <NavLink href="/" label={t("nav.home")} shortcut="f" onClick={closeAddShortcuts}>
+                <NavLink href="/" label={t("nav.home")} shortcut="f" onClick={closeAddShortcuts} currentPath={currentPath} isMobile={isMobile} onNavigate={closeExpand}>
                   <House {...iconProps} />
                   <span>{t("nav.home")}</span>
                 </NavLink>
-                <NavLink href="/dashboard" label={t("nav.dashboard")} shortcut="d" onClick={closeAddShortcuts}>
+                <NavLink href="/dashboard" label={t("nav.dashboard")} shortcut="d" onClick={closeAddShortcuts} currentPath={currentPath} isMobile={isMobile} onNavigate={closeExpand}>
                   <LayoutDashboard {...iconProps} />
                   <span>{t("nav.dashboard")}</span>
                 </NavLink>
@@ -201,7 +209,7 @@ export default function Navigation() {
                   </svg>
                   <Plus className={styles.navNotchIcon} strokeWidth={2.5} />
                 </button>
-                <NavLink href="/transactions" label={t("nav.transactions")} shortcut="q" onClick={closeAddShortcuts}>
+                <NavLink href="/transactions" label={t("nav.transactions")} shortcut="q" onClick={closeAddShortcuts} currentPath={currentPath} isMobile={isMobile} onNavigate={closeExpand}>
                   <TransactionsIcon {...iconProps} />
                   <span>{t("nav.transactions")}</span>
                 </NavLink>
@@ -246,6 +254,9 @@ export default function Navigation() {
                     label={t(item.labelKey)}
                     extra={item.extra}
                     shortcut={item.shortcut}
+                    currentPath={currentPath}
+                    isMobile={isMobile}
+                    onNavigate={closeExpand}
                   >
                     <item.icon {...iconProps} />
                     <span>{t(item.labelKey)}</span>

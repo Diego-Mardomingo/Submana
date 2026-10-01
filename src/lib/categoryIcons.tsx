@@ -6,7 +6,7 @@ type IconProps = {
 };
 
 const createIcon = (paths: React.ReactNode) => {
-  return ({ size = 24, className }: IconProps) => (
+  const Icon = ({ size = 24, className }: IconProps) => (
     <svg
       width={size}
       height={size}
@@ -21,6 +21,8 @@ const createIcon = (paths: React.ReactNode) => {
       {paths}
     </svg>
   );
+  Icon.displayName = "CategoryIcon";
+  return Icon;
 };
 
 export const categoryIcons: Record<string, React.FC<IconProps>> = {

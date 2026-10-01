@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useAccounts } from "@/hooks/useAccounts";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,20 +8,16 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { axisConfig, formatK, resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
+import { axisConfig, formatK, useChartPalette, tooltipConfig } from "@/lib/chartConfig";
 
 type Account = { id: string; name: string; balance?: number; color?: string };
 
+const DEFAULT_PALETTE = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
 export default function DashboardBalanceByAccountDonut() {
   const lang = useLang();
   const t = useTranslations(lang);
   const { data: accounts = [], isLoading } = useAccounts();
-  const defaultPalette = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
-  const [colors, setColors] = useState<string[]>(defaultPalette);
-
-  useEffect(() => {
-    setColors(resolveChartPalette());
-  }, []);
+  const colors = useChartPalette(DEFAULT_PALETTE);
 
   const chartData = useMemo(() => {
     return (accounts as Account[])

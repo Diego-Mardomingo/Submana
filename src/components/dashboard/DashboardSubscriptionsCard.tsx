@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { formatCurrency } from "@/lib/format";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -9,7 +9,8 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { Doughnut } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
+import { useChartPalette, tooltipConfig } from "@/lib/chartConfig";
+import { parseDateString, appNow } from "@/lib/date";
 
 type Sub = { id: string; service_name: string; cost?: number; frequency?: string; frequency_value?: number; end_date?: string | null };
 
@@ -27,21 +28,17 @@ function getMonthlyCost(sub: Sub): number {
 
 function isActive(sub: Sub): boolean {
   if (sub.end_date) {
-    return new Date(sub.end_date) >= new Date();
+    return parseDateString(sub.end_date) >= appNow();
   }
   return true;
 }
 
+const DEFAULT_PALETTE = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
 export default function DashboardSubscriptionsCard() {
   const lang = useLang();
   const t = useTranslations(lang);
   const { data: subscriptions = [], isLoading } = useSubscriptions();
-  const defaultPalette = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
-  const [colors, setColors] = useState<string[]>(defaultPalette);
-
-  useEffect(() => {
-    setColors(resolveChartPalette());
-  }, []);
+  const colors = useChartPalette(DEFAULT_PALETTE);
 
   const { chartData, total } = useMemo(() => {
     const active = (subscriptions as Sub[]).filter(isActive);

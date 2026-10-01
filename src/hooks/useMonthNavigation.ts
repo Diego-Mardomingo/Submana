@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { appNow } from "@/lib/date";
 
 const SWIPE_THRESHOLD = 60;
 const SWIPE_RATIO = 2.5;
@@ -118,7 +119,7 @@ async function prefetchMonth(queryClient: ReturnType<typeof useQueryClient>, yea
 export function useMonthNavigation(lang: string = "en", options: UseMonthNavigationOptions = {}): MonthNavigation {
   const periodUnit = options.periodUnit ?? "month";
   const swipeUnit = options.swipeUnit ?? periodUnit;
-  const now = new Date();
+  const now = appNow();
   const [currentDate, setCurrentDate] = useState<Date>(() => startOfDay(now));
   const [swipeElement, setSwipeElement] = useState<HTMLElement | null>(null);
   const queryClient = useQueryClient();
@@ -184,7 +185,7 @@ export function useMonthNavigation(lang: string = "en", options: UseMonthNavigat
   }, [month, year, queryClient, currentDate]);
 
   const goToCurrentMonth = useCallback(() => {
-    setCurrentDate(startOfDay(new Date()));
+    setCurrentDate(startOfDay(appNow()));
   }, []);
 
   const goToPrevWeek = useCallback(() => {
@@ -200,7 +201,7 @@ export function useMonthNavigation(lang: string = "en", options: UseMonthNavigat
   }, [currentDate]);
 
   const goToCurrentWeek = useCallback(() => {
-    setCurrentDate(startOfDay(new Date()));
+    setCurrentDate(startOfDay(appNow()));
   }, []);
 
   const goToPrevYear = useCallback(() => {
@@ -216,7 +217,7 @@ export function useMonthNavigation(lang: string = "en", options: UseMonthNavigat
   }, [currentDate]);
 
   const goToCurrentYear = useCallback(() => {
-    setCurrentDate(startOfDay(new Date()));
+    setCurrentDate(startOfDay(appNow()));
   }, []);
 
   const goToPrevPeriod = useCallback(() => {

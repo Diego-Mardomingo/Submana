@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
@@ -40,12 +40,7 @@ interface Props {
 export default function DashboardAccountTrendLine({ accountId, accountName, accountColor, accountBalance }: Props) {
   const lang = useLang();
   const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
-  const colorRef = useRef(accountColor);
   const { sharedRange, registerAvailableRange } = useBalanceTrendRange();
-
-  useEffect(() => {
-    colorRef.current = accountColor;
-  }, [accountColor]);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
@@ -122,7 +117,7 @@ export default function DashboardAccountTrendLine({ accountId, accountName, acco
     return points;
   }, [transactionsByMonth, monthLabels, accountBalance, allByMonth, allKeys]);
 
-  const color = colorRef.current || "#6366f1";
+  const color = accountColor || "#6366f1";
 
   const lineData = useMemo(() => ({
     labels: chartData.map((d) => d.name),

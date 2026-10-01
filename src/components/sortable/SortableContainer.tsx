@@ -20,7 +20,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { restrictToWindowEdges } from "@dnd-kit/modifiers";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 
 interface SortableContainerProps<T extends { id: string }> {
   items: T[];
@@ -46,11 +46,11 @@ export function SortableContainer<T extends { id: string }>({
   const isDraggingRef = useRef(false);
 
   // Sincronizar con items externos solo cuando no estamos arrastrando
-  useEffect(() => {
-    if (!isDraggingRef.current) {
-      setLocalItems(items);
-    }
-  }, [items]);
+  const [prevItems, setPrevItems] = useState<T[]>(items);
+  if (items !== prevItems && activeId === null) {
+    setPrevItems(items);
+    setLocalItems(items);
+  }
 
   const sensors = useSensors(
     useSensor(MouseSensor, {

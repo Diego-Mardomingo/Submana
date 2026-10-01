@@ -1,63 +1,49 @@
 import type { CategoryWithSubs, CategoryItem } from "@/hooks/useCategories";
 
-/** IDs de categorías (o subcategorías) que excluyen transacciones de métricas */
-function getExcludedFromMetricsIds(categories: CategoryWithSubs[]): Set<string> {
-  const ids = new Set<string>();
-  const walk = (list: (CategoryWithSubs | CategoryItem)[]) => {
-    for (const c of list) {
-      if (c.exclude_from_metrics) ids.add(c.id);
-      const subs = (c as CategoryWithSubs).subcategories;
-      if (subs?.length) walk(subs);
-    }
-  };
-  walk(categories);
-  return ids;
-}
-
-/** Map de subcategory_id -> parent category_id */
-function getSubToParent(categories: CategoryWithSubs[]): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const p of categories) {
-    for (const s of p.subcategories ?? []) {
-      m.set(s.id, p.id);
-    }
-  }
-  return m;
-}
-
 export interface MetricsFilterContext {
   defaultCategories: CategoryWithSubs[];
   userCategories: CategoryWithSubs[];
 }
 
+type TxCategories = { category_id?: string | null; subcategory_id?: string | null };
+
+/** Conjunto de excluidas y mapa subcategoría→padre, calculados una vez por contexto. */
+function buildExclusionIndex(context: MetricsFilterContext) {
+  const excludedIds = new Set<string>();
+  const subToParent = new Map<string, string>();
+  const walk = (list: (CategoryWithSubs | CategoryItem)[], parentId?: string) => {
+    for (const c of list) {
+      if (c.exclude_from_metrics) excludedIds.add(c.id);
+      if (parentId) subToParent.set(c.id, parentId);
+      const subs = (c as CategoryWithSubs).subcategories;
+      if (subs?.length) walk(subs, c.id);
+    }
+  };
+  walk([...context.defaultCategories, ...context.userCategories]);
+
+  return (tx: TxCategories): boolean => {
+    if (excludedIds.size === 0) return false;
+    const catId =
+      tx.category_id ?? (tx.subcategory_id ? subToParent.get(tx.subcategory_id) : undefined) ?? tx.subcategory_id;
+    return catId ? excludedIds.has(catId) : false;
+  };
+}
+
 /**
  * Devuelve true si la transacción NO debe contarse en métricas.
- * Usar para filtrar antes de sumar/contar en dashboard, resúmenes y presupuestos.
+ * Para listas usar filterForMetrics, que construye el índice una sola vez.
  */
-export function shouldExcludeFromMetrics(
-  tx: { category_id?: string | null; subcategory_id?: string | null },
-  context: MetricsFilterContext
-): boolean {
-  const excludedIds = getExcludedFromMetricsIds([
-    ...context.defaultCategories,
-    ...context.userCategories,
-  ]);
-  if (excludedIds.size === 0) return false;
-
-  const catId = tx.category_id ?? (tx.subcategory_id
-    ? getSubToParent([...context.defaultCategories, ...context.userCategories]).get(tx.subcategory_id)
-    : undefined)
-    ?? tx.subcategory_id;
-
-  return catId ? excludedIds.has(catId) : false;
+export function shouldExcludeFromMetrics(tx: TxCategories, context: MetricsFilterContext): boolean {
+  return buildExclusionIndex(context)(tx);
 }
 
 /**
  * Filtra transacciones excluyendo las que tienen categoría marcada para no contar en métricas.
  */
-export function filterForMetrics<T extends { category_id?: string | null; subcategory_id?: string | null }>(
+export function filterForMetrics<T extends TxCategories>(
   transactions: T[],
   context: MetricsFilterContext
 ): T[] {
-  return transactions.filter((tx) => !shouldExcludeFromMetrics(tx, context));
+  const isExcluded = buildExclusionIndex(context);
+  return transactions.filter((tx) => !isExcluded(tx));
 }

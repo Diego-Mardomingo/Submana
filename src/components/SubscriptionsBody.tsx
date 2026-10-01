@@ -21,9 +21,10 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Pencil, XCircle, Trash2 } from "lucide-react";
 import { AddButton } from "@/components/ui/add-button";
-import { toDateString } from "@/lib/date";
+import { toDateString, parseDateString } from "@/lib/date";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useState, memo } from "react";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 
 type Sub = {
   id: string;
@@ -42,10 +43,10 @@ function setToNoon(d: Date) {
 
 function isSubActive(sub: Sub) {
   const current = setToNoon(new Date());
-  const start = setToNoon(new Date(sub.start_date));
+  const start = setToNoon(parseDateString(sub.start_date));
   if (start > current) return false;
   if (sub.end_date) {
-    const end = setToNoon(new Date(sub.end_date));
+    const end = setToNoon(parseDateString(sub.end_date));
     if (end < current) return false;
   }
   return true;
@@ -82,7 +83,7 @@ const SubscriptionCardContent = memo(function SubscriptionCardContent({
     <Link href={`/subscription/${sub.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
       <div className={`subs-card ${isActive ? "active" : "inactive"}`}>
         <div className="subs-card-icon">
-          <img src={sub.icon || "/placeholder-icon.png"} alt="" />
+          <img src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt="" />
         </div>
         <div className="subs-card-content">
           <span className="subs-card-name">{sub.service_name}</span>

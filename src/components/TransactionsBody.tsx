@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, memo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo, memo, useEffectEvent } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useTransactions } from "@/hooks/useTransactions";
@@ -10,7 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
-import { calendarDayInAppTimeZone, parseDateString } from "@/lib/date";
+import { calendarDayInAppTimeZone, parseDateString, appNow } from "@/lib/date";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, House, Trash2, Euro, Loader2, Pencil } from "lucide-react";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
@@ -156,7 +156,7 @@ export default function TransactionsBody() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const now = new Date();
+  const now = appNow();
   const urlYear = searchParams.get("year");
   const urlMonth = searchParams.get("month");
   const [year, setYear] = useState(() => {
@@ -209,17 +209,18 @@ export default function TransactionsBody() {
     walk(categoriesData?.userCategories ?? []);
     return m;
   }, [categoriesData]);
-  // Sync year/month from URL when navigating back from edit
-  useEffect(() => {
-    if (urlYear && urlMonth) {
-      const y = parseInt(urlYear, 10);
-      const m = parseInt(urlMonth, 10);
-      if (!isNaN(y) && y >= 2000 && y <= 2100 && !isNaN(m) && m >= 1 && m <= 12) {
-        setYear(y);
-        setMonth(m - 1);
-      }
+  // Sync year/month from URL when navigating back from edit (ajuste de estado en render).
+  const urlPeriod = urlYear && urlMonth ? `${urlYear}-${urlMonth}` : null;
+  const [prevUrlPeriod, setPrevUrlPeriod] = useState(urlPeriod);
+  if (urlPeriod !== prevUrlPeriod) {
+    setPrevUrlPeriod(urlPeriod);
+    const y = parseInt(urlYear ?? "", 10);
+    const m = parseInt(urlMonth ?? "", 10);
+    if (!isNaN(y) && y >= 2000 && y <= 2100 && !isNaN(m) && m >= 1 && m <= 12) {
+      setYear(y);
+      setMonth(m - 1);
     }
-  }, [urlYear, urlMonth]);
+  }
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
@@ -290,7 +291,7 @@ export default function TransactionsBody() {
   };
 
   const handleToday = () => {
-    const today = new Date();
+    const today = appNow();
     const newYear = today.getFullYear();
     const newMonth = today.getMonth();
     setYear(newYear);
@@ -298,19 +299,24 @@ export default function TransactionsBody() {
     router.replace(`/transactions?year=${newYear}&month=${newMonth + 1}`, { scroll: false });
   };
 
-  changeMonthRef.current = changeMonth;
+  useLayoutEffect(() => {
+    changeMonthRef.current = changeMonth;
+  });
+
+  // useEffectEvent: el listener se registra una vez y siempre ve el mes actual.
+  const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if (e.key === "ArrowLeft") changeMonth(-1);
+    else if (e.key === "ArrowRight") changeMonth(1);
+    else if (e.key === "ArrowDown") handleToday();
+  });
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (e.key === "ArrowLeft") changeMonth(-1);
-      else if (e.key === "ArrowRight") changeMonth(1);
-      else if (e.key === "ArrowDown") handleToday();
-    };
+    const handleKeyDown = (e: KeyboardEvent) => onKeyDown(e);
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [month, year]);
+  }, []);
 
   const prefetchMonth = (delta: number) => {
     let newMonth = month + delta;

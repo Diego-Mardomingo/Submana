@@ -6,7 +6,7 @@ import { useDeleteAccount } from "@/hooks/useAccountMutations";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
-import { parseDateString } from "@/lib/date";
+import { parseDateString, appNow } from "@/lib/date";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertDialog,
@@ -88,6 +88,23 @@ function transactionMonthKey(dateStr: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+function groupTransactionsByMonthAndDay(txs: TransactionItem[]) {
+    const sorted = [...txs].sort((a, b) => parseDateString(b.date).getTime() - parseDateString(a.date).getTime());
+    const byMonth: Record<string, Record<string, TransactionItem[]>> = {};
+
+    for (const tx of sorted) {
+      const d = parseDateString(tx.date);
+      const monthKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
+      const dayKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+
+      if (!byMonth[monthKey]) byMonth[monthKey] = {};
+      if (!byMonth[monthKey][dayKey]) byMonth[monthKey][dayKey] = [];
+      byMonth[monthKey][dayKey].push(tx);
+    }
+
+    return byMonth;
+}
+
 export default function AccountDetail({ account }: { account: Account }) {
   useScrollRestore();
   const lang = useLang();
@@ -133,13 +150,6 @@ export default function AccountDetail({ account }: { account: Account }) {
     return `${formatted} €`;
   };
 
-  const formatDate = (dateStr: string) => {
-    const d = parseDateString(dateStr);
-    const day = d.getDate().toString().padStart(2, "0");
-    const month = (d.getMonth() + 1).toString().padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
 
   const formatMonthYear = (dateStr: string) => {
     const d = parseDateString(dateStr);
@@ -171,29 +181,16 @@ export default function AccountDetail({ account }: { account: Account }) {
     return () => window.clearTimeout(cleanupTimer);
   }, [shouldScrollToImport, shouldAutoOpenFilePicker, router, account.id]);
 
-  const groupTransactionsByMonthAndDay = (txs: TransactionItem[]) => {
-    const sorted = [...txs].sort((a, b) => parseDateString(b.date).getTime() - parseDateString(a.date).getTime());
-    const byMonth: Record<string, Record<string, TransactionItem[]>> = {};
-
-    for (const tx of sorted) {
-      const d = parseDateString(tx.date);
-      const monthKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
-      const dayKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
-
-      if (!byMonth[monthKey]) byMonth[monthKey] = {};
-      if (!byMonth[monthKey][dayKey]) byMonth[monthKey][dayKey] = [];
-      byMonth[monthKey][dayKey].push(tx);
-    }
-
-    return byMonth;
-  };
 
   const handleDelete = async () => {
     await deleteAccount.mutateAsync(account.id);
     router.push("/accounts");
   };
 
-  const groupedTransactions = groupTransactionsByMonthAndDay(transactions as TransactionItem[]);
+  const groupedTransactions = useMemo(
+    () => groupTransactionsByMonthAndDay(transactions as TransactionItem[]),
+    [transactions]
+  );
 
   const monthsWithTransactions = useMemo(() => {
     const txs = transactions as TransactionItem[];
@@ -283,7 +280,7 @@ export default function AccountDetail({ account }: { account: Account }) {
     return m;
   }, [categoriesData]);
 
-  const now = new Date();
+  const now = appNow();
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 

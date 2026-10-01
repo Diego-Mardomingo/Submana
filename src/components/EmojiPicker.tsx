@@ -34,21 +34,24 @@ export default function EmojiPicker({ value, onChange, className, open: controll
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = (v: boolean) => {
-    // #region agent log
-    if (v === false) fetch("http://127.0.0.1:7758/ingest/a39ccdc9-d118-4e4b-9fd3-e3cdc92e95b3",{method:"POST",headers:{"Content-Type":"application/json","X-Debug-Session-Id":"f06c04"},body:JSON.stringify({sessionId:"f06c04",location:"EmojiPicker.tsx:setOpen",message:"popover closing",data:{isControlled},timestamp:Date.now(),hypothesisId:"H2"})}).catch(()=>{});
-    // #endregion
     if (!isControlled) setInternalOpen(v);
     onOpenChange?.(v);
   };
-  const [inputVal, setInputVal] = useState("");
+  const [inputVal, setInputVal] = useState(value || "");
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Al abrir, el input arranca con el valor actual (ajuste de estado en render).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) setInputVal(value || "");
+  }
+
   useEffect(() => {
-    if (open) {
-      setInputVal(value || "");
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
-  }, [open, value]);
+    if (!open) return;
+    const timer = setTimeout(() => inputRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
+  }, [open]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;

@@ -13,13 +13,14 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
+import { appNow } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 export default function DashboardSpendingForecast() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const { data: transactions = [], isLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: categoriesData } = useCategories();
 
@@ -32,7 +33,7 @@ export default function DashboardSpendingForecast() {
       defaultCategories: categoriesData?.defaultCategories ?? [],
       userCategories: categoriesData?.userCategories ?? [],
     };
-    const today = new Date();
+    const today = appNow();
     const dayOfMonth = today.getDate();
     const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 

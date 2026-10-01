@@ -6,3 +6,6 @@ export function useTranslations(lang: Lang) {
     return (ui[lang]?.[key] as string) ?? (ui[defaultLang][key] as string) ?? key;
   };
 }
+
+/** Mismo traductor para Server Components (no es un hook). */
+export const getTranslations = useTranslations;

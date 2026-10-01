@@ -3,21 +3,30 @@
 import {
   createContext,
   useContext,
-  useState,
   useEffect,
   useCallback,
+  useMemo,
+  useSyncExternalStore,
 } from "react";
 import type { Lang } from "@/lib/i18n/ui";
 
 const COOKIE_NAME = "submana-lang";
 
 function getLangFromStorage(): Lang {
-  if (typeof document === "undefined") return "en";
   const match = document.cookie.match(
     new RegExp(`(?:^|; )${COOKIE_NAME}=([^;]*)`)
   );
   const value = match ? decodeURIComponent(match[1]) : null;
   return value === "es" ? "es" : "en";
+}
+
+// La cookie es la fuente de verdad; los suscriptores se avisan al cambiarla.
+const listeners = new Set<() => void>();
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  return () => {
+    listeners.delete(onChange);
+  };
 }
 
 type LangContextValue = {
@@ -28,21 +37,20 @@ type LangContextValue = {
 const LangContext = createContext<LangContextValue | null>(null);
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("en");
-  const [mounted, setMounted] = useState(false);
+  // En servidor e hidratación "en"; después, el valor de la cookie.
+  const lang = useSyncExternalStore<Lang>(subscribe, getLangFromStorage, () => "en");
 
   useEffect(() => {
-    setLangState(getLangFromStorage());
-    setMounted(true);
-  }, []);
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   const setLang = useCallback((newLang: Lang) => {
-    setLangState(newLang);
     localStorage.setItem(COOKIE_NAME, newLang);
     document.cookie = `${COOKIE_NAME}=${newLang}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    listeners.forEach((listener) => listener());
   }, []);
 
-  const value = mounted ? { lang, setLang } : { lang: "en" as Lang, setLang };
+  const value = useMemo(() => ({ lang, setLang }), [lang, setLang]);
 
   return (
     <LangContext.Provider value={value}>

@@ -49,7 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
-import { BANK_PROVIDER_LIST, getBankProvider, type BankProvider } from "@/lib/bankProviders";
+import { BANK_PROVIDER_LIST, getBankProvider } from "@/lib/bankProviders";
 import {
   Select,
   SelectContent,
@@ -170,12 +170,17 @@ export default function AccountsBody() {
     resetForm();
   };
 
+  // ?open=create (atajos): abrir el modal al detectar el parámetro (ajuste de estado en render,
+  // sin setState dentro de un effect) y limpiar la URL en un effect.
+  const wantsCreate = searchParams.get("open") === "create";
+  const [handledCreateParam, setHandledCreateParam] = useState(false);
+  if (wantsCreate !== handledCreateParam) {
+    setHandledCreateParam(wantsCreate);
+    if (wantsCreate) openModal("create");
+  }
   useEffect(() => {
-    if (searchParams.get("open") === "create") {
-      openModal("create");
-      router.replace("/accounts", { scroll: false });
-    }
-  }, [searchParams, router]);
+    if (wantsCreate) router.replace("/accounts", { scroll: false });
+  }, [wantsCreate, router]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,10 +196,13 @@ export default function AccountsBody() {
         bank_provider: formData.bank_provider || null,
       });
     } else if (formData.id) {
+      // Solo enviar el saldo si cambió (evita pisar cambios concurrentes de importaciones).
+      const original = Number(currentAccount?.balance ?? 0);
+      const balanceChanged = Math.round(balance * 100) !== Math.round(original * 100);
       await updateAccount.mutateAsync({
         id: formData.id,
         name: formData.name,
-        balance,
+        ...(balanceChanged ? { balance } : {}),
         icon: formData.icon || undefined,
         color: formData.color,
         bank_provider: formData.bank_provider || null,

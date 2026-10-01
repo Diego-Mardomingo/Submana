@@ -7,7 +7,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useRouter } from "next/navigation";
-import { toDateString } from "@/lib/date";
+import { toDateString, parseDateString } from "@/lib/date";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
   Dialog,
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 
 interface Account {
   id: string;
@@ -44,77 +45,68 @@ function setToNoon(d: Date) {
 
 function isSubActive(sub: Sub) {
   const current = setToNoon(new Date());
-  const start = setToNoon(new Date(sub.start_date));
+  const start = setToNoon(parseDateString(sub.start_date));
   if (start > current) return false;
   if (sub.end_date) {
-    const end = setToNoon(new Date(sub.end_date));
+    const end = setToNoon(parseDateString(sub.end_date));
     if (end < current) return false;
   }
   return true;
 }
 
+/**
+ * Fecha del pago número n (0 = start). Se calcula siempre desde la fecha de inicio y se
+ * acota al último día del mes (31 ene → 28/29 feb → 31 mar), igual que el calendario.
+ * Sumar meses de forma acumulada con setMonth hacía derivar el día (31 ene → 3 mar → 3 abr).
+ */
+function nthPaymentDate(sub: Sub, start: Date, n: number): Date | null {
+  const freqVal = Math.max(1, sub.frequency_value || 1);
+  if (sub.frequency === "weekly") {
+    const d = new Date(start);
+    d.setDate(d.getDate() + 7 * freqVal * n);
+    return d;
+  }
+  const monthsToAdd =
+    sub.frequency === "monthly" ? freqVal * n : sub.frequency === "yearly" ? 12 * freqVal * n : null;
+  if (monthsToAdd === null) return null;
+  const firstOfTarget = new Date(start.getFullYear(), start.getMonth() + monthsToAdd, 1, 12, 0, 0);
+  const daysInMonth = new Date(firstOfTarget.getFullYear(), firstOfTarget.getMonth() + 1, 0).getDate();
+  firstOfTarget.setDate(Math.min(start.getDate(), daysInMonth));
+  return firstOfTarget;
+}
+
 function getNextPaymentDate(sub: Sub): Date | null {
   const today = setToNoon(new Date());
-  const start = setToNoon(new Date(sub.start_date));
-  
+  const start = setToNoon(parseDateString(sub.start_date));
+
   if (start > today) return start;
-  if (sub.end_date) {
-    const end = setToNoon(new Date(sub.end_date));
-    if (end < today) return null;
+  const end = sub.end_date ? setToNoon(parseDateString(sub.end_date)) : null;
+  if (end && end < today) return null;
+
+  let next: Date | null = start;
+  for (let n = 1; next && next <= today; n++) {
+    next = nthPaymentDate(sub, start, n);
   }
-
-  const freqVal = sub.frequency_value || 1;
-  let nextDate = new Date(start);
-
-  while (nextDate <= today) {
-    if (sub.frequency === "weekly") {
-      nextDate.setDate(nextDate.getDate() + 7 * freqVal);
-    } else if (sub.frequency === "monthly") {
-      nextDate.setMonth(nextDate.getMonth() + freqVal);
-    } else if (sub.frequency === "yearly") {
-      nextDate.setFullYear(nextDate.getFullYear() + freqVal);
-    } else {
-      break;
-    }
-  }
-
-  if (sub.end_date) {
-    const end = setToNoon(new Date(sub.end_date));
-    if (nextDate > end) return null;
-  }
-
-  return nextDate;
+  if (!next || (end && next > end)) return null;
+  return next;
 }
 
 function calculateTotalSpent(sub: Sub): number {
   const today = setToNoon(new Date());
-  const start = setToNoon(new Date(sub.start_date));
-  const end = sub.end_date ? setToNoon(new Date(sub.end_date)) : today;
-  
+  const start = setToNoon(parseDateString(sub.start_date));
+  const end = sub.end_date ? setToNoon(parseDateString(sub.end_date)) : today;
+
   if (start > today) return 0;
-  
+
   const effectiveEnd = end < today ? end : today;
-  const cost = Number(sub.cost);
-  const freqVal = sub.frequency_value || 1;
-  
   let paymentCount = 0;
-  let currentDate = new Date(start);
-  
-  while (currentDate <= effectiveEnd) {
+  for (let n = 0; ; n++) {
+    const date = nthPaymentDate(sub, start, n);
+    if (!date || date > effectiveEnd) break;
     paymentCount++;
-    
-    if (sub.frequency === "weekly") {
-      currentDate.setDate(currentDate.getDate() + 7 * freqVal);
-    } else if (sub.frequency === "monthly") {
-      currentDate.setMonth(currentDate.getMonth() + freqVal);
-    } else if (sub.frequency === "yearly") {
-      currentDate.setFullYear(currentDate.getFullYear() + freqVal);
-    } else {
-      break;
-    }
   }
-  
-  return cost * paymentCount;
+
+  return Number(sub.cost) * paymentCount;
 }
 
 export default function SubscriptionDetail({ sub }: { sub: Sub }) {
@@ -188,7 +180,7 @@ export default function SubscriptionDetail({ sub }: { sub: Sub }) {
         {/* Header with Icon and Name */}
         <div className="subs-detail-header">
           <div className="subs-detail-icon">
-            <img src={sub.icon || "/placeholder-icon.png"} alt={sub.service_name} />
+            <img src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt={sub.service_name} />
           </div>
           <h1 className="subs-detail-name">{sub.service_name}</h1>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
