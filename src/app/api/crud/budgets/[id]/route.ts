@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse } from "@/lib/apiHelpers";
+import { areAccessibleCategories, jsonError, jsonServerError, jsonResponse } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 import { computeBudgetSpent, type CategoryRow } from "@/lib/budgetHelpers";
 
@@ -101,6 +101,13 @@ export async function PATCH(
     return jsonError("Budget not found", 404);
   }
 
+  const newCategoryIds = Array.isArray(body.category_ids)
+    ? body.category_ids.filter((c): c is string => typeof c === "string")
+    : null;
+  if (newCategoryIds && !(await areAccessibleCategories(supabase, user.id, newCategoryIds))) {
+    return jsonError("invalid_category");
+  }
+
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.amount !== undefined) {
     const num = typeof body.amount === "number" ? body.amount : parseFloat(String(body.amount));
@@ -117,16 +124,21 @@ export async function PATCH(
     .eq("user_id", user.id);
 
   if (updateError) {
-    return jsonError(updateError.message, 500);
+    return jsonServerError("/api/crud/budgets/[id]", updateError);
   }
 
-  if (Array.isArray(body.category_ids)) {
-    const newCategoryIds = body.category_ids.filter((c): c is string => typeof c === "string");
-    await supabase.from("budget_categories").delete().eq("budget_id", id);
+  if (newCategoryIds) {
+    const { error: deleteError } = await supabase.from("budget_categories").delete().eq("budget_id", id);
+    if (deleteError) {
+      return jsonServerError("/api/crud/budgets/[id]", deleteError);
+    }
     if (newCategoryIds.length > 0) {
-      await supabase.from("budget_categories").insert(
+      const { error: insertError } = await supabase.from("budget_categories").insert(
         newCategoryIds.map((category_id) => ({ budget_id: id, category_id }))
       );
+      if (insertError) {
+        return jsonServerError("/api/crud/budgets/[id]", insertError);
+      }
     }
   }
 
@@ -194,7 +206,7 @@ export async function DELETE(
     .eq("user_id", user.id);
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/budgets/[id]", error);
   }
 
   return jsonResponse({ data: { success: true } });

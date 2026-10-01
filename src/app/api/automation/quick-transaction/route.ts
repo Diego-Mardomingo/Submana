@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonResponse, jsonServerError, parseRequestBody } from "@/lib/apiHelpers";
+import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { NextRequest } from "next/server";
 import { createHash } from "crypto";
 
@@ -7,6 +8,14 @@ function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
+function clientIp(request: NextRequest): string {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+}
+
+/**
+ * Crea un gasto desde automatizaciones (Atajos, etc.) autenticando con token Bearer.
+ * Usa service role (sin RLS): toda autorización se hace aquí filtrando por el user_id del token.
+ */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
@@ -26,72 +35,77 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const tokenHash = hashToken(token);
-  const { data: tokenRow, error: tokenError } = await admin
+  const { data: tokenRow } = await admin
     .from("api_tokens")
-    .select("user_id")
-    .eq("token_hash", tokenHash)
-    .single();
+    .select("id, user_id")
+    .eq("token_hash", hashToken(token))
+    .maybeSingle();
 
-  if (tokenError || !tokenRow) {
+  if (!tokenRow) {
+    const limited = await enforceRateLimit(
+      `automation-auth-fail:${clientIp(request)}`,
+      RATE_LIMITS.automationAuthFailure.limit,
+      RATE_LIMITS.automationAuthFailure.windowSeconds
+    );
+    if (limited) return limited;
     return jsonError("Invalid or expired token", 401);
   }
 
   const userId = tokenRow.user_id as string;
 
+  const limited = await enforceRateLimit(
+    `automation:${userId}`,
+    RATE_LIMITS.automation.limit,
+    RATE_LIMITS.automation.windowSeconds
+  );
+  if (limited) return limited;
+
+  await admin.from("api_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", tokenRow.id);
+
   const { body } = await parseRequestBody(request);
   const amountRaw = body.amount;
-  const description = body.description ?? null;
+  const description = body.description ? String(body.description).slice(0, 500) : null;
   const accountId = body.accountId ?? body.account_id ?? null;
 
   const amountNormalized = amountRaw !== "" && amountRaw != null ? String(amountRaw).replace(",", ".") : "";
   const amount = amountNormalized !== "" ? parseFloat(amountNormalized) : NaN;
-  if (isNaN(amount)) {
-    await logNotification(admin, userId, false, null, "Missing or invalid amount", amountRaw !== "" ? Number(amountRaw) : null, description, accountId);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    await logNotification(admin, userId, false, null, "Missing or invalid amount", null, description, null);
     return jsonError("Missing or invalid amount", 400);
   }
 
-  if (!accountId || accountId === "") {
+  if (!accountId) {
     await logNotification(admin, userId, false, null, "Missing accountId", amount, description, null);
     return jsonError("Missing accountId", 400);
   }
 
-  const { data: account, error: accountError } = await admin
+  const { data: account } = await admin
     .from("accounts")
-    .select("id, balance")
+    .select("id")
     .eq("id", accountId)
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
-  if (accountError || !account) {
-    await logNotification(admin, userId, false, null, "Account not found or access denied", amount, description, accountId);
+  if (!account) {
+    await logNotification(admin, userId, false, null, "Account not found or access denied", amount, description, null);
     return jsonError("Account not found or access denied", 404);
   }
 
-  const date = new Date().toISOString().slice(0, 10);
-  const type = "expense";
+  // Instante completo: el día UTC (toISOString().slice(0, 10)) caía en el día anterior
+  // para gastos hechos entre las 00:00 y las 02:00 en Madrid.
+  const { data: insertedData, error: insertError } = await admin.rpc("create_transaction_with_balance", {
+    p_user_id: userId,
+    p_account_id: accountId,
+    p_amount: amount,
+    p_type: "expense",
+    p_date: new Date().toISOString(),
+    p_description: description,
+  });
 
-  const { data: insertedData, error: insertError } = await admin
-    .from("transactions")
-    .insert({
-      user_id: userId,
-      amount,
-      type,
-      date,
-      description: description || null,
-      account_id: accountId,
-    })
-    .select()
-    .single();
-
-  if (insertError) {
-    await logNotification(admin, userId, false, null, insertError.message, amount, description, accountId);
-    return jsonError(insertError.message, 500);
+  if (insertError || !insertedData?.id) {
+    await logNotification(admin, userId, false, null, "Could not create transaction", amount, description, accountId);
+    return jsonServerError("automation/quick-transaction", insertError);
   }
-
-  const currentBalance = Number(account.balance);
-  const newBalance = currentBalance - amount;
-  await admin.from("accounts").update({ balance: newBalance }).eq("id", accountId);
 
   await logNotification(admin, userId, true, insertedData.id, null, amount, description, accountId);
 

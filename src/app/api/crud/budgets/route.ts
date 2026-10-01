@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse } from "@/lib/apiHelpers";
+import { areAccessibleCategories, jsonError, jsonServerError, jsonResponse, jsonCachedResponse } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
-import { computeBudgetSpent, type CategoryRow } from "@/lib/budgetHelpers";
+import { computeBudgetSpent, computeBudgetsSpent, type CategoryRow } from "@/lib/budgetHelpers";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
@@ -17,6 +17,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const monthParam = searchParams.get("month"); // YYYY-MM
   const now = new Date();
+  if (monthParam && !/^\d{4}-(0[1-9]|1[0-2])$/.test(monthParam)) {
+    return jsonError("invalid_month");
+  }
   const year = monthParam ? parseInt(monthParam.slice(0, 4), 10) : now.getFullYear();
   const month = monthParam ? parseInt(monthParam.slice(5, 7), 10) : now.getMonth() + 1;
 
@@ -28,7 +31,7 @@ export async function GET(request: NextRequest) {
     .order("created_at", { ascending: true });
 
   if (budgetsError) {
-    return jsonError(budgetsError.message, 500);
+    return jsonServerError("/api/crud/budgets", budgetsError);
   }
 
   const list = budgets ?? [];
@@ -55,27 +58,22 @@ export async function GET(request: NextRequest) {
     .or("user_id.eq." + user.id + ",user_id.is.null");
   const allCategories: CategoryRow[] = categoriesRows ?? [];
 
-  const result = await Promise.all(
-    list.map(async (budget) => {
-      const categoryIds = categoriesByBudget.get(budget.id) ?? [];
-      const spent = await computeBudgetSpent(
-        supabase,
-        user.id,
-        categoryIds,
-        allCategories,
-        year,
-        month
-      );
-      return {
-        ...budget,
-        amount: Number(budget.amount),
-        categoryIds,
-        spent,
-      };
-    })
+  const spentByBudget = await computeBudgetsSpent(
+    supabase,
+    user.id,
+    list.map((budget) => ({ id: budget.id, categoryIds: categoriesByBudget.get(budget.id) ?? [] })),
+    allCategories,
+    year,
+    month
   );
+  const result = list.map((budget) => ({
+    ...budget,
+    amount: Number(budget.amount),
+    categoryIds: categoriesByBudget.get(budget.id) ?? [],
+    spent: spentByBudget.get(budget.id) ?? 0,
+  }));
 
-  return jsonCachedResponse({ data: result }, 200, 60, 300);
+  return jsonCachedResponse({ data: result });
 }
 
 export async function POST(request: NextRequest) {
@@ -97,8 +95,6 @@ export async function POST(request: NextRequest) {
       return jsonError("Invalid JSON body");
     }
 
-    console.log("[POST /api/crud/budgets] body:", JSON.stringify(body));
-
     const amount =
       typeof body.amount === "number"
         ? body.amount
@@ -117,11 +113,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (isNaN(amount) || amount < 0) {
+    if (!Number.isFinite(amount) || amount < 0) {
       return jsonError("missing_fields");
     }
 
-    console.log("[POST /api/crud/budgets] Creating budget with:", { amount, color, categoryIds });
+    if (!(await areAccessibleCategories(supabase, user.id, categoryIds))) {
+      return jsonError("invalid_category");
+    }
 
     const now = new Date().toISOString();
     const name = categoryIds.length > 0 ? `Budget (${categoryIds.length} categories)` : "General Budget";
@@ -149,10 +147,8 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error("[POST /api/crud/budgets] Insert error:", insertError);
-      return jsonError(insertError.message, 500);
+      return jsonServerError("/api/crud/budgets", insertError);
     }
-
-    console.log("[POST /api/crud/budgets] Inserted budget:", inserted);
 
     if (categoryIds.length > 0) {
       const rows = categoryIds.map((category_id) => ({
@@ -163,7 +159,7 @@ export async function POST(request: NextRequest) {
       if (relError) {
         console.error("[POST /api/crud/budgets] Category relation error:", relError);
         await supabase.from("budgets").delete().eq("id", inserted.id);
-        return jsonError(relError.message, 500);
+        return jsonServerError("/api/crud/budgets", relError);
       }
     }
 
@@ -196,6 +192,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("[POST /api/crud/budgets] Unexpected error:", error);
-    return jsonError(error instanceof Error ? error.message : "Internal server error", 500);
+    return jsonServerError("/api/crud/budgets", error);
   }
 }

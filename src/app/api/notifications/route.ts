@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse } from "@/lib/apiHelpers";
 
 export async function GET() {
   const supabase = await createClient();
@@ -32,7 +32,7 @@ export async function GET() {
     .limit(100);
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/notifications", error);
   }
 
   return jsonResponse({ data: notifications ?? [] }, 200);

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonResponse, jsonServerError, parseRequestBody } from "@/lib/apiHelpers";
 import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
 import { NextRequest } from "next/server";
 
@@ -12,8 +12,6 @@ function compareYearMonth(
   if (aY !== bY) return aY - bY;
   return aM - bM;
 }
-
-const DELETE_CHUNK = 500;
 
 export async function DELETE(
   request: NextRequest,
@@ -36,7 +34,7 @@ export async function DELETE(
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, balance")
+    .select("id")
     .eq("id", accountId)
     .eq("user_id", user.id)
     .single();
@@ -88,60 +86,17 @@ export async function DELETE(
     rangeEndExclusiveIso = bounds.endExclusiveIso;
   }
 
-  let txQuery = supabase
-    .from("transactions")
-    .select("id, amount, type")
-    .eq("user_id", user.id)
-    .eq("account_id", accountId);
+  // Borrado y reversión del saldo en una sola transacción de Postgres.
+  const { data: deletedCount, error } = await supabase.rpc("delete_account_transactions", {
+    p_account_id: accountId,
+    p_user_id: user.id,
+    p_from: rangeStartIso ?? null,
+    p_to: rangeEndExclusiveIso ?? null,
+  });
 
-  if (rangeStartIso !== undefined && rangeEndExclusiveIso !== undefined) {
-    txQuery = txQuery
-      .gte("date", rangeStartIso)
-      .lt("date", rangeEndExclusiveIso);
+  if (error) {
+    return jsonServerError("DELETE /api/crud/accounts/[id]/transactions", error);
   }
 
-  const { data: transactions, error: selectError } = await txQuery;
-
-  if (selectError) {
-    return jsonError(selectError.message, 500);
-  }
-
-  const rows = transactions ?? [];
-  if (rows.length === 0) {
-    return jsonResponse({ data: { deleted_count: 0 } });
-  }
-
-  let balanceDelta = 0;
-  for (const tx of rows) {
-    const amt = Number(tx.amount);
-    if (tx.type === "income") balanceDelta -= amt;
-    else balanceDelta += amt;
-  }
-
-  const ids = rows.map((r) => r.id);
-  for (let i = 0; i < ids.length; i += DELETE_CHUNK) {
-    const chunk = ids.slice(i, i + DELETE_CHUNK);
-    const { error: delError } = await supabase
-      .from("transactions")
-      .delete()
-      .in("id", chunk)
-      .eq("user_id", user.id);
-
-    if (delError) {
-      return jsonError(delError.message, 500);
-    }
-  }
-
-  const newBalance = Number(account.balance) + balanceDelta;
-  const { error: updateError } = await supabase
-    .from("accounts")
-    .update({ balance: newBalance })
-    .eq("id", accountId)
-    .eq("user_id", user.id);
-
-  if (updateError) {
-    return jsonError(updateError.message, 500);
-  }
-
-  return jsonResponse({ data: { deleted_count: rows.length } });
+  return jsonResponse({ data: { deleted_count: Number(deletedCount ?? 0) } });
 }

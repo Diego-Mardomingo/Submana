@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 	const { data, error } = await query;
 
 	if (error) {
-		return jsonError(error.message, 500);
+		return jsonServerError("/api/import/duplicate-decisions", error);
 	}
 
 	return jsonResponse({ data: data ?? [] }, 200);
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
 		.single();
 
 	if (error) {
-		return jsonError(error.message, 500);
+		return jsonServerError("/api/import/duplicate-decisions", error);
 	}
 
 	return jsonResponse({ data }, 200);
@@ -118,7 +118,7 @@ export async function DELETE(request: NextRequest) {
 		.eq("conflict_key", conflictKey);
 
 	if (error) {
-		return jsonError(error.message, 500);
+		return jsonServerError("/api/import/duplicate-decisions", error);
 	}
 
 	return jsonResponse({ data: { success: true } }, 200);

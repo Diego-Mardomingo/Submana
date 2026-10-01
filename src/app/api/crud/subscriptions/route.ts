@@ -1,5 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
+import {
+  isOwnedAccount,
+  jsonError, jsonServerError,
+  jsonResponse,
+  jsonCachedResponse,
+  parseRequestBody,
+} from "@/lib/apiHelpers";
+import { validateSubscriptionFields } from "@/lib/subscriptionValidation";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { NextRequest } from "next/server";
 
 export async function GET() {
@@ -20,10 +28,10 @@ export async function GET() {
     .order("id", { ascending: true });
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/subscriptions", error);
   }
 
-  return jsonCachedResponse({ data: subscriptions }, 200, 120, 600);
+  return jsonCachedResponse({ data: subscriptions });
 }
 
 export async function POST(request: NextRequest) {
@@ -49,7 +57,24 @@ export async function POST(request: NextRequest) {
     : 1;
   const accountId = body.account_id as string | null | undefined;
 
-  const defaultIcon = `https://ui-avatars.com/api/?name=${encodeURIComponent(service_name || "Sub")}&length=2&background=random&color=fff&size=256`;
+  if (!service_name || !startDate) {
+    return jsonError("missing_fields");
+  }
+  const validationError = validateSubscriptionFields({
+    cost,
+    frequency,
+    frequency_value: frequencyValue,
+    start_date: startDate,
+    end_date: endDate || null,
+  });
+  if (validationError) {
+    return jsonError(validationError);
+  }
+  if (accountId && !(await isOwnedAccount(supabase, user.id, accountId))) {
+    return jsonError("Account not found", 404);
+  }
+
+  const defaultIcon = initialsAvatarDataUri(service_name);
 
   const { data: insertedData, error } = await supabase
     .from("subscriptions")
@@ -68,7 +93,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/subscriptions", error);
   }
 
   return jsonResponse({ data: insertedData }, 201);

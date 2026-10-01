@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { jsonError, jsonServerError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
 
 export async function PATCH(
@@ -46,10 +46,14 @@ export async function PATCH(
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/categories/[id]", error);
+  }
+
+  if (!updatedData) {
+    return jsonError("not_found", 404);
   }
 
   return jsonResponse({ data: updatedData });
@@ -91,7 +95,7 @@ export async function DELETE(
     .eq("user_id", user.id);
 
   if (error) {
-    return jsonError(error.message, 500);
+    return jsonServerError("/api/crud/categories/[id]", error);
   }
 
   return jsonResponse({ data: { success: true } });
