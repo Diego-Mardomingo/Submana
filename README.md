@@ -1,150 +1,90 @@
-# Submana
-
-[![Built with Next.js](https://img.shields.io/badge/Built%20with-Next.js-000000?logo=next.js&logoColor=white)](https://nextjs.org)
-[![PWA](https://img.shields.io/badge/PWA-instalable-5A0FC8?logo=pwa&logoColor=white)](#)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-**Submana** es una aplicación PWA de finanzas personales que te permite registrar ingresos y gastos, gestionar tus cuentas bancarias, controlar tus suscripciones, definir presupuestos por categoría y analizar tus hábitos financieros a través de un completo dashboard con más de 16 gráficos interactivos.
-
 <div align="center">
-  <img width="128" src="public/favicon.svg" alt="Submana logo">
+  <img width="88" src="public/favicon.svg" alt="Submana">
+  <h1>Submana</h1>
+  <p>Finanzas personales sin hojas de cálculo.<br>Gastos, cuentas, suscripciones y presupuestos en una sola PWA.</p>
+  <p><a href="https://submana.vercel.app"><strong>submana.vercel.app</strong></a></p>
 </div>
-<div align="center" style="margin: 2rem 0;">
-  <a href="https://submana.vercel.app">
-    <img src="https://img.shields.io/badge/Visitar_Submana-8b5cf6?style=for-the-badge&logoColor=white" alt="Visitar Submana">
-  </a>
-</div>
+
+<!--
+  Capturas pendientes (con datos de demo): calendario, dashboard,
+  importación de extractos y vista móvil.
+-->
 
 ---
 
-## ✨ Lo que ofrece Submana
+## Qué es
 
-### 🗓️ Calendario interactivo
-Vista mensual que muestra las transacciones de cada día y los vencimientos de tus suscripciones. Puedes filtrar por cuenta y navegar entre meses con swipe en móvil o con las flechas del teclado.
+Submana nació para sustituir la hoja de cálculo con la que llevaba mis finanzas. Importa los extractos de mis bancos, detecta lo que ya estaba registrado y me deja ver de un vistazo en qué se va el dinero, qué suscripciones se cobran este mes y si voy a cumplir los presupuestos.
 
-### 📊 Dashboard analítico
-Más de 16 widgets de análisis financiero:
-- Tendencia del balance total y por cuenta
-- Comparación mensual de ingresos y gastos
-- Gastos diarios del mes actual
-- Distribución del balance por cuenta (donut)
-- Top categorías de gasto y top transacciones
-- Previsión de gasto a fin de mes
-- Proyección de ahorro anual
-- Scatter de gastos por día e importe
-- Flujo de caja neto del mes
+Es una aplicación real, en uso diario, instalable como PWA en móvil y escritorio.
 
-### 💸 Transacciones
-Registro de ingresos y gastos asociados a una cuenta y categoría. Navegación mensual con estadísticas de ingresos, gastos y balance del mes. Detección automática de transferencias entre cuentas propias.
+## Funcionalidades
 
-### 🔄 Suscripciones
-Gestión de servicios recurrentes (streaming, software, etc.) con frecuencia configurable. Muestra el coste mensual y anual agregado de todas las suscripciones activas, y marca sus fechas de cobro en el calendario.
+**Calendario.** Vista mensual con las transacciones de cada día y los próximos cobros de suscripciones, filtrable por cuenta.
 
-### 🏦 Cuentas bancarias
-Múltiples cuentas con nombre, color e icono personalizables. Reordenables mediante drag & drop. Importación automática de extractos bancarios reales:
+**Dashboard.** Evolución del balance total y por cuenta, comparativa de ingresos y gastos entre meses, gasto diario, categorías y transacciones con más peso, previsión de gasto a fin de mes y proyección de ahorro anual.
 
-| Banco / Broker | Formato |
+**Importación de extractos.** Sube el extracto del banco y Submana crea las transacciones, ajusta el saldo y te pide confirmación ante posibles duplicados.
+
+| Banco | Formato |
 |---|---|
 | Trade Republic | PDF |
-| Revolut | Excel o CSV |
+| Revolut | Excel / CSV |
 | BBVA | Excel |
 | Imagin | CSV |
 
-La importación detecta duplicados automáticamente y permite resolverlos manualmente antes de confirmar.
+**Suscripciones.** Servicios recurrentes con frecuencia semanal, mensual o anual (cada N periodos), coste mensual y anual agregado y fechas de cobro en el calendario.
 
-### 🎯 Presupuestos
-Presupuestos mensuales por categoría con barra de progreso visual y alertas cuando se supera el límite establecido. Reordenables mediante drag & drop.
+**Presupuestos y categorías.** Límites mensuales por categoría con progreso y avisos al superarlos. Categorías y subcategorías propias con emoji, archivables.
 
-### 🏷️ Categorías
-Categorías y subcategorías personalizables con emojis para clasificar tus transacciones.
+**Automatización.** Endpoint con token personal para registrar gastos desde fuera de la app, por ejemplo con un Atajo de iOS al pagar con el móvil.
 
----
+**Detalles.** Modo privacidad que oculta los importes, tema claro/oscuro, español e inglés, atajos de teclado, gestos de swipe y reordenación con drag & drop.
 
-## 📱 Experiencia de usuario
-
-- **PWA instalable** en móvil y escritorio, con soporte offline
-- **Diseño responsive**: bottom navigation en móvil, sidebar en escritorio
-- **Swipe** para revelar acciones de editar y eliminar en móvil
-- **Drag & drop** para reordenar cuentas y presupuestos
-- **Atajos de teclado** para toda la navegación (`f`, `d`, `q`, `a`, `c`, `s`, `e`, `z`, `x`)
-- **Temas** claro, oscuro y sistema — persistidos entre sesiones
-- **Multiidioma**: Español e Inglés con sistema i18n propio
-- **Animaciones** con Framer Motion y View Transitions API
-
----
-
-## 🛠 Stack tecnológico
-
-<div align="center">
-  <img src="https://img.shields.io/badge/Next.js_16-000000?logo=next.js&logoColor=white" alt="Next.js">
-  <img src="https://img.shields.io/badge/React_19-61DAFB?logo=react&logoColor=black" alt="React">
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Tailwind_v4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind">
-  <img src="https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white" alt="Supabase">
-  <img src="https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white" alt="Vercel">
-</div>
-
-| Categoría | Tecnologías |
-|---|---|
-| Framework | Next.js 16 (App Router) · React 19 |
-| Lenguaje | TypeScript |
-| Estilos | Tailwind CSS v4 · shadcn/ui · Radix UI |
-| Backend / Auth | Supabase (PostgreSQL + OAuth) |
-| Estado y datos | TanStack Query v5 |
-| Gráficos | Chart.js · react-chartjs-2 |
-| Formularios | React Hook Form · Zod |
-| Animaciones | Framer Motion · View Transitions API |
-| Drag & Drop | dnd-kit |
-| Importación | pdfjs-dist (PDF) · xlsx (Excel/CSV) |
-| PWA | Serwist |
-
----
-
-## 📁 Estructura del proyecto
+## Arquitectura
 
 ```
-src/
-├── app/
-│   ├── (auth)/              # Rutas protegidas (layout con navegación)
-│   │   ├── page.tsx         # Home — Calendario interactivo
-│   │   ├── dashboard/       # Dashboard con 16+ widgets
-│   │   ├── transactions/    # Historial de transacciones
-│   │   ├── subscriptions/   # Gestión de suscripciones
-│   │   ├── accounts/        # Grid de cuentas bancarias
-│   │   ├── account/[id]/    # Detalle de cuenta + importación de extracto
-│   │   ├── budgets/         # Presupuestos por categoría
-│   │   ├── categories/      # Categorías y subcategorías
-│   │   └── settings/        # Tema, idioma y sesión
-│   ├── api/                 # Endpoints de la API (CRUD, importación, reorden)
-│   ├── login/               # Página de autenticación OAuth
-│   ├── manifest/            # Manifest PWA dinámico
-│   └── ~offline/            # Página offline (PWA)
-├── components/
-│   ├── dashboard/           # Widgets del dashboard
-│   ├── home/                # Cards del Home (balance, resumen, budgets, donut)
-│   └── ui/                  # Componentes shadcn/ui personalizados
-├── hooks/                   # Hooks de datos (TanStack Query) y de UI
-├── lib/
-│   ├── parsers/             # Parsers de extractos bancarios
-│   ├── supabase/            # Cliente Supabase (server + browser)
-│   └── i18n/               # Sistema de traducciones ES/EN
-└── contexts/                # Filtro de cuentas del calendario y rango de tendencias
-supabase/migrations/         # RLS, RPCs atómicas de saldo, índices
+Next.js (App Router)  ──►  Route Handlers /api  ──►  Supabase (Postgres + Auth)
+        │                         │                        │
+ TanStack Query            validación, rate limit     RLS + funciones RPC
+ (caché + optimistic)      e importación               atómicas de saldo
 ```
 
-Comandos (pnpm): `pnpm dev`, `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
+Algunas decisiones que merece la pena contar:
+
+- **La base de datos es la última línea de defensa.** Todas las tablas tienen Row Level Security con `WITH CHECK` en las escrituras: una fila solo puede referenciar cuentas y categorías del propio usuario, aunque alguien llame a PostgREST directamente con su sesión y se salte la API.
+- **Saldos atómicos.** Crear, editar o borrar una transacción y ajustar el saldo de la cuenta ocurre en una única función de Postgres. Antes era leer-modificar-escribir desde la API, y una importación concurrente con una automatización podía perder actualizaciones o dejar saldos descuadrados.
+- **Importación idempotente.** Cada parser normaliza el extracto a un formato común y cada fila genera una clave estable. Volver a subir el mismo extracto, aunque el banco lo exporte con otra zona horaria, no duplica movimientos; los casos dudosos se resuelven a mano y la decisión se recuerda.
+- **Transferencias entre cuentas propias.** Un gasto y un ingreso del mismo importe en cuentas distintas y en una ventana de 48 h se emparejan (1:1, por cercanía temporal) y se excluyen de las métricas para no inflar ingresos ni gastos.
+- **Una sola zona horaria de referencia.** Las transacciones se guardan como `timestamptz` y los límites de cada mes se calculan como rangos semiabiertos en `Europe/Madrid`, para que el día 1 a medianoche no caiga en el mes anterior.
+- **UI optimista.** Las mutaciones actualizan la caché de TanStack Query al instante y hacen rollback si el servidor falla.
+- **Rate limiting en Postgres.** Ventana fija sobre una tabla, sin servicios externos. La automatización y la importación están limitadas por usuario, y los intentos con token inválido por IP.
+- **Tokens de automatización hasheados.** Solo se guarda el hash; el token en claro se muestra una vez.
+
+## Stack
+
+Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui · Supabase · TanStack Query · Chart.js · Framer Motion · dnd-kit · pdfjs · SheetJS · Serwist · Vitest · Vercel
+
+## Desarrollo
+
+Requiere Node 20+, pnpm y un proyecto de Supabase. Variables en `.env.local`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=   # automatización y rate limiting
+```
+
+```bash
+pnpm install
+pnpm dev          # servidor de desarrollo
+pnpm test         # tests (parsers y lógica de dominio)
+pnpm lint
+pnpm typecheck
+```
 
 ---
-
-## 📬 Contacto
 
 <div align="center">
-
-[![GitHub Profile](https://img.shields.io/badge/Diego_Mardomingo-181717?logo=github&logoColor=white&style=for-the-badge)](https://github.com/Diego-Mardomingo)
-[![View Project](https://img.shields.io/badge/Ver_Repositorio-181717?logo=github&logoColor=white&style=for-the-badge)](https://github.com/Diego-Mardomingo/Submana)
-
+  <sub>Hecho por <a href="https://github.com/Diego-Mardomingo">Diego Mardomingo</a></sub>
 </div>
-
----
-
-<sub>Tu feedback es bienvenido · Hecho con ❤️</sub>
