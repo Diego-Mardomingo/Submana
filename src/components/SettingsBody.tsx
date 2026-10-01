@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useSyncExternalStore } from "react";
 import { createBrowserClient } from "@supabase/ssr";
+import { useQueryClient } from "@tanstack/react-query";
 import { Sun, Moon, Monitor, LogOut, ChevronDown, Copy, KeyRound } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAccounts } from "@/hooks/useAccounts";
@@ -52,6 +53,14 @@ function getTheme(): Theme {
   return (localStorage.getItem(COOKIE_THEME) as Theme) || "system";
 }
 
+const themeListeners = new Set<() => void>();
+function subscribeToTheme(onChange: () => void) {
+  themeListeners.add(onChange);
+  return () => {
+    themeListeners.delete(onChange);
+  };
+}
+
 function getEffectiveTheme(theme: Theme): "light" | "dark" {
   return theme === "system" ? getSystemTheme() : theme;
 }
@@ -71,19 +80,20 @@ export default function SettingsBody() {
     user_metadata?: { name?: string; avatar_url?: string };
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<Theme>("system");
+  // Preferencia guardada en localStorage; "system" en servidor e hidratación.
+  const theme = useSyncExternalStore<Theme>(subscribeToTheme, getTheme, () => "system");
   const [sliderTransitionReady, setSliderTransitionReady] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [automationOpen, setAutomationOpen] = useState(false);
   const [automationHasToken, setAutomationHasToken] = useState<boolean | null>(null);
   const [tokenJustGenerated, setTokenJustGenerated] = useState<string | null>(null);
+  const [tokenLastUsedAt, setTokenLastUsedAt] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const { data: accounts = [] } = useAccounts();
+  const queryClient = useQueryClient();
 
   useLayoutEffect(() => {
-    const t = getTheme();
-    setTheme(t);
-    document.documentElement.setAttribute("data-theme", getEffectiveTheme(t));
+    document.documentElement.setAttribute("data-theme", getEffectiveTheme(getTheme()));
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => setSliderTransitionReady(true));
     });
@@ -101,8 +111,9 @@ export default function SettingsBody() {
     if (!user) return;
     fetch("/api/automation/token")
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { hasToken?: boolean } | null) => {
+      .then((data: { hasToken?: boolean; lastUsedAt?: string | null } | null) => {
         if (data && typeof data.hasToken === "boolean") setAutomationHasToken(data.hasToken);
+        setTokenLastUsedAt(data?.lastUsedAt ?? null);
       })
       .catch(() => setAutomationHasToken(false));
   }, [user]);
@@ -118,11 +129,11 @@ export default function SettingsBody() {
   }, [theme]);
 
   const handleThemeChange = (newTheme: Theme) => {
-    setTheme(newTheme);
     const effective = getEffectiveTheme(newTheme);
     document.documentElement.setAttribute("data-theme", effective);
     localStorage.setItem(COOKIE_THEME, newTheme);
     document.cookie = `${COOKIE_THEME}=${newTheme}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    themeListeners.forEach((listener) => listener());
   };
 
   const handleLangChange = (newLang: "en" | "es") => {
@@ -135,6 +146,18 @@ export default function SettingsBody() {
     await supabase.auth.signOut();
     document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    // No dejar datos del usuario en el dispositivo (páginas/RSC cacheadas por el SW, React Query).
+    queryClient.clear();
+    if ("caches" in window) {
+      try {
+        const names = await caches.keys();
+        await Promise.all(
+          names.filter((name) => name !== "static-assets" && name !== "fonts").map((name) => caches.delete(name))
+        );
+      } catch {
+        // Cache Storage puede no estar disponible (modo privado); el redirect sigue adelante.
+      }
+    }
     setSignOutOpen(false);
     window.location.href = "/login";
   };
@@ -156,7 +179,16 @@ export default function SettingsBody() {
     if (data.token) {
       setTokenJustGenerated(data.token);
       setAutomationHasToken(true);
+      setTokenLastUsedAt(null);
     }
+  };
+
+  const handleRevokeToken = async () => {
+    const res = await fetch("/api/automation/token", { method: "DELETE" });
+    if (!res.ok) return;
+    setAutomationHasToken(false);
+    setTokenJustGenerated(null);
+    setTokenLastUsedAt(null);
   };
 
   const automationEndpointUrl =
@@ -417,7 +449,16 @@ export default function SettingsBody() {
                         {automationHasToken ? t("settings.automation.regenerateToken") : t("settings.automation.generateToken")}
                       </Button>
                       {automationHasToken && (
-                        <span className="text-sm text-muted-foreground">{t("settings.automation.tokenConfigured")}</span>
+                        <>
+                          <Button type="button" variant="ghost" size="sm" onClick={handleRevokeToken}>
+                            {t("settings.automation.revokeToken")}
+                          </Button>
+                          <span className="text-sm text-muted-foreground">
+                            {tokenLastUsedAt
+                              ? `${t("settings.automation.lastUsed")} ${new Date(tokenLastUsedAt).toLocaleString(lang === "es" ? "es-ES" : "en-US", { dateStyle: "short", timeStyle: "short" })}`
+                              : t("settings.automation.tokenConfigured")}
+                          </span>
+                        </>
                       )}
                     </div>
                   )}

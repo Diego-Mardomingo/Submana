@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
@@ -91,12 +91,9 @@ export default function HomeCategoryDonutCard() {
 
   const nav = useMonthNavigation(lang, { periodUnit: period, swipeUnit: period });
 
-  const cardRefCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      nav.setSwipeElement(node);
-    },
-    [nav]
-  );
+  // Setter estable de useState usado como callback ref. Se extrae de `nav` para que el
+  // compilador de React no trate todo `nav` como una ref.
+  const { setSwipeElement: cardRefCallback } = nav;
 
   const { data: monthTransactions = [], isLoading: monthTxLoading, isFetching: monthTxFetching } = useTransactions(
     nav.year,

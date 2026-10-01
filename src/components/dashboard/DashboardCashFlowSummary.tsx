@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState, useCallback } from "react";
+import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
@@ -13,11 +13,12 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { Line } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { tooltipConfig, getChartColors } from "@/lib/chartConfig";
+import { tooltipConfig, useChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
 import styles from "./DashboardMonthNav.module.css";
+import { toAppDate } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -27,10 +28,9 @@ export default function DashboardCashFlowSummary() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const nav = useMonthNavigation(lang);
 
-  const cardRefCallback = useCallback(
-    (node: HTMLDivElement | null) => { nav.setSwipeElement(node); },
-    [nav.setSwipeElement]
-  );
+  // Setter estable de useState usado como callback ref. Se extrae de `nav` para que el
+  // compilador de React no trate todo `nav` como una ref.
+  const { setSwipeElement: cardRefCallback } = nav;
 
   const { data: transactions = [], isLoading } = useTransactions(nav.year, nav.month);
   const { data: categoriesData } = useCategories();
@@ -39,15 +39,12 @@ export default function DashboardCashFlowSummary() {
   const prevMonth = nav.month === 1 ? 12 : nav.month - 1;
   const { data: prevTransactions = [] } = useTransactions(prevYear, prevMonth);
 
-  const [colors, setColors] = useState({ success: "#10b981", danger: "#ef4444", muted: "#888" });
-  useEffect(() => {
-    const c = getChartColors();
-    setColors({
-      success: c.success || "#10b981",
-      danger: c.danger || "#ef4444",
-      muted: c.muted || "#888",
-    });
-  }, []);
+  const resolvedColors = useChartColors();
+  const colors = {
+    success: resolvedColors?.success || "#10b981",
+    danger: resolvedColors?.danger || "#ef4444",
+    muted: resolvedColors?.muted || "#888",
+  };
 
   const data = useMemo(() => {
     const ctx = {
@@ -90,7 +87,7 @@ export default function DashboardCashFlowSummary() {
     const dailyNet = new Array(daysInMonth).fill(0);
     for (const tx of forMetrics) {
       if (!tx.date) continue;
-      const d = new Date(tx.date);
+      const d = toAppDate(tx.date);
       const day = d.getDate() - 1;
       if (day >= 0 && day < daysInMonth) {
         const amt = Number(tx.amount) || 0;
@@ -98,11 +95,12 @@ export default function DashboardCashFlowSummary() {
       }
     }
 
+    const sparkline: number[] = [];
     let cumulative = 0;
-    const sparkline = dailyNet.map((v) => {
+    for (const v of dailyNet) {
       cumulative += v;
-      return Math.round(cumulative * 100) / 100;
-    });
+      sparkline.push(Math.round(cumulative * 100) / 100);
+    }
 
     return {
       income: Math.round(income * 100) / 100,

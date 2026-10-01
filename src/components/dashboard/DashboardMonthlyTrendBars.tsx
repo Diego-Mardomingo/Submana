@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
 import { formatCurrency } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
@@ -22,10 +22,11 @@ import { useLang } from "@/hooks/useLang";
 import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { Settings2 } from "lucide-react";
-import { tooltipConfig, axisConfig, gridConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { tooltipConfig, axisConfig, formatK, useChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
+import { appNow } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -36,18 +37,18 @@ export default function DashboardMonthlyTrendBars() {
   const lang = useLang();
   const t = useTranslations(lang);
   const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
-  const [chartColors, setChartColors] = useState({ success: "#10b981", danger: "#ef4444" });
-  useEffect(() => {
-    const c = getChartColors();
-    setChartColors({
-      success: c.success || "#10b981",
-      danger: c.danger || "#ef4444",
-    });
-  }, []);
+  const resolvedColors = useChartColors();
+  const chartColors = useMemo(
+    () => ({
+      success: resolvedColors?.success || "#10b981",
+      danger: resolvedColors?.danger || "#ef4444",
+    }),
+    [resolvedColors]
+  );
 
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const now = new Date();
+  const now = appNow();
   const defaultEndYear = now.getFullYear();
   const defaultEndMonth = now.getMonth() + 1;
   const startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);

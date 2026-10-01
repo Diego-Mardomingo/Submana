@@ -59,10 +59,13 @@ export default function AccountEditForm({ account }: { account: Account }) {
     const balanceNum = parseCurrencyValue(balance);
     if (!name) return;
 
+    // Solo enviar el saldo si el usuario lo cambió: si no, se pisarían importaciones o
+    // automatizaciones ocurridas desde que se abrió el formulario.
+    const balanceChanged = Math.round(balanceNum * 100) !== Math.round(Number(account.balance ?? 0) * 100);
     await updateAccount.mutateAsync({
       id: account.id,
       name,
-      balance: balanceNum,
+      ...(balanceChanged ? { balance: balanceNum } : {}),
       icon: icon || undefined,
       color,
       bank_provider: bankProvider || null,

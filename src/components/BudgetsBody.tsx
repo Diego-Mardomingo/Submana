@@ -38,7 +38,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -109,8 +108,8 @@ export default function BudgetsBody() {
   const { handleReorder } = useReorder<BudgetWithSpent>({ table: "budgets" });
 
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const defaultCategories = categoriesData?.defaultCategories ?? [];
-  const userCategories = categoriesData?.userCategories ?? [];
+  const defaultCategories = useMemo(() => categoriesData?.defaultCategories ?? [], [categoriesData]);
+  const userCategories = useMemo(() => categoriesData?.userCategories ?? [], [categoriesData]);
   const categoryOptions = useMemo(
     () => flattenCategoriesForSelect(defaultCategories, userCategories, lang),
     [defaultCategories, userCategories, lang]
@@ -203,12 +202,17 @@ export default function BudgetsBody() {
     }
   };
 
+  // ?open=create (atajos): abrir el modal al detectar el parámetro (ajuste de estado en render,
+  // sin setState dentro de un effect) y limpiar la URL en un effect.
+  const wantsCreate = searchParams.get("open") === "create";
+  const [handledCreateParam, setHandledCreateParam] = useState(false);
+  if (wantsCreate !== handledCreateParam) {
+    setHandledCreateParam(wantsCreate);
+    if (wantsCreate) openModal("create");
+  }
   useEffect(() => {
-    if (searchParams.get("open") === "create") {
-      openModal("create");
-      router.replace("/budgets", { scroll: false });
-    }
-  }, [searchParams, router]);
+    if (wantsCreate) router.replace("/budgets", { scroll: false });
+  }, [wantsCreate, router]);
 
   const closeModal = () => {
     setIsModalOpen(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BackButton } from "@/components/BackButton";
+import { safeInternalPath } from "@/lib/apiHelpers";
 
 interface TransactionFormProps {
   editData?: {
@@ -67,10 +68,11 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
   const [subcategoryId, setSubcategoryId] = useState(editData?.subcategory_id || "none");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const def = (accounts as Array<{ id: string; is_default?: boolean }>).find((a) => a.is_default);
-    if (!editData && !accountId && def) setAccountId(def.id);
-  }, [accounts, accountId, editData]);
+  // Sin elección explícita, una transacción nueva usa la cuenta por defecto.
+  const defaultAccountId = editData
+    ? ""
+    : (accounts as Array<{ id: string; is_default?: boolean }>).find((a) => a.is_default)?.id ?? "";
+  const effectiveAccountId = accountId || defaultAccountId;
 
   const subcategories = categories.find((c) => c.id === categoryId)?.subcategories || [];
 
@@ -78,7 +80,7 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
     e.preventDefault();
     setError("");
     const num = parseCurrencyValue(amount);
-    if (num <= 0 || !date || !accountId) {
+    if (num <= 0 || !date || !effectiveAccountId) {
       setError(lang === "es" ? "Por favor, completa todos los campos obligatorios" : "Please fill all required fields");
       return;
     }
@@ -87,7 +89,7 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
       type,
       date: toDateString(date),
       description: description || undefined,
-      account_id: accountId,
+      account_id: effectiveAccountId,
       category_id: categoryId && categoryId !== "none" ? categoryId : undefined,
       subcategory_id: subcategoryId && subcategoryId !== "none" ? subcategoryId : undefined,
     };
@@ -97,7 +99,7 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
       } else {
         await createTx.mutateAsync(payload);
       }
-      router.replace(returnTo || "/transactions", { scroll: false });
+      router.replace(safeInternalPath(returnTo, "/transactions"), { scroll: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     }
@@ -202,7 +204,7 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
         {/* Account */}
         <div className="subs-form-section">
           <Label className="subs-form-label" required>{t("common.account")}</Label>
-          <Select value={accountId} onValueChange={setAccountId}>
+          <Select value={effectiveAccountId} onValueChange={setAccountId}>
             <SelectTrigger className="w-full !h-10">
               <SelectValue placeholder={lang === "es" ? "Seleccionar cuenta" : "Select account"} />
             </SelectTrigger>

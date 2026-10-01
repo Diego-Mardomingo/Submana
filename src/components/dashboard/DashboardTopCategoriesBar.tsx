@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
 import { formatCurrency } from "@/lib/format";
@@ -9,9 +9,10 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import { Doughnut } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
+import { useChartPalette, tooltipConfig } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
+import { appNow } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; category_id?: string | null; subcategory_id?: string | null; account_id?: string };
 
@@ -38,18 +39,14 @@ function buildCategoryMaps(
   return { idToName, subToParent };
 }
 
+const DEFAULT_PALETTE = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
 export default function DashboardTopCategoriesBar() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: categoriesData, isLoading: catLoading } = useCategories();
-  const defaultPalette = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
-  const [colors, setColors] = useState<string[]>(defaultPalette);
-
-  useEffect(() => {
-    setColors(resolveChartPalette());
-  }, []);
+  const colors = useChartPalette(DEFAULT_PALETTE);
 
   const chartData = useMemo(() => {
     const defaultCats = categoriesData?.defaultCategories ?? [];

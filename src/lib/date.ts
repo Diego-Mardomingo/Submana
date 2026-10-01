@@ -1,4 +1,4 @@
-import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 /**
  * Zona usada al persistir instantes de transacción (migración timestamptz) y para límites de mes en API.
@@ -46,6 +46,20 @@ export function calendarDayInAppTimeZone(isoDate: string): string {
 }
 
 /**
+ * Date cuyos getters locales (getFullYear, getMonth, getDate, getDay, getHours…) devuelven
+ * la hora de pared en APP_TIME_ZONE, sea cual sea la zona del navegador. Usar para agrupar
+ * transacciones por día/mes igual que la API (la app trabaja en hora de Madrid).
+ */
+export function toAppDate(value: string | number | Date): Date {
+  return toZonedTime(value, APP_TIME_ZONE);
+}
+
+/** "Ahora" en hora de pared de APP_TIME_ZONE (para mes/día actual). */
+export function appNow(): Date {
+  return toZonedTime(new Date(), APP_TIME_ZONE);
+}
+
+/**
  * Utilidades para manejar fechas "solo día" (YYYY-MM-DD) sin problemas de huso horario.
  * - toISOString() convierte a UTC y puede cambiar el día en zonas UTC+
  * - new Date("YYYY-MM-DD") interpreta la cadena como medianoche UTC
@@ -62,13 +76,14 @@ export function toDateString(date: Date): string {
 
 /**
  * Parsea YYYY-MM-DD a Date en hora local (mediodía para evitar edge cases de DST).
- * Si la cadena incluye hora (ISO / timestamptz), devuelve ese instante.
+ * Si la cadena incluye hora (ISO / timestamptz), devuelve ese instante en hora de pared de
+ * APP_TIME_ZONE (ver toAppDate), para que el día coincida con el de la API.
  */
 export function parseDateString(str: string): Date {
   if (!str) return new Date();
   if (str.length > 10 || str.includes("T")) {
     const parsed = new Date(str);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
+    if (!Number.isNaN(parsed.getTime())) return toAppDate(parsed);
   }
   const [y, m, d] = str.split("-").map(Number);
   return new Date(y, m - 1, d, 12, 0, 0);

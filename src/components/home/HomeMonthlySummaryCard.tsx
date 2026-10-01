@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
@@ -62,12 +62,9 @@ export default function HomeMonthlySummaryCard() {
 
   const nav = useMonthNavigation(lang);
 
-  const cardRefCallback = useCallback(
-    (node: HTMLDivElement | null) => {
-      nav.setSwipeElement(node);
-    },
-    [nav.setSwipeElement]
-  );
+  // Setter estable de useState usado como callback ref. Se extrae de `nav` para que el
+  // compilador de React no trate todo `nav` como una ref.
+  const { setSwipeElement: cardRefCallback } = nav;
 
   const prevYear = nav.month === 1 ? nav.year - 1 : nav.year;
   const prevMonth = nav.month === 1 ? 12 : nav.month - 1;

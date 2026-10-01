@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
@@ -12,11 +12,12 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Bar } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { tooltipConfig, axisConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { tooltipConfig, axisConfig, formatK, useChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
 import styles from "./DashboardMonthNav.module.css";
+import { toAppDate } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 type Period = "week" | "month" | "year";
@@ -28,14 +29,13 @@ export default function DashboardDailyExpenseBars() {
   const lang = useLang();
   const t = useTranslations(lang);
   const [period, setPeriod] = useState<Period>("month");
-  const dangerColor = useMemo(() => getChartColors().danger || "#ef4444", []);
+  const dangerColor = useChartColors()?.danger || "#ef4444";
   const isMobile = useMediaQuery("(max-width: 768px)");
   const nav = useMonthNavigation(lang, { periodUnit: period, swipeUnit: period });
 
-  const cardRefCallback = useCallback(
-    (node: HTMLDivElement | null) => { nav.setSwipeElement(node); },
-    [nav]
-  );
+  // Setter estable de useState usado como callback ref. Se extrae de `nav` para que el
+  // compilador de React no trate todo `nav` como una ref.
+  const { setSwipeElement: cardRefCallback } = nav;
 
   const { data: monthTx = [], isLoading: loadingMonth } = useTransactions(
     nav.year,
@@ -91,7 +91,7 @@ export default function DashboardDailyExpenseBars() {
       for (let i = 0; i < 7; i++) byDay.set(i, 0);
 
       for (const tx of forMetrics) {
-        const d = tx.date ? new Date(tx.date) : null;
+        const d = tx.date ? toAppDate(tx.date) : null;
         if (!d || d < weekStart || d > weekEnd) continue;
         const dayIndex = Math.floor((d.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
         byDay.set(dayIndex, (byDay.get(dayIndex) ?? 0) + Number(tx.amount || 0));
@@ -111,7 +111,7 @@ export default function DashboardDailyExpenseBars() {
       for (let i = 1; i <= daysInMonth; i++) byDay.set(i, 0);
 
       for (const tx of forMetrics) {
-        const d = tx.date ? new Date(tx.date) : null;
+        const d = tx.date ? toAppDate(tx.date) : null;
         if (!d || d.getMonth() !== month || d.getFullYear() !== year) continue;
         const day = d.getDate();
         byDay.set(day, (byDay.get(day) ?? 0) + Number(tx.amount || 0));
@@ -127,7 +127,7 @@ export default function DashboardDailyExpenseBars() {
     for (let i = 0; i < 12; i++) byMonth.set(i, 0);
 
     for (const tx of forMetrics) {
-      const d = tx.date ? new Date(tx.date) : null;
+      const d = tx.date ? toAppDate(tx.date) : null;
       if (!d || d.getFullYear() !== year) continue;
       const monthIdx = d.getMonth();
       byMonth.set(monthIdx, (byMonth.get(monthIdx) ?? 0) + Number(tx.amount || 0));

@@ -2,6 +2,7 @@
 
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { toAppDate } from "@/lib/date";
 
 async function fetchAllTransactions({
   queryKey,
@@ -10,7 +11,8 @@ async function fetchAllTransactions({
 }) {
   const accountId = queryKey[3] as string | undefined;
 
-  const params = new URLSearchParams();
+  // Histórico completo para agregados: solo columnas necesarias, sin joins.
+  const params = new URLSearchParams({ fields: "minimal" });
   if (accountId) params.append("account_id", accountId);
 
   const res = await fetch(`/api/crud/transactions?${params.toString()}`, {
@@ -71,7 +73,7 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
     const byMonth = new Map<string, unknown[]>();
 
     for (const tx of allTransactions as { date?: string }[]) {
-      const d = tx.date ? new Date(tx.date) : null;
+      const d = tx.date ? toAppDate(tx.date) : null;
       if (!d || isNaN(d.getTime())) continue;
       const key = ymKey(d.getFullYear(), d.getMonth() + 1);
       const arr = byMonth.get(key) ?? [];

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const THRESHOLD = 20;
 const VELOCITY_THRESHOLD = 0.25;
@@ -22,8 +22,10 @@ export function useSwipeToReveal(actionsWidth: number, options?: Options) {
   const horizontalLockRef = useRef<boolean | null>(null);
 
   const actionsWidthRef = useRef(actionsWidth);
-  actionsWidthRef.current = actionsWidth;
-  translateRef.current = translateX;
+  useLayoutEffect(() => {
+    actionsWidthRef.current = actionsWidth;
+    translateRef.current = translateX;
+  });
 
   const open = useCallback(() => {
     const w = actionsWidthRef.current;

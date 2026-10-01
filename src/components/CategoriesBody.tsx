@@ -98,12 +98,17 @@ export default function CategoriesBody() {
     resetForm();
   };
 
+  // ?open=create (atajos): abrir el modal al detectar el parámetro (ajuste de estado en render,
+  // sin setState dentro de un effect) y limpiar la URL en un effect.
+  const wantsCreate = searchParams.get("open") === "create";
+  const [handledCreateParam, setHandledCreateParam] = useState(false);
+  if (wantsCreate !== handledCreateParam) {
+    setHandledCreateParam(wantsCreate);
+    if (wantsCreate) openModal("create");
+  }
   useEffect(() => {
-    if (searchParams.get("open") === "create") {
-      openModal("create");
-      router.replace("/categories", { scroll: false });
-    }
-  }, [searchParams, router]);
+    if (wantsCreate) router.replace("/categories", { scroll: false });
+  }, [wantsCreate, router]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

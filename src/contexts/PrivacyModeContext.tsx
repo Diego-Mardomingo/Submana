@@ -3,17 +3,33 @@
 import {
   createContext,
   useContext,
-  useState,
-  useEffect,
   useCallback,
+  useMemo,
+  useSyncExternalStore,
 } from "react";
 
 const STORAGE_KEY = "submana-privacy-mode";
 
 function getPrivacyModeFromStorage(): boolean {
-  if (typeof document === "undefined") return false;
-  const value = localStorage.getItem(STORAGE_KEY);
-  return value === "true";
+  try {
+    return localStorage.getItem(STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+const listeners = new Set<() => void>();
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  // Sincroniza también entre pestañas.
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) onChange();
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(onChange);
+    window.removeEventListener("storage", onStorage);
+  };
 }
 
 type PrivacyModeContextValue = {
@@ -24,22 +40,21 @@ type PrivacyModeContextValue = {
 const PrivacyModeContext = createContext<PrivacyModeContextValue | null>(null);
 
 export function PrivacyModeProvider({ children }: { children: React.ReactNode }) {
-  const [privacyModeEnabled, setPrivacyModeState] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setPrivacyModeState(getPrivacyModeFromStorage());
-    setMounted(true);
-  }, []);
+  const privacyModeEnabled = useSyncExternalStore(subscribe, getPrivacyModeFromStorage, () => false);
 
   const setPrivacyModeEnabled = useCallback((enabled: boolean) => {
-    setPrivacyModeState(enabled);
-    localStorage.setItem(STORAGE_KEY, String(enabled));
+    try {
+      localStorage.setItem(STORAGE_KEY, String(enabled));
+    } catch {
+      // Almacenamiento no disponible (modo privado): no persiste.
+    }
+    listeners.forEach((listener) => listener());
   }, []);
 
-  const value = mounted
-    ? { privacyModeEnabled, setPrivacyModeEnabled }
-    : { privacyModeEnabled: false, setPrivacyModeEnabled };
+  const value = useMemo(
+    () => ({ privacyModeEnabled, setPrivacyModeEnabled }),
+    [privacyModeEnabled, setPrivacyModeEnabled]
+  );
 
   return (
     <PrivacyModeContext.Provider value={value}>

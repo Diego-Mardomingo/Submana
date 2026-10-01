@@ -23,7 +23,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { Line } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { Settings2 } from "lucide-react";
-import { tooltipConfig, axisConfig, gridConfig, formatK, getChartColors } from "@/lib/chartConfig";
+import { tooltipConfig, axisConfig, gridConfig, formatK, useChartColors } from "@/lib/chartConfig";
 import { useBalanceTrendRange } from "@/contexts/BalanceTrendRangeContext";
 import { netBalanceChange } from "@/lib/balanceHistory";
 
@@ -36,12 +36,8 @@ export default function DashboardBalanceTrendLine() {
   const lang = useLang();
   const t = useTranslations(lang);
   const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
-  const [accent, setAccent] = useState("#6366f1");
+  const accent = useChartColors()?.accent || "#6366f1";
   const { sharedRange, registerAvailableRange } = useBalanceTrendRange();
-
-  useEffect(() => {
-    setAccent(getChartColors().accent || "#6366f1");
-  }, []);
 
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);

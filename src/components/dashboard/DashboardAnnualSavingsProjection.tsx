@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
 import { useAccounts } from "@/hooks/useAccounts";
 import { formatCurrency } from "@/lib/format";
@@ -8,20 +8,19 @@ import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
-import { Line } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { tooltipConfig, getChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
+import { appNow } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
 export default function DashboardAnnualSavingsProjection() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
@@ -35,15 +34,6 @@ export default function DashboardAnnualSavingsProjection() {
   const { transactionsByMonth, monthLabels, isLoading } = useTransactionsRange(undefined, range);
   const { data: categoriesData } = useCategories();
   const { data: accounts = [] } = useAccounts();
-
-  const [colors, setColors] = useState({ success: "#10b981", danger: "#ef4444" });
-  useEffect(() => {
-    const c = getChartColors();
-    setColors({
-      success: c.success || "#10b981",
-      danger: c.danger || "#ef4444",
-    });
-  }, []);
 
   const data = useMemo(() => {
     const ctx = {
@@ -101,55 +91,9 @@ export default function DashboardAnnualSavingsProjection() {
     return Math.round((currentBalance + data.projectedRemaining) * 100) / 100;
   }, [currentBalance, data.projectedRemaining]);
 
-  const sparkColor = data.totalSaved >= 0 ? colors.success : colors.danger;
 
-  const sparkLabels = useMemo(() => {
-    const short = lang === "es"
-      ? ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-      : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return short.slice(0, data.completedMonths);
-  }, [lang, data.completedMonths]);
 
-  const sparkData = useMemo(() => {
-    let cumulative = 0;
-    const cumulativeData = data.monthlySavings.slice(0, data.completedMonths).map((v) => {
-      cumulative += v;
-      return Math.round(cumulative * 100) / 100;
-    });
 
-    return {
-      labels: sparkLabels,
-      datasets: [{
-        data: cumulativeData,
-        borderColor: sparkColor,
-        backgroundColor: sparkColor + "15",
-        borderWidth: 1.5,
-        pointRadius: 2,
-        pointHoverRadius: 5,
-        fill: true,
-        tension: 0.3,
-      }],
-    };
-  }, [data.monthlySavings, data.completedMonths, sparkLabels, sparkColor]);
-
-  const sparkOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: "index" as const, intersect: false },
-    plugins: {
-      tooltip: {
-        ...tooltipConfig(),
-        callbacks: {
-          label: (ctx: { parsed: { y: number | null } }) => formatCurrency(ctx.parsed.y ?? 0),
-        },
-      },
-      legend: { display: false },
-    },
-    scales: {
-      x: { display: true, ticks: { font: { size: 8 }, maxRotation: 0 }, grid: { display: false }, border: { display: false } },
-      y: { display: false },
-    },
-  }), []);
 
   if (isLoading) {
     return (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 
 interface BrandfetchResult {
   name: string;
@@ -70,7 +71,7 @@ export default function IconPicker({ defaultIcon, onIconSelect }: IconPickerProp
     const name = searchTerm || 
       letters[Math.floor(Math.random() * 26)] + 
       letters[Math.floor(Math.random() * 26)];
-    const randomUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&length=2&background=random&color=fff&size=256`;
+    const randomUrl = initialsAvatarDataUri(name);
     
     setSelectedIcon(randomUrl);
     onIconSelect(randomUrl);

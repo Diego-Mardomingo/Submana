@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useSyncExternalStore } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -146,4 +147,31 @@ export function formatK(v: number | string): string {
   const n = Number(v);
   if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(0)}k`;
   return String(n);
+}
+
+/** Tema efectivo actual (atributo data-theme); "server" durante SSR/hidratación. */
+function subscribeToTheme(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
+
+function useThemeKey(): string {
+  return useSyncExternalStore(
+    subscribeToTheme,
+    () => document.documentElement.getAttribute("data-theme") ?? "",
+    () => "server"
+  );
+}
+
+/** Colores resueltos de las variables CSS; se recalculan al cambiar de tema. */
+export function useChartColors(): ReturnType<typeof getChartColors> | null {
+  const theme = useThemeKey();
+  return useMemo(() => (theme === "server" ? null : getChartColors()), [theme]);
+}
+
+/** Paleta resuelta para gráficos; `fallback` en SSR. */
+export function useChartPalette(fallback: string[]): string[] {
+  const theme = useThemeKey();
+  return useMemo(() => (theme === "server" ? fallback : resolveChartPalette()), [theme, fallback]);
 }

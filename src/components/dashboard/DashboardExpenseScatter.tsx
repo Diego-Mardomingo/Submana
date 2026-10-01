@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useRef, useCallback } from "react";
+import { useMemo } from "react";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useMonthNavigation } from "@/hooks/useMonthNavigation";
 import { formatCurrency } from "@/lib/format";
@@ -12,11 +12,12 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Scatter } from "react-chartjs-2";
 import { Spinner } from "@/components/ui/spinner";
-import { tooltipConfig, axisConfig, formatK } from "@/lib/chartConfig";
+import { tooltipConfig, axisConfig, formatK, useChartColors } from "@/lib/chartConfig";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { useCategories } from "@/hooks/useCategories";
 import styles from "./DashboardMonthNav.module.css";
+import { toAppDate } from "@/lib/date";
 
 type Tx = { id: string; amount?: number; type?: string; date?: string; account_id?: string; category_id?: string | null; subcategory_id?: string | null };
 
@@ -27,16 +28,11 @@ export default function DashboardExpenseScatter() {
   const nav = useMonthNavigation(lang);
   const { data: transactions = [], isLoading } = useTransactions(nav.year, nav.month);
   const { data: categoriesData } = useCategories();
-  const dangerRef = useRef("");
+  const dangerColor = useChartColors()?.danger || "#ef4444";
 
-  const cardRefCallback = useCallback(
-    (node: HTMLDivElement | null) => { nav.setSwipeElement(node); },
-    [nav.setSwipeElement]
-  );
-
-  useEffect(() => {
-    dangerRef.current = getComputedStyle(document.documentElement).getPropertyValue("--danger").trim();
-  }, []);
+  // Setter estable de useState usado como callback ref. Se extrae de `nav` para que el
+  // compilador de React no trate todo `nav` como una ref.
+  const { setSwipeElement: cardRefCallback } = nav;
 
   const daysInMonth = new Date(nav.year, nav.month, 0).getDate();
 
@@ -55,7 +51,7 @@ export default function DashboardExpenseScatter() {
     );
     return forMetrics
       .map((tx) => {
-        const d = new Date(tx.date!);
+        const d = toAppDate(tx.date!);
         if (d.getFullYear() !== year || d.getMonth() !== month) return null;
         const amount = Number(tx.amount) || 0;
         return { x: d.getDate(), y: amount };
@@ -66,11 +62,11 @@ export default function DashboardExpenseScatter() {
   const scatterData = useMemo(() => ({
     datasets: [{
       data: chartData,
-      backgroundColor: (dangerRef.current || "#ef4444") + "B3",
+      backgroundColor: dangerColor + "B3",
       pointRadius: chartData.map((p) => Math.max(3, Math.min(p.y / 50, 12))),
       pointHoverRadius: 8,
     }],
-  }), [chartData]);
+  }), [chartData, dangerColor]);
 
   const scatterOptions = useMemo(() => ({
     responsive: true,

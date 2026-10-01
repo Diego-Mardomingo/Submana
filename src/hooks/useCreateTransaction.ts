@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
+import { parseDateString } from "@/lib/date";
 
 interface CreateTransactionInput {
   amount: number;
@@ -29,9 +30,10 @@ export function useCreateTransaction() {
     },
 
     onMutate: async (newTx) => {
-      const dateObj = new Date(newTx.date);
+      // Las claves de lista usan mes 1-12 (getMonth() es 0-11 y metía el gasto en el mes anterior).
+      const dateObj = parseDateString(newTx.date);
       const year = dateObj.getFullYear();
-      const month = dateObj.getMonth();
+      const month = dateObj.getMonth() + 1;
       const targetKey = queryKeys.transactions.list({ year, month });
 
       await queryClient.cancelQueries({ queryKey: targetKey });

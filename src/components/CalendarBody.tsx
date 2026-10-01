@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useEffectEvent } from "react";
 import { flushSync } from "react-dom";
 import { ChevronLeft, ChevronRight, House, ChevronDown, List } from "lucide-react";
 import { useCalendarSwipe } from "@/hooks/useCalendarSwipe";
@@ -24,6 +24,8 @@ import { useCalendarAccountFilter } from "@/contexts/CalendarFilterContext";
 import CalendarAccountFilter from "./CalendarAccountFilter";
 import { cn } from "@/lib/utils";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { toAppDate, appNow, parseDateString } from "@/lib/date";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 
 const formatCurrency = (n: number) => {
   const formatted = new Intl.NumberFormat("es-ES", {
@@ -46,6 +48,7 @@ type SubForCalendar = {
   frequency: string;
   frequency_value?: number;
   icon?: string | null;
+  service_name?: string;
   cost?: number | string;
   account_id?: string | null;
 };
@@ -57,13 +60,13 @@ function isPaymentDay(
   dayNumber: number
 ) {
   const current = setToNoon(new Date(year, month, dayNumber));
-  const start = setToNoon(new Date(sub.start_date));
+  const start = setToNoon(parseDateString(sub.start_date));
   const startYear = start.getFullYear();
   const startMonth = start.getMonth();
   const startDay = start.getDate();
   if (start > current) return false;
   if (sub.end_date) {
-    const end = setToNoon(new Date(sub.end_date));
+    const end = setToNoon(parseDateString(sub.end_date));
     if (end < current) return false;
   }
   switch (sub.frequency) {
@@ -100,8 +103,8 @@ export default function CalendarBody() {
   const lang = useLang();
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
-  const [year, setYear] = useState(new Date().getFullYear());
-  const [month, setMonth] = useState(new Date().getMonth());
+  const [year, setYear] = useState(() => appNow().getFullYear());
+  const [month, setMonth] = useState(() => appNow().getMonth());
   const [clientToday, setClientToday] = useState<{
     year: number;
     month: number;
@@ -111,7 +114,7 @@ export default function CalendarBody() {
   const scrollTargetRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const d = new Date();
+    const d = appNow();
     setClientToday({
       year: d.getFullYear(),
       month: d.getMonth(),
@@ -211,8 +214,8 @@ export default function CalendarBody() {
   };
 
   const handleToday = () => {
-    const todayYear = new Date().getFullYear();
-    const todayMonth = new Date().getMonth();
+    const todayYear = appNow().getFullYear();
+    const todayMonth = appNow().getMonth();
     
     if (year === todayYear && month === todayMonth) return;
     
@@ -240,23 +243,25 @@ export default function CalendarBody() {
     }
   };
 
+  // useEffectEvent: el listener se registra una vez y siempre ve el mes actual.
+  const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+    if (e.key === "ArrowLeft") {
+      changeMonth(-1);
+    } else if (e.key === "ArrowRight") {
+      changeMonth(1);
+    } else if (e.key === "ArrowDown") {
+      handleToday();
+    }
+  });
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-
-      if (e.key === "ArrowLeft") {
-        changeMonth(-1);
-      } else if (e.key === "ArrowRight") {
-        changeMonth(1);
-      } else if (e.key === "ArrowDown") {
-        handleToday();
-      }
-    };
-
+    const handleKeyDown = (e: KeyboardEvent) => onKeyDown(e);
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [month, year]);
+  }, []);
 
   const prefetchMonth = (delta: number) => {
     let newMonth = month + delta;
@@ -277,7 +282,7 @@ export default function CalendarBody() {
     subscriptions
       .filter((sub: SubForCalendar) => !isAccountHidden(sub.account_id))
       .flatMap((sub: SubForCalendar) =>
-        isPaymentDay(sub, year, month, dayNumber) ? [sub.icon] : []
+        isPaymentDay(sub, year, month, dayNumber) ? [sub.icon || initialsAvatarDataUri(sub.service_name)] : []
       );
   const getSubsForDay = (dayNumber: number) =>
     subscriptions
@@ -296,7 +301,7 @@ export default function CalendarBody() {
     (transactions || [])
       .filter((tx: TxWithAmount) => !isAccountHidden(tx.account_id))
       .filter((tx: TxWithAmount) => {
-        const d = new Date(tx.date);
+        const d = toAppDate(tx.date);
         return d.getFullYear() === year && d.getMonth() === month && d.getDate() === dayNumber;
       });
 

@@ -12,6 +12,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { detectTransferIds } from "@/lib/transferDetection";
 import { filterForMetrics } from "@/lib/metricsFilters";
 import { getCategoryIcon } from "@/lib/categoryIcons";
+import { toAppDate, appNow } from "@/lib/date";
 
 type Tx = {
   id: string;
@@ -56,7 +57,7 @@ function buildMaps(
 export default function DashboardTopExpenses() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const now = new Date();
+  const now = appNow();
   const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
   const { data: categoriesData, isLoading: catLoading } = useCategories();
 
@@ -83,7 +84,7 @@ export default function DashboardTopExpenses() {
       const iconKey = catId
         ? idToIcon.get(catId) ?? idToIcon.get(subToParent.get(catId) ?? "") ?? undefined
         : undefined;
-      const d = tx.date ? new Date(tx.date) : null;
+      const d = tx.date ? toAppDate(tx.date) : null;
       const dateStr = d
         ? d.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { day: "numeric", month: "short" })
         : "";
@@ -139,7 +140,7 @@ export default function DashboardTopExpenses() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-1">
-        {topExpenses.map((tx, i) => (
+        {topExpenses.map((tx) => (
           <div key={tx.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
             <div className="flex-shrink-0 size-8 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
               {getCategoryIcon(tx.iconKey, 16)}
