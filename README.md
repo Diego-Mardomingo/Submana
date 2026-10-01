@@ -32,7 +32,7 @@ Más de 16 widgets de análisis financiero:
 - Previsión de gasto a fin de mes
 - Proyección de ahorro anual
 - Scatter de gastos por día e importe
-- Flujo de caja y gasto por día de la semana
+- Flujo de caja neto del mes
 
 ### 💸 Transacciones
 Registro de ingresos y gastos asociados a una cuenta y categoría. Navegación mensual con estadísticas de ingresos, gastos y balance del mes. Detección automática de transferencias entre cuentas propias.
@@ -122,14 +122,13 @@ src/
 ├── components/
 │   ├── dashboard/           # Widgets del dashboard
 │   ├── home/                # Cards del Home (balance, resumen, budgets, donut)
-│   ├── ui/                  # Componentes shadcn/ui personalizados
-│   └── sortable/            # Componentes de drag & drop
-├── hooks/                   # 25+ custom hooks con TanStack Query
+│   └── ui/                  # Componentes shadcn/ui personalizados
+├── hooks/                   # Hooks de datos (TanStack Query) y de UI
 ├── lib/
 │   ├── parsers/             # Parsers de extractos bancarios
 │   ├── supabase/            # Cliente Supabase (server + browser)
 │   └── i18n/               # Sistema de traducciones ES/EN
-└── contexts/                # LangContext, CalendarFilterContext
+└── contexts/                # Filtro de cuentas del calendario y rango de tendencias
 supabase/migrations/         # RLS, RPCs atómicas de saldo, índices
 ```
 

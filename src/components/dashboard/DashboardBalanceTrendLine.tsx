@@ -1,271 +1,95 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { useTransactionsRange, type DateRange } from "@/hooks/useTransactionsRange";
-import { formatCurrency } from "@/lib/format";
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useTranslations } from "@/lib/i18n/utils";
-import { useLang } from "@/hooks/useLang";
-import { useAccounts } from "@/hooks/useAccounts";
+import { useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
-import { Spinner } from "@/components/ui/spinner";
-import { Settings2 } from "lucide-react";
-import { tooltipConfig, axisConfig, gridConfig, formatK, useChartColors } from "@/lib/chartConfig";
+import { DashboardCard, EmptyState } from "@/components/dashboard/DashboardCard";
+import { MonthRangePicker } from "@/components/dashboard/MonthRangePicker";
 import { useBalanceTrendRange } from "@/contexts/BalanceTrendRangeContext";
-import { netBalanceChange } from "@/lib/balanceHistory";
+import { useLang } from "@/hooks/useLang";
+import { useTransactionsRange, type DateRange } from "@/hooks/useTransactions";
+import { axisConfig, formatK, tooltipConfig, useChartTheme } from "@/lib/chartConfig";
+import { formatCurrency, monthKeyLabel } from "@/lib/format";
+import { netBalanceChange, runningTotals } from "@/lib/metricsFilters";
 
-type Tx = { amount?: number; type?: string };
-
-const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-export default function DashboardBalanceTrendLine() {
+/**
+ * Month-end balance history, rebuilt backwards from the current balance. Without `accountId`
+ * it covers every account. All trend charts share the widest available range by default.
+ */
+export default function DashboardBalanceTrendLine(props: {
+  title: React.ReactNode;
+  balance: number;
+  accountId?: string;
+  color?: string | null;
+}) {
+  const { title, balance, accountId } = props;
   const lang = useLang();
-  const t = useTranslations(lang);
-  const months = lang === "es" ? MONTHS_ES : MONTHS_EN;
-  const accent = useChartColors()?.accent || "#6366f1";
+  const { colors } = useChartTheme();
+  const color = props.color || colors.accent;
   const { sharedRange, registerAvailableRange } = useBalanceTrendRange();
-
-  const [popoverOpen, setPopoverOpen] = useState(false);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
-
-  const effectiveRange = customRange ?? sharedRange ?? undefined;
-
-  const { transactionsByMonth, monthLabels, availableRange, allByMonth, allKeys, isLoading } = useTransactionsRange(
-    undefined,
-    effectiveRange
-  );
-  const { data: accounts = [] } = useAccounts();
+  const range = customRange ?? sharedRange ?? undefined;
+  const { byMonth, allKeys, keys, availableRange, isLoading } = useTransactionsRange(accountId, range);
 
   useEffect(() => {
-    if (availableRange) registerAvailableRange("__total__", availableRange);
-  }, [availableRange, registerAvailableRange]);
+    if (availableRange) registerAvailableRange(accountId ?? "__total__", availableRange);
+  }, [availableRange, registerAvailableRange, accountId]);
 
-  const [tempStart, setTempStart] = useState<{ year: number; month: number } | null>(null);
-  const [tempEnd, setTempEnd] = useState<{ year: number; month: number } | null>(null);
-
-  const handlePopoverOpenChange = (open: boolean) => {
-    if (open && availableRange) {
-      setTempStart(customRange
-        ? { year: customRange.startYear, month: customRange.startMonth }
-        : { year: availableRange.startYear, month: availableRange.startMonth }
-      );
-      setTempEnd(customRange
-        ? { year: customRange.endYear, month: customRange.endMonth }
-        : { year: availableRange.endYear, month: availableRange.endMonth }
-      );
-    }
-    setPopoverOpen(open);
-  };
-
-  const handleApplyRange = () => {
-    if (tempStart && tempEnd) {
-      setCustomRange({
-        startYear: tempStart.year, startMonth: tempStart.month,
-        endYear: tempEnd.year, endMonth: tempEnd.month,
-      });
-    }
-    setPopoverOpen(false);
-  };
-
-  const handleResetRange = () => {
-    setCustomRange(null);
-    setPopoverOpen(false);
-  };
-
-  const availableYears = useMemo(() => {
-    if (!availableRange) return [];
-    const years: number[] = [];
-    for (let y = availableRange.startYear; y <= availableRange.endYear; y++) years.push(y);
-    return years;
-  }, [availableRange]);
-
-  const chartData = useMemo(() => {
-    const currentTotalBalance = accounts.reduce(
-      (sum: number, acc: { balance?: number }) => sum + Number(acc.balance ?? 0), 0
-    );
-
-    const netAllTransactions = allKeys.reduce(
-      (sum, key) => sum + netBalanceChange((allByMonth[key] ?? []) as Tx[]),
-      0
-    );
-
-    const firstVisibleKey = monthLabels.length > 0 ? monthLabels[0].key : null;
-    let cumulative = currentTotalBalance - netAllTransactions;
-    if (firstVisibleKey) {
-      for (const key of allKeys) {
-        if (key >= firstVisibleKey) break;
-        cumulative += netBalanceChange((allByMonth[key] ?? []) as Tx[]);
-      }
-    }
-
-    const points: { name: string; balance: number }[] = [];
-    for (const { key, label } of monthLabels) {
-      cumulative += netBalanceChange((transactionsByMonth[key] ?? []) as Tx[]);
-      points.push({ name: label, balance: Math.round(cumulative * 100) / 100 });
-    }
-    return points;
-  }, [transactionsByMonth, monthLabels, accounts, allByMonth, allKeys]);
-
-  const lineData = useMemo(() => ({
-    labels: chartData.map((d) => d.name),
-    datasets: [{
-      data: chartData.map((d) => d.balance),
-      borderColor: accent,
-      backgroundColor: accent + "20",
-      borderWidth: 2,
-      pointBackgroundColor: accent,
-      pointRadius: 3,
-      pointHoverRadius: 6,
-      fill: true,
-      tension: 0.3,
-    }],
-  }), [chartData, accent]);
-
-  const lineOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { mode: "index" as const, intersect: false },
-    plugins: {
-      tooltip: {
-        ...tooltipConfig(),
-        callbacks: {
-          label: (ctx: { parsed: { y: number | null } }) => formatCurrency(ctx.parsed.y ?? 0),
-        },
-      },
-      legend: { display: false },
-      annotation: undefined,
-    },
-    scales: {
-      x: { ...axisConfig(), ticks: { ...axisConfig().ticks, font: { size: 11 } } },
-      y: {
-        ...axisConfig(),
-        grid: gridConfig(),
-        ticks: { ...axisConfig().ticks, callback: formatK },
-      },
-    },
-  }), []);
-
-  const rangeSelectorContent = availableRange && tempStart && tempEnd && (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-muted-foreground">
-          {lang === "es" ? "Desde" : "From"}
-        </label>
-        <div className="flex gap-2">
-          <Select value={String(tempStart.month)} onValueChange={(v) => setTempStart({ ...tempStart, month: Number(v) })}>
-            <SelectTrigger size="sm" className="flex-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {months.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={String(tempStart.year)} onValueChange={(v) => setTempStart({ ...tempStart, year: Number(v) })}>
-            <SelectTrigger size="sm" className="w-[5.5rem]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-muted-foreground">
-          {lang === "es" ? "Hasta" : "To"}
-        </label>
-        <div className="flex gap-2">
-          <Select value={String(tempEnd.month)} onValueChange={(v) => setTempEnd({ ...tempEnd, month: Number(v) })}>
-            <SelectTrigger size="sm" className="flex-1"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {months.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={String(tempEnd.year)} onValueChange={(v) => setTempEnd({ ...tempEnd, year: Number(v) })}>
-            <SelectTrigger size="sm" className="w-[5.5rem]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {availableYears.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      <div className="flex gap-2 justify-end pt-2 border-t">
-        <Button variant="ghost" size="sm" onClick={handleResetRange}>
-          {lang === "es" ? "Restablecer" : "Reset"}
-        </Button>
-        <Button variant="default" size="sm" onClick={handleApplyRange}>
-          {lang === "es" ? "Aplicar" : "Apply"}
-        </Button>
-      </div>
-    </div>
-  );
-
-  if (isLoading) {
-    return (
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-muted-foreground">
-            {t("dashboard.balanceTrend")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center py-12">
-          <Spinner className="size-6 text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
+  // Balance before the first visible month = current balance minus every later change.
+  const firstKey = keys[0] ?? "";
+  const netOf = (key: string) => netBalanceChange(byMonth.get(key) ?? []);
+  const startBalance = balance - allKeys.filter((key) => key >= firstKey).reduce((sum, key) => sum + netOf(key), 0);
+  const points = runningTotals(keys.map(netOf), startBalance);
 
   return (
-    <Card className="dashboard-card">
-      <CardHeader>
-        <CardTitle className="text-base font-semibold text-muted-foreground">
-          {t("dashboard.balanceTrend")}
-        </CardTitle>
-        <CardAction>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-              {monthLabels.length} {lang === "es" ? "meses" : "months"}
-            </span>
-            <Popover open={popoverOpen} onOpenChange={handlePopoverOpenChange}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={customRange || popoverOpen ? "secondary" : "ghost"}
-                  size="icon-xs"
-                  title={lang === "es" ? "Configurar rango" : "Configure range"}
-                >
-                  <Settings2 className="size-4" strokeWidth={1.5} />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-72">
-                <div className="mb-3">
-                  <h4 className="font-medium text-sm">
-                    {lang === "es" ? "Rango de fechas" : "Date range"}
-                  </h4>
-                  <p className="text-xs text-muted-foreground">
-                    {lang === "es" ? "Selecciona el período a mostrar" : "Select the period to display"}
-                  </p>
-                </div>
-                {rangeSelectorContent}
-              </PopoverContent>
-            </Popover>
-          </div>
-        </CardAction>
-      </CardHeader>
-      <CardContent>
+    <DashboardCard
+      title={title}
+      action={
+        !isLoading && (
+          <MonthRangePicker
+            shown={range ?? null}
+            available={availableRange}
+            isCustom={!!customRange}
+            onChange={setCustomRange}
+            monthCount={keys.length}
+          />
+        )
+      }
+      loading={isLoading}
+    >
+      {points.length === 0 ? (
+        <EmptyState>{lang === "es" ? "Sin transacciones" : "No transactions"}</EmptyState>
+      ) : (
         <div className="dashboard-chart-tall w-full">
-          <Line data={lineData} options={lineOptions} />
+          <Line
+            data={{
+              labels: keys.map((key) => monthKeyLabel(key, lang)),
+              datasets: [
+                {
+                  data: points,
+                  borderColor: color,
+                  backgroundColor: color + "20",
+                  borderWidth: 2,
+                  pointBackgroundColor: color,
+                  pointRadius: 3,
+                  pointHoverRadius: 6,
+                  fill: true,
+                  tension: 0.3,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: "index", intersect: false },
+              plugins: {
+                tooltip: { ...tooltipConfig(), callbacks: { label: (ctx) => formatCurrency(ctx.parsed.y ?? 0) } },
+                legend: { display: false },
+              },
+              scales: { x: axisConfig({ font: { size: 11 } }), y: axisConfig({ callback: formatK }) },
+            }}
+          />
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </DashboardCard>
   );
 }

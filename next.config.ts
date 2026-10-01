@@ -7,9 +7,9 @@ const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
 const isDev = process.env.NODE_ENV !== "production";
 
 /**
- * CSP. 'unsafe-inline' en scripts es necesario para el script de tema de layout.tsx y el
- * bootstrap de Next sin nonces; aun así bloquea scripts de terceros, iframes y objetos.
- * img-src admite https: porque los iconos de cuentas/suscripciones son URLs elegidas por el usuario.
+ * CSP. Scripts need 'unsafe-inline' for the theme script in layout.tsx and Next's bootstrap
+ * without nonces; it still blocks third-party scripts, iframes and objects.
+ * img-src allows https: because account/subscription icons are user-chosen URLs.
  */
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -28,7 +28,7 @@ const contentSecurityPolicy = [
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
-  // App financiera: no permitir que se incruste en iframes de terceros (clickjacking).
+  // Finance app: never embeddable in third-party iframes (clickjacking).
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -36,20 +36,17 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  turbopack: {},
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
-  experimental: {
-    viewTransition: true,
-  },
+  experimental: { viewTransition: true },
 };
 
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
   additionalPrecacheEntries: [{ url: "/~offline", revision: "1" }],
+  disable: process.env.NODE_ENV !== "production",
 });
 
-// PWA (Serwist) solo en producción; en dev usamos Turbopack sin webpack
-export default process.env.NODE_ENV === "production" ? withSerwist(nextConfig) : nextConfig;
+export default withSerwist(nextConfig);

@@ -19,24 +19,6 @@
   padding-top: 1rem;
 }
 
-.header_text_wrapper {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-  flex-shrink: 1;
-}
-
-.header_main_row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 1rem;
-  flex: 1;
-  min-width: 0;
-}
-
 .header_left_group {
   display: flex;
   flex-direction: row;
@@ -114,7 +96,6 @@
   align-items: center;
   justify-content: center;
   gap: 0.2rem;
-  /* Gradiente aplicado en SensitiveAmount para que blur funcione correctamente */
 }
 
 /* Calendar filter button with gradient */
@@ -445,7 +426,6 @@
   .dia {
     border-radius: 8px;
     padding: 0.15rem;
-    /* Mantener aspect-ratio 1:1 para evitar deformación; celdas cuadradas */
   }
 
   .dia .number {
@@ -580,13 +560,6 @@
   color: var(--blanco);
 }
 
-.card-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
 /* Budgets grid & cards - una tarjeta por fila, ancho completo */
 .budgets-grid {
   display: grid;
@@ -641,34 +614,6 @@
     0 16px 32px -6px rgba(0, 0, 0, 0.25),
     0 0 0 1px rgba(0, 0, 0, 0.08),
     0 0 24px var(--danger-muted);
-}
-
-.budget-card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.budget-card-danger-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--danger);
-  flex-shrink: 0;
-  margin-right: 0.35rem;
-}
-
-.budget-card-name {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: var(--blanco);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .budget-card-actions {
@@ -747,50 +692,6 @@
 
 .budget-card-action-btn--delete:hover {
   background: var(--danger-soft);
-}
-
-.budget-card-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.budget-card-badge {
-  display: inline-block;
-  padding: 0.12rem 0.35rem;
-  font-size: 0.6rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--accent-budget, var(--accent)) 25%, transparent);
-  color: var(--accent-budget, var(--accent));
-}
-
-html[data-theme="light"] .budget-card-badge {
-  background: color-mix(in srgb, var(--accent-budget, var(--accent)) 38%, transparent);
-  color: color-mix(in srgb, var(--accent-budget, var(--accent)) 75%, black);
-}
-
-.budget-card-badge--general {
-  background: color-mix(in srgb, var(--accent-budget, var(--accent)) 25%, transparent);
-  color: var(--accent-budget, var(--accent));
-}
-
-html[data-theme="light"] .budget-card-badge--general {
-  background: color-mix(in srgb, var(--accent-budget, var(--accent)) 38%, transparent);
-  color: color-mix(in srgb, var(--accent-budget, var(--accent)) 75%, black);
-}
-
-.budget-card-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--blanco);
 }
 
 .budget-card-progress-wrap {
@@ -1268,13 +1169,6 @@ html[data-theme="light"] .budget-card-badge--general {
   font-weight: 600;
 }
 
-.account-stat-sublabel {
-  font-size: 0.65rem;
-  color: var(--gris-claro);
-  opacity: 0.8;
-  margin-top: -0.25rem;
-}
-
 .account-stat-value {
   font-size: 1.35rem;
   font-weight: 800;
@@ -1566,40 +1460,6 @@ html[data-theme="light"] .budget-card-badge--general {
 
 .account-transaction-amount.expense {
   color: var(--danger);
-}
-
-.account-transactions-more {
-  text-align: center;
-  padding: 0.75rem;
-  color: var(--gris-claro);
-  font-size: 0.85rem;
-}
-
-
-.subs-form-color-picker {
-  position: absolute;
-  top: 100%;
-  margin-top: 8px;
-  background: var(--gris-oscuro);
-  padding: 12px;
-  border-radius: 12px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  z-index: 2100;
-  border: 1px solid var(--gris);
-}
-
-.subs-form-color-option {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.subs-form-color-option:hover {
-  transform: scale(1.15);
 }
 
 @media (max-width: 600px) {
@@ -2479,167 +2339,16 @@ html[data-theme="light"] .budget-card-badge--general {
 }
 
 /* Icon Selector */
-.icon-selector-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: var(--negro);
-  border: 1px solid var(--gris);
-  border-radius: 10px;
-  color: var(--blanco);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  width: 100%;
-}
-
-.icon-selector-btn:hover {
-  border-color: var(--gris-claro);
-}
-
-.icon-picker-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  background: var(--gris-oscuro);
-  border: 1px solid var(--gris);
-  border-radius: 12px;
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.5rem;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 100;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-.icon-picker-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  background: var(--negro);
-  color: var(--gris-claro);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.icon-picker-item:hover {
-  border-color: var(--gris-claro);
-  color: var(--blanco);
-}
-
-.icon-picker-item.selected {
-  border-color: var(--blanco);
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--blanco);
-}
 
 @media (max-width: 600px) {
   .cat-row-actions {
     opacity: 1;
-  }
-
-  .icon-picker-dropdown {
-    grid-template-columns: repeat(5, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .categories-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .category-card-actions {
-    opacity: 1;
-  }
-
-  .subcategory-actions {
-    opacity: 1;
-  }
-
-  .icon-picker-dropdown {
-    grid-template-columns: repeat(5, 1fr);
   }
 }
 
 /* ═══════════════════════════════════════════════
    SUBSCRIPTIONS MODULE - Premium Design
    ═══════════════════════════════════════════════ */
-
-/* ── Stats Panel ── */
-.subs-stats-panel {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  padding: 1.25rem;
-  background: var(--accent-soft);
-  border-radius: 16px;
-}
-
-.subs-stats-panel.two-cols {
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.subs-stat-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.75rem;
-  background: var(--card-subtle-gradient), var(--negro);
-  border: 1px solid var(--gris);
-  border-radius: 12px;
-  text-align: center;
-}
-
-.subs-stat-value {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: var(--accent-light);
-  text-shadow: 0 0 20px var(--accent-muted);
-  white-space: nowrap;
-}
-
-.subs-stat-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--gris-claro);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-@media (max-width: 500px) {
-  .subs-stats-panel {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-    padding: 1rem;
-  }
-  .subs-stats-panel.two-cols {
-    grid-template-columns: 1fr;
-  }
-  .subs-stat-card {
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 0.75rem 1rem;
-  }
-  .subs-stats-panel.two-cols .subs-stat-card {
-    flex-direction: row;
-    justify-content: space-between;
-    text-align: left;
-    padding: 0.75rem 1rem;
-  }
-  .subs-stat-value {
-    font-size: 1.1rem;
-  }
-}
 
 /* ── Section Headers ── */
 .subs-section {
@@ -3255,66 +2964,6 @@ html[data-theme="light"] .budget-card-badge--general {
   .subs-form-row.triple > *:last-child {
     grid-column: span 2;
   }
-}
-
-.subs-form-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--negro);
-  border: 1px solid var(--gris);
-  border-radius: 10px;
-  color: var(--blanco);
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
-}
-
-.subs-form-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.subs-form-input::placeholder {
-  color: var(--gris-claro);
-}
-
-.subs-form-select {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--negro);
-  border: 1px solid var(--gris);
-  border-radius: 10px;
-  color: var(--blanco);
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.subs-form-select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.subs-form-select-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.subs-form-select-wrapper .subs-form-select {
-  flex: 1;
-  padding-right: 2.5rem;
-}
-
-.subs-form-account-indicator {
-  position: absolute;
-  right: 2.5rem;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  pointer-events: none;
-  box-shadow: 0 0 0 2px var(--negro);
 }
 
 .subs-detail-account-dot {

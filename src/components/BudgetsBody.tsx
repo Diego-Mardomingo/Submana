@@ -1,289 +1,202 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
-import { useBudgets, type BudgetWithSpent } from "@/hooks/useBudgets";
-import {
-  useCreateBudget,
-  useUpdateBudget,
-  useDeleteBudget,
-} from "@/hooks/useBudgetMutations";
-import { useCategories, type CategoryWithSubs, type CategoryItem } from "@/hooks/useCategories";
-import { useLang } from "@/hooks/useLang";
-import { useTranslations } from "@/lib/i18n/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { AddButton } from "@/components/ui/add-button";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { Spinner } from "@/components/ui/spinner";
-import { Progress } from "@/components/ui/progress";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Wallet, Pencil, Trash2, AlertTriangle } from "lucide-react";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
-import { ACCOUNT_BUDGET_COLORS, defaultAccountBudgetColor } from "@/lib/accountBudgetColors";
-import { SortableContainer, SortableItem } from "@/components/sortable";
+import { useState } from "react";
+import { AlertTriangle, Pencil, Trash2, Wallet } from "lucide-react";
+import { ColorPicker, PALETTE } from "@/components/ColorPicker";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { PageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { SortableContainer, SortableItem } from "@/components/Sortable";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
+import { AddButton } from "@/components/ui/add-button";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { useBudgets, useCreateBudget, useDeleteBudget, useUpdateBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
+import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
+import { useCreateDialog } from "@/hooks/useCreateDialog";
+import { useLang } from "@/hooks/useLang";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useReorder } from "@/hooks/useReorder";
-import { useRouter, useSearchParams } from "next/navigation";
+import { formatCurrency } from "@/lib/format";
+import { useTranslations } from "@/lib/i18n/utils";
+import { cn } from "@/lib/utils";
 
-const colors = ACCOUNT_BUDGET_COLORS;
-const defaultBudgetColor = defaultAccountBudgetColor;
+type Lookup = ReturnType<typeof useCategoryLookup>;
 
-const formatCurrency = (n: number) => {
-  return new Intl.NumberFormat("es-ES", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    useGrouping: true,
-  }).format(n) + " €";
-};
+/** Top-level categories linked to a budget. */
+const rootIds = (budget: BudgetWithSpent, categories: Lookup) => [...new Set(budget.categoryIds.map((id) => categories.parent.get(id) ?? id))];
 
-export interface CategoryOption {
-  id: string;
-  label: string;
-  isSub: boolean;
-  parentId: string | null;
-  subIds: string[]; // for parents: ids of all subcategories; for subs: []
+/** Budget card; `compact` (drag overlay) only shows spent / limit, `actions` go next to the title. */
+function BudgetCard({ budget, categories, compact, actions }: {
+  budget: BudgetWithSpent;
+  categories: Lookup;
+  compact?: boolean;
+  actions?: React.ReactNode;
+}) {
+  const t = useTranslations(useLang());
+  const amount = Number(budget.amount);
+  const spent = Number(budget.spent ?? 0);
+  const over = spent > amount;
+  const pct = amount > 0 ? (spent / amount) * 100 : 0;
+  const warning = pct >= 80 && !over;
+  const roots = rootIds(budget, categories);
+  const emoji = roots.length ? categories.emoji.get(roots[0]) : undefined;
+  const money = (n: number) => <SensitiveAmount>{formatCurrency(n)}</SensitiveAmount>;
+
+  return (
+    <div
+      className={cn("budget-card", compact && "sortable-overlay", over && "budget-card--over")}
+      style={{ "--accent-budget": budget.color || "var(--accent)" } as React.CSSProperties}
+    >
+      <div className="budget-card-badges-row">
+        <span className="budget-card-icon-blur" aria-hidden>
+          {emoji ? <span className="budget-card-emoji">{emoji}</span> : <Wallet size={20} strokeWidth={1.5} />}
+        </span>
+        {roots.length ? (
+          <span className="budget-card-title-categories">{roots.map((id) => categories.name.get(id)).filter(Boolean).join(", ")}</span>
+        ) : (
+          <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
+        )}
+        {actions}
+      </div>
+      <p className="budget-card-summary">
+        {money(spent)}
+        {" / "}
+        {money(amount)}
+        {!compact && (
+          <>
+            {" → "}
+            {money(over ? spent - amount : amount - spent)}
+            {over && (
+              <>
+                {" · "}
+                <span className="budget-card-summary-exceeded">
+                  <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
+                  {t("budgets.exceeded")}
+                </span>
+              </>
+            )}
+          </>
+        )}
+      </p>
+      {!compact && (
+        <div className={cn("budget-card-progress-wrap", over && "budget-progress-over", warning && "budget-progress-warning")}>
+          <Progress value={amount > 0 ? Math.min(100, pct) : 0} className="h-2 budget-card-progress" />
+          <span className={cn("budget-card-pct", over && "budget-card-pct--over", warning && "budget-card-pct--warning")}>{Math.round(pct)}%</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
-function flattenCategoriesForSelect(
-  defaultCats: CategoryWithSubs[],
-  userCats: CategoryWithSubs[],
-  lang: string
-): CategoryOption[] {
-  const out: CategoryOption[] = [];
-  const add = (cat: CategoryWithSubs | CategoryItem, isSub: boolean, parentId: string | null, subIds: string[]) => {
-    const name = (cat as CategoryWithSubs).name_en && lang === "en"
-      ? (cat as CategoryWithSubs).name_en!
-      : cat.name;
-    out.push({ id: cat.id, label: name, isSub, parentId, subIds });
-  };
-  const walk = (list: CategoryWithSubs[]) => {
-    for (const parent of list) {
-      const subIds = (parent.subcategories ?? []).map((s) => s.id);
-      add(parent, false, null, subIds);
-      for (const sub of parent.subcategories ?? []) {
-        add(sub, true, parent.id, []);
-      }
-    }
-  };
-  walk(userCats);
-  walk(defaultCats);
-  return out;
-}
-
-export default function BudgetsBody() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+/** Create (no `budget`) or edit budget dialog body. */
+function BudgetForm({ budget, categories, onClose }: { budget?: BudgetWithSpent; categories: Lookup; onClose: () => void }) {
   const lang = useLang();
   const t = useTranslations(lang);
-  const { data: budgets = [], isLoading } = useBudgets();
   const { data: categoriesData } = useCategories();
   const createBudget = useCreateBudget();
   const updateBudget = useUpdateBudget();
+  const [amount, setAmount] = useState(budget ? Number(budget.amount).toFixed(2).replace(".", ",") : "");
+  const [color, setColor] = useState<string>(budget?.color && PALETTE.some((c) => c === budget.color) ? budget.color : PALETTE[0]);
+  const [categoryIds, setCategoryIds] = useState(budget ? rootIds(budget, categories) : []);
+  const roots = [...(categoriesData?.userCategories ?? []), ...(categoriesData?.defaultCategories ?? [])];
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = parseCurrencyValue(amount);
+    if (value < 0) return;
+    try {
+      if (budget) await updateBudget.mutateAsync({ id: budget.id, amount: value, color, category_ids: categoryIds });
+      else await createBudget.mutateAsync({ amount: value, color, category_ids: categoryIds.length > 0 ? categoryIds : undefined });
+      onClose();
+    } catch {
+      // The mutation rolls back its optimistic update.
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="text-center">{t(budget ? "budgets.edit" : "budgets.add")}</DialogTitle>
+        <DialogDescription className="text-center">{lang === "es" ? "Configura un límite mensual de gastos" : "Set a monthly spending limit"}</DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label" htmlFor="budget-amount" required>
+            {t("budgets.monthlyLimit")}
+          </Label>
+          <CurrencyInput id="budget-amount" placeholder="0,00" value={amount} onChange={setAmount} className="h-10" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label">{t("common.color")}</Label>
+          <ColorPicker value={color} onChange={setColor} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label" optional>
+            {t("budgets.linkedCategories")}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            {t("budgets.generalBudget")} {lang === "es" ? "si no eliges ninguna" : "if you leave none selected"}
+          </p>
+          <div className="flex flex-col gap-1 min-w-0 max-h-48 overflow-y-auto">
+            {roots.map((cat) => (
+              <label key={cat.id} className="flex items-center gap-2 cursor-pointer py-1 min-w-0">
+                <Checkbox
+                  checked={categoryIds.includes(cat.id)}
+                  onCheckedChange={() =>
+                    setCategoryIds((ids) => (ids.includes(cat.id) ? ids.filter((id) => id !== cat.id) : [...ids, cat.id]))
+                  }
+                />
+                {cat.emoji && <span className="text-base shrink-0">{cat.emoji}</span>}
+                <span className="text-sm truncate">{categories.name.get(cat.id)}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+        <DialogFooter className="sm:justify-center gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <SubmitButton pending={createBudget.isPending || updateBudget.isPending} isEdit={!!budget} className="gap-2">
+            {budget ? t("common.save") : lang === "es" ? "Crear" : "Create"}
+          </SubmitButton>
+        </DialogFooter>
+      </form>
+    </>
+  );
+}
+
+export default function BudgetsBody() {
+  const t = useTranslations(useLang());
+  const { data: budgets = [], isLoading } = useBudgets();
+  const categories = useCategoryLookup();
   const deleteBudget = useDeleteBudget();
   const { handleReorder } = useReorder<BudgetWithSpent>({ table: "budgets" });
-
   const isMobile = useMediaQuery("(max-width: 767px)");
-  const defaultCategories = useMemo(() => categoriesData?.defaultCategories ?? [], [categoriesData]);
-  const userCategories = useMemo(() => categoriesData?.userCategories ?? [], [categoriesData]);
-  const categoryOptions = useMemo(
-    () => flattenCategoriesForSelect(defaultCategories, userCategories, lang),
-    [defaultCategories, userCategories, lang]
+  const [createOpen, setCreateOpen] = useCreateDialog();
+  const [editing, setEditing] = useState<BudgetWithSpent | null>(null);
+  const [toDelete, setToDelete] = useState<string | null>(null);
+  const formOpen = createOpen || !!editing;
+  const closeForm = () => {
+    setCreateOpen(false);
+    setEditing(null);
+  };
+
+  const header = (
+    <PageHeader icon={<Wallet size={26} strokeWidth={1.5} />} title={t("budgets.title")} subtitle={t("budgets.heroSubtitle")}>
+      {!isLoading && <AddButton onClick={() => setCreateOpen(true)}>{t("budgets.add")}</AddButton>}
+    </PageHeader>
   );
-
-  const categoryIdToName = useMemo(() => {
-    const m = new Map<string, string>();
-    categoryOptions.forEach((o) => m.set(o.id, o.label));
-    return m;
-  }, [categoryOptions]);
-
-  const categoryIdToEmoji = useMemo(() => {
-    const m = new Map<string, string>();
-    const walk = (list: CategoryWithSubs[]) => {
-      for (const parent of list) {
-        if (parent.emoji) m.set(parent.id, parent.emoji);
-        for (const sub of parent.subcategories ?? []) {
-          if (sub.emoji) m.set(sub.id, sub.emoji);
-        }
-      }
-    };
-    walk(defaultCategories);
-    walk(userCategories);
-    return m;
-  }, [defaultCategories, userCategories]);
-
-  const categoryIdToColorKey = useMemo(() => {
-    const m = new Map<string, string>();
-    categoryOptions.forEach((o) => m.set(o.id, o.parentId ?? o.id));
-    return m;
-  }, [categoryOptions]);
-
-  /** Solo categorías padre para presupuestos (no subcategorías) */
-  const parentCategoryOptions = useMemo(
-    () => categoryOptions.filter((o) => !o.isSub),
-    [categoryOptions]
-  );
-
-  /** Convierte categoryIds del presupuesto a IDs únicos de categorías padre */
-  const getParentIds = (ids: string[]) =>
-    [...new Set(ids.map((id) => categoryIdToColorKey.get(id) ?? id))];
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [currentBudget, setCurrentBudget] = useState<BudgetWithSpent | null>(null);
-  type BudgetColor = (typeof ACCOUNT_BUDGET_COLORS)[number];
-  const [formData, setFormData] = useState<{
-    id: string;
-    amount: string;
-    color: BudgetColor;
-    categoryIds: string[];
-  }>({
-    id: "",
-    amount: "",
-    color: defaultBudgetColor,
-    categoryIds: [],
-  });
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null);
-  const [colorPickerOpen, setColorPickerOpen] = useState(false);
-
-  const resetForm = () => {
-    setFormData({
-      id: "",
-      amount: "",
-      color: defaultBudgetColor,
-      categoryIds: [],
-    });
-    setModalMode("create");
-    setCurrentBudget(null);
-  };
-
-  const openModal = (mode: "create" | "edit", budget?: BudgetWithSpent) => {
-    setIsModalOpen(true);
-    setModalMode(mode);
-    if (mode === "edit" && budget) {
-      setFormData({
-        id: budget.id,
-        amount: budget.amount !== undefined && budget.amount !== null
-          ? budget.amount.toFixed(2).replace(".", ",")
-          : "",
-        color: (budget.color && ACCOUNT_BUDGET_COLORS.includes(budget.color as BudgetColor)
-          ? budget.color
-          : defaultBudgetColor) as BudgetColor,
-        categoryIds: getParentIds(budget.categoryIds ?? []),
-      });
-      setCurrentBudget(budget);
-    } else {
-      resetForm();
-    }
-  };
-
-  // ?open=create (atajos): abrir el modal al detectar el parámetro (ajuste de estado en render,
-  // sin setState dentro de un effect) y limpiar la URL en un effect.
-  const wantsCreate = searchParams.get("open") === "create";
-  const [handledCreateParam, setHandledCreateParam] = useState(false);
-  if (wantsCreate !== handledCreateParam) {
-    setHandledCreateParam(wantsCreate);
-    if (wantsCreate) openModal("create");
-  }
-  useEffect(() => {
-    if (wantsCreate) router.replace("/budgets", { scroll: false });
-  }, [wantsCreate, router]);
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    resetForm();
-  };
-
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const amount = parseCurrencyValue(formData.amount);
-    if (amount < 0) return;
-
-    try {
-      if (modalMode === "create") {
-        await createBudget.mutateAsync({
-          amount,
-          color: formData.color || null,
-          category_ids: formData.categoryIds.length > 0 ? formData.categoryIds : undefined,
-        });
-      } else if (formData.id) {
-        await updateBudget.mutateAsync({
-          id: formData.id,
-          amount,
-          color: formData.color || null,
-          category_ids: formData.categoryIds,
-        });
-      }
-      closeModal();
-    } catch {
-      // Error handled by mutation
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!budgetToDelete) return;
-    try {
-      await deleteBudget.mutateAsync(budgetToDelete);
-      setDeleteModalOpen(false);
-      setBudgetToDelete(null);
-    } catch {
-      // Error handled by mutation
-    }
-  };
-
-  const toggleCategory = (opt: CategoryOption) => {
-    setFormData((prev) => {
-      const isChecked = prev.categoryIds.includes(opt.id);
-      return {
-        ...prev,
-        categoryIds: isChecked
-          ? prev.categoryIds.filter((id) => id !== opt.id)
-          : [...prev.categoryIds, opt.id],
-      };
-    });
-  };
-
 
   if (isLoading) {
     return (
       <div className="page-container">
-        <header className="page-header-clean">
-          <div className="page-header-left">
-            <div className="page-header-icon">
-              <Wallet size={26} strokeWidth={1.5} />
-            </div>
-            <div className="page-header-text">
-              <h1>{t("budgets.title")}</h1>
-              <p>{t("budgets.heroSubtitle")}</p>
-            </div>
-          </div>
-        </header>
+        {header}
         <div className="budgets-grid">
           {[1, 2, 3].map((i) => (
             <div key={i} className="skeleton" style={{ height: 160, borderRadius: 16 }} />
@@ -293,22 +206,65 @@ export default function BudgetsBody() {
     );
   }
 
+  const stop = (action: () => void) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    action();
+  };
+  const sortable = (mobile: boolean) => (
+    <SortableContainer
+      items={budgets}
+      onReorder={handleReorder}
+      className={`budgets-grid budgets-grid--${mobile ? "mobile" : "desktop"}`}
+      strategy={mobile ? "vertical" : "grid"}
+      renderOverlay={(active) => active && <BudgetCard budget={active} categories={categories} compact />}
+      renderItem={(budget) =>
+        mobile ? (
+          <SortableItem key={budget.id} id={budget.id} showHandle={false}>
+            <SwipeToReveal
+              id={budget.id}
+              className="budget-swipe-wrapper"
+              swipeHint
+              desktopMinWidth={768}
+              actions={
+                <div className="budget-swipe-actions">
+                  <button type="button" onClick={stop(() => setEditing(budget))} className="budget-swipe-btn budget-swipe-btn--edit" aria-label={t("common.edit")}>
+                    <Pencil className="size-5" />
+                  </button>
+                  <button type="button" onClick={stop(() => setToDelete(budget.id))} className="budget-swipe-btn budget-swipe-btn--delete" aria-label={t("common.delete")}>
+                    <Trash2 className="size-5" />
+                  </button>
+                </div>
+              }
+            >
+              <BudgetCard budget={budget} categories={categories} />
+            </SwipeToReveal>
+          </SortableItem>
+        ) : (
+          <SortableItem key={budget.id} id={budget.id}>
+            <BudgetCard
+              budget={budget}
+              categories={categories}
+              actions={
+                <div className="budget-card-actions">
+                  <button type="button" className="budget-card-action-btn budget-card-action-btn--edit" onClick={stop(() => setEditing(budget))} aria-label={t("common.edit")}>
+                    <Pencil size={18} />
+                  </button>
+                  <button type="button" className="budget-card-action-btn budget-card-action-btn--delete" onClick={stop(() => setToDelete(budget.id))} aria-label={t("common.delete")}>
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              }
+            />
+          </SortableItem>
+        )
+      }
+    />
+  );
+
   return (
     <div className="page-container fade-in">
-      <header className="page-header-clean">
-        <div className="page-header-left">
-          <div className="page-header-icon">
-            <Wallet size={26} strokeWidth={1.5} />
-          </div>
-          <div className="page-header-text">
-            <h1>{t("budgets.title")}</h1>
-            <p>{t("budgets.heroSubtitle")}</p>
-          </div>
-        </div>
-        <AddButton onClick={() => openModal("create")}>
-          {t("budgets.add")}
-        </AddButton>
-      </header>
+      {header}
 
       <div className="budgets-grid">
         {budgets.length === 0 ? (
@@ -317,398 +273,32 @@ export default function BudgetsBody() {
               <Wallet size={48} strokeWidth={1.5} />
             </div>
             <p>{t("budgets.noBudgets")}</p>
-            <p style={{ fontSize: "0.9rem", color: "var(--gris-claro)", marginTop: "0.25rem" }}>
-              {t("budgets.noBudgetsText")}
-            </p>
+            <p style={{ fontSize: "0.9rem", color: "var(--gris-claro)", marginTop: "0.25rem" }}>{t("budgets.noBudgetsText")}</p>
           </div>
         ) : isMobile ? (
-          <SwipeToRevealGroup className="budgets-grid budgets-grid--swipe">
-            <SortableContainer
-              items={budgets}
-              onReorder={handleReorder}
-              className="budgets-grid budgets-grid--mobile"
-              strategy="vertical"
-              renderOverlay={(activeItem) => {
-                if (!activeItem) return null;
-                const amount = Number(activeItem.amount);
-                const spent = Number(activeItem.spent ?? 0);
-                const over = spent > amount;
-                const parentIds = getParentIds(activeItem.categoryIds ?? []);
-                const firstEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
-                return (
-                  <div
-                    className={`budget-card sortable-overlay ${over ? "budget-card--over" : ""}`}
-                    style={{ "--accent-budget": activeItem.color || "var(--accent)" } as React.CSSProperties}
-                  >
-                    <div className="budget-card-badges-row">
-                      <span className="budget-card-icon-blur" aria-hidden>
-                        {firstEmoji ? <span className="budget-card-emoji">{firstEmoji}</span> : <Wallet size={20} strokeWidth={1.5} />}
-                      </span>
-                      {parentIds.length ? (
-                        <span className="budget-card-title-categories">
-                          {parentIds.map((id) => categoryIdToName.get(id)).filter(Boolean).join(", ")}
-                        </span>
-                      ) : (
-                        <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
-                      )}
-                    </div>
-                    <p className="budget-card-summary">
-                      <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
-                      {" / "}
-                      <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
-                    </p>
-                  </div>
-                );
-              }}
-              renderItem={(budget) => {
-                const amount = Number(budget.amount);
-                const spent = Number(budget.spent ?? 0);
-                const remaining = Math.max(0, amount - spent);
-                const over = spent > amount;
-                const pct = amount > 0 ? (spent / amount) * 100 : 0;
-                const progressValue = amount > 0 ? Math.min(100, pct) : 0;
-                const pctWarning = pct >= 80 && !over;
-                const accent = budget.color || "var(--accent)";
-                const parentIds = getParentIds(budget.categoryIds ?? []);
-                const firstCategoryEmoji = parentIds.length ? categoryIdToEmoji.get(parentIds[0]) : undefined;
-                const cardContent = (
-                  <div
-                    className={`budget-card ${over ? "budget-card--over" : ""}`}
-                    style={{ "--accent-budget": accent } as React.CSSProperties}
-                  >
-                    <div className="budget-card-header">
-                    </div>
-                    <div className="budget-card-badges-row">
-                      <span className="budget-card-icon-blur" aria-hidden>
-                        {firstCategoryEmoji ? (
-                          <span className="budget-card-emoji">{firstCategoryEmoji}</span>
-                        ) : (
-                          <Wallet size={20} strokeWidth={1.5} />
-                        )}
-                      </span>
-                      {parentIds.length ? (
-                        <span className="budget-card-title-categories">
-                          {parentIds
-                            .map((id) => categoryIdToName.get(id))
-                            .filter(Boolean)
-                            .join(", ")}
-                        </span>
-                      ) : (
-                        <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
-                      )}
-                    </div>
-                    <p className="budget-card-summary">
-                      {over ? (
-                        <>
-                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
-                          {" / "}
-                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
-                          {" → "}
-                          <SensitiveAmount>{formatCurrency(spent - amount)}</SensitiveAmount>
-                          {" · "}
-                          <span className="budget-card-summary-exceeded">
-                            <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
-                            {t("budgets.exceeded")}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
-                          {" / "}
-                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
-                          {" → "}
-                          <SensitiveAmount>{formatCurrency(remaining)}</SensitiveAmount>
-                        </>
-                      )}
-                    </p>
-                    <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
-                      <Progress value={progressValue} className="h-2 budget-card-progress" />
-                      <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
-                    </div>
-                  </div>
-                );
-                return (
-                  <SortableItem key={budget.id} id={budget.id} showHandle={false}>
-                    <SwipeToReveal
-                      id={budget.id}
-                      className="budget-swipe-wrapper"
-                      swipeHint
-                      desktopMinWidth={768}
-                      actions={
-                        <div className="budget-swipe-actions">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); openModal("edit", budget); }}
-                            className="budget-swipe-btn budget-swipe-btn--edit"
-                            aria-label={t("common.edit")}
-                          >
-                            <Pencil className="size-5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setBudgetToDelete(budget.id); setDeleteModalOpen(true); }}
-                            className="budget-swipe-btn budget-swipe-btn--delete"
-                            aria-label={t("common.delete")}
-                          >
-                            <Trash2 className="size-5" />
-                          </button>
-                        </div>
-                      }
-                    >
-                      {cardContent}
-                    </SwipeToReveal>
-                  </SortableItem>
-                );
-              }}
-            />
-          </SwipeToRevealGroup>
+          <SwipeToRevealGroup className="budgets-grid budgets-grid--swipe">{sortable(true)}</SwipeToRevealGroup>
         ) : (
-          <SortableContainer
-            items={budgets}
-            onReorder={handleReorder}
-            className="budgets-grid budgets-grid--desktop"
-            strategy="grid"
-            renderOverlay={(activeItem) => {
-              if (!activeItem) return null;
-              const amount = Number(activeItem.amount);
-              const spent = Number(activeItem.spent ?? 0);
-              const over = spent > amount;
-              const parentIds = getParentIds(activeItem.categoryIds ?? []);
-              return (
-                <div
-                  className={`budget-card sortable-overlay ${over ? "budget-card--over" : ""}`}
-                  style={{ "--accent-budget": activeItem.color || "var(--accent)" } as React.CSSProperties}
-                >
-                  <div className="budget-card-badges-row">
-                    <span className="budget-card-icon-blur" aria-hidden>
-                      {parentIds.length && categoryIdToEmoji.get(parentIds[0]) ? (
-                        <span className="budget-card-emoji">{categoryIdToEmoji.get(parentIds[0])}</span>
-                      ) : (
-                        <Wallet size={20} strokeWidth={1.5} />
-                      )}
-                    </span>
-                    {parentIds.length ? (
-                      <span className="budget-card-title-categories">
-                        {parentIds.map((id) => categoryIdToName.get(id)).filter(Boolean).join(", ")}
-                      </span>
-                    ) : (
-                      <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
-                    )}
-                  </div>
-                  <p className="budget-card-summary">
-                    <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
-                    {" / "}
-                    <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
-                  </p>
-                </div>
-              );
-            }}
-            renderItem={(budget) => {
-              const amount = Number(budget.amount);
-              const spent = Number(budget.spent ?? 0);
-              const remaining = Math.max(0, amount - spent);
-              const over = spent > amount;
-              const pct = amount > 0 ? (spent / amount) * 100 : 0;
-              const progressValue = amount > 0 ? Math.min(100, pct) : 0;
-              const pctWarning = pct >= 80 && !over;
-              const parentIdsDesktop = getParentIds(budget.categoryIds ?? []);
-              return (
-                <SortableItem key={budget.id} id={budget.id}>
-                  <div
-                    className={`budget-card ${over ? "budget-card--over" : ""}`}
-                    style={{ "--accent-budget": budget.color || "var(--accent)" } as React.CSSProperties}
-                  >
-                    <div className="budget-card-badges-row">
-                      <span className="budget-card-icon-blur" aria-hidden>
-                        {parentIdsDesktop.length && categoryIdToEmoji.get(parentIdsDesktop[0]) ? (
-                          <span className="budget-card-emoji">{categoryIdToEmoji.get(parentIdsDesktop[0])}</span>
-                        ) : (
-                          <Wallet size={20} strokeWidth={1.5} />
-                        )}
-                      </span>
-                      {parentIdsDesktop.length ? (
-                        <span className="budget-card-title-categories">
-                          {parentIdsDesktop
-                            .map((id) => categoryIdToName.get(id))
-                            .filter(Boolean)
-                            .join(", ")}
-                        </span>
-                      ) : (
-                        <span className="budget-card-title-categories budget-card-title-categories--general">{t("budgets.generalBudget")}</span>
-                      )}
-                      <div className="budget-card-actions">
-                        <button
-                          type="button"
-                          className="budget-card-action-btn budget-card-action-btn--edit"
-                          onClick={(e) => { e.stopPropagation(); openModal("edit", budget); }}
-                          aria-label={t("common.edit")}
-                        >
-                          <Pencil size={18} />
-                        </button>
-                        <button
-                          type="button"
-                          className="budget-card-action-btn budget-card-action-btn--delete"
-                          onClick={(e) => { e.stopPropagation(); setBudgetToDelete(budget.id); setDeleteModalOpen(true); }}
-                          aria-label={t("common.delete")}
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="budget-card-summary">
-                      {over ? (
-                        <>
-                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
-                          {" / "}
-                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
-                          {" → "}
-                          <SensitiveAmount>{formatCurrency(spent - amount)}</SensitiveAmount>
-                          {" · "}
-                          <span className="budget-card-summary-exceeded">
-                            <AlertTriangle size={14} className="budget-card-exceeded-icon" aria-hidden />
-                            {t("budgets.exceeded")}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <SensitiveAmount>{formatCurrency(spent)}</SensitiveAmount>
-                          {" / "}
-                          <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
-                          {" → "}
-                          <SensitiveAmount>{formatCurrency(remaining)}</SensitiveAmount>
-                        </>
-                      )}
-                    </p>
-                    <div className={`budget-card-progress-wrap ${over ? "budget-progress-over" : pctWarning ? "budget-progress-warning" : ""}`}>
-                      <Progress value={progressValue} className="h-2 budget-card-progress" />
-                      <span className={`budget-card-pct ${over ? "budget-card-pct--over" : pctWarning ? "budget-card-pct--warning" : ""}`}>{Math.round(pct)}%</span>
-                    </div>
-                  </div>
-                </SortableItem>
-              );
-            }}
-          />
+          sortable(false)
         )}
       </div>
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
+      <Dialog open={formOpen} onOpenChange={(open) => !open && closeForm()}>
         <DialogContent className="sm:max-w-md max-h-[calc(100dvh-11rem)] md:max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-4 !top-[calc(50%-40px)] md:!top-[50%] !bg-[var(--negro)] !border-[var(--gris)]">
-          <DialogHeader>
-            <DialogTitle className="text-center">
-              {modalMode === "create" ? t("budgets.add") : t("budgets.edit")}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {lang === "es" ? "Configura un límite mensual de gastos" : "Set a monthly spending limit"}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSave} className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <Label className="subs-form-label" htmlFor="budget-amount" required>
-                {t("budgets.monthlyLimit")}
-              </Label>
-              <CurrencyInput
-                id="budget-amount"
-                placeholder="0,00"
-                value={formData.amount}
-                onChange={(value) => setFormData({ ...formData, amount: value })}
-                className="h-10"
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label className="subs-form-label">{t("common.color")}</Label>
-              <Popover open={colorPickerOpen} onOpenChange={setColorPickerOpen}>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="size-10 rounded-lg cursor-pointer border border-input"
-                    style={{ backgroundColor: formData.color }}
-                    aria-label={t("common.color")}
-                  />
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-3" align="start" side="top">
-                  <div className="grid grid-cols-4 gap-2">
-                    {colors.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        className="size-6 rounded-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background"
-                        style={{
-                          backgroundColor: c,
-                          border: formData.color === c ? "2px solid var(--blanco)" : "none",
-                        }}
-                        onClick={() => {
-                          setFormData({ ...formData, color: c });
-                          setColorPickerOpen(false);
-                        }}
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label className="subs-form-label" optional>
-                {t("budgets.linkedCategories")}
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                {t("budgets.generalBudget")} {lang === "es" ? "si no eliges ninguna" : "if you leave none selected"}
-              </p>
-              <div className="flex flex-col gap-1 min-w-0 max-h-48 overflow-y-auto">
-                {parentCategoryOptions.map((opt) => (
-                  <label
-                    key={opt.id}
-                    className="flex items-center gap-2 cursor-pointer py-1 min-w-0"
-                  >
-                    <Checkbox
-                      checked={formData.categoryIds.includes(opt.id)}
-                      onCheckedChange={() => toggleCategory(opt)}
-                    />
-                    {categoryIdToEmoji.get(opt.id) && (
-                      <span className="text-base shrink-0">{categoryIdToEmoji.get(opt.id)}</span>
-                    )}
-                    <span className="text-sm truncate">{opt.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <DialogFooter className="sm:justify-center gap-3">
-              <Button type="button" variant="outline" onClick={closeModal}>
-                {t("common.cancel")}
-              </Button>
-              <SubmitButton 
-                pending={createBudget.isPending || updateBudget.isPending}
-                isEdit={modalMode === "edit"}
-                className="gap-2"
-              >
-                {modalMode === "create" ? (lang === "es" ? "Crear" : "Create") : t("common.save")}
-              </SubmitButton>
-            </DialogFooter>
-          </form>
+          {formOpen && <BudgetForm key={editing?.id ?? "new"} budget={editing ?? undefined} categories={categories} onClose={closeForm} />}
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
-            </div>
-            <AlertDialogTitle className="text-center">{t("budgets.deleteTitle")}</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">{t("budgets.deleteConfirm")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:justify-center gap-3">
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleteBudget.isPending}
-              variant="destructive"
-            >
-              {deleteBudget.isPending && <Spinner className="size-4 mr-2" />}
-              {t("common.delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onOpenChange={(open) => !open && setToDelete(null)}
+        title={t("budgets.deleteTitle")}
+        description={t("budgets.deleteConfirm")}
+        pending={deleteBudget.isPending}
+        onConfirm={async () => {
+          if (toDelete) await deleteBudget.mutateAsync(toDelete).catch(() => undefined);
+          setToDelete(null);
+        }}
+      />
     </div>
   );
 }

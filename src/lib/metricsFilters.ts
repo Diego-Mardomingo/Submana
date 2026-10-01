@@ -1,49 +1,55 @@
-import type { CategoryWithSubs, CategoryItem } from "@/hooks/useCategories";
+import type { CategoryWithSubs } from "@/hooks/useCategories";
+import { detectTransferIds, type TransferDetectable } from "@/lib/transferDetection";
 
-export interface MetricsFilterContext {
-  defaultCategories: CategoryWithSubs[];
-  userCategories: CategoryWithSubs[];
-}
-
-type TxCategories = { category_id?: string | null; subcategory_id?: string | null };
-
-/** Conjunto de excluidas y mapa subcategoría→padre, calculados una vez por contexto. */
-function buildExclusionIndex(context: MetricsFilterContext) {
-  const excludedIds = new Set<string>();
-  const subToParent = new Map<string, string>();
-  const walk = (list: (CategoryWithSubs | CategoryItem)[], parentId?: string) => {
-    for (const c of list) {
-      if (c.exclude_from_metrics) excludedIds.add(c.id);
-      if (parentId) subToParent.set(c.id, parentId);
-      const subs = (c as CategoryWithSubs).subcategories;
-      if (subs?.length) walk(subs, c.id);
-    }
-  };
-  walk([...context.defaultCategories, ...context.userCategories]);
-
-  return (tx: TxCategories): boolean => {
-    if (excludedIds.size === 0) return false;
-    const catId =
-      tx.category_id ?? (tx.subcategory_id ? subToParent.get(tx.subcategory_id) : undefined) ?? tx.subcategory_id;
-    return catId ? excludedIds.has(catId) : false;
-  };
-}
+type MetricTx = TransferDetectable & { category_id?: string | null; subcategory_id?: string | null };
 
 /**
- * Devuelve true si la transacción NO debe contarse en métricas.
- * Para listas usar filterForMetrics, que construye el índice una sola vez.
+ * Transactions that count for metrics (dashboard, summaries, budgets): drops detected transfers
+ * between own accounts and categories (or parents of subcategories) flagged exclude_from_metrics.
  */
-export function shouldExcludeFromMetrics(tx: TxCategories, context: MetricsFilterContext): boolean {
-  return buildExclusionIndex(context)(tx);
-}
-
-/**
- * Filtra transacciones excluyendo las que tienen categoría marcada para no contar en métricas.
- */
-export function filterForMetrics<T extends TxCategories>(
+export function metricTransactions<T extends MetricTx>(
   transactions: T[],
-  context: MetricsFilterContext
+  categories?: { defaultCategories: CategoryWithSubs[]; userCategories: CategoryWithSubs[] }
 ): T[] {
-  const isExcluded = buildExclusionIndex(context);
-  return transactions.filter((tx) => !isExcluded(tx));
+  const excluded = new Set<string>();
+  const parentOf = new Map<string, string>();
+  for (const cat of [...(categories?.defaultCategories ?? []), ...(categories?.userCategories ?? [])]) {
+    if (cat.exclude_from_metrics) excluded.add(cat.id);
+    for (const sub of cat.subcategories ?? []) {
+      parentOf.set(sub.id, cat.id);
+      if (sub.exclude_from_metrics) excluded.add(sub.id);
+    }
+  }
+  const transferIds = detectTransferIds(transactions);
+  return transactions.filter((tx) => {
+    const categoryId = tx.category_id ?? (tx.subcategory_id && (parentOf.get(tx.subcategory_id) ?? tx.subcategory_id));
+    return !transferIds.has(tx.id) && !(categoryId && excluded.has(categoryId));
+  });
+}
+
+/** Total income and expense of a list of transactions. */
+export function sumByType(transactions: { amount?: number | string; type?: string }[]) {
+  let income = 0;
+  let expense = 0;
+  for (const tx of transactions) {
+    if (tx.type === "income") income += Number(tx.amount) || 0;
+    else expense += Number(tx.amount) || 0;
+  }
+  return { income, expense };
+}
+
+/**
+ * Net effect of transactions on a balance (income adds, expense subtracts). Rebuilding historical
+ * balances uses ALL transactions: transfers and excluded categories also move money.
+ */
+export function netBalanceChange(transactions: { amount?: number | string; type?: string }[]) {
+  const { income, expense } = sumByType(transactions);
+  return income - expense;
+}
+
+/** Running totals of `values` starting at `start`, rounded to cents. */
+export function runningTotals(values: number[], start = 0) {
+  const totals: number[] = [];
+  for (const value of values) totals.push((totals.at(-1) ?? start) + value);
+  return totals.map((v) => Math.round(v * 100) / 100);
 }

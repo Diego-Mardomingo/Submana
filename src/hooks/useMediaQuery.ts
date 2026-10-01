@@ -1,20 +1,22 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+
+const noopSubscribe = () => () => {};
 
 export function useMediaQuery(query: string): boolean {
-  const subscribe = useCallback(
-    (onChange: () => void) => {
+  return useSyncExternalStore(
+    (onChange) => {
       const media = window.matchMedia(query);
       media.addEventListener("change", onChange);
       return () => media.removeEventListener("change", onChange);
     },
-    [query]
-  );
-
-  return useSyncExternalStore(
-    subscribe,
     () => window.matchMedia(query).matches,
     () => false
   );
+}
+
+/** False during SSR and hydration, true afterwards (for values that differ between server and client). */
+export function useMounted() {
+  return useSyncExternalStore(noopSubscribe, () => true, () => false);
 }

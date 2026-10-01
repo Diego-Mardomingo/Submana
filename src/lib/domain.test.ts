@@ -3,12 +3,10 @@ import { isSameStatementRow } from "./importDuplicateDetection";
 import { detectTransferIds } from "./transferDetection";
 import { validateImportPayload, MAX_IMPORT_ROWS } from "./importValidation";
 import { validateSubscriptionFields } from "./subscriptionValidation";
-import { safeInternalPath } from "./apiHelpers";
+import { safeInternalPath } from "./navigation";
 import { initialsAvatarDataUri } from "./initialsAvatar";
 import { calendarMonthsUtcHalfOpenRange, calendarDayInAppTimeZone, toAppDate } from "./date";
-import { getEffectiveCategoryIds } from "./budgetHelpers";
-import { filterForMetrics } from "./metricsFilters";
-import { netBalanceChange } from "./balanceHistory";
+import { metricTransactions, netBalanceChange } from "./metricsFilters";
 import { getAncestorIds, getSystemDescendantIds } from "./categoryTree";
 
 describe("isSameStatementRow", () => {
@@ -143,16 +141,12 @@ describe("categorías y métricas", () => {
     { id: "custom", parent_id: "food", user_id: "u1" },
   ];
 
-  it("getEffectiveCategoryIds incluye las subcategorías directas", () => {
-    expect(getEffectiveCategoryIds(["food"], categories).sort()).toEqual(["custom", "food", "food-super"]);
-  });
-
   it("árbol de categorías del sistema", () => {
     expect(getSystemDescendantIds(categories, "food")).toEqual(["food-super", "food-super-bio"]);
     expect(getAncestorIds(categories, "food-super-bio")).toEqual(["food-super", "food"]);
   });
 
-  it("filterForMetrics excluye categorías marcadas y sus subcategorías", () => {
+  it("metricTransactions excluye categorías marcadas y sus subcategorías", () => {
     const ctx = {
       defaultCategories: [
         {
@@ -165,13 +159,21 @@ describe("categorías y métricas", () => {
       ],
       userCategories: [],
     };
+    const tx = (id: string, amount: number, categories: { category_id?: string; subcategory_id?: string }) => ({
+      id,
+      amount,
+      type: "expense",
+      date: "2025-03-01T10:00:00Z",
+      account_id: "A",
+      ...categories,
+    });
     const txs = [
-      { id: 1, category_id: "transfers" },
-      { id: 2, subcategory_id: "transfers-sub" },
-      { id: 3, category_id: "food" },
-      { id: 4 },
+      tx("1", 1, { category_id: "transfers" }),
+      tx("2", 2, { subcategory_id: "transfers-sub" }),
+      tx("3", 3, { category_id: "food" }),
+      tx("4", 4, {}),
     ];
-    expect(filterForMetrics(txs, ctx).map((t) => t.id)).toEqual([3, 4]);
+    expect(metricTransactions(txs, ctx).map((t) => t.id)).toEqual(["3", "4"]);
   });
 
   it("netBalanceChange suma ingresos y resta gastos", () => {

@@ -2,43 +2,45 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAccounts } from "@/hooks/useAccounts";
-import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
-import { useCreateTransaction } from "@/hooks/useCreateTransaction";
-import { useUpdateTransaction } from "@/hooks/useUpdateTransaction";
-import { useLang } from "@/hooks/useLang";
-import { useTranslations } from "@/lib/i18n/utils";
-import { parseDateString, toDateString } from "@/lib/date";
+import { AccountSelect } from "@/components/AccountSelect";
+import { BackButton } from "@/components/BackButton";
+import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { DatePicker } from "@/components/ui/date-picker";
-import { CurrencyInput, parseCurrencyValue } from "@/components/ui/currency-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { BackButton } from "@/components/BackButton";
-import { safeInternalPath } from "@/lib/apiHelpers";
+import { useAccounts } from "@/hooks/useAccounts";
+import { useCategories, type CategoryItem } from "@/hooks/useCategories";
+import { useLang } from "@/hooks/useLang";
+import { useCreateTransaction, useUpdateTransaction, type Transaction } from "@/hooks/useTransactions";
+import { parseDateString, toDateString } from "@/lib/date";
+import { useTranslations } from "@/lib/i18n/utils";
+import { safeInternalPath } from "@/lib/navigation";
 
-interface TransactionFormProps {
-  editData?: {
-    id: string;
-    amount: number;
-    type: string;
-    date: string;
-    description?: string;
-    account_id?: string;
-    category_id?: string;
-    subcategory_id?: string;
-  };
-  returnTo?: string;
+function CategorySelect({ value, onChange, options }: { value: string; onChange: (id: string) => void; options: CategoryItem[] }) {
+  return (
+    <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
+      <SelectTrigger className="w-full !h-10">
+        <SelectValue placeholder="—" />
+      </SelectTrigger>
+      <SelectContent position="popper" side="top">
+        <SelectItem value="none">—</SelectItem>
+        {options.map((c) => (
+          <SelectItem key={c.id} value={c.id}>
+            <span className="flex items-center gap-2">
+              {c.emoji && <span>{c.emoji}</span>}
+              {c.name}
+            </span>
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
-export default function TransactionForm({ editData, returnTo }: TransactionFormProps) {
+/** Create (no `transaction`) or edit transaction page. */
+export default function TransactionForm({ transaction, returnTo }: { transaction?: Transaction; returnTo?: string }) {
   const lang = useLang();
   const t = useTranslations(lang);
   const router = useRouter();
@@ -47,40 +49,28 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
   const createTx = useCreateTransaction();
   const updateTx = useUpdateTransaction();
 
-  const categories: CategoryWithSubs[] = [
-    ...(categoriesData?.userCategories ?? []),
-    ...(categoriesData?.defaultCategories ?? []),
-  ];
-  const parents = categories.filter((c) => !("parent_id" in c) || !(c as { parent_id?: string }).parent_id);
-
-  const [type, setType] = useState<"income" | "expense">(editData?.type === "income" ? "income" : "expense");
-  const [amount, setAmount] = useState(
-    editData?.amount !== undefined && editData?.amount !== null
-      ? editData.amount.toFixed(2).replace(".", ",")
-      : ""
-  );
-  const [date, setDate] = useState<Date>(
-    editData?.date ? parseDateString(editData.date) : new Date()
-  );
-  const [description, setDescription] = useState(editData?.description || "");
-  const [accountId, setAccountId] = useState(editData?.account_id || "");
-  const [categoryId, setCategoryId] = useState(editData?.category_id || "none");
-  const [subcategoryId, setSubcategoryId] = useState(editData?.subcategory_id || "none");
+  const [type, setType] = useState<"income" | "expense">(transaction?.type ?? "expense");
+  const [amount, setAmount] = useState(transaction ? Number(transaction.amount).toFixed(2).replace(".", ",") : "");
+  const [date, setDate] = useState(() => (transaction ? parseDateString(transaction.date) : new Date()));
+  const [description, setDescription] = useState(transaction?.description ?? "");
+  const [pickedAccountId, setAccountId] = useState(transaction?.account_id ?? "");
+  const [categoryId, setCategoryId] = useState(transaction?.category_id ?? "");
+  const [subcategoryId, setSubcategoryId] = useState(transaction?.subcategory_id ?? "");
   const [error, setError] = useState("");
 
-  // Sin elección explícita, una transacción nueva usa la cuenta por defecto.
-  const defaultAccountId = editData
-    ? ""
-    : (accounts as Array<{ id: string; is_default?: boolean }>).find((a) => a.is_default)?.id ?? "";
-  const effectiveAccountId = accountId || defaultAccountId;
-
-  const subcategories = categories.find((c) => c.id === categoryId)?.subcategories || [];
+  // New transactions default to the account marked as default.
+  const accountId = pickedAccountId || (transaction ? "" : (accounts.find((a) => a.is_default)?.id ?? ""));
+  const categories = [...(categoriesData?.userCategories ?? []), ...(categoriesData?.defaultCategories ?? [])];
+  const parents = categories.filter((c) => !c.parent_id);
+  const category = parents.find((c) => c.id === categoryId);
+  const subcategories = category?.subcategories ?? [];
+  const excludedFromMetrics = category?.exclude_from_metrics || subcategories.find((s) => s.id === subcategoryId)?.exclude_from_metrics;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     const num = parseCurrencyValue(amount);
-    if (num <= 0 || !date || !effectiveAccountId) {
+    if (num <= 0 || !accountId) {
       setError(lang === "es" ? "Por favor, completa todos los campos obligatorios" : "Please fill all required fields");
       return;
     }
@@ -89,30 +79,24 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
       type,
       date: toDateString(date),
       description: description || undefined,
-      account_id: effectiveAccountId,
-      category_id: categoryId && categoryId !== "none" ? categoryId : undefined,
-      subcategory_id: subcategoryId && subcategoryId !== "none" ? subcategoryId : undefined,
+      account_id: accountId,
+      category_id: categoryId || undefined,
+      subcategory_id: subcategoryId || undefined,
     };
     try {
-      if (editData) {
-        await updateTx.mutateAsync({ id: editData.id, ...payload });
-      } else {
-        await createTx.mutateAsync(payload);
-      }
+      if (transaction) await updateTx.mutateAsync({ id: transaction.id, ...payload });
+      else await createTx.mutateAsync(payload);
       router.replace(safeInternalPath(returnTo, "/transactions"), { scroll: false });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     }
   };
 
-  const pending = createTx.isPending || updateTx.isPending;
-
   return (
     <div className="page-container fade-in">
       <BackButton />
-
       <h1 className="title" style={{ marginBottom: 24 }}>
-        {editData ? t("transactions.edit") : t("transactions.add")}
+        {t(transaction ? "transactions.edit" : "transactions.add")}
       </h1>
 
       {error && (
@@ -122,76 +106,54 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
       )}
 
       <form onSubmit={handleSubmit} className="subs-form">
-        {/* Type Toggle */}
         <div className="subs-form-section">
-          <Label className="subs-form-label" required>{t("common.type")}</Label>
+          <Label className="subs-form-label" required>
+            {t("common.type")}
+          </Label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, background: "var(--gris)", padding: 4, borderRadius: 14 }}>
-            <button
-              type="button"
-              onClick={() => setType("expense")}
-              style={{ 
-                cursor: "pointer", 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                padding: 12, 
-                borderRadius: 12, 
-                border: "none",
-                background: type === "expense" ? "var(--danger)" : "transparent", 
-                color: type === "expense" ? "white" : "var(--gris-claro)",
-                fontWeight: 500,
-                fontSize: "0.9rem"
-              }}
-            >
-              {t("transactions.expense")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setType("income")}
-              style={{ 
-                cursor: "pointer", 
-                display: "flex", 
-                alignItems: "center", 
-                justifyContent: "center", 
-                padding: 12, 
-                borderRadius: 12,
-                border: "none",
-                background: type === "income" ? "var(--success)" : "transparent", 
-                color: type === "income" ? "white" : "var(--gris-claro)",
-                fontWeight: 500,
-                fontSize: "0.9rem"
-              }}
-            >
-              {t("transactions.income")}
-            </button>
+            {(["expense", "income"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setType(option)}
+                style={{
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "none",
+                  background: type === option ? `var(--${option === "income" ? "success" : "danger"})` : "transparent",
+                  color: type === option ? "white" : "var(--gris-claro)",
+                  fontWeight: 500,
+                  fontSize: "0.9rem",
+                }}
+              >
+                {t(`transactions.${option}`)}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Amount */}
         <div className="subs-form-section">
-          <Label className="subs-form-label" required>{t("common.amount")}</Label>
-          <CurrencyInput
-            placeholder="0,00"
-            value={amount}
-            onChange={setAmount}
-            className="!h-10"
-          />
+          <Label className="subs-form-label" required>
+            {t("common.amount")}
+          </Label>
+          <CurrencyInput placeholder="0,00" value={amount} onChange={setAmount} className="!h-10" />
         </div>
 
-        {/* Date */}
         <div className="subs-form-section">
-          <Label className="subs-form-label" required>{t("common.date")}</Label>
-          <DatePicker
-            value={date}
-            onChange={(d) => d && setDate(d)}
-            placeholder={lang === "es" ? "Seleccionar fecha" : "Select date"}
-            lang={lang}
-          />
+          <Label className="subs-form-label" required>
+            {t("common.date")}
+          </Label>
+          <DatePicker value={date} onChange={(d) => d && setDate(d)} placeholder={lang === "es" ? "Seleccionar fecha" : "Select date"} lang={lang} />
         </div>
 
-        {/* Description */}
         <div className="subs-form-section">
-          <Label className="subs-form-label" optional>{t("common.description")}</Label>
+          <Label className="subs-form-label" optional>
+            {t("common.description")}
+          </Label>
           <Input
             type="text"
             value={description}
@@ -201,88 +163,41 @@ export default function TransactionForm({ editData, returnTo }: TransactionFormP
           />
         </div>
 
-        {/* Account */}
         <div className="subs-form-section">
-          <Label className="subs-form-label" required>{t("common.account")}</Label>
-          <Select value={effectiveAccountId} onValueChange={setAccountId}>
-            <SelectTrigger className="w-full !h-10">
-              <SelectValue placeholder={lang === "es" ? "Seleccionar cuenta" : "Select account"} />
-            </SelectTrigger>
-            <SelectContent position="popper" side="top">
-              {(accounts as Array<{ id: string; name: string; color?: string }>).map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  <span className="flex items-center gap-2">
-                    <span
-                      className="size-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: a.color || "var(--accent)" }}
-                    />
-                    {a.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label className="subs-form-label" required>
+            {t("common.account")}
+          </Label>
+          <AccountSelect value={accountId} onChange={setAccountId} placeholder={lang === "es" ? "Seleccionar cuenta" : "Select account"} popperTop />
         </div>
 
-        {/* Category */}
         <div className="subs-form-section">
-          <Label className="subs-form-label" optional>{t("common.category")}</Label>
-          <Select value={categoryId} onValueChange={(v) => { setCategoryId(v); setSubcategoryId("none"); }}>
-            <SelectTrigger className="w-full !h-10">
-              <SelectValue placeholder="—" />
-            </SelectTrigger>
-            <SelectContent position="popper" side="top">
-              <SelectItem value="none">—</SelectItem>
-              {parents.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  <span className="flex items-center gap-2">
-                    {p.emoji && <span>{p.emoji}</span>}
-                    {p.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {(categoryId && categoryId !== "none") && (() => {
-            const selectedCat = parents.find((p) => p.id === categoryId);
-            const selectedSub = subcategories.find((s) => s.id === subcategoryId);
-            const hasExclude = selectedCat?.exclude_from_metrics || selectedSub?.exclude_from_metrics;
-            return hasExclude ? (
-              <p className="mt-2 text-sm text-muted-foreground bg-muted/60 rounded-lg px-3 py-2">
-                {t("categories.excludeFromMetricsInfo")}
-              </p>
-            ) : null;
-          })()}
+          <Label className="subs-form-label" optional>
+            {t("common.category")}
+          </Label>
+          <CategorySelect
+            value={categoryId}
+            onChange={(id) => {
+              setCategoryId(id);
+              setSubcategoryId("");
+            }}
+            options={parents}
+          />
+          {excludedFromMetrics && (
+            <p className="mt-2 text-sm text-muted-foreground bg-muted/60 rounded-lg px-3 py-2">{t("categories.excludeFromMetricsInfo")}</p>
+          )}
         </div>
 
-        {/* Subcategory */}
         {subcategories.length > 0 && (
           <div className="subs-form-section">
             <Label className="subs-form-label" optional>
               {lang === "es" ? "Subcategoría" : "Subcategory"}
             </Label>
-            <Select value={subcategoryId} onValueChange={setSubcategoryId}>
-              <SelectTrigger className="w-full !h-10">
-                <SelectValue placeholder="—" />
-              </SelectTrigger>
-              <SelectContent position="popper" side="top">
-                <SelectItem value="none">—</SelectItem>
-                {subcategories.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    <span className="flex items-center gap-2">
-                      {s.emoji && <span>{s.emoji}</span>}
-                      {s.name}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategorySelect value={subcategoryId} onChange={setSubcategoryId} options={subcategories} />
           </div>
         )}
 
-        {/* Submit */}
-        <SubmitButton pending={pending} isEdit={!!editData}>
-          {editData ? t("common.save") : t("transactions.add")}
+        <SubmitButton pending={createTx.isPending || updateTx.isPending} isEdit={!!transaction}>
+          {t(transaction ? "common.save" : "transactions.add")}
         </SubmitButton>
       </form>
     </div>

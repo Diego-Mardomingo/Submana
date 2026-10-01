@@ -1,211 +1,58 @@
 import type { ImportedTransaction } from "./types";
-import {
-	assignOccurrenceIndices,
-	buildImportSourceFingerprint,
-} from "./importKeys";
-import { generateTransactionHash, parseEuropeanNumber } from "./utils";
 import { parseCSV } from "./csv";
+import { capitalizeWords, fingerprintText, parseDate, parseEuropeanNumber, toImportedTransactions, type ParseCallbacks } from "./utils";
 
-interface ImaginRawTransaction {
+interface ImaginRow {
   concepto: string;
   fecha: string;
   importe: number;
   saldo: number;
 }
 
-interface ParseImaginOptions {
-  onProgress?: (current: number, total: number) => void;
-  onStatus?: (status: string) => void;
-}
+const parseAmount = (value: string | undefined) => parseEuropeanNumber(String(value ?? "").replace(/EUR/gi, "").trim());
 
-export interface ParsedImaginResult {
-  transactions: ImaginRawTransaction[];
-  finalBalance?: number;
-}
-
-function findHeaderRow(rows: string[][]): number {
-  for (let i = 0; i < Math.min(10, rows.length); i++) {
-    const row = rows[i];
-    if (!row || row.length < 3) continue;
-    const lower = row.map((c) => String(c ?? "").toLowerCase().trim());
-    if (
-      lower.includes("concepto") &&
-      lower.includes("fecha") &&
-      lower.includes("importe")
-    ) {
-      return i;
-    }
-  }
-  return -1;
-}
-
-function parseImaginDate(value: string): string | null {
-  const str = String(value ?? "").trim();
-  const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (match) {
-    const [, day, month, year] = match;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  return null;
-}
-
-function parseAmount(value: string): number {
-  const cleaned = String(value ?? "").replace(/EUR/gi, "").trim();
-  return parseEuropeanNumber(cleaned);
-}
-
-function capitalizeWords(str: string): string {
-  return str
-    .toLowerCase()
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function normalizeDescription(concepto: string): string {
-  const trimmed = (concepto || "").trim();
-  return trimmed ? capitalizeWords(trimmed) : "Transacción";
-}
-
-export async function parseImaginCSV(
-  file: File,
-  options?: ParseImaginOptions
-): Promise<ParsedImaginResult> {
-  const { onProgress, onStatus } = options ?? {};
-
+/** Parses an imagin CSV statement (";"-separated, newest first) into rows sorted by date. */
+export async function parseImaginCSV(file: File, { onProgress, onStatus }: ParseCallbacks = {}) {
   onStatus?.("Leyendo archivo CSV...");
   onProgress?.(1, 3);
-
-  const text = await file.text();
-  const rows = parseCSV(text, ";");
-
-  if (rows.length < 2) {
-    throw new Error("El archivo CSV está vacío o no tiene datos");
-  }
+  const rows = parseCSV(await file.text(), ";");
+  if (rows.length < 2) throw new Error("El archivo CSV está vacío o no tiene datos");
 
   onStatus?.("Procesando transacciones...");
   onProgress?.(2, 3);
+  const headerIdx = rows.slice(0, 10).findIndex((row) => {
+    const lower = row.map((c) => c.toLowerCase().trim());
+    return row.length >= 3 && ["concepto", "fecha", "importe"].every((h) => lower.includes(h));
+  });
+  if (headerIdx < 0) throw new Error("No se encontró la fila de cabeceras del extracto imagin");
+  const headers = rows[headerIdx].map((h) => h.toLowerCase().trim());
+  const [concepto, fecha, importe] = ["concepto", "fecha", "importe"].map((h) => headers.indexOf(h));
+  const saldo = headers.findIndex((h) => h.includes("saldo"));
 
-  const headerRowIdx = findHeaderRow(rows);
-  if (headerRowIdx < 0) {
-    throw new Error("No se encontró la fila de cabeceras del extracto imagin");
-  }
-
-  const headers = rows[headerRowIdx].map((h) => String(h ?? "").toLowerCase().trim());
-  const conceptoIdx = headers.indexOf("concepto");
-  const fechaIdx = headers.indexOf("fecha");
-  const importeIdx = headers.indexOf("importe");
-  const saldoIdx = headers.findIndex((h) => h.includes("saldo"));
-
-  if (conceptoIdx < 0 || fechaIdx < 0 || importeIdx < 0) {
-    throw new Error("No se pudieron identificar las columnas del CSV imagin");
-  }
-
-  const transactions: ImaginRawTransaction[] = [];
-
-  for (let i = headerRowIdx + 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row || row.length < 3) continue;
-
-    const concepto = String(row[conceptoIdx] ?? "").trim();
-    const fechaStr = String(row[fechaIdx] ?? "").trim();
-    const importeStr = String(row[importeIdx] ?? "");
-    const saldoStr = saldoIdx >= 0 && row[saldoIdx] != null ? String(row[saldoIdx]) : "";
-
-    const dateStr = parseImaginDate(fechaStr);
-    if (!dateStr) continue;
-
-    const importe = parseAmount(importeStr);
-    if (importe === 0) continue;
-
-    const saldo = parseAmount(saldoStr);
-
-    transactions.push({
-      concepto,
-      fecha: dateStr,
-      importe,
-      saldo,
-    });
+  const transactions: ImaginRow[] = [];
+  for (const row of rows.slice(headerIdx + 1)) {
+    if (row.length < 3) continue;
+    const date = /\d{1,2}\/\d{1,2}\/\d{4}/.test(row[fecha] ?? "") ? parseDate(row[fecha]) : null;
+    const amount = parseAmount(row[importe]);
+    if (!date || amount === 0) continue;
+    transactions.push({ concepto: (row[concepto] ?? "").trim(), fecha: date, importe: amount, saldo: saldo >= 0 ? parseAmount(row[saldo]) : 0 });
   }
 
   onProgress?.(3, 3);
   onStatus?.(`Encontradas ${transactions.length} transacciones`);
-
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
-  );
-
-  // La primera fila del CSV es la transacción más reciente; su "Saldo disponible" es el balance actual
-  const finalBalance =
-    transactions.length > 0 ? transactions[0].saldo : undefined;
-
-  return {
-    transactions: sortedTransactions,
-    finalBalance,
-  };
+  // The first row is the most recent one: its balance is the current balance.
+  const finalBalance = transactions[0]?.saldo;
+  return { transactions: [...transactions].sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()), finalBalance };
 }
 
-function buildImaginStableRowFingerprint(tx: ImaginRawTransaction): string {
-	const norm = (s: string) =>
-		(s || "")
-			.trim()
-			.replace(/\s+/g, " ")
-			.toLowerCase();
-	const parts = [
-		"imagin",
-		norm(tx.concepto),
-		tx.fecha,
-		tx.importe.toFixed(2),
-		tx.saldo.toFixed(2),
-	];
-	return parts.join("|");
-}
-
-export async function normalizeImaginTransactions(
-  transactions: ImaginRawTransaction[],
-  accountId: string
-): Promise<ImportedTransaction[]> {
-  const rows: Array<{
-    date: string;
-    amount: number;
-    type: "income" | "expense";
-    description: string;
-    hash: string;
-    baseFp: string;
-  }> = [];
-
-  for (const tx of transactions) {
-    const amount = Math.abs(tx.importe);
-    if (amount === 0) continue;
-
-    const isIncome = tx.importe > 0;
-    const description = normalizeDescription(tx.concepto);
-
-    const hash = await generateTransactionHash(
-      accountId,
-      tx.fecha,
-      amount,
-      description
-    );
-
-    rows.push({
+export function normalizeImaginTransactions(transactions: ImaginRow[], accountId: string): Promise<ImportedTransaction[]> {
+  return toImportedTransactions(
+    accountId,
+    transactions.map((tx) => ({
       date: tx.fecha,
-      amount,
-      type: isIncome ? "income" : "expense",
-      description,
-      hash,
-      baseFp: buildImaginStableRowFingerprint(tx),
-    });
-  }
-
-  const occ = assignOccurrenceIndices(rows.map((r) => r.baseFp));
-
-  return rows.map((r, i) => ({
-    date: r.date,
-    amount: r.amount,
-    type: r.type,
-    description: r.description,
-    external_hash: r.hash,
-    import_source_fingerprint: buildImportSourceFingerprint(r.baseFp, occ[i]!),
-  }));
+      signedAmount: tx.importe,
+      description: tx.concepto ? capitalizeWords(tx.concepto) : "Transacción",
+      fingerprint: ["imagin", fingerprintText(tx.concepto), tx.fecha, tx.importe.toFixed(2), tx.saldo.toFixed(2)].join("|"),
+    }))
+  );
 }

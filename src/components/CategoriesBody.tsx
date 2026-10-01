@@ -1,337 +1,238 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useCategories, useArchivedCategories, CategoryWithSubs } from "@/hooks/useCategories";
+import { useState } from "react";
+import { Archive, ArchiveRestore, ChevronDown, Plus, SquarePen, Tags, Trash2 } from "lucide-react";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import EmojiPicker from "@/components/EmojiPicker";
+import { PageHeader } from "@/components/PageHeader";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
+import { AddButton } from "@/components/ui/add-button";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  useCreateCategory,
-  useUpdateCategory,
-  useDeleteCategory,
   useArchiveCategory,
+  useArchivedCategories,
+  useCategories,
+  useCreateCategory,
+  useDeleteCategory,
   useUnarchiveCategory,
-} from "@/hooks/useCategoryMutations";
+  useUpdateCategory,
+  type CategoryItem,
+  type CategoryWithSubs,
+} from "@/hooks/useCategories";
+import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { AddButton } from "@/components/ui/add-button";
-import { SubmitButton } from "@/components/ui/submit-button";
-import { Trash2, Plus } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CategoryItem } from "@/hooks/useCategories";
-import { Tags, ChevronDown, Archive, ArchiveRestore } from "lucide-react";
-import EmojiPicker from "@/components/EmojiPicker";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
-import { useRouter, useSearchParams } from "next/navigation";
+import { cn } from "@/lib/utils";
+
+type Category = (CategoryWithSubs | CategoryItem) & { isArchived?: boolean };
+type FormState = { mode: "create" | "createSub" | "edit"; id?: string; parentId?: string; name: string; emoji: string };
+
+const WithTooltip = ({ tip, children }: { tip: string; children: React.ReactElement }) => (
+  <Tooltip>
+    <TooltipTrigger asChild>{children}</TooltipTrigger>
+    <TooltipContent>
+      <p>{tip}</p>
+    </TooltipContent>
+  </Tooltip>
+);
+
+/** Create / create-subcategory / edit category dialog body. */
+function CategoryForm({ initial, onClose }: { initial: FormState; onClose: () => void }) {
+  const lang = useLang();
+  const es = lang === "es";
+  const t = useTranslations(lang);
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
+  const [form, setForm] = useState(initial);
+  const { mode } = form;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name) return;
+    const emoji = form.emoji || null;
+    if (mode === "edit" && form.id) await updateCategory.mutateAsync({ id: form.id, name: form.name, emoji });
+    else await createCategory.mutateAsync({ name: form.name, parent_id: mode === "createSub" ? form.parentId : null, emoji });
+    onClose();
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="text-center">{t(mode === "create" ? "categories.add" : mode === "createSub" ? "categories.addSub" : "common.edit")}</DialogTitle>
+        <DialogDescription className="text-center">
+          {mode === "createSub"
+            ? es ? "Añade una subcategoría" : "Add a subcategory"
+            : mode === "edit"
+              ? es ? "Modifica los detalles de la categoría" : "Edit category details"
+              : es ? "Crea una nueva categoría personalizada" : "Create a new custom category"}
+        </DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label" optional>
+            Emoji
+          </Label>
+          <EmojiPicker value={form.emoji || null} onChange={(emoji) => setForm({ ...form, emoji })} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label className="subs-form-label" htmlFor="cat-name" required>
+            {t("settings.name")}
+          </Label>
+          <Input
+            id="cat-name"
+            type="text"
+            required
+            placeholder={es ? "Nombre de la categoría" : "Category name"}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className="h-10"
+          />
+        </div>
+        <DialogFooter className="sm:justify-center gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <SubmitButton pending={createCategory.isPending || updateCategory.isPending} isEdit={mode === "edit"} className="gap-2">
+            {mode === "edit" ? t("common.save") : es ? "Crear" : "Create"}
+          </SubmitButton>
+        </DialogFooter>
+      </form>
+    </>
+  );
+}
 
 export default function CategoriesBody() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
   const lang = useLang();
+  const es = lang === "es";
   const t = useTranslations(lang);
   const { data, isLoading } = useCategories();
   const { data: archivedData } = useArchivedCategories();
-  const createCategory = useCreateCategory();
-  const updateCategory = useUpdateCategory();
   const deleteCategory = useDeleteCategory();
   const archiveCategory = useArchiveCategory();
   const unarchiveCategory = useUnarchiveCategory();
-
-  const defaultCategories = data?.defaultCategories ?? [];
-  const userCategories = data?.userCategories ?? [];
-  const archivedCategories = archivedData?.defaultCategories ?? [];
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit" | "createSub">("create");
-  const [formData, setFormData] = useState({ id: "", name: "", parent_id: "", emoji: "" });
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [createOpen, setCreateOpen] = useCreateDialog();
+  const [form, setForm] = useState<FormState | null>(null);
+  const [toDelete, setToDelete] = useState<{ id: string; name: string } | null>(null);
   const [archivedOpen, setArchivedOpen] = useState(false);
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-
-
-  const resetForm = () => {
-    setFormData({ id: "", name: "", parent_id: "", emoji: "" });
+  const activeForm = form ?? (createOpen ? { mode: "create" as const, name: "", emoji: "" } : null);
+  const closeForm = () => {
+    setForm(null);
+    setCreateOpen(false);
   };
 
-  const openModal = (
-    mode: "create" | "edit" | "createSub",
-    data?: { id?: string; name?: string; parentId?: string; emoji?: string }
-  ) => {
-    setIsModalOpen(true);
-    setModalMode(mode);
-    setFormData({
-      id: data?.id || "",
-      name: data?.name || "",
-      parent_id: data?.parentId || "",
-      emoji: data?.emoji || "",
-    });
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    resetForm();
-  };
-
-  // ?open=create (atajos): abrir el modal al detectar el parámetro (ajuste de estado en render,
-  // sin setState dentro de un effect) y limpiar la URL en un effect.
-  const wantsCreate = searchParams.get("open") === "create";
-  const [handledCreateParam, setHandledCreateParam] = useState(false);
-  if (wantsCreate !== handledCreateParam) {
-    setHandledCreateParam(wantsCreate);
-    if (wantsCreate) openModal("create");
-  }
-  useEffect(() => {
-    if (wantsCreate) router.replace("/categories", { scroll: false });
-  }, [wantsCreate, router]);
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name) return;
-
-    if (modalMode === "create" || modalMode === "createSub") {
-      await createCategory.mutateAsync({
-        name: formData.name,
-        parent_id: modalMode === "createSub" ? formData.parent_id : null,
-        emoji: formData.emoji || null,
-      });
-    } else if (formData.id) {
-      await updateCategory.mutateAsync({
-        id: formData.id,
-        name: formData.name,
-        emoji: formData.emoji || null,
-      });
-    }
-    closeModal();
-  };
-
-  const handleDelete = async () => {
-    if (!categoryToDelete) return;
-    await deleteCategory.mutateAsync(categoryToDelete.id);
-    setDeleteModalOpen(false);
-    setCategoryToDelete(null);
-  };
-
-  const getCategoryName = (cat: CategoryWithSubs) => {
-    if (cat.isDefault && cat.name_en) {
-      return lang === "es" ? cat.name : cat.name_en;
-    }
-    return cat.name;
-  };
-
-
-  const renderCategoryRow = (
-    cat: CategoryWithSubs | CategoryItem,
-    isSubcategory = false,
-    isLast = false,
-    isArchived = false
-  ) => {
-    const excludeFromMetrics = (cat as CategoryItem & { exclude_from_metrics?: boolean }).exclude_from_metrics;
-    const canEdit = !cat.isDefault;
-    const canAddSub = !isSubcategory && !excludeFromMetrics;
-    const canArchive = cat.isDefault && !isArchived && !excludeFromMetrics;
+  const renderRow = (cat: Category, isSub: boolean, isLast: boolean, isArchived: boolean) => {
+    const excluded = cat.exclude_from_metrics;
+    const busy = (pending: boolean, id?: string) => pending && id === cat.id;
+    const archiving = busy(archiveCategory.isPending, archiveCategory.variables?.id);
+    const restoring = busy(unarchiveCategory.isPending, unarchiveCategory.variables);
 
     const actions = (
       <div className="cat-row-actions">
-          {isArchived ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="cat-row-btn unarchive"
-                    onClick={() => unarchiveCategory.mutate(cat.id)}
-                    disabled={unarchiveCategory.isPending && unarchiveCategory.variables === cat.id}
-                    title={lang === "es" ? "Recuperar" : "Restore"}
-                  >
-                    {unarchiveCategory.isPending && unarchiveCategory.variables === cat.id ? (
-                      <Spinner className="size-4" />
-                    ) : (
-                      <ArchiveRestore className="size-4" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{lang === "es" ? "Recuperar" : "Restore"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
-            <>
-              {canAddSub && (
+        {isArchived ? (
+          <WithTooltip tip={es ? "Recuperar" : "Restore"}>
+            <button type="button" className="cat-row-btn unarchive" onClick={() => unarchiveCategory.mutate(cat.id)} disabled={restoring} title={es ? "Recuperar" : "Restore"}>
+              {restoring ? <Spinner className="size-4" /> : <ArchiveRestore className="size-4" />}
+            </button>
+          </WithTooltip>
+        ) : (
+          <>
+            {!isSub && !excluded && (
+              <button type="button" className="cat-row-btn add" onClick={() => setForm({ mode: "createSub", parentId: cat.id, name: "", emoji: "" })} title={t("categories.addSub")}>
+                <Plus className="size-4" strokeWidth={2.5} />
+              </button>
+            )}
+            {!cat.isDefault && (
+              <>
                 <button
                   type="button"
-                  className="cat-row-btn add"
-                  onClick={() => openModal("createSub", { parentId: cat.id })}
-                  title={t("categories.addSub")}
+                  className="cat-row-btn edit"
+                  onClick={() => setForm({ mode: "edit", id: cat.id, name: cat.name, emoji: cat.emoji ?? "" })}
+                  title={t("common.edit")}
                 >
-                  <Plus className="size-4" strokeWidth={2.5} />
+                  <SquarePen className="size-4" />
                 </button>
-              )}
-              {canEdit && (
-                <>
-                  <button
-                    type="button"
-                    className="cat-row-btn edit"
-                    onClick={() => openModal("edit", { id: cat.id, name: cat.name, emoji: cat.emoji ?? undefined })}
-                    title={t("common.edit")}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    className="cat-row-btn delete"
-                    onClick={() => {
-                      setCategoryToDelete({ id: cat.id, name: cat.name });
-                      setDeleteModalOpen(true);
-                    }}
-                    title={t("common.delete")}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                    </svg>
-                  </button>
-                </>
-              )}
-              {canArchive && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="cat-row-btn archive"
-                        onClick={() => archiveCategory.mutate({ id: cat.id, archiveChildren: !isSubcategory })}
-                        disabled={archiveCategory.isPending && archiveCategory.variables?.id === cat.id}
-                        title={lang === "es" ? "Archivar" : "Archive"}
-                      >
-                        {archiveCategory.isPending && archiveCategory.variables?.id === cat.id ? (
-                          <Spinner className="size-4" />
-                        ) : (
-                          <Archive className="size-4" />
-                        )}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{lang === "es" ? "Archivar" : "Archive"}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </>
-          )}
+                <button type="button" className="cat-row-btn delete" onClick={() => setToDelete({ id: cat.id, name: cat.name })} title={t("common.delete")}>
+                  <Trash2 className="size-4" />
+                </button>
+              </>
+            )}
+            {cat.isDefault && !excluded && (
+              <WithTooltip tip={es ? "Archivar" : "Archive"}>
+                <button
+                  type="button"
+                  className="cat-row-btn archive"
+                  onClick={() => archiveCategory.mutate({ id: cat.id, archiveChildren: !isSub })}
+                  disabled={archiving}
+                  title={es ? "Archivar" : "Archive"}
+                >
+                  {archiving ? <Spinner className="size-4" /> : <Archive className="size-4" />}
+                </button>
+              </WithTooltip>
+            )}
+          </>
+        )}
       </div>
-    );
-
-    const content = (
-      <>
-        {isSubcategory && (
-          <div className="cat-tree-line">
-            <span className={`cat-tree-connector ${isLast ? "last" : ""}`} />
-          </div>
-        )}
-        <div className="cat-row-main">
-          <span className="cat-row-icon cat-row-emoji">{cat.emoji || "🏷️"}</span>
-          <span className="cat-row-name">{getCategoryName(cat as CategoryWithSubs)}</span>
-          {excludeFromMetrics && !isArchived && (
-            <span className="cat-row-badge cat-row-badge-exclude">
-              {t("categories.excludeFromMetricsBadge")}
-            </span>
-          )}
-          {cat.isDefault && !isArchived && !excludeFromMetrics && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="cat-row-badge">{lang === "es" ? "Sistema" : "System"}</span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{lang === "es" ? "No modificable" : "Not editable"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
-        {excludeFromMetrics && !isArchived && (
-          <p className="mt-2 text-sm text-muted-foreground bg-muted/60 rounded-lg px-3 py-2">
-            {t("categories.excludeFromMetricsInfo")}
-          </p>
-        )}
-      </>
     );
 
     return (
       <SwipeToReveal
         key={cat.id}
         id={cat.id}
-        className={`cat-row ${isSubcategory ? "cat-row-sub" : "cat-row-parent"} ${cat.isDefault ? "cat-row-default" : ""} ${isLast ? "cat-row-last" : ""}`}
+        className={cn("cat-row", isSub ? "cat-row-sub" : "cat-row-parent", cat.isDefault && "cat-row-default", isLast && "cat-row-last")}
         contentClassName="flex items-center flex-1 min-w-0"
         swipeHint
         actions={actions}
       >
-        {content}
+        {isSub && (
+          <div className="cat-tree-line">
+            <span className={cn("cat-tree-connector", isLast && "last")} />
+          </div>
+        )}
+        <div className="cat-row-main">
+          <span className="cat-row-icon cat-row-emoji">{cat.emoji || "🏷️"}</span>
+          <span className="cat-row-name">{cat.isDefault && cat.name_en && !es ? cat.name_en : cat.name}</span>
+          {excluded && !isArchived && <span className="cat-row-badge cat-row-badge-exclude">{t("categories.excludeFromMetricsBadge")}</span>}
+          {cat.isDefault && !isArchived && !excluded && (
+            <WithTooltip tip={es ? "No modificable" : "Not editable"}>
+              <span className="cat-row-badge">{es ? "Sistema" : "System"}</span>
+            </WithTooltip>
+          )}
+        </div>
+        {excluded && !isArchived && (
+          <p className="mt-2 text-sm text-muted-foreground bg-muted/60 rounded-lg px-3 py-2">{t("categories.excludeFromMetricsInfo")}</p>
+        )}
       </SwipeToReveal>
     );
   };
 
-  const renderCategoryGroup = (cat: CategoryWithSubs, defaultArchived = false) => {
-    const catArchived = (cat as CategoryWithSubs & { isArchived?: boolean }).isArchived ?? defaultArchived;
+  const renderGroup = (cat: CategoryWithSubs & { isArchived?: boolean }, archived = false) => {
+    const isArchived = cat.isArchived ?? archived;
+    const subs = (cat.subcategories ?? []) as Category[];
     return (
       <div key={cat.id} className="cat-group">
-        {renderCategoryRow(cat, false, false, catArchived)}
-        {cat.subcategories && cat.subcategories.length > 0 && (
-          <div className="cat-subs">
-            {cat.subcategories.map((sub, idx) => {
-              const subArchived = (sub as CategoryItem & { isArchived?: boolean }).isArchived ?? catArchived;
-              return renderCategoryRow(sub, true, idx === cat.subcategories!.length - 1, subArchived);
-            })}
-          </div>
-        )}
+        {renderRow(cat, false, false, isArchived)}
+        {subs.length > 0 && <div className="cat-subs">{subs.map((sub, i) => renderRow(sub, true, i === subs.length - 1, sub.isArchived ?? isArchived))}</div>}
       </div>
     );
   };
 
+  const header = (
+    <PageHeader icon={<Tags size={26} strokeWidth={1.5} />} title={t("categories.title")} subtitle={t("categories.heroSubtitle")}>
+      {!isLoading && <AddButton onClick={() => setCreateOpen(true)}>{t("categories.add")}</AddButton>}
+    </PageHeader>
+  );
+
   if (isLoading) {
     return (
       <div className="page-container">
-        <header className="page-header-clean">
-          <div className="page-header-left">
-            <div className="page-header-icon">
-              <Tags size={26} strokeWidth={1.5} />
-            </div>
-            <div className="page-header-text">
-              <h1>{t("categories.title")}</h1>
-              <p>{t("categories.heroSubtitle")}</p>
-            </div>
-          </div>
-        </header>
+        {header}
         <div className="cat-list">
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="skeleton" style={{ height: 52, borderRadius: 10 }} />
@@ -341,148 +242,54 @@ export default function CategoriesBody() {
     );
   }
 
+  const userCategories = data?.userCategories ?? [];
+  const archivedCategories = archivedData?.defaultCategories ?? [];
   return (
     <div className="page-container fade-in">
-      <header className="page-header-clean">
-        <div className="page-header-left">
-          <div className="page-header-icon">
-            <Tags size={26} strokeWidth={1.5} />
-          </div>
-          <div className="page-header-text">
-            <h1>{t("categories.title")}</h1>
-            <p>{t("categories.heroSubtitle")}</p>
-          </div>
-        </div>
-        <AddButton onClick={() => openModal("create")}>
-          {t("categories.add")}
-        </AddButton>
-      </header>
+      {header}
 
       {userCategories.length > 0 && (
         <section className="cat-section">
-          <h2 className="cat-section-title">
-            {lang === "es" ? "Mis categorías" : "My categories"}
-          </h2>
-          <SwipeToRevealGroup className="cat-list">
-            {userCategories.map((cat) => renderCategoryGroup(cat))}
-          </SwipeToRevealGroup>
+          <h2 className="cat-section-title">{es ? "Mis categorías" : "My categories"}</h2>
+          <SwipeToRevealGroup className="cat-list">{userCategories.map((cat) => renderGroup(cat))}</SwipeToRevealGroup>
         </section>
       )}
 
       <section className="cat-section">
-        <h2 className="cat-section-title">
-          {lang === "es" ? "Categorías del sistema" : "System categories"}
-        </h2>
-        <SwipeToRevealGroup className="cat-list">
-          {defaultCategories.map((cat) => renderCategoryGroup(cat))}
-        </SwipeToRevealGroup>
+        <h2 className="cat-section-title">{es ? "Categorías del sistema" : "System categories"}</h2>
+        <SwipeToRevealGroup className="cat-list">{(data?.defaultCategories ?? []).map((cat) => renderGroup(cat))}</SwipeToRevealGroup>
       </section>
 
       {archivedCategories.length > 0 && (
         <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen}>
           <CollapsibleTrigger className="subs-collapsible-trigger">
-            <span>{lang === "es" ? "Archivadas" : "Archived"}</span>
+            <span>{es ? "Archivadas" : "Archived"}</span>
             <span className="subs-section-count">{archivedCategories.length}</span>
-            <ChevronDown
-              className={`size-4 transition-transform duration-300 ${archivedOpen ? "rotate-180" : ""}`}
-            />
+            <ChevronDown className={cn("size-4 transition-transform duration-300", archivedOpen && "rotate-180")} />
           </CollapsibleTrigger>
           <CollapsibleContent>
             <SwipeToRevealGroup className="cat-list" style={{ paddingTop: 12 }}>
-              {archivedCategories.map((cat) => renderCategoryGroup(cat, true))}
+              {archivedCategories.map((cat) => renderGroup(cat, true))}
             </SwipeToRevealGroup>
           </CollapsibleContent>
         </Collapsible>
       )}
 
-      <Dialog open={isModalOpen} onOpenChange={(open) => { if (!open) closeModal(); else setIsModalOpen(true); }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">
-              {modalMode === "create"
-                ? t("categories.add")
-                : modalMode === "createSub"
-                ? t("categories.addSub")
-                : t("common.edit")}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {modalMode === "createSub"
-                ? (lang === "es" ? "Añade una subcategoría" : "Add a subcategory")
-                : modalMode === "edit"
-                ? (lang === "es" ? "Modifica los detalles de la categoría" : "Edit category details")
-                : (lang === "es" ? "Crea una nueva categoría personalizada" : "Create a new custom category")}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSave} className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <Label className="subs-form-label" optional>
-                {lang === "es" ? "Emoji" : "Emoji"}
-              </Label>
-              <EmojiPicker
-                value={formData.emoji || null}
-                onChange={(emoji) => setFormData({ ...formData, emoji })}
-                open={emojiPickerOpen}
-                onOpenChange={setEmojiPickerOpen}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label className="subs-form-label" htmlFor="cat-name" required>
-                {t("settings.name")}
-              </Label>
-              <Input
-                id="cat-name"
-                type="text"
-                required
-                placeholder={lang === "es" ? "Nombre de la categoría" : "Category name"}
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="h-10"
-              />
-            </div>
-            <DialogFooter className="sm:justify-center gap-3">
-              <Button type="button" variant="outline" onClick={closeModal}>
-                {t("common.cancel")}
-              </Button>
-              <SubmitButton 
-                pending={createCategory.isPending || updateCategory.isPending}
-                isEdit={modalMode === "edit"}
-                className="gap-2"
-              >
-                {modalMode === "edit" ? t("common.save") : lang === "es" ? "Crear" : "Create"}
-              </SubmitButton>
-            </DialogFooter>
-          </form>
-        </DialogContent>
+      <Dialog open={!!activeForm} onOpenChange={(open) => !open && closeForm()}>
+        <DialogContent className="sm:max-w-md">{activeForm && <CategoryForm key={`${activeForm.mode}-${activeForm.id ?? activeForm.parentId}`} initial={activeForm} onClose={closeForm} />}</DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
-            </div>
-            <AlertDialogTitle className="text-center">
-              {lang === "es" ? "Eliminar categoría" : "Delete category"}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              {lang === "es"
-                ? `¿Estás seguro de que quieres eliminar "${categoryToDelete?.name}"?`
-                : `Are you sure you want to delete "${categoryToDelete?.name}"?`}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:justify-center gap-3">
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleteCategory.isPending}
-              variant="destructive"
-            >
-              {deleteCategory.isPending && <Spinner className="size-4 mr-2" />}
-              {t("common.delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDeleteDialog
+        open={!!toDelete}
+        onOpenChange={(open) => !open && setToDelete(null)}
+        title={es ? "Eliminar categoría" : "Delete category"}
+        description={es ? `¿Estás seguro de que quieres eliminar "${toDelete?.name}"?` : `Are you sure you want to delete "${toDelete?.name}"?`}
+        pending={deleteCategory.isPending}
+        onConfirm={async () => {
+          if (toDelete) await deleteCategory.mutateAsync(toDelete.id);
+          setToDelete(null);
+        }}
+      />
     </div>
   );
 }

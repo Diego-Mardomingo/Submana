@@ -1,44 +1,29 @@
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
-/**
- * Zona usada al persistir instantes de transacción (migración timestamptz) y para límites de mes en API.
- */
+/** Time zone used to store transaction instants (timestamptz) and to compute month boundaries. */
 export const APP_TIME_ZONE = "Europe/Madrid";
 
+/** Month `delta` months away from year/month (1-12). */
+export function shiftMonth(year: number, month: number, delta: number) {
+  const d = new Date(year, month - 1 + delta, 1);
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
+/** "YYYY-MM" key for year/month (1-12). */
+export const monthKey = (year: number, month: number) => `${year}-${String(month).padStart(2, "0")}`;
+
 /**
- * Rango UTC semiabierto [start, end) que cubre los meses de calendario indicados (1–12) en APP_TIME_ZONE.
- * Sirve para filtrar columnas timestamptz sin perder el día 1 (medianoche local) ni mezclar con el mes anterior en UTC.
+ * Half-open UTC range [start, end) covering the given calendar months (1-12) in APP_TIME_ZONE,
+ * so timestamptz filters neither lose day 1 (local midnight) nor leak into the previous month.
  */
-export function calendarMonthsUtcHalfOpenRange(
-  startYear: number,
-  startMonth1to12: number,
-  endYear: number,
-  endMonth1to12: number
-): { startIso: string; endExclusiveIso: string } {
-  const start = fromZonedTime(
-    new Date(startYear, startMonth1to12 - 1, 1, 0, 0, 0, 0),
-    APP_TIME_ZONE
-  );
-  let nextY = endYear;
-  let nextM = endMonth1to12 + 1;
-  if (nextM > 12) {
-    nextM = 1;
-    nextY += 1;
-  }
-  const endExclusive = fromZonedTime(
-    new Date(nextY, nextM - 1, 1, 0, 0, 0, 0),
-    APP_TIME_ZONE
-  );
+export function calendarMonthsUtcHalfOpenRange(startYear: number, startMonth: number, endYear: number, endMonth: number) {
   return {
-    startIso: start.toISOString(),
-    endExclusiveIso: endExclusive.toISOString(),
+    startIso: fromZonedTime(new Date(startYear, startMonth - 1, 1), APP_TIME_ZONE).toISOString(),
+    endExclusiveIso: fromZonedTime(new Date(endYear, endMonth, 1), APP_TIME_ZONE).toISOString(),
   };
 }
 
-/**
- * Día de calendario (YYYY-MM-DD) en APP_TIME_ZONE para un instante ISO/timestamptz.
- * Alinea la agrupación en UI con los límites de mes de la API.
- */
+/** Calendar day (YYYY-MM-DD) in APP_TIME_ZONE of an ISO/timestamptz instant; aligns UI grouping with API month limits. */
 export function calendarDayInAppTimeZone(isoDate: string): string {
   const d = new Date(isoDate);
   if (Number.isNaN(d.getTime())) return isoDate.slice(0, 10);
@@ -46,38 +31,28 @@ export function calendarDayInAppTimeZone(isoDate: string): string {
 }
 
 /**
- * Date cuyos getters locales (getFullYear, getMonth, getDate, getDay, getHours…) devuelven
- * la hora de pared en APP_TIME_ZONE, sea cual sea la zona del navegador. Usar para agrupar
- * transacciones por día/mes igual que la API (la app trabaja en hora de Madrid).
+ * Date whose local getters (getFullYear, getMonth, getDate, getDay, getHours…) return the wall-clock
+ * time in APP_TIME_ZONE regardless of the browser zone. Use it to group transactions by day/month
+ * like the API does.
  */
 export function toAppDate(value: string | number | Date): Date {
   return toZonedTime(value, APP_TIME_ZONE);
 }
 
-/** "Ahora" en hora de pared de APP_TIME_ZONE (para mes/día actual). */
+/** "Now" as wall-clock time in APP_TIME_ZONE (for the current month/day). */
 export function appNow(): Date {
   return toZonedTime(new Date(), APP_TIME_ZONE);
 }
 
-/**
- * Utilidades para manejar fechas "solo día" (YYYY-MM-DD) sin problemas de huso horario.
- * - toISOString() convierte a UTC y puede cambiar el día en zonas UTC+
- * - new Date("YYYY-MM-DD") interpreta la cadena como medianoche UTC
- * Estas funciones usan siempre la hora local del usuario.
- */
-
-/** Convierte un Date a YYYY-MM-DD usando la zona horaria local (evita el shift de UTC) */
+/** Local-time YYYY-MM-DD (toISOString() would shift the day in UTC+ zones). */
 export function toDateString(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return `${monthKey(date.getFullYear(), date.getMonth() + 1)}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 /**
- * Parsea YYYY-MM-DD a Date en hora local (mediodía para evitar edge cases de DST).
- * Si la cadena incluye hora (ISO / timestamptz), devuelve ese instante en hora de pared de
- * APP_TIME_ZONE (ver toAppDate), para que el día coincida con el de la API.
+ * Parses YYYY-MM-DD as local noon (avoids DST edge cases); strings with a time component
+ * (ISO / timestamptz) are returned as that instant in APP_TIME_ZONE wall-clock time (see toAppDate),
+ * so the day matches the API's.
  */
 export function parseDateString(str: string): Date {
   if (!str) return new Date();

@@ -1,102 +1,48 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonServerError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
+import { getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Params = { params: Promise<{ id: string }> };
+
+/** Only the owner can modify a user category; system categories (user_id null) are read-only. */
+async function ownershipError(supabase: SupabaseClient, id: string, userId: string, action: string) {
+  const { data } = await supabase.from("categories").select("user_id").eq("id", id).single();
+  if (!data) return jsonError("not_found", 404);
+  if (data.user_id === null) return jsonError(`cannot_${action}_system`, 403);
+  if (data.user_id !== userId) return jsonError("forbidden", 403);
+}
+
+export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
+  const { name, emoji } = await parseRequestBody(request);
+  if (!name) return jsonError("missing_fields");
+  const denied = await ownershipError(supabase, id, user.id, "edit");
+  if (denied) return denied;
 
-  const { body } = await parseRequestBody(request);
-  const name = body.name;
-  const emoji = body.emoji;
-
-  if (!id || !name) {
-    return jsonError("missing_fields");
-  }
-
-  const { data: existing } = await supabase
+  const { data, error } = await supabase
     .from("categories")
-    .select("user_id")
-    .eq("id", id)
-    .single();
-
-  if (!existing) return jsonError("not_found", 404);
-  if (existing.user_id === null) return jsonError("cannot_edit_system", 403);
-  if (existing.user_id !== user.id) return jsonError("forbidden", 403);
-
-  const updateData: { name: string; emoji?: string | null } = { name };
-  if (emoji !== undefined) {
-    updateData.emoji = emoji || null;
-  }
-
-  const { data: updatedData, error } = await supabase
-    .from("categories")
-    .update(updateData)
+    .update({ name, ...(emoji !== undefined && { emoji: emoji || null }) })
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
     .maybeSingle();
-
-  if (error) {
-    return jsonServerError("/api/crud/categories/[id]", error);
-  }
-
-  if (!updatedData) {
-    return jsonError("not_found", 404);
-  }
-
-  return jsonResponse({ data: updatedData });
+  if (error) return jsonServerError("crud/categories/[id]", error);
+  if (!data) return jsonError("not_found", 404);
+  return jsonResponse({ data });
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
+  const denied = await ownershipError(supabase, id, user.id, "delete");
+  if (denied) return denied;
 
-  if (!id) {
-    return jsonError("missing_id");
-  }
-
-  const { data: existing } = await supabase
-    .from("categories")
-    .select("user_id")
-    .eq("id", id)
-    .single();
-
-  if (!existing) return jsonError("not_found", 404);
-  if (existing.user_id === null) return jsonError("cannot_delete_system", 403);
-  if (existing.user_id !== user.id) return jsonError("forbidden", 403);
-
-  const { error } = await supabase
-    .from("categories")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
-
-  if (error) {
-    return jsonServerError("/api/crud/categories/[id]", error);
-  }
-
+  const { error } = await supabase.from("categories").delete().eq("id", id).eq("user_id", user.id);
+  if (error) return jsonServerError("crud/categories/[id]", error);
   return jsonResponse({ data: { success: true } });
 }

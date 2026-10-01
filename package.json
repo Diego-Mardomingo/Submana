@@ -15,8 +15,6 @@
     "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "@fontsource-variable/inter": "^5.2.8",
-    "@hookform/resolvers": "^5.2.2",
     "@serwist/next": "^9.5.6",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
@@ -30,18 +28,15 @@
     "framer-motion": "^12.34.2",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
-    "next-themes": "^0.4.6",
     "pdfjs-dist": "^4.0.379",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-chartjs-2": "^5.3.1",
     "react-day-picker": "^9.13.2",
     "react-dom": "19.2.3",
-    "react-hook-form": "^7.71.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
-    "zod": "^4.3.6"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

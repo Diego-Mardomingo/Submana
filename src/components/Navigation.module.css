@@ -203,13 +203,6 @@
   height: 24px;
 }
 
-.moreBtn .iconMenu,
-.moreBtn .iconClose {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
 .navigation.expanded .navItemsWrapper {
   grid-template-columns: repeat(3, 1fr);
   grid-auto-rows: 90px;

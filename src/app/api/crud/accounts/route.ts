@@ -1,70 +1,34 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonServerError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
+import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
-
-  const { data: accounts, error } = await supabase
+  const { data, error } = await supabase
     .from("accounts")
     .select("*")
     .eq("user_id", user.id)
     .order("display_order", { ascending: true })
     .order("created_at", { ascending: true });
-
-  if (error) {
-    return jsonServerError("/api/crud/accounts", error);
-  }
-
-  return jsonCachedResponse({ data: accounts });
+  if (error) return jsonServerError("crud/accounts", error);
+  return jsonCachedResponse({ data });
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
-
-  const { body } = await parseRequestBody(request);
-  const name = body.name;
+  const { name, icon, color, ...body } = await parseRequestBody(request);
   const balance = body.balance ? parseFloat(body.balance) : 0;
-  const icon = body.icon;
-  const color = body.color;
-  const bank_provider = body.bank_provider || null;
+  if (!name || isNaN(balance)) return jsonError("missing_fields");
 
-  if (!name || isNaN(balance)) {
-    return jsonError("missing_fields");
-  }
-
-  const { count } = await supabase
+  const { count } = await supabase.from("accounts").select("*", { count: "exact", head: true }).eq("user_id", user.id);
+  const { data, error } = await supabase
     .from("accounts")
-    .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
-  
-  const display_order = (count ?? 0);
-
-  const { data: insertedData, error } = await supabase
-    .from("accounts")
-    .insert({ user_id: user.id, name, balance, icon, color, bank_provider, display_order })
+    .insert({ user_id: user.id, name, balance, icon, color, bank_provider: body.bank_provider || null, display_order: count ?? 0 })
     .select()
     .single();
-
-  if (error) {
-    return jsonServerError("/api/crud/accounts", error);
-  }
-
-  return jsonResponse({ data: insertedData }, 201);
+  if (error) return jsonServerError("crud/accounts", error);
+  return jsonResponse({ data }, 201);
 }

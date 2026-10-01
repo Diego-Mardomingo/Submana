@@ -2,63 +2,29 @@
 
 import { useEffect, useRef, useState } from "react";
 
-interface AnimatedNumberProps {
+/** Number that eases (cubic out) from its previous value to `value`. */
+export function AnimatedNumber({ value, duration = 300, formatFn = (n) => n.toFixed(2) }: {
   value: number;
   duration?: number;
   formatFn?: (n: number) => string;
-  className?: string;
-}
-
-export function AnimatedNumber({
-  value,
-  duration = 300,
-  formatFn,
-  className,
-}: AnimatedNumberProps) {
+}) {
   const [displayValue, setDisplayValue] = useState(value);
-  const previousValue = useRef(value);
-  const animationRef = useRef<number | null>(null);
+  const shownRef = useRef(value);
 
   useEffect(() => {
-    const start = previousValue.current;
-    const end = value;
-
-    if (start === end) return;
-
+    const start = shownRef.current;
+    if (start === value) return;
     const startTime = performance.now();
-
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = start + (end - start) * eased;
-
-      setDisplayValue(current);
-
-      if (progress < 1) {
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        previousValue.current = end;
-        animationRef.current = null;
-      }
+    let frame = 0;
+    const animate = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      shownRef.current = start + (value - start) * (1 - Math.pow(1 - progress, 3));
+      setDisplayValue(shownRef.current);
+      if (progress < 1) frame = requestAnimationFrame(animate);
     };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current !== null) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
   }, [value, duration]);
 
-  useEffect(() => {
-    previousValue.current = displayValue;
-  }, []);
-
-  return (
-    <span className={className}>
-      {formatFn ? formatFn(displayValue) : displayValue.toFixed(2)}
-    </span>
-  );
+  return <span>{formatFn(displayValue)}</span>;
 }

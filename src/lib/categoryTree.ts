@@ -1,34 +1,20 @@
-type CategoryNode = { id: string; parent_id: string | null; user_id: string | null };
+type TreeNode = { id: string; parent_id: string | null };
 
-/** Descendientes del sistema (hijos, nietos…) de una categoría. */
-export function getSystemDescendantIds(categories: CategoryNode[], parentId: string): string[] {
-  const ids: string[] = [];
-  const queue = [parentId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    for (const c of categories) {
-      if (c.parent_id === id && c.user_id === null) {
-        ids.push(c.id);
-        queue.push(c.id);
-      }
-    }
-  }
-  return ids;
+/** All descendants (children, grandchildren, ...) of `parentId`. */
+export function getDescendantIds(categories: TreeNode[], parentId: string): string[] {
+  const children = categories.filter((c) => c.parent_id === parentId).map((c) => c.id);
+  return children.flatMap((id) => [id, ...getDescendantIds(categories, id)]);
 }
 
-/** Cadena de ancestros (padre, abuelo… hasta la raíz) de una categoría. */
-export function getAncestorIds(
-  categories: { id: string; parent_id: string | null }[],
-  categoryId: string
-): string[] {
+/** System (user_id null) descendants of `parentId`. */
+export function getSystemDescendantIds(categories: (TreeNode & { user_id: string | null })[], parentId: string): string[] {
+  return getDescendantIds(categories.filter((c) => c.user_id === null), parentId);
+}
+
+/** Ancestor chain (parent, grandparent, ... up to root); stops on cycles. */
+export function getAncestorIds(categories: TreeNode[], categoryId: string): string[] {
+  const parentOf = new Map(categories.map((c) => [c.id, c.parent_id]));
   const ids: string[] = [];
-  const byId = new Map(categories.map((c) => [c.id, c]));
-  let currentId: string | null = categoryId;
-  while (currentId) {
-    const cat = byId.get(currentId);
-    if (!cat?.parent_id || ids.includes(cat.parent_id)) break;
-    ids.push(cat.parent_id);
-    currentId = cat.parent_id;
-  }
+  for (let parent = parentOf.get(categoryId); parent && !ids.includes(parent); parent = parentOf.get(parent)) ids.push(parent);
   return ids;
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseCSV } from "./csv";
-import { parseEuropeanNumber, parseDate } from "./utils";
-import { parseBBVANumber, findFinalBalance } from "./bbva";
+import { parseCellNumber, parseEuropeanNumber, parseDate, toImportedTransactions } from "./utils";
+import { findFinalBalance } from "./bbva";
 import { parseExcelDate } from "./revolut";
 import { pickYearForPartialDate } from "./tradeRepublic";
-import { assignOccurrenceIndices, buildDuplicateConflictKey, buildDuplicateConflictKeyLegacy } from "./importKeys";
+import { buildDuplicateConflictKey, buildDuplicateConflictKeyLegacy } from "./importKeys";
 
 describe("parseCSV", () => {
   it("separa celdas y recorta espacios", () => {
@@ -37,11 +37,11 @@ describe("números", () => {
     expect(parseEuropeanNumber("-12,50")).toBe(-12.5);
   });
 
-  it("parseBBVANumber no trunca importes con separador de miles", () => {
-    expect(parseBBVANumber("1.234,56")).toBe(1234.56);
-    expect(parseBBVANumber(-45.2)).toBe(-45.2);
-    expect(parseBBVANumber("-12.50")).toBe(-12.5);
-    expect(parseBBVANumber("")).toBe(0);
+  it("parseCellNumber no trunca importes con separador de miles", () => {
+    expect(parseCellNumber("1.234,56")).toBe(1234.56);
+    expect(parseCellNumber(-45.2)).toBe(-45.2);
+    expect(parseCellNumber("-12.50")).toBe(-12.5);
+    expect(parseCellNumber("")).toBe(0);
   });
 });
 
@@ -97,8 +97,10 @@ describe("parseDate / pickYearForPartialDate (Trade Republic)", () => {
 });
 
 describe("importKeys", () => {
-  it("numera ocurrencias de huellas idénticas", () => {
-    expect(assignOccurrenceIndices(["a", "b", "a", "a"])).toEqual([0, 0, 1, 2]);
+  it("numera ocurrencias de huellas idénticas", async () => {
+    const row = (fingerprint: string) => ({ date: "2025-03-02", signedAmount: -1, description: "x", fingerprint });
+    const txs = await toImportedTransactions("acc", ["a", "b", "a", "a"].map(row));
+    expect(txs.map((t) => t.import_source_fingerprint)).toEqual(["a|occ:0", "b|occ:0", "a|occ:1", "a|occ:2"]);
   });
 
   it("la clave de conflicto depende de día, céntimos y tipo", async () => {

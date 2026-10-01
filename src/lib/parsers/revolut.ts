@@ -1,515 +1,182 @@
-import * as XLSX from "xlsx";
+import { parseRevolutFechaInicioToIsoUtc, revolutFechaInicioToMs } from "@/lib/revolutDate";
 import type { ImportedTransaction } from "./types";
-import {
-	assignOccurrenceIndices,
-	buildImportSourceFingerprint,
-} from "./importKeys";
-import { generateTransactionHash } from "./utils";
-import {
-	parseRevolutFechaInicioToIsoUtc,
-	revolutFechaInicioToMs,
-} from "@/lib/revolutDate";
 import { parseCSV } from "./csv";
+import { fingerprintText, readFirstSheet, toImportedTransactions, type ParseCallbacks } from "./utils";
 
-interface RevolutRawTransaction {
+interface RevolutRow {
   tipo: string;
   producto: string;
   fechaInicio: string;
-  fechaFin: string;
   descripcion: string;
   importe: number;
   comision: number;
   divisa: string;
-  estado: string;
   saldo: number | null;
 }
 
-interface ParseRevolutOptions {
-  onProgress?: (current: number, total: number) => void;
-  onStatus?: (status: string) => void;
-}
-
-interface ParsedRevolutResult {
-  transactions: RevolutRawTransaction[];
-  finalBalance?: number;
-  actualTransactions: RevolutRawTransaction[];
-  depositTransactions: RevolutRawTransaction[];
-  actualBalance?: number;
-  depositBalance?: number;
-}
-
-const COLUMN_MAPPINGS: Record<string, keyof RevolutRawTransaction> = {
-  "tipo": "tipo",
-  "type": "tipo",
-  "producto": "producto",
-  "product": "producto",
-  "deposito": "producto",
-  "fecha de inicio": "fechaInicio",
-  "started date": "fechaInicio",
-  "fecha de finalizacion": "fechaFin",
-  "completed date": "fechaFin",
-  "descripcion": "descripcion",
-  "description": "descripcion",
-  "importe": "importe",
-  "amount": "importe",
-  "comision": "comision",
-  "fee": "comision",
-  "divisa": "divisa",
-  "currency": "divisa",
-  "state": "estado",
-  "estado": "estado",
-  "saldo": "saldo",
-  "balance": "saldo",
+/** Normalised (accent-free, lowercase) header → field, Spanish and English exports. */
+const COLUMNS: Record<string, keyof RevolutRow> = {
+  tipo: "tipo", type: "tipo",
+  producto: "producto", product: "producto", deposito: "producto",
+  "fecha de inicio": "fechaInicio", "started date": "fechaInicio",
+  descripcion: "descripcion", description: "descripcion",
+  importe: "importe", amount: "importe",
+  comision: "comision", fee: "comision",
+  divisa: "divisa", currency: "divisa",
+  saldo: "saldo", balance: "saldo",
 };
 
-function fixCorruptedEncoding(text: string): string {
+/** Repairs UTF-8 text that was decoded as Latin-1 ("DescripciÃ³n") and collapses whitespace. */
+function fixEncoding(text: string): string {
   if (!text) return "";
-  
-  try {
-    const hasCorruptedChars = /[\xC2-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|Ã[³©¡­º±¼"]|Â/.test(text);
-    
-    if (hasCorruptedChars) {
-      const bytes = new Uint8Array(text.length);
-      for (let i = 0; i < text.length; i++) {
-        bytes[i] = text.charCodeAt(i) & 0xFF;
-      }
-      const decoded = new TextDecoder("utf-8").decode(bytes);
-      if (!decoded.includes("�")) {
-        return decoded.replace(/\s+/g, " ").trim();
-      }
+  if (/[\xC2-\xDF][\x80-\xBF]|[\xE0-\xEF][\x80-\xBF]{2}|Ã[³©¡­º±¼"]|Â/.test(text)) {
+    try {
+      const decoded = new TextDecoder("utf-8").decode(Uint8Array.from({ length: text.length }, (_, i) => text.charCodeAt(i) & 0xff));
+      if (!decoded.includes("�")) text = decoded;
+    } catch {
+      // Keep the original text.
     }
-  } catch {
-    // Fall through to original text
   }
-  
   return text.replace(/\s+/g, " ").trim();
 }
 
-function normalizeHeaderText(header: string): string {
-  let text = fixCorruptedEncoding(header).toLowerCase();
-  
-  text = text
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  
-  return text;
-}
+const headerKey = (header: string) =>
+  fixEncoding(header).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w\s]/g, "").replace(/\s+/g, " ").trim();
 
-function mapHeaders(headers: string[]): Record<number, keyof RevolutRawTransaction> {
-  const mapping: Record<number, keyof RevolutRawTransaction> = {};
-  
-  headers.forEach((header, index) => {
-    const normalized = normalizeHeaderText(header);
-    const mapped = COLUMN_MAPPINGS[normalized];
-    if (mapped) {
-      mapping[index] = mapped;
-    }
-  });
-  
-  return mapping;
-}
-
-/** Días entre la época de Excel (1899-12-30) y la época Unix. */
+/** Days between the Excel epoch (1899-12-30) and the Unix epoch. */
 const EXCEL_UNIX_EPOCH_OFFSET_DAYS = 25569;
 
 /**
- * El serial de Excel es una hora "de pared" sin zona. Se convierte y se formatea en UTC:
- * con la zona local, el offset LMT de 1899 (-0:14:44 en Madrid) y el horario de verano
- * desplazaban la hora entre 1h14m y 2h14m, y las operaciones nocturnas cambiaban de día.
+ * Excel serial date → "YYYY-MM-DD HH:mm:ss" wall-clock time, other values unchanged. The serial has
+ * no zone, so it is converted in UTC: the local zone's 1899 LMT offset plus DST shifted it by
+ * 1h14m–2h14m and moved late-night transactions to the next day.
  */
 export function parseExcelDate(value: string): string {
-  const num = parseFloat(value);
-  if (!isNaN(num) && num > 40000 && num < 60000) {
-    const ms = Math.round((num - EXCEL_UNIX_EPOCH_OFFSET_DAYS) * 86400) * 1000;
-    const date = new Date(ms);
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-    const day = String(date.getUTCDate()).padStart(2, "0");
-    const hours = String(date.getUTCHours()).padStart(2, "0");
-    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
-    const seconds = String(date.getUTCSeconds()).padStart(2, "0");
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  }
-  return value;
+  const serial = parseFloat(value);
+  if (isNaN(serial) || serial <= 40000 || serial >= 60000) return value;
+  const d = new Date(Math.round((serial - EXCEL_UNIX_EPOCH_OFFSET_DAYS) * 86400) * 1000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
 }
 
-function parseRow(row: string[], headerMapping: Record<number, keyof RevolutRawTransaction>, isExcel: boolean = false): RevolutRawTransaction | null {
-  const tx: Partial<RevolutRawTransaction> = {};
-  
-  for (const [indexStr, field] of Object.entries(headerMapping)) {
-    const index = parseInt(indexStr, 10);
-    let value = row[index];
-    
-    if (value === undefined) continue;
-    
-    if (typeof value === "string") {
-      value = fixCorruptedEncoding(value);
-    }
-    
+function parseRow(cells: string[], mapping: [number, keyof RevolutRow][], isExcel: boolean): RevolutRow | null {
+  const tx: Partial<RevolutRow> = { comision: 0, saldo: null };
+  for (const [index, field] of mapping) {
+    const raw = cells[index];
+    if (raw === undefined) continue;
+    const value = fixEncoding(raw);
     if (field === "saldo") {
-      const normalized = value.replace(",", ".").trim();
-      if (normalized === "") {
-        tx.saldo = null;
-      } else {
-        const num = parseFloat(normalized);
-        tx.saldo = isNaN(num) ? null : num;
-      }
+      const num = parseFloat(value.replace(",", ".").trim());
+      tx.saldo = value.trim() === "" || isNaN(num) ? null : num;
     } else if (field === "importe" || field === "comision") {
       const num = parseFloat(value.replace(",", "."));
       tx[field] = isNaN(num) ? 0 : num;
-    } else if ((field === "fechaInicio" || field === "fechaFin") && isExcel) {
-      tx[field] = parseExcelDate(value) as never;
     } else {
-      tx[field] = value as never;
+      tx[field] = field === "fechaInicio" && isExcel ? parseExcelDate(value) : value;
     }
   }
-  
-  if (tx.comision === undefined) tx.comision = 0;
-  if (tx.saldo === undefined) tx.saldo = null;
-  if (tx.estado === undefined) tx.estado = "";
-  
-  if (!tx.fechaInicio || tx.importe === undefined) {
-    return null;
-  }
-  
-  return tx as RevolutRawTransaction;
+  return tx.fechaInicio && tx.importe !== undefined ? (tx as RevolutRow) : null;
 }
 
-function roundToCents(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
-}
-
-function hasUsableProvidedBalance(tx: RevolutRawTransaction): boolean {
-  return tx.saldo !== null && Number.isFinite(tx.saldo) && tx.saldo !== 0;
-}
+const cents = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+const net = (tx: RevolutRow) => tx.importe - (tx.comision ?? 0);
+const hasBalance = (tx: RevolutRow) => tx.saldo !== null && Number.isFinite(tx.saldo) && tx.saldo !== 0;
+const byStartDate = (txs: RevolutRow[]) => [...txs].sort((a, b) => revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio));
 
 /**
- * Deriva un saldo "estable" por fila para evitar huellas vacías en pendientes.
- * - Si una fila trae saldo usable, se respeta.
- * - Si no lo trae (null/0), se calcula desde el último saldo conocido previo.
- * - Si las primeras filas no tienen saldo pero más adelante sí, se rellena hacia atrás.
- * - Si no existe ningún saldo usable en todo el lote, se calcula acumulado desde 0.
+ * Stable per-row balance so pending rows (no balance) still get a deterministic fingerprint:
+ * given balances are kept, gaps are filled forward from the last known one, rows before the
+ * first known balance are filled backwards, and without any balance it accumulates from 0.
  */
-function computeNormalizedBalances(transactions: RevolutRawTransaction[]): Map<RevolutRawTransaction, number> {
-  const balances = new Map<RevolutRawTransaction, number>();
-  if (transactions.length === 0) return balances;
-
-  const sortedByDateAsc = [...transactions].sort((a, b) =>
-    revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
-  );
-
-  let runningBalance: number | undefined;
-  for (const tx of sortedByDateAsc) {
-    if (hasUsableProvidedBalance(tx)) {
-      runningBalance = tx.saldo as number;
-      balances.set(tx, roundToCents(runningBalance));
-      continue;
-    }
-
-    if (runningBalance !== undefined) {
-      runningBalance = roundToCents(runningBalance + revolutNetAmount(tx));
-      balances.set(tx, runningBalance);
+function normalizedBalances(transactions: RevolutRow[]): Map<RevolutRow, number> {
+  const balances = new Map<RevolutRow, number>();
+  const sorted = byStartDate(transactions);
+  let running: number | undefined;
+  for (const tx of sorted) {
+    if (hasBalance(tx)) {
+      running = tx.saldo!;
+      balances.set(tx, cents(running));
+    } else if (running !== undefined) {
+      running = cents(running + net(tx));
+      balances.set(tx, running);
     }
   }
 
-  const firstKnownIdx = sortedByDateAsc.findIndex((tx) => balances.has(tx));
-  if (firstKnownIdx === -1) {
-    // Sin ancla de saldo en todo el extracto: acumulamos desde 0 para huella estable.
-    runningBalance = 0;
-    for (const tx of sortedByDateAsc) {
-      runningBalance = roundToCents(runningBalance + revolutNetAmount(tx));
-      balances.set(tx, runningBalance);
-    }
-    return balances;
+  const firstKnown = sorted.findIndex((tx) => balances.has(tx));
+  if (firstKnown === -1) {
+    running = 0;
+    for (const tx of sorted) balances.set(tx, (running = cents(running + net(tx))));
   }
-
-  for (let i = firstKnownIdx - 1; i >= 0; i--) {
-    const currentTx = sortedByDateAsc[i];
-    const nextTx = sortedByDateAsc[i + 1];
-    const nextBalance = balances.get(nextTx);
-    if (nextBalance === undefined) continue;
-    // balance(i+1) = balance(i) + net(i+1) => balance(i) = balance(i+1) - net(i+1)
-    balances.set(currentTx, roundToCents(nextBalance - revolutNetAmount(nextTx)));
-  }
-
+  // balance(i) = balance(i + 1) - net(i + 1)
+  for (let i = firstKnown - 1; i >= 0; i--) balances.set(sorted[i], cents(balances.get(sorted[i + 1])! - net(sorted[i + 1])));
   return balances;
 }
 
-function getBalanceByProduct(
-  transactions: RevolutRawTransaction[],
-  producto: string,
-  options?: { useInputOrder?: boolean }
-): number | undefined {
-  const filtered = transactions.filter(tx => 
-    tx.producto?.toLowerCase() === producto.toLowerCase()
-  );
-  
-  if (filtered.length === 0) {
-    return undefined;
-  }
-
-  // Para saldo final de cuenta, el orden del extracto es la referencia real.
-  // Evita errores cuando "Fecha de inicio" no refleja el orden contable final.
-  if (options?.useInputOrder) {
-    for (let i = filtered.length - 1; i >= 0; i--) {
-      const tx = filtered[i]!;
-      if (hasUsableProvidedBalance(tx)) {
-        return roundToCents(tx.saldo as number);
-      }
-    }
-  }
-
-  const normalizedBalances = computeNormalizedBalances(filtered);
-  const anchor = options?.useInputOrder
-    ? filtered[filtered.length - 1]
-    : [...filtered].sort((a, b) =>
-        revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
-      )[filtered.length - 1];
-
-  return anchor ? normalizedBalances.get(anchor) : undefined;
+/** Final balance of a product: last given balance in statement order (the reliable order), else derived. */
+function productBalance(transactions: RevolutRow[]): number | undefined {
+  const withBalance = transactions.findLast(hasBalance);
+  if (withBalance) return cents(withBalance.saldo!);
+  const last = transactions.at(-1);
+  return last && normalizedBalances(transactions).get(last);
 }
 
-function separateTransactionsByProduct(transactions: RevolutRawTransaction[]): {
-  actualTransactions: RevolutRawTransaction[];
-  depositTransactions: RevolutRawTransaction[];
-} {
-  const actualTransactions: RevolutRawTransaction[] = [];
-  const depositTransactions: RevolutRawTransaction[] = [];
-  
-  for (const tx of transactions) {
-    const producto = tx.producto?.toLowerCase() || "";
-    if (producto === "actual") {
-      actualTransactions.push(tx);
-    } else if (producto === "depósito" || producto === "deposito") {
-      depositTransactions.push(tx);
-    }
-  }
-  
-  return { actualTransactions, depositTransactions };
+/** Splits a Revolut statement into the current account ("Actual") and the savings pocket ("Depósito"). */
+function splitStatement(cells: string[][], isExcel: boolean, onProgress?: ParseCallbacks["onProgress"], onStatus?: ParseCallbacks["onStatus"]) {
+  const mapping = cells[0].flatMap((header, index) => (COLUMNS[headerKey(header)] ? [[index, COLUMNS[headerKey(header)]] as [number, keyof RevolutRow]] : []));
+  if (mapping.length < 3) throw new Error(`No se pudieron identificar las columnas del ${isExcel ? "Excel" : "CSV"}`);
+
+  const transactions = cells.slice(1).flatMap((row) => parseRow(row, mapping, isExcel) ?? []);
+  onProgress?.(3, 3);
+  onStatus?.(`Encontradas ${transactions.length} transacciones`);
+
+  const product = (tx: RevolutRow) => tx.producto?.toLowerCase() ?? "";
+  const actual = transactions.filter((tx) => product(tx) === "actual");
+  const deposit = transactions.filter((tx) => product(tx) === "depósito" || product(tx) === "deposito");
+  return {
+    actualTransactions: byStartDate(actual),
+    depositTransactions: byStartDate(deposit),
+    actualBalance: productBalance(actual),
+    depositBalance: productBalance(deposit),
+  };
 }
 
-export async function parseRevolutCSV(
-  file: File,
-  options?: ParseRevolutOptions
-): Promise<ParsedRevolutResult> {
-  const { onProgress, onStatus } = options || {};
-  
+export async function parseRevolutCSV(file: File, { onProgress, onStatus }: ParseCallbacks = {}) {
   onStatus?.("Leyendo archivo CSV...");
   onProgress?.(1, 3);
-  
-  const content = await file.text();
-  const rows = parseCSV(content);
-  
-  if (rows.length < 2) {
-    throw new Error("El archivo CSV está vacío o no tiene datos");
-  }
-  
+  const rows = parseCSV(await file.text(), ",");
+  if (rows.length < 2) throw new Error("El archivo CSV está vacío o no tiene datos");
   onStatus?.("Procesando transacciones...");
   onProgress?.(2, 3);
-  
-  const headers = rows[0];
-  const headerMapping = mapHeaders(headers);
-  
-  if (Object.keys(headerMapping).length < 3) {
-    throw new Error("No se pudieron identificar las columnas del CSV");
-  }
-  
-  const transactions: RevolutRawTransaction[] = [];
-  
-  for (let i = 1; i < rows.length; i++) {
-    const tx = parseRow(rows[i], headerMapping);
-    if (tx) {
-      transactions.push(tx);
-    }
-  }
-  
-  onProgress?.(3, 3);
-  onStatus?.(`Encontradas ${transactions.length} transacciones`);
-  
-  const sortByDate = (txs: RevolutRawTransaction[]) => 
-    [...txs].sort((a, b) => 
-      revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
-    );
-
-  const actualBalance = getBalanceByProduct(transactions, "actual", {
-    useInputOrder: true,
-  });
-  const depositBalance =
-    getBalanceByProduct(transactions, "depósito", { useInputOrder: true }) ??
-    getBalanceByProduct(transactions, "deposito", { useInputOrder: true });
-
-  const sortedTransactions = sortByDate(transactions);
-  const { actualTransactions, depositTransactions } = separateTransactionsByProduct(sortedTransactions);
-  
-  return { 
-    transactions: sortedTransactions, 
-    finalBalance: actualBalance,
-    actualTransactions: sortByDate(actualTransactions),
-    depositTransactions: sortByDate(depositTransactions),
-    actualBalance,
-    depositBalance,
-  };
+  return splitStatement(rows, false, onProgress, onStatus);
 }
 
-export async function parseRevolutExcel(
-  file: File,
-  options?: ParseRevolutOptions
-): Promise<ParsedRevolutResult> {
-  const { onProgress, onStatus } = options || {};
-  
+export async function parseRevolutExcel(file: File, { onProgress, onStatus }: ParseCallbacks = {}) {
   onStatus?.("Leyendo archivo Excel...");
   onProgress?.(1, 3);
-  
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array" });
-  
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-  
-  const jsonData = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1 });
-  
-  if (jsonData.length < 2) {
-    throw new Error("El archivo Excel está vacío o no tiene datos");
-  }
-  
+  const rows = (await readFirstSheet(file)).map((row) => row.map((cell) => String(cell ?? "")));
+  if (rows.length < 2) throw new Error("El archivo Excel está vacío o no tiene datos");
   onStatus?.("Procesando transacciones...");
   onProgress?.(2, 3);
-  
-  const headers = jsonData[0].map(h => String(h || ""));
-  const headerMapping = mapHeaders(headers);
-  
-  if (Object.keys(headerMapping).length < 3) {
-    throw new Error("No se pudieron identificar las columnas del Excel");
-  }
-  
-  const transactions: RevolutRawTransaction[] = [];
-  
-  for (let i = 1; i < jsonData.length; i++) {
-    const row = jsonData[i].map(cell => String(cell ?? ""));
-    const tx = parseRow(row, headerMapping, true);
-    if (tx) {
-      transactions.push(tx);
-    }
-  }
-  
-  onProgress?.(3, 3);
-  onStatus?.(`Encontradas ${transactions.length} transacciones`);
-  
-  const sortByDate = (txs: RevolutRawTransaction[]) => 
-    [...txs].sort((a, b) => 
-      revolutFechaInicioToMs(a.fechaInicio) - revolutFechaInicioToMs(b.fechaInicio)
-    );
-
-  const actualBalance = getBalanceByProduct(transactions, "actual", {
-    useInputOrder: true,
-  });
-  const depositBalance =
-    getBalanceByProduct(transactions, "depósito", { useInputOrder: true }) ??
-    getBalanceByProduct(transactions, "deposito", { useInputOrder: true });
-
-  const sortedTransactions = sortByDate(transactions);
-  const { actualTransactions, depositTransactions } = separateTransactionsByProduct(sortedTransactions);
-  
-  return { 
-    transactions: sortedTransactions, 
-    finalBalance: actualBalance,
-    actualTransactions: sortByDate(actualTransactions),
-    depositTransactions: sortByDate(depositTransactions),
-    actualBalance,
-    depositBalance,
-  };
+  return splitStatement(rows, true, onProgress, onStatus);
 }
 
-function revolutNetAmount(tx: RevolutRawTransaction): number {
-  return tx.importe - (tx.comision ?? 0);
-}
-
-/** Huella estable por fila del extracto (sin account id). Importe neto; sin columna State. */
-export function buildRevolutStableRowFingerprint(
-  tx: RevolutRawTransaction,
-  normalizedBalance?: number
-): string {
-	const norm = (s: string) =>
-		(s || "")
-			.trim()
-			.replace(/\s+/g, " ")
-			.toLowerCase();
-	const net = revolutNetAmount(tx);
-	const parts = [
-		"revolut",
-		norm(tx.tipo),
-		norm(tx.producto),
-		norm(tx.fechaInicio),
-		norm(tx.descripcion),
-		net.toFixed(2),
-		norm(tx.divisa),
-		normalizedBalance === undefined ? "" : normalizedBalance.toFixed(2),
-	];
-	return parts.join("|");
-}
-
-export async function normalizeRevolutTransactions(
-  transactions: RevolutRawTransaction[],
-  accountId: string
-): Promise<ImportedTransaction[]> {
-  const normalizedBalances = computeNormalizedBalances(transactions);
-  const prepared: Array<{
-    dateStr: string;
-    amount: number;
-    isIncome: boolean;
-    description: string;
-    hash: string;
-    baseFp: string;
-    statement_balance?: number;
-  }> = [];
-
-  for (const tx of transactions) {
-    const dateStr = parseRevolutFechaInicioToIsoUtc(tx.fechaInicio);
-    if (!dateStr) continue;
-
-    const net = revolutNetAmount(tx);
-    if (net === 0) continue;
-
-    const amount = Math.abs(net);
-    const isIncome = net > 0;
-    const description = fixCorruptedEncoding(tx.descripcion || "").trim();
-
-    const normalizedStatementBalance = normalizedBalances.get(tx);
-
-    const hash = await generateTransactionHash(
-      accountId,
-      dateStr,
-      amount,
-      description
-    );
-
-    prepared.push({
-      dateStr,
-      amount,
-      isIncome,
-      description,
-      hash,
-      baseFp: buildRevolutStableRowFingerprint(tx, normalizedStatementBalance),
-      statement_balance: normalizedStatementBalance,
-    });
-  }
-
-  const baseFingerprints = prepared.map((p) => p.baseFp);
-  const occurrences = assignOccurrenceIndices(baseFingerprints);
-
-  return prepared.map((p, i) => ({
-    date: p.dateStr,
-    amount: p.amount,
-    type: p.isIncome ? "income" : "expense",
-    description: p.description,
-    external_hash: p.hash,
-    import_source_fingerprint: buildImportSourceFingerprint(
-      p.baseFp,
-      occurrences[i]!
-    ),
-    statement_balance: p.statement_balance,
-  }));
+/** Fingerprint: net amount and normalised balance, without the volatile State column. */
+export function normalizeRevolutTransactions(transactions: RevolutRow[], accountId: string): Promise<ImportedTransaction[]> {
+  const balances = normalizedBalances(transactions);
+  return toImportedTransactions(
+    accountId,
+    transactions.flatMap((tx) => {
+      const date = parseRevolutFechaInicioToIsoUtc(tx.fechaInicio);
+      if (!date) return [];
+      const balance = balances.get(tx);
+      const parts = [tx.tipo, tx.producto, tx.fechaInicio, tx.descripcion].map(fingerprintText);
+      return {
+        date,
+        signedAmount: net(tx),
+        description: fixEncoding(tx.descripcion || ""),
+        statement_balance: balance,
+        fingerprint: ["revolut", ...parts, net(tx).toFixed(2), fingerprintText(tx.divisa), balance === undefined ? "" : balance.toFixed(2)].join("|"),
+      };
+    })
+  );
 }

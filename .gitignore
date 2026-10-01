@@ -1,51 +1,25 @@
-# dependencies
+# dependencies (pnpm)
 /node_modules
 .pnpm-store
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
+pnpm-debug.log*
 
 # next.js
 .next/
 /out/
+next-env.d.ts
+*.tsbuildinfo
 
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+# Serwist (generated service worker)
+public/sw*
+public/swe-worker*
 
 # local env files
 .env
 .env*.local
 
-# vercel
+# misc
+.DS_Store
+*.pem
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-# Serwist
-public/sw*
-public/swe-worker*
-
-# Cursor
 .cursor/
-
-#Claude
 .claude/

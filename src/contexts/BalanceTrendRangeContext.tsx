@@ -1,72 +1,38 @@
 "use client";
 
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import type { DateRange } from "@/hooks/useTransactionsRange";
+import type { DateRange } from "@/hooks/useTransactions";
 
-type Key = string;
-
-type Ctx = {
+const BalanceTrendRangeContext = createContext<{
   sharedRange: DateRange | null;
-  registerAvailableRange: (key: Key, range: DateRange) => void;
-};
+  registerAvailableRange: (key: string, range: DateRange) => void;
+} | null>(null);
 
-const BalanceTrendRangeContext = createContext<Ctx | null>(null);
+const startOf = (r: DateRange) => r.startYear * 12 + r.startMonth;
+const endOf = (r: DateRange) => r.endYear * 12 + r.endMonth;
 
-function compareYM(a: { year: number; month: number }, b: { year: number; month: number }) {
-  if (a.year !== b.year) return a.year - b.year;
-  return a.month - b.month;
-}
-
+/** Balance trend charts register the months they have data for; all of them show the union by default. */
 export function BalanceTrendRangeProvider({ children }: { children: React.ReactNode }) {
-  const [ranges, setRanges] = useState<Record<Key, DateRange>>({});
+  const [ranges, setRanges] = useState<Record<string, DateRange>>({});
 
-  const registerAvailableRange = useCallback((key: Key, range: DateRange) => {
-    setRanges((prev) => {
-      const existing = prev[key];
-      if (
-        existing &&
-        existing.startYear === range.startYear &&
-        existing.startMonth === range.startMonth &&
-        existing.endYear === range.endYear &&
-        existing.endMonth === range.endMonth
-      ) {
-        return prev;
-      }
-      return { ...prev, [key]: range };
-    });
+  const registerAvailableRange = useCallback((key: string, range: DateRange) => {
+    setRanges((prev) => (prev[key] && startOf(prev[key]) === startOf(range) && endOf(prev[key]) === endOf(range) ? prev : { ...prev, [key]: range }));
   }, []);
 
   const sharedRange = useMemo<DateRange | null>(() => {
     const list = Object.values(ranges);
     if (list.length === 0) return null;
-
-    let start = { year: list[0].startYear, month: list[0].startMonth };
-    let end = { year: list[0].endYear, month: list[0].endMonth };
-
-    for (const r of list.slice(1)) {
-      const rs = { year: r.startYear, month: r.startMonth };
-      const re = { year: r.endYear, month: r.endMonth };
-      if (compareYM(rs, start) < 0) start = rs;
-      if (compareYM(re, end) > 0) end = re;
-    }
-
-    return { startYear: start.year, startMonth: start.month, endYear: end.year, endMonth: end.month };
+    const first = list.reduce((a, b) => (startOf(b) < startOf(a) ? b : a));
+    const last = list.reduce((a, b) => (endOf(b) > endOf(a) ? b : a));
+    return { startYear: first.startYear, startMonth: first.startMonth, endYear: last.endYear, endMonth: last.endMonth };
   }, [ranges]);
 
-  const value = useMemo<Ctx>(() => ({ sharedRange, registerAvailableRange }), [sharedRange, registerAvailableRange]);
-
-  return (
-    <BalanceTrendRangeContext.Provider value={value}>
-      {children}
-    </BalanceTrendRangeContext.Provider>
-  );
+  const value = useMemo(() => ({ sharedRange, registerAvailableRange }), [sharedRange, registerAvailableRange]);
+  return <BalanceTrendRangeContext.Provider value={value}>{children}</BalanceTrendRangeContext.Provider>;
 }
 
 export function useBalanceTrendRange() {
   const ctx = useContext(BalanceTrendRangeContext);
-  if (!ctx) {
-    throw new Error("useBalanceTrendRange must be used within BalanceTrendRangeProvider");
-  }
+  if (!ctx) throw new Error("useBalanceTrendRange must be used within BalanceTrendRangeProvider");
   return ctx;
 }
-
