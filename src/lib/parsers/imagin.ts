@@ -4,6 +4,7 @@ import {
 	buildImportSourceFingerprint,
 } from "./importKeys";
 import { generateTransactionHash, parseEuropeanNumber } from "./utils";
+import { parseCSV } from "./csv";
 
 interface ImaginRawTransaction {
   concepto: string;
@@ -20,29 +21,6 @@ interface ParseImaginOptions {
 export interface ParsedImaginResult {
   transactions: ImaginRawTransaction[];
   finalBalance?: number;
-}
-
-function parseCSV(content: string, delimiter = ";"): string[][] {
-  const lines = content.split(/\r?\n/).filter((line) => line.trim());
-  return lines.map((line) => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === delimiter && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
-  });
 }
 
 function findHeaderRow(rows: string[][]): number {

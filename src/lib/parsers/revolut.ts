@@ -9,6 +9,7 @@ import {
 	parseRevolutFechaInicioToIsoUtc,
 	revolutFechaInicioToMs,
 } from "@/lib/revolutDate";
+import { parseCSV } from "./csv";
 
 interface RevolutRawTransaction {
   tipo: string;
@@ -61,29 +62,6 @@ const COLUMN_MAPPINGS: Record<string, keyof RevolutRawTransaction> = {
   "balance": "saldo",
 };
 
-function parseCSV(content: string): string[][] {
-  const lines = content.split(/\r?\n/).filter(line => line.trim());
-  return lines.map(line => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
-  });
-}
-
 function fixCorruptedEncoding(text: string): string {
   if (!text) return "";
   
@@ -134,21 +112,25 @@ function mapHeaders(headers: string[]): Record<number, keyof RevolutRawTransacti
   return mapping;
 }
 
-function excelDateToJSDate(excelDate: number): Date {
-  const excelEpoch = new Date(1899, 11, 30);
-  return new Date(excelEpoch.getTime() + excelDate * 24 * 60 * 60 * 1000);
-}
+/** Días entre la época de Excel (1899-12-30) y la época Unix. */
+const EXCEL_UNIX_EPOCH_OFFSET_DAYS = 25569;
 
-function parseExcelDate(value: string): string {
+/**
+ * El serial de Excel es una hora "de pared" sin zona. Se convierte y se formatea en UTC:
+ * con la zona local, el offset LMT de 1899 (-0:14:44 en Madrid) y el horario de verano
+ * desplazaban la hora entre 1h14m y 2h14m, y las operaciones nocturnas cambiaban de día.
+ */
+export function parseExcelDate(value: string): string {
   const num = parseFloat(value);
   if (!isNaN(num) && num > 40000 && num < 60000) {
-    const date = excelDateToJSDate(num);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const seconds = String(date.getSeconds()).padStart(2, "0");
+    const ms = Math.round((num - EXCEL_UNIX_EPOCH_OFFSET_DAYS) * 86400) * 1000;
+    const date = new Date(ms);
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    const hours = String(date.getUTCHours()).padStart(2, "0");
+    const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+    const seconds = String(date.getUTCSeconds()).padStart(2, "0");
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   }
   return value;
