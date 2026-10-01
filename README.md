@@ -76,7 +76,7 @@ Categorías y subcategorías personalizables con emojis para clasificar tus tran
 ## 🛠 Stack tecnológico
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Next.js_15-000000?logo=next.js&logoColor=white" alt="Next.js">
+  <img src="https://img.shields.io/badge/Next.js_16-000000?logo=next.js&logoColor=white" alt="Next.js">
   <img src="https://img.shields.io/badge/React_19-61DAFB?logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Tailwind_v4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind">
@@ -86,7 +86,7 @@ Categorías y subcategorías personalizables con emojis para clasificar tus tran
 
 | Categoría | Tecnologías |
 |---|---|
-| Framework | Next.js 15 (App Router) · React 19 |
+| Framework | Next.js 16 (App Router) · React 19 |
 | Lenguaje | TypeScript |
 | Estilos | Tailwind CSS v4 · shadcn/ui · Radix UI |
 | Backend / Auth | Supabase (PostgreSQL + OAuth) |
@@ -117,6 +117,7 @@ src/
 │   │   └── settings/        # Tema, idioma y sesión
 │   ├── api/                 # Endpoints de la API (CRUD, importación, reorden)
 │   ├── login/               # Página de autenticación OAuth
+│   ├── manifest/            # Manifest PWA dinámico
 │   └── ~offline/            # Página offline (PWA)
 ├── components/
 │   ├── dashboard/           # Widgets del dashboard
@@ -129,7 +130,10 @@ src/
 │   ├── supabase/            # Cliente Supabase (server + browser)
 │   └── i18n/               # Sistema de traducciones ES/EN
 └── contexts/                # LangContext, CalendarFilterContext
+supabase/migrations/         # RLS, RPCs atómicas de saldo, índices
 ```
+
+Comandos (pnpm): `pnpm dev`, `pnpm build`, `pnpm test`, `pnpm lint`, `pnpm typecheck`.
 
 ---
 
