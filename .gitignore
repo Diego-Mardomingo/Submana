@@ -46,3 +46,6 @@ public/swe-worker*
 
 # Cursor
 .cursor/
+
+#Claude
+.claude/
