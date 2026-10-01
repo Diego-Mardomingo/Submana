@@ -5,21 +5,9 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
-import {
-  TrendingUp,
-  TrendingDown,
-  Repeat,
-} from "lucide-react";
+import { Repeat, TrendingDown, TrendingUp } from "lucide-react";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
-
-const formatCurrency = (n: number) => {
-  const formatted = new Intl.NumberFormat("es-ES", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    useGrouping: true,
-  }).format(n);
-  return `${formatted} €`;
-};
+import { formatCurrency, localeOf } from "@/lib/format";
 
 export type SubForList = {
   id: string;
@@ -59,14 +47,6 @@ function getFrequencyText(freq: string) {
   return freq;
 }
 
-function formatDateLabel(date: Date, lang: string) {
-  return date.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-}
-
 export default function CalendarDayList({
   dayEntries,
   year,
@@ -90,10 +70,11 @@ export default function CalendarDayList({
       <div className="calendar-day-list-scroll">
         <div className="calendar-day-list-inner">
         {dayEntries.map((entry) => {
-          const date = new Date(year, month, entry.dayNumber);
-          const label = formatDateLabel(date, lang);
-          const hasContent = entry.subs.length > 0 || entry.transactions.length > 0;
-          if (!hasContent) return null;
+          const label = new Date(year, month, entry.dayNumber).toLocaleDateString(localeOf(lang), {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          });
 
           return (
             <section

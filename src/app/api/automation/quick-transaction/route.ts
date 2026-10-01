@@ -1,120 +1,68 @@
-import { createAdminClient } from "@/lib/supabase/admin";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
-import { createHash } from "crypto";
+import { adjustAccountBalance, jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
+import { createAdminClient, hashToken } from "@/lib/supabase/admin";
 
-function hashToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
-
+/** Creates an expense from an automation (e.g. iOS Shortcut) authenticated with a Bearer token. */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("Authorization");
   const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
-  if (!token) {
-    return jsonError("Missing or invalid Authorization header (Bearer token required)", 401);
-  }
+  if (!token) return jsonError("Missing or invalid Authorization header (Bearer token required)", 401);
 
   let admin;
   try {
     admin = createAdminClient();
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Server configuration error";
-    const isDev = process.env.NODE_ENV === "development";
     return jsonError(
-      isDev ? `${msg}. Add SUPABASE_SERVICE_ROLE_KEY to .env.local (Supabase Dashboard → Settings → API → service_role key).` : "Server configuration error",
+      process.env.NODE_ENV === "development"
+        ? `${msg}. Add SUPABASE_SERVICE_ROLE_KEY to .env.local (Supabase Dashboard → Settings → API → service_role key).`
+        : "Server configuration error",
       500
     );
   }
 
-  const tokenHash = hashToken(token);
-  const { data: tokenRow, error: tokenError } = await admin
-    .from("api_tokens")
-    .select("user_id")
-    .eq("token_hash", tokenHash)
-    .single();
-
-  if (tokenError || !tokenRow) {
-    return jsonError("Invalid or expired token", 401);
-  }
-
+  const { data: tokenRow } = await admin.from("api_tokens").select("user_id").eq("token_hash", hashToken(token)).single();
+  if (!tokenRow) return jsonError("Invalid or expired token", 401);
   const userId = tokenRow.user_id as string;
 
-  const { body } = await parseRequestBody(request);
-  const amountRaw = body.amount;
-  const description = body.description ?? null;
-  const accountId = body.accountId ?? body.account_id ?? null;
+  const body = await parseRequestBody(request);
+  const description = body.description || null;
+  const accountId = body.accountId || body.account_id || null;
+  const amount = body.amount ? parseFloat(body.amount.replace(",", ".")) : NaN;
 
-  const amountNormalized = amountRaw !== "" && amountRaw != null ? String(amountRaw).replace(",", ".") : "";
-  const amount = amountNormalized !== "" ? parseFloat(amountNormalized) : NaN;
-  if (isNaN(amount)) {
-    await logNotification(admin, userId, false, null, "Missing or invalid amount", amountRaw !== "" ? Number(amountRaw) : null, description, accountId);
-    return jsonError("Missing or invalid amount", 400);
-  }
-
-  if (!accountId || accountId === "") {
-    await logNotification(admin, userId, false, null, "Missing accountId", amount, description, null);
-    return jsonError("Missing accountId", 400);
-  }
-
-  const { data: account, error: accountError } = await admin
-    .from("accounts")
-    .select("id, balance")
-    .eq("id", accountId)
-    .eq("user_id", userId)
-    .single();
-
-  if (accountError || !account) {
-    await logNotification(admin, userId, false, null, "Account not found or access denied", amount, description, accountId);
-    return jsonError("Account not found or access denied", 404);
-  }
-
-  const date = new Date().toISOString().slice(0, 10);
-  const type = "expense";
-
-  const { data: insertedData, error: insertError } = await admin
-    .from("transactions")
-    .insert({
+  const fail = async (message: string, status: number) => {
+    await admin.from("automation_notifications").insert({
       user_id: userId,
-      amount,
-      type,
-      date,
-      description: description || null,
+      success: false,
+      error_message: message,
+      amount: isNaN(amount) ? null : amount,
+      description,
       account_id: accountId,
-    })
+    });
+    return jsonError(message, status);
+  };
+
+  if (isNaN(amount)) return fail("Missing or invalid amount", 400);
+  if (!accountId) return fail("Missing accountId", 400);
+
+  const { data: account } = await admin.from("accounts").select("id").eq("id", accountId).eq("user_id", userId).single();
+  if (!account) return fail("Account not found or access denied", 404);
+
+  const { data, error } = await admin
+    .from("transactions")
+    .insert({ user_id: userId, amount, type: "expense", date: new Date().toISOString().slice(0, 10), description, account_id: accountId })
     .select()
     .single();
+  if (error) return fail(error.message, 500);
 
-  if (insertError) {
-    await logNotification(admin, userId, false, null, insertError.message, amount, description, accountId);
-    return jsonError(insertError.message, 500);
-  }
-
-  const currentBalance = Number(account.balance);
-  const newBalance = currentBalance - amount;
-  await admin.from("accounts").update({ balance: newBalance }).eq("id", accountId);
-
-  await logNotification(admin, userId, true, insertedData.id, null, amount, description, accountId);
-
-  return jsonResponse({ data: insertedData }, 201);
-}
-
-async function logNotification(
-  admin: ReturnType<typeof createAdminClient>,
-  userId: string,
-  success: boolean,
-  transactionId: string | null,
-  errorMessage: string | null,
-  amount: number | null,
-  description: string | null,
-  accountId: string | null
-) {
+  await adjustAccountBalance(admin, accountId, -amount);
   await admin.from("automation_notifications").insert({
     user_id: userId,
-    success,
-    transaction_id: transactionId,
-    error_message: errorMessage,
-    amount: amount ?? null,
-    description: description ?? null,
+    success: true,
+    transaction_id: data.id,
+    amount,
+    description,
     account_id: accountId,
   });
+  return jsonResponse({ data }, 201);
 }

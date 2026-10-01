@@ -1,119 +1,142 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { useSwipeToReveal } from "@/hooks/useSwipeToReveal";
-import { cn } from "@/lib/utils";
+import { createContext, useContext, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { GripVertical } from "lucide-react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { cn } from "@/lib/utils";
 
-const DEFAULT_ACTIONS_WIDTH = 88;
+const OPEN_THRESHOLD = 20;
+const VELOCITY_THRESHOLD = 0.25;
+const DIRECTION_LOCK_THRESHOLD = 10;
 
-type SwipeToRevealGroupContextValue = {
-  openId: string | null;
-  setOpenId: (id: string | null) => void;
-};
+const SwipeGroupContext = createContext<{ openId: string | null; setOpenId: (id: string | null) => void } | null>(null);
 
-const SwipeToRevealGroupContext = createContext<SwipeToRevealGroupContextValue | null>(null);
-
-export function SwipeToRevealGroup({
-  children,
-  className,
-  style,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  style?: React.CSSProperties;
-}) {
-  const [openId, setOpenIdState] = useState<string | null>(null);
+/** Keeps at most one row of the group open and closes it when tapping elsewhere. */
+export function SwipeToRevealGroup({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  const [openId, setOpenId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const setOpenId = useCallback((id: string | null) => setOpenIdState(id), []);
 
   useEffect(() => {
     if (openId === null) return;
-    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
-      const target = e.target as Node;
-      const openCard = containerRef.current?.querySelector(`[data-swipe-id="${openId}"]`);
-      if (openCard && !openCard.contains(target)) {
-        setOpenIdState(null);
-      }
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const openRow = containerRef.current?.querySelector(`[data-swipe-id="${openId}"]`);
+      if (openRow && !openRow.contains(e.target as Node)) setOpenId(null);
     };
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("touchstart", handlePointerDown, { passive: true });
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("touchstart", onPointerDown, { passive: true });
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("touchstart", onPointerDown);
     };
   }, [openId]);
 
   return (
-    <SwipeToRevealGroupContext.Provider value={{ openId, setOpenId }}>
-      <div ref={containerRef} className={className} style={style}>{children}</div>
-    </SwipeToRevealGroupContext.Provider>
+    <SwipeGroupContext.Provider value={{ openId, setOpenId }}>
+      <div ref={containerRef} className={className} style={style}>
+        {children}
+      </div>
+    </SwipeGroupContext.Provider>
   );
 }
 
-export function SwipeToReveal({
-  id,
-  children,
-  actions,
-  swipeHint,
-  desktopMinWidth = 641,
-  className,
-  contentClassName,
-  actionsClassName,
-}: {
+/**
+ * Row whose `actions` are revealed by swiping left on touch layouts; from `desktopMinWidth`
+ * up the actions are always visible next to the content.
+ */
+export function SwipeToReveal({ id, children, actions, swipeHint, desktopMinWidth = 641, className, contentClassName }: {
   id?: string;
   children: React.ReactNode;
   actions: React.ReactNode;
   swipeHint?: boolean;
-  /** Ancho mínimo (px) para mostrar iconos dentro de la tarjeta en vez de swipe. Ej: 1024 para solo pantallas grandes. */
   desktopMinWidth?: number;
   className?: string;
   contentClassName?: string;
-  actionsClassName?: string;
 }) {
-  const isDesktopLayout = useMediaQuery(`(min-width: ${desktopMinWidth}px)`);
-  const group = useContext(SwipeToRevealGroupContext);
+  const isDesktop = useMediaQuery(`(min-width: ${desktopMinWidth}px)`);
+  const group = useContext(SwipeGroupContext);
+  const containerRef = useRef<HTMLDivElement>(null);
   const actionsRef = useRef<HTMLDivElement>(null);
-  const [actionsWidth, setActionsWidth] = useState(DEFAULT_ACTIONS_WIDTH);
-
-  const close = useCallback(() => {
-    if (group && id && group.openId === id) group.setOpenId(null);
-  }, [group, id]);
-
-  const { translateX, containerRef, onTransitionEnd, close: doClose } = useSwipeToReveal(
-    actionsWidth,
-    {
-      onOpen: () => group && id && group.setOpenId(id),
-      onClose: close,
-    }
-  );
+  const [actionsWidth, setActionsWidth] = useState(88);
+  const [localOpen, setLocalOpen] = useState(false);
+  const [dragOffset, setDragOffset] = useState<number | null>(null);
+  // Inside a group the open row is the group's; another row opening closes this one.
+  const isOpen = group && id ? group.openId === id : localOpen;
+  const translateX = dragOffset ?? (isOpen ? -actionsWidth : 0);
 
   useLayoutEffect(() => {
     const el = actionsRef.current;
     if (!el) return;
-    const measure = () => {
-      const w = el.offsetWidth;
-      if (w > 0) setActionsWidth(w);
-    };
+    const measure = () => el.offsetWidth > 0 && setActionsWidth(el.offsetWidth);
     measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [actions]);
 
-  useEffect(() => {
-    if (group && id && group.openId !== id) {
-      doClose();
-    }
-  }, [group?.openId, id, doClose]);
+  const restingOffset = useEffectEvent(() => (isOpen ? -actionsWidth : 0));
+  const maxOffset = useEffectEvent(() => actionsWidth);
+  const settle = useEffectEvent((open: boolean) => {
+    setDragOffset(null);
+    if (!group || !id) setLocalOpen(open);
+    else if (open) group.setOpenId(id);
+    else if (isOpen) group.setOpenId(null);
+  });
 
-  if (isDesktopLayout) {
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let start: { x: number; y: number; time: number } | null = null;
+    let lastX = 0;
+    let horizontal: boolean | null = null;
+    let offset = 0;
+
+    const onStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      start = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+      lastX = touch.clientX;
+      horizontal = null;
+      offset = restingOffset();
+    };
+    const onMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!start || !touch) return;
+      const dx = touch.clientX - start.x;
+      const dy = touch.clientY - start.y;
+      if (horizontal === null && (Math.abs(dx) > DIRECTION_LOCK_THRESHOLD || Math.abs(dy) > DIRECTION_LOCK_THRESHOLD)) {
+        horizontal = Math.abs(dx) >= Math.abs(dy);
+      }
+      if (horizontal === false) return;
+      if (horizontal) e.preventDefault();
+      offset = Math.max(-maxOffset(), Math.min(0, offset + touch.clientX - lastX));
+      lastX = touch.clientX;
+      setDragOffset(offset);
+    };
+    const onEnd = () => {
+      if (!start) return;
+      const velocity = Math.abs(offset) / Math.max(Date.now() - start.time, 1);
+      settle(offset < -OPEN_THRESHOLD || velocity > VELOCITY_THRESHOLD);
+      start = null;
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    el.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, [isDesktop]);
+
+  if (isDesktop) {
     return (
       <div className={cn("swipe-to-reveal swipe-to-reveal--desktop", className)} data-swipe-id={id}>
         <div className={cn("swipe-to-reveal__track", contentClassName)} style={{ transform: "none" }}>
-          <div className={cn("swipe-to-reveal__content", "flex-1 min-w-0")}>{children}</div>
-          <div ref={actionsRef} className={cn("swipe-to-reveal__actions swipe-to-reveal__actions--measure", actionsClassName)}>
+          <div className="swipe-to-reveal__content flex-1 min-w-0">{children}</div>
+          <div ref={actionsRef} className="swipe-to-reveal__actions swipe-to-reveal__actions--measure">
             {actions}
           </div>
         </div>
@@ -122,18 +145,12 @@ export function SwipeToReveal({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={cn("swipe-to-reveal", className)}
-      data-swipe-id={id}
-      onTransitionEnd={onTransitionEnd}
-      style={{ "--actions-width": `${actionsWidth}px` } as React.CSSProperties}
-    >
+    <div ref={containerRef} className={cn("swipe-to-reveal", className)} data-swipe-id={id} style={{ "--actions-width": `${actionsWidth}px` } as React.CSSProperties}>
       <div
         className={cn("swipe-to-reveal__track", contentClassName)}
         style={{ transform: `translateX(${translateX}px)`, width: `calc(100% + ${actionsWidth}px)`, minWidth: `calc(100% + ${actionsWidth}px)` }}
       >
-        <div className={cn("swipe-to-reveal__content", "flex-1 min-w-0", swipeHint && "relative")}>
+        <div className={cn("swipe-to-reveal__content flex-1 min-w-0", swipeHint && "relative")}>
           {children}
           {swipeHint && (
             <span className="swipe-hint-icon" aria-hidden>
@@ -141,11 +158,7 @@ export function SwipeToReveal({
             </span>
           )}
         </div>
-        <div
-          ref={actionsRef}
-          className={cn("swipe-to-reveal__actions", actionsClassName)}
-          style={{ width: "max-content", minWidth: actionsWidth, flexShrink: 0 }}
-        >
+        <div ref={actionsRef} className="swipe-to-reveal__actions" style={{ width: "max-content", minWidth: actionsWidth, flexShrink: 0 }}>
           {actions}
         </div>
       </div>

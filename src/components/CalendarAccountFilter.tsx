@@ -14,18 +14,12 @@ import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
-interface Account {
-  id: string;
-  name: string;
-  color?: string;
-}
-
 export default function CalendarAccountFilter() {
   const lang = useLang();
   const t = useTranslations(lang);
   const { data: accounts = [] } = useAccounts();
-  const { hiddenAccountIds, hiddenCount, toggleAccount, showAll } =
-    useCalendarAccountFilter();
+  const { hiddenAccountIds, toggleAccount, showAll } = useCalendarAccountFilter();
+  const hiddenCount = hiddenAccountIds.size;
 
   if (accounts.length === 0) return null;
 
@@ -59,7 +53,7 @@ export default function CalendarAccountFilter() {
           </p>
         </div>
         <div className="max-h-[200px] overflow-y-auto py-1">
-          {(accounts as Account[]).map((account) => {
+          {accounts.map((account) => {
             const isHidden = hiddenAccountIds.has(account.id);
             return (
               <label

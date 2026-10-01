@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useTranslations } from "@/lib/i18n/utils";
 import { useLang } from "@/hooks/useLang";
 import {
@@ -30,7 +30,7 @@ export function SensitiveAmount({
   progressPosition = "below",
   applyGradient = false,
 }: SensitiveAmountProps) {
-  const { privacyModeEnabled } = usePrivacyMode();
+  const privacyModeEnabled = usePrivacyMode();
   const lang = useLang();
   const t = useTranslations(lang);
   const [revealing, setRevealing] = useState(false);

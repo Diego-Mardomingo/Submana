@@ -14,11 +14,7 @@ export default function HomeBalanceCard() {
   const t = useTranslations(lang);
   const { data: accounts = [], isLoading, isFetching } = useAccounts();
 
-  const totalBalance = accounts.reduce(
-    (sum: number, acc: { id: string; balance?: number; color?: string }) =>
-      sum + Number(acc.balance ?? 0),
-    0
-  );
+  const totalBalance = accounts.reduce((sum, acc) => sum + Number(acc.balance ?? 0), 0);
 
   const isInitialLoading = isLoading && accounts.length === 0;
   const isRefreshing = isFetching && !isInitialLoading;
@@ -51,7 +47,7 @@ export default function HomeBalanceCard() {
           <>
             <hr className={styles.divider} />
             <div className={styles.accounts}>
-              {accounts.map((acc: { id: string; name: string; balance?: number; color?: string }) => (
+              {accounts.map((acc) => (
                 <div key={acc.id} className={styles.account}>
                   <div className={styles.accountLabelRow}>
                     <span

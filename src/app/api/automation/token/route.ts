@@ -1,86 +1,26 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse } from "@/lib/apiHelpers";
-import { NextRequest } from "next/server";
-import { createHash, randomBytes } from "crypto";
-
-function hashToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
+import { randomBytes } from "crypto";
+import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { hashToken } from "@/lib/supabase/admin";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
-
-  const { data: existing } = await supabase
-    .from("api_tokens")
-    .select("id, created_at")
-    .eq("user_id", user.id)
-    .limit(1)
-    .maybeSingle();
-
-  return jsonResponse(
-    {
-      hasToken: !!existing,
-      createdAt: existing?.created_at ?? null,
-    },
-    200
-  );
+  const { data } = await supabase.from("api_tokens").select("created_at").eq("user_id", user.id).limit(1).maybeSingle();
+  return jsonResponse({ data: { hasToken: !!data, createdAt: data?.created_at ?? null } });
 }
 
-export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+/** Creates or rotates the user's automation token; the plain token is only returned once. */
+export async function POST() {
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
-
-  const plainToken = randomBytes(32).toString("hex");
-  const tokenHash = hashToken(plainToken);
-
-  const { data: existing } = await supabase
-    .from("api_tokens")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (existing) {
-    const { error: updateError } = await supabase
-      .from("api_tokens")
-      .update({ token_hash: tokenHash, created_at: new Date().toISOString() })
-      .eq("id", existing.id);
-
-    if (updateError) {
-      return jsonError(updateError.message, 500);
-    }
-  } else {
-    const { error: insertError } = await supabase.from("api_tokens").insert({
-      user_id: user.id,
-      token_hash: tokenHash,
-      name: "Automation",
-    });
-
-    if (insertError) {
-      return jsonError(insertError.message, 500);
-    }
-  }
-
-  return jsonResponse(
-    {
-      token: plainToken,
-      createdAt: new Date().toISOString(),
-      message: "Token only shown once; copy it now.",
-    },
-    201
-  );
+  const token = randomBytes(32).toString("hex");
+  const createdAt = new Date().toISOString();
+  const { data: existing } = await supabase.from("api_tokens").select("id").eq("user_id", user.id).maybeSingle();
+  const { error } = existing
+    ? await supabase.from("api_tokens").update({ token_hash: hashToken(token), created_at: createdAt }).eq("id", existing.id)
+    : await supabase.from("api_tokens").insert({ user_id: user.id, token_hash: hashToken(token), name: "Automation" });
+  if (error) return jsonError(error.message, 500);
+  return jsonResponse({ data: { token, createdAt } }, 201);
 }

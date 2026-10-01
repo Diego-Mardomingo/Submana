@@ -1,90 +1,73 @@
 "use client";
 
+import { useEffect } from "react";
 import dynamic from "next/dynamic";
-import { useTranslations } from "@/lib/i18n/utils";
-import { useLang } from "@/hooks/useLang";
-import { useAccounts } from "@/hooks/useAccounts";
-import { useDashboardPrefetch } from "@/hooks/useDashboardPrefetch";
+import { useQueryClient } from "@tanstack/react-query";
 import { LayoutDashboard } from "lucide-react";
-import HomeBalanceCard from "@/components/home/HomeBalanceCard";
-import HomeMonthlySummaryCard from "@/components/home/HomeMonthlySummaryCard";
-import HomeBudgetsCard from "@/components/home/HomeBudgetsCard";
 import { ChartSkeleton } from "@/components/dashboard/ChartSkeleton";
-import DashboardAccountTrendLine from "@/components/dashboard/DashboardAccountTrendLine";
-import "@/lib/chartConfig";
+import HomeBalanceCard from "@/components/home/HomeBalanceCard";
+import HomeBudgetsCard from "@/components/home/HomeBudgetsCard";
+import HomeMonthlySummaryCard from "@/components/home/HomeMonthlySummaryCard";
 import { BalanceTrendRangeProvider } from "@/contexts/BalanceTrendRangeContext";
+import { useAccounts } from "@/hooks/useAccounts";
+import { useLang } from "@/hooks/useLang";
+import { prefetchMonth } from "@/hooks/useTransactions";
+import { shiftMonth } from "@/lib/date";
+import { useTranslations } from "@/lib/i18n/utils";
 
-const HomeCategoryDonutCard = dynamic(
-  () => import("@/components/home/HomeCategoryDonutCard"),
-  { loading: () => <ChartSkeleton height="h-[220px]" />, ssr: false }
-);
+// Charts need the browser (canvas, CSS variables): load them client-side with a skeleton.
+const loading = () => <ChartSkeleton />;
+const HomeCategoryDonutCard = dynamic(() => import("@/components/home/HomeCategoryDonutCard"), { loading, ssr: false });
+const DashboardMonthlyTrendBars = dynamic(() => import("@/components/dashboard/DashboardMonthlyTrendBars"), { loading, ssr: false });
+const DashboardDailyExpenseBars = dynamic(() => import("@/components/dashboard/DashboardDailyExpenseBars"), { loading, ssr: false });
+const DashboardBalanceByAccountDonut = dynamic(() => import("@/components/dashboard/DashboardBalanceByAccountDonut"), { loading, ssr: false });
+const DashboardTopCategoriesBar = dynamic(() => import("@/components/dashboard/DashboardTopCategoriesBar"), { loading, ssr: false });
+const DashboardSpendingForecast = dynamic(() => import("@/components/dashboard/DashboardSpendingForecast"), { loading, ssr: false });
+const DashboardTopExpenses = dynamic(() => import("@/components/dashboard/DashboardTopExpenses"), { loading, ssr: false });
+const DashboardAnnualSavingsProjection = dynamic(() => import("@/components/dashboard/DashboardAnnualSavingsProjection"), { loading, ssr: false });
+const DashboardMonthComparisonBar = dynamic(() => import("@/components/dashboard/DashboardMonthComparisonBar"), { loading, ssr: false });
+const DashboardSubscriptionsCard = dynamic(() => import("@/components/dashboard/DashboardSubscriptionsCard"), { loading, ssr: false });
+const DashboardExpenseScatter = dynamic(() => import("@/components/dashboard/DashboardExpenseScatter"), { loading, ssr: false });
+const DashboardCashFlowSummary = dynamic(() => import("@/components/dashboard/DashboardCashFlowSummary"), { loading, ssr: false });
+const DashboardBalanceTrendLine = dynamic(() => import("@/components/dashboard/DashboardBalanceTrendLine"), {
+  loading: () => <ChartSkeleton height="h-[250px]" />,
+  ssr: false,
+});
 
-const DashboardMonthlyTrendBars = dynamic(
-  () => import("@/components/dashboard/DashboardMonthlyTrendBars"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
+const CARDS = [
+  HomeMonthlySummaryCard,
+  HomeBudgetsCard,
+  HomeCategoryDonutCard,
+  DashboardMonthlyTrendBars,
+  DashboardDailyExpenseBars,
+  DashboardBalanceByAccountDonut,
+  DashboardTopCategoriesBar,
+  DashboardSpendingForecast,
+  DashboardTopExpenses,
+  DashboardAnnualSavingsProjection,
+  DashboardMonthComparisonBar,
+  DashboardSubscriptionsCard,
+  DashboardExpenseScatter,
+  DashboardCashFlowSummary,
+];
 
-const DashboardDailyExpenseBars = dynamic(
-  () => import("@/components/dashboard/DashboardDailyExpenseBars"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardBalanceByAccountDonut = dynamic(
-  () => import("@/components/dashboard/DashboardBalanceByAccountDonut"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardTopCategoriesBar = dynamic(
-  () => import("@/components/dashboard/DashboardTopCategoriesBar"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardSpendingForecast = dynamic(
-  () => import("@/components/dashboard/DashboardSpendingForecast"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardTopExpenses = dynamic(
-  () => import("@/components/dashboard/DashboardTopExpenses"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardAnnualSavingsProjection = dynamic(
-  () => import("@/components/dashboard/DashboardAnnualSavingsProjection"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardMonthComparisonBar = dynamic(
-  () => import("@/components/dashboard/DashboardMonthComparisonBar"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardSubscriptionsCard = dynamic(
-  () => import("@/components/dashboard/DashboardSubscriptionsCard"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardExpenseScatter = dynamic(
-  () => import("@/components/dashboard/DashboardExpenseScatter"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardCashFlowSummary = dynamic(
-  () => import("@/components/dashboard/DashboardCashFlowSummary"),
-  { loading: () => <ChartSkeleton height="h-[200px]" />, ssr: false }
-);
-
-const DashboardBalanceTrendLine = dynamic(
-  () => import("@/components/dashboard/DashboardBalanceTrendLine"),
-  { loading: () => <ChartSkeleton height="h-[250px]" />, ssr: false }
-);
+type Account = { id: string; name: string; color?: string | null; balance?: number };
 
 export default function DashboardPage() {
-  const lang = useLang();
-  const t = useTranslations(lang);
+  const t = useTranslations(useLang());
   const { data: accounts = [] } = useAccounts();
-  
-  useDashboardPrefetch();
+  const queryClient = useQueryClient();
+
+  // Warm the caches for the month-based widgets (current month ± 2).
+  useEffect(() => {
+    const now = new Date();
+    for (let delta = -2; delta <= 2; delta++) {
+      const { year, month } = shiftMonth(now.getFullYear(), now.getMonth() + 1, delta);
+      prefetchMonth(queryClient, year, month, delta === 0 ? 5 * 60 * 1000 : 15 * 60 * 1000);
+    }
+  }, [queryClient]);
+
+  const totalBalance = (accounts as Account[]).reduce((sum, acc) => sum + Number(acc.balance ?? 0), 0);
 
   return (
     <div className="page-container dashboard-page fade-in">
@@ -104,67 +87,28 @@ export default function DashboardPage() {
           <div className="dashboard-card dashboard-card-wide" data-card-id="1">
             <HomeBalanceCard />
           </div>
-          <div className="dashboard-card" data-card-id="2">
-            <HomeMonthlySummaryCard />
-          </div>
-          <div className="dashboard-card" data-card-id="3">
-            <HomeBudgetsCard />
-          </div>
-
-          <div className="dashboard-card" data-card-id="4">
-            <HomeCategoryDonutCard />
-          </div>
-          <div className="dashboard-card" data-card-id="5">
-            <DashboardMonthlyTrendBars />
-          </div>
-
-          <div className="dashboard-card" data-card-id="6">
-            <DashboardDailyExpenseBars />
-          </div>
-          <div className="dashboard-card" data-card-id="7">
-            <DashboardBalanceByAccountDonut />
-          </div>
-
-          <div className="dashboard-card" data-card-id="8">
-            <DashboardTopCategoriesBar />
-          </div>
-          <div className="dashboard-card" data-card-id="9">
-            <DashboardSpendingForecast />
-          </div>
-
-          <div className="dashboard-card" data-card-id="10">
-            <DashboardTopExpenses />
-          </div>
-          <div className="dashboard-card" data-card-id="11">
-            <DashboardAnnualSavingsProjection />
-          </div>
-
-          <div className="dashboard-card" data-card-id="12">
-            <DashboardMonthComparisonBar />
-          </div>
-          <div className="dashboard-card" data-card-id="13">
-            <DashboardSubscriptionsCard />
-          </div>
-
-          <div className="dashboard-card" data-card-id="14">
-            <DashboardExpenseScatter />
-          </div>
-          <div className="dashboard-card" data-card-id="15">
-            <DashboardCashFlowSummary />
-          </div>
+          {CARDS.map((Card, i) => (
+            <div key={i} className="dashboard-card" data-card-id={i + 2}>
+              <Card />
+            </div>
+          ))}
 
           <BalanceTrendRangeProvider>
             <div className="dashboard-grid-full" data-card-id="16">
-              <DashboardBalanceTrendLine />
+              <DashboardBalanceTrendLine title={t("dashboard.balanceTrend")} balance={totalBalance} />
             </div>
-
-            {accounts.map((acc: { id: string; name: string; color?: string; balance?: number }, idx: number) => (
-              <div key={acc.id} className="dashboard-grid-full" data-card-id={`${17 + idx}`}>
-                <DashboardAccountTrendLine
+            {(accounts as Account[]).map((acc, i) => (
+              <div key={acc.id} className="dashboard-grid-full" data-card-id={17 + i}>
+                <DashboardBalanceTrendLine
                   accountId={acc.id}
-                  accountName={acc.name}
-                  accountColor={acc.color ?? "var(--accent)"}
-                  accountBalance={Number(acc.balance ?? 0)}
+                  balance={Number(acc.balance ?? 0)}
+                  color={acc.color}
+                  title={
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block size-3 rounded-full flex-shrink-0" style={{ backgroundColor: acc.color ?? "var(--accent)" }} />
+                      {acc.name}
+                    </span>
+                  }
                 />
               </div>
             ))}

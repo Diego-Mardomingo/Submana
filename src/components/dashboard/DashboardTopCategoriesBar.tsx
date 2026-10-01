@@ -1,166 +1,65 @@
 "use client";
 
-import { useMemo, useEffect, useState } from "react";
-import { useTransactions } from "@/hooks/useTransactions";
-import { useCategories, type CategoryWithSubs } from "@/hooks/useCategories";
-import { formatCurrency } from "@/lib/format";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useTranslations } from "@/lib/i18n/utils";
-import { useLang } from "@/hooks/useLang";
 import { Doughnut } from "react-chartjs-2";
-import { Spinner } from "@/components/ui/spinner";
-import { resolveChartPalette, tooltipConfig } from "@/lib/chartConfig";
-import { detectTransferIds } from "@/lib/transferDetection";
-import { filterForMetrics } from "@/lib/metricsFilters";
-
-type Tx = { id: string; amount?: number; type?: string; date?: string; category_id?: string | null; subcategory_id?: string | null; account_id?: string };
-
-function buildCategoryMaps(
-  defaultCats: CategoryWithSubs[],
-  userCats: CategoryWithSubs[],
-  lang: string
-): { idToName: Map<string, string>; subToParent: Map<string, string> } {
-  const idToName = new Map<string, string>();
-  const subToParent = new Map<string, string>();
-  const walk = (list: CategoryWithSubs[]) => {
-    for (const parent of list) {
-      const name = lang === "en" && parent.name_en ? parent.name_en : parent.name;
-      idToName.set(parent.id, name);
-      for (const sub of parent.subcategories ?? []) {
-        const subName = lang === "en" && sub.name_en ? sub.name_en : sub.name;
-        idToName.set(sub.id, subName);
-        subToParent.set(sub.id, parent.id);
-      }
-    }
-  };
-  walk(defaultCats);
-  walk(userCats);
-  return { idToName, subToParent };
-}
+import { DashboardCard, EmptyState } from "@/components/dashboard/DashboardCard";
+import { useCategoryLookup } from "@/hooks/useCategories";
+import { useLang } from "@/hooks/useLang";
+import { useMetricTransactions } from "@/hooks/useTransactions";
+import { tooltipConfig, useChartTheme } from "@/lib/chartConfig";
+import { formatCurrency } from "@/lib/format";
+import { useTranslations } from "@/lib/i18n/utils";
 
 export default function DashboardTopCategoriesBar() {
-  const lang = useLang();
-  const t = useTranslations(lang);
+  const t = useTranslations(useLang());
+  const { palette } = useChartTheme();
   const now = new Date();
-  const { data: transactions = [], isLoading: txLoading } = useTransactions(now.getFullYear(), now.getMonth() + 1);
-  const { data: categoriesData, isLoading: catLoading } = useCategories();
-  const defaultPalette = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#14b8a6", "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#f97316"];
-  const [colors, setColors] = useState<string[]>(defaultPalette);
+  const { data: transactions, isLoading } = useMetricTransactions(now.getFullYear(), now.getMonth() + 1);
+  const categories = useCategoryLookup();
 
-  useEffect(() => {
-    setColors(resolveChartPalette());
-  }, []);
-
-  const chartData = useMemo(() => {
-    const defaultCats = categoriesData?.defaultCategories ?? [];
-    const userCats = categoriesData?.userCategories ?? [];
-    const { idToName, subToParent } = buildCategoryMaps(defaultCats, userCats, lang);
-    const ctx = { defaultCategories: defaultCats, userCategories: userCats };
-    const byCategory = new Map<string, number>();
-
-    const txList = transactions as Tx[];
-    const transferIds = detectTransferIds(txList.map((tx) => ({ id: tx.id, amount: Number(tx.amount) || 0, type: tx.type || "", date: tx.date || "", account_id: tx.account_id })));
-    const forMetrics = filterForMetrics(
-      txList.filter((tx) => tx.type === "expense" && !transferIds.has(tx.id)),
-      ctx
-    );
-
-    for (const tx of forMetrics) {
-      const amt = Number(tx.amount) || 0;
-      const parentId =
-        tx.category_id ??
-        (tx.subcategory_id ? subToParent.get(tx.subcategory_id) : undefined) ??
-        tx.subcategory_id ??
-        "__uncategorized__";
-      byCategory.set(parentId, (byCategory.get(parentId) ?? 0) + amt);
-    }
-
-    return Array.from(byCategory.entries())
-      .map(([id, value]) => ({
-        name: id === "__uncategorized__" ? t("home.uncategorized") : idToName.get(id) ?? id,
-        value: Math.round(value * 100) / 100,
-      }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
-  }, [transactions, categoriesData, lang, t]);
-
-  const total = useMemo(() => chartData.reduce((s, d) => s + d.value, 0), [chartData]);
-
-  const doughnutData = useMemo(() => ({
-    labels: chartData.map((d) => d.name),
-    datasets: [{
-      data: chartData.map((d) => d.value),
-      backgroundColor: chartData.map((_, i) => colors[i % colors.length]),
-      borderWidth: 0,
-      hoverOffset: 6,
-    }],
-  }), [chartData, colors]);
-
-  const doughnutOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    cutout: "55%",
-    plugins: {
-      tooltip: {
-        ...tooltipConfig(),
-        callbacks: {
-          label: (ctx: { label?: string; parsed: number }) => {
-            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : "0";
-            return `${ctx.label}: ${formatCurrency(ctx.parsed)} (${pct}%)`;
-          },
-        },
-      },
-      legend: {
-        position: "right" as const,
-        labels: { font: { size: 11 }, boxWidth: 8, usePointStyle: true, pointStyle: "circle" },
-      },
-    },
-  }), [total]);
-
-  const isLoading = txLoading || catLoading;
-
-  if (isLoading) {
-    return (
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-muted-foreground">
-            {t("dashboard.topCategories")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center py-12">
-          <Spinner className="size-6 text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+  const byCategory = new Map<string, number>();
+  for (const tx of transactions) {
+    if (tx.type !== "expense") continue;
+    const id = categories.rootOf(tx) ?? "";
+    byCategory.set(id, (byCategory.get(id) ?? 0) + tx.amount);
   }
-
-  if (chartData.length === 0) {
-    return (
-      <Card className="dashboard-card">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-muted-foreground">
-            {t("dashboard.topCategories")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="py-8 text-center text-sm text-muted-foreground">{t("home.noExpensesThisMonth")}</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const top = [...byCategory]
+    .map(([id, value]) => ({ name: id ? (categories.name.get(id) ?? id) : t("home.uncategorized"), value: Math.round(value * 100) / 100 }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+  const total = top.reduce((sum, d) => sum + d.value, 0);
 
   return (
-    <Card className="dashboard-card">
-      <CardHeader>
-        <CardTitle className="text-base font-semibold text-muted-foreground">
-          {t("dashboard.topCategories")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <DashboardCard title={t("dashboard.topCategories")} loading={isLoading || categories.isLoading}>
+      {top.length === 0 ? (
+        <EmptyState>{t("home.noExpensesThisMonth")}</EmptyState>
+      ) : (
         <div className="dashboard-chart-small w-full">
-          <Doughnut data={doughnutData} options={doughnutOptions} />
+          <Doughnut
+            data={{
+              labels: top.map((d) => d.name),
+              datasets: [{ data: top.map((d) => d.value), backgroundColor: palette, borderWidth: 0, hoverOffset: 6 }],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: "55%",
+              plugins: {
+                tooltip: {
+                  ...tooltipConfig(),
+                  callbacks: {
+                    label: (ctx) =>
+                      `${ctx.label}: ${formatCurrency(ctx.parsed)} (${total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : "0"}%)`,
+                  },
+                },
+                legend: {
+                  position: "right",
+                  labels: { font: { size: 11 }, boxWidth: 8, usePointStyle: true, pointStyle: "circle" },
+                },
+              },
+            }}
+          />
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </DashboardCard>
   );
 }

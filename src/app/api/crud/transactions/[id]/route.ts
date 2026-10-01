@@ -1,172 +1,63 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
+import {
+  adjustAccountBalance,
+  getAuthedClient,
+  jsonError,
+  jsonResponse,
+  parseRequestBody,
+  readTransactionInput,
+  signedAmount,
+  unauthorized,
+} from "@/lib/apiHelpers";
 import { calendarDayInAppTimeZone } from "@/lib/date";
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+type Params = { params: Promise<{ id: string }> };
+
+export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
+  const tx = readTransactionInput(await parseRequestBody(request));
+  if (isNaN(tx.amount) || !tx.type || !tx.date) return jsonError("missing_fields");
 
-  const { body } = await parseRequestBody(request);
-  const amount = parseFloat(body.amount || "");
-  const type = body.type;
-  const date = body.date;
-  const description = body.description;
-  const account_id = body.account_id || null;
-  const category_id = body.category_id && body.category_id !== "" ? body.category_id : null;
-  const subcategory_id = body.subcategory_id && body.subcategory_id !== "" ? body.subcategory_id : null;
+  const { data: old } = await supabase.from("transactions").select("*").eq("id", id).eq("user_id", user.id).single();
+  if (!old) return jsonError("transaction_not_found", 404);
 
-  if (!id || isNaN(amount) || !type || !date) {
-    return jsonError("missing_fields");
-  }
+  // The form only sends the day; if it matches the stored one, keep the original time.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(tx.date) && calendarDayInAppTimeZone(String(old.date)) === tx.date) tx.date = old.date;
 
-  const { data: oldTx, error: fetchError } = await supabase
+  // Editing the identifying fields detaches the row from its bank statement line.
+  const identityChanged =
+    tx.description !== (old.description || null) ||
+    tx.amount !== Number(old.amount) ||
+    new Date(tx.date).getTime() !== new Date(old.date).getTime();
+
+  await adjustAccountBalance(supabase, old.account_id, -signedAmount(old));
+  const { data, error } = await supabase
     .from("transactions")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (fetchError || !oldTx) {
-    return jsonError("transaction_not_found", 404);
-  }
-
-  if (oldTx.account_id) {
-    const { data: oldAcc } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", oldTx.account_id)
-      .single();
-    if (oldAcc) {
-      let revertedBalance = Number(oldAcc.balance);
-      if (oldTx.type === "income") revertedBalance -= Number(oldTx.amount);
-      else revertedBalance += Number(oldTx.amount);
-      await supabase
-        .from("accounts")
-        .update({ balance: revertedBalance })
-        .eq("id", oldTx.account_id);
-    }
-  }
-
-  // El formulario envía solo el día; si coincide con el guardado se conserva la hora original.
-  const isSameStoredDay =
-    /^\d{4}-\d{2}-\d{2}$/.test(date) && calendarDayInAppTimeZone(String(oldTx.date)) === date;
-  const effectiveDate = isSameStoredDay ? oldTx.date : date;
-
-  const descriptionChanged = (description || null) !== (oldTx.description || null);
-  const amountChanged = amount !== Number(oldTx.amount);
-  const dateChanged = new Date(effectiveDate).getTime() !== new Date(oldTx.date).getTime();
-  const shouldClearHash = oldTx.external_hash && (descriptionChanged || amountChanged || dateChanged);
-  const shouldClearImportLineId = oldTx.import_line_id && (descriptionChanged || amountChanged || dateChanged);
-
-  const { data: updatedTx, error: updateError } = await supabase
-    .from("transactions")
-    .update({
-      amount,
-      type,
-      date: effectiveDate,
-      description: description || null,
-      account_id: account_id && account_id !== "" ? account_id : null,
-      category_id,
-      subcategory_id,
-      ...(shouldClearHash ? { external_hash: null } : {}),
-      ...(shouldClearImportLineId ? { import_line_id: null } : {}),
-    })
+    .update({ ...tx, ...(identityChanged && { external_hash: null, import_line_id: null }) })
     .eq("id", id)
     .eq("user_id", user.id)
     .select()
     .single();
+  if (error) return jsonError(error.message, 500);
 
-  if (updateError) {
-    return jsonError(updateError.message, 500);
-  }
-
-  const newAccountId = account_id && account_id !== "" ? account_id : null;
-  if (newAccountId) {
-    const { data: newAcc } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", newAccountId)
-      .single();
-    if (newAcc) {
-      let newBalance = Number(newAcc.balance);
-      if (type === "income") newBalance += amount;
-      else newBalance -= amount;
-      await supabase
-        .from("accounts")
-        .update({ balance: newBalance })
-        .eq("id", newAccountId);
-    }
-  }
-
-  return jsonResponse({ data: updatedTx });
+  await adjustAccountBalance(supabase, tx.account_id, signedAmount(tx));
+  return jsonResponse({ data });
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   const { id } = await params;
-  const supabase = await createClient();
-  const skipBalanceAdjust =
-    request.nextUrl.searchParams.get("skip_balance_adjust") === "1";
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
+  const { data: tx } = await supabase.from("transactions").select("account_id, amount, type").eq("id", id).eq("user_id", user.id).single();
+  const { error } = await supabase.from("transactions").delete().eq("id", id).eq("user_id", user.id);
+  if (error) return jsonError(error.message, 500);
+
+  if (tx && request.nextUrl.searchParams.get("skip_balance_adjust") !== "1") {
+    await adjustAccountBalance(supabase, tx.account_id, -signedAmount(tx));
   }
-
-  if (!id) {
-    return jsonError("missing_id");
-  }
-
-  const { data: transaction } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  const { error } = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", user.id);
-
-  if (error) {
-    return jsonError(error.message, 500);
-  }
-
-  if (!skipBalanceAdjust && transaction && transaction.account_id) {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", transaction.account_id)
-      .single();
-    if (account) {
-      let newBalance = Number(account.balance);
-      if (transaction.type === "income")
-        newBalance -= Number(transaction.amount);
-      else newBalance += Number(transaction.amount);
-      await supabase
-        .from("accounts")
-        .update({ balance: newBalance })
-        .eq("id", transaction.account_id);
-    }
-  }
-
   return jsonResponse({ data: { success: true } });
 }

@@ -3,31 +3,20 @@
 import Link from "next/link"
 import { Plus } from "lucide-react"
 
-interface AddButtonProps {
-  children: React.ReactNode
-  onClick?: () => void
-  href?: string
-  disabled?: boolean
-}
-
-export function AddButton({ children, onClick, href, disabled }: AddButtonProps) {
+/** Page header "add" action: a link with `href`, otherwise a button. */
+export function AddButton({ children, onClick, href }: { children: React.ReactNode; onClick?: () => void; href?: string }) {
   const content = (
     <>
       <Plus className="h-5 w-5" strokeWidth={2.5} />
       <span>{children}</span>
     </>
   )
-
-  if (href) {
-    return (
-      <Link href={href} className="add-btn">
-        {content}
-      </Link>
-    )
-  }
-
-  return (
-    <button type="button" className="add-btn" onClick={onClick} disabled={disabled}>
+  return href ? (
+    <Link href={href} className="add-btn">
+      {content}
+    </Link>
+  ) : (
+    <button type="button" className="add-btn" onClick={onClick}>
       {content}
     </button>
   )

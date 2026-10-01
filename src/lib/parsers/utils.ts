@@ -1,293 +1,120 @@
-import type { ImportedTransaction, TradeRepublicCashTransaction } from "./types";
-import {
-	assignOccurrenceIndices,
-	buildImportSourceFingerprint,
-} from "./importKeys";
+import * as XLSX from "xlsx";
+import { sha256Hex } from "./importKeys";
+import type { ImportedTransaction } from "./types";
 
-export async function generateTransactionHash(
-  accountId: string,
-  date: string,
-  amount: number,
-  description: string
-): Promise<string> {
-  const data = `${accountId}|${date}|${amount.toFixed(2)}|${description}`;
-  const encoder = new TextEncoder();
-  const dataBuffer = encoder.encode(data);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+export type ParseCallbacks = {
+  onProgress?: (current: number, total: number) => void;
+  onStatus?: (status: string) => void;
+};
 
+/** Semantic fingerprint of a transaction (date + amount + description). */
+export const generateTransactionHash = (accountId: string, date: string, amount: number, description: string) =>
+  sha256Hex(`${accountId}|${date}|${amount.toFixed(2)}|${description}`);
+
+/** "1.234,56 €" → 1234.56 (0 when unparseable). */
 export function parseEuropeanNumber(str: string): number {
   if (!str || typeof str !== "string") return 0;
-  const cleanStr = str
-    .replace(/€/g, "")
-    .replace(/\s|\u202f/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
-  const value = parseFloat(cleanStr);
+  const value = parseFloat(str.replace(/€/g, "").replace(/\s| /g, "").replace(/\./g, "").replace(",", "."));
   return isNaN(value) ? 0 : value;
 }
 
-const SPANISH_MONTHS: Record<string, string> = {
-  ene: "01", enero: "01",
-  feb: "02", febrero: "02",
-  mar: "03", marzo: "03",
-  abr: "04", abril: "04",
-  may: "05", mayo: "05",
-  jun: "06", junio: "06",
-  jul: "07", julio: "07",
-  ago: "08", agosto: "08",
-  sep: "09", sept: "09", septiembre: "09",
-  oct: "10", octubre: "10",
-  nov: "11", noviembre: "11",
+/** Number from a spreadsheet cell, accepting decimal commas. */
+export function parseCellNumber(value: unknown): number {
+  if (typeof value === "number") return isNaN(value) ? 0 : value;
+  const parsed = parseFloat(String(value ?? "0").replace(",", "."));
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+const MONTHS: Record<string, string> = {
+  // Spanish
+  ene: "01", enero: "01", feb: "02", febrero: "02", mar: "03", marzo: "03", abr: "04", abril: "04",
+  may: "05", mayo: "05", jun: "06", junio: "06", jul: "07", julio: "07", ago: "08", agosto: "08",
+  sep: "09", sept: "09", septiembre: "09", oct: "10", octubre: "10", nov: "11", noviembre: "11",
   dic: "12", diciembre: "12",
+  // German
+  jan: "01", januar: "01", februar: "02", mär: "03", märz: "03", april: "04", apr: "04", mai: "05",
+  juni: "06", juli: "07", aug: "08", august: "08", september: "09", okt: "10", oktober: "10",
+  november: "11", dez: "12", dezember: "12",
+  // English
+  january: "01", february: "02", march: "03", june: "06", july: "07", october: "10", december: "12", dec: "12",
 };
 
-const GERMAN_MONTHS: Record<string, string> = {
-  jan: "01", januar: "01",
-  feb: "02", februar: "02",
-  mär: "03", märz: "03", mar: "03",
-  apr: "04", april: "04",
-  mai: "05",
-  jun: "06", juni: "06",
-  jul: "07", juli: "07",
-  aug: "08", august: "08",
-  sep: "09", sept: "09", september: "09",
-  okt: "10", oktober: "10",
-  nov: "11", november: "11",
-  dez: "12", dezember: "12",
-};
+const pad = (n: string) => n.padStart(2, "0");
 
-const ENGLISH_MONTHS: Record<string, string> = {
-  jan: "01", january: "01",
-  feb: "02", february: "02",
-  mar: "03", march: "03",
-  apr: "04", april: "04",
-  may: "05",
-  jun: "06", june: "06",
-  jul: "07", july: "07",
-  aug: "08", august: "08",
-  sep: "09", sept: "09", september: "09",
-  oct: "10", october: "10",
-  nov: "11", november: "11",
-  dec: "12", december: "12",
-};
-
+/** DD.MM.YYYY, "DD mon[.] YYYY" (es/de/en), YYYY-MM-DD or DD/MM/YYYY → YYYY-MM-DD. */
 export function parseDate(dateStr: string): string | null {
   if (!dateStr || typeof dateStr !== "string") return null;
-  
-  const trimmed = dateStr.trim();
-  
-  // Format: DD.MM.YYYY (German numeric)
-  const numericMatch = trimmed.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-  if (numericMatch) {
-    const [, day, month, year] = numericMatch;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  
-  // Format: DD mon YYYY or DD mon. YYYY (Spanish/German/English with month name)
-  const monthNameMatch = trimmed.match(/(\d{1,2})\s+([a-záéíóúüñ]+)\.?\s+(\d{4})/i);
-  if (monthNameMatch) {
-    const [, day, monthName, year] = monthNameMatch;
-    const monthLower = monthName.toLowerCase();
-    
-    const month = SPANISH_MONTHS[monthLower] || GERMAN_MONTHS[monthLower] || ENGLISH_MONTHS[monthLower];
-    
-    if (month) {
-      return `${year}-${month}-${day.padStart(2, "0")}`;
-    }
-  }
-  
-  // Format: YYYY-MM-DD (ISO)
-  const isoMatch = trimmed.match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (isoMatch) {
-    return trimmed;
-  }
-  
-  // Format: DD/MM/YYYY
-  const slashMatch = trimmed.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (slashMatch) {
-    const [, day, month, year] = slashMatch;
-    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-  }
-  
-  return null;
+  const s = dateStr.trim();
+  let m = s.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+  m = s.match(/(\d{1,2})\s+([a-záéíóúüñ]+)\.?\s+(\d{4})/i);
+  if (m && MONTHS[m[2].toLowerCase()]) return `${m[3]}-${MONTHS[m[2].toLowerCase()]}-${pad(m[1])}`;
+  if (/(\d{4})-(\d{2})-(\d{2})/.test(s)) return s;
+  m = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m ? `${m[3]}-${pad(m[2])}-${pad(m[1])}` : null;
 }
 
-export function parseGermanDate(dateStr: string): string | null {
-  return parseDate(dateStr);
-}
-
-export function normalizeDescription(rawDescription: string, type: string): string {
-  const combined = `${type} ${rawDescription}`.trim();
-  
-  let text = combined
-    .replace(/null$/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  
-  const phoneInText = text.match(/\(\+34[-.]?(\d{9})\)|\+34[-.]?(\d{9})/);
-  if (phoneInText) {
-    const bizumMatch = text.match(/(?:outgoing\s+transfer\s+for|incoming\s+transfer\s+from)\s+([^(+]+)/i);
-    if (bizumMatch) {
-      const name = bizumMatch[1].trim();
-      return `Bizum - ${capitalizeWords(name)}`;
-    }
-  }
-  
-  const incomingMatch = text.match(/(?:transferencia\s+)?incoming\s+transfer\s+from\s+([^(]+?)(?:\s*\([^)]+\))?$/i);
-  if (incomingMatch) {
-    const name = incomingMatch[1].trim();
-    return `Transferencia - ${capitalizeWords(name)}`;
-  }
-  
-  const outgoingMatch = text.match(/(?:transferencia\s+)?outgoing\s+transfer\s+for\s+([^(+]+)/i);
-  if (outgoingMatch) {
-    const name = outgoingMatch[1].trim();
-    return `Transferencia - ${capitalizeWords(name)}`;
-  }
-  
-  if (text.match(/^transacci[oó]n\s+con\s+tarjeta\s+/i)) {
-    const merchant = text.replace(/^transacci[oó]n\s+con\s+tarjeta\s+/i, "").trim();
-    if (merchant) {
-      return cleanMerchantName(merchant);
-    }
-    return "Pago con tarjeta";
-  }
-  
-  if (text.match(/interest\s+payment/i) || text.match(/^inter[eé]s\s+interest/i)) {
-    return "Intereses";
-  }
-  
-  if (text.match(/^bonificaci[oó]n/i)) {
-    if (text.match(/saveback/i)) {
-      return "Saveback";
-    }
-    if (text.match(/cash\s+reward/i)) {
-      return "Recompensa";
-    }
-    return "Bonificación";
-  }
-  
-  if (text.match(/savings\s+plan\s+execution/i) || text.match(/^operar\s+savings/i)) {
-    const tickerMatch = text.match(/([A-Z]{2}[A-Z0-9]{10})/);
-    if (tickerMatch) {
-      return `Inversión ETF - ${tickerMatch[1]}`;
-    }
-    return "Inversión ETF";
-  }
-  
-  if (rawDescription && !rawDescription.match(/^(interest|incoming|outgoing|savings)/i)) {
-    return cleanMerchantName(rawDescription);
-  }
-  
-  if (type && !type.match(/^(transferencia|transacci[oó]n|operar|inter[eé]s|bonificaci[oó]n)/i)) {
-    return capitalizeWords(type);
-  }
-  
-  return text ? capitalizeWords(text) : "Transacción";
-}
-
-function cleanMerchantName(name: string): string {
-  let cleaned = name
-    .replace(/null$/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  
-  cleaned = cleaned
-    .replace(/\*\s*[A-Z0-9]+$/i, "")
-    .replace(/\s+\d{4,}$/, "")
-    .trim();
-  
-  return capitalizeWords(cleaned);
-}
-
-function capitalizeWords(str: string): string {
-  return str
+export const capitalizeWords = (str: string) =>
+  str
     .toLowerCase()
     .split(" ")
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
-}
 
-export function buildTradeRepublicStableRowFingerprint(tx: TradeRepublicCashTransaction): string {
-	const norm = (s: string) =>
-		(s || "")
-			.trim()
-			.replace(/\s+/g, " ")
-			.toLowerCase();
-	const parts = [
-		"trade_republic",
-		norm(tx.datum),
-		norm(tx.typ),
-		norm(tx.beschreibung),
-		norm(tx.zahlungseingang),
-		norm(tx.zahlungsausgang),
-		norm(tx.saldo),
-	];
-	return parts.join("|");
-}
+/** Normalised text used inside row fingerprints. */
+export const fingerprintText = (s: string) => (s || "").trim().replace(/\s+/g, " ").toLowerCase();
 
-export function normalizeTradeRepublicTransaction(
-  tx: TradeRepublicCashTransaction,
-  _accountId: string
-): Omit<ImportedTransaction, "external_hash" | "import_source_fingerprint"> | null {
-  const dateStr = parseGermanDate(tx.datum);
-  if (!dateStr) return null;
-
-  const eingang = parseEuropeanNumber(tx.zahlungseingang);
-  const ausgang = parseEuropeanNumber(tx.zahlungsausgang);
-
-  if (eingang === 0 && ausgang === 0) return null;
-
-  const isIncome = eingang > 0;
-  const amount = isIncome ? eingang : ausgang;
-  const rawDescription = tx.beschreibung.trim();
-  const type = tx.typ.trim();
-  const description = normalizeDescription(rawDescription, type);
-  
-  return {
-    date: dateStr,
-    amount,
-    type: isIncome ? "income" : "expense",
-    description,
-  };
-}
-
-export async function normalizeAndHashTransactions(
-  transactions: TradeRepublicCashTransaction[],
-  accountId: string
-): Promise<ImportedTransaction[]> {
-  const rows: Array<{
-    normalized: Omit<ImportedTransaction, "external_hash" | "import_source_fingerprint">;
-    hash: string;
-    baseFp: string;
-  }> = [];
-
-  for (const tx of transactions) {
-    const normalized = normalizeTradeRepublicTransaction(tx, accountId);
-    if (!normalized) continue;
-
-    const hash = await generateTransactionHash(
-      accountId,
-      normalized.date,
-      normalized.amount,
-      normalized.description
-    );
-
-    rows.push({
-      normalized,
-      hash,
-      baseFp: buildTradeRepublicStableRowFingerprint(tx),
+/** Rows of a delimited text file (quoted fields allowed, no escaped quotes). */
+export function parseDelimited(content: string, delimiter: string): string[][] {
+  return content
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) => {
+      const cells: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (const char of line) {
+        if (char === '"') inQuotes = !inQuotes;
+        else if (char === delimiter && !inQuotes) {
+          cells.push(current.trim());
+          current = "";
+        } else current += char;
+      }
+      cells.push(current.trim());
+      return cells;
     });
-  }
+}
 
-  const occ = assignOccurrenceIndices(rows.map((r) => r.baseFp));
+/** Rows of the first sheet of a spreadsheet file. */
+export async function readFirstSheet(file: File): Promise<unknown[][]> {
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array" });
+  return XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 });
+}
 
-  return rows.map((r, i) => ({
-    ...r.normalized,
-    external_hash: r.hash,
-    import_source_fingerprint: buildImportSourceFingerprint(r.baseFp, occ[i]!),
-  }));
+/**
+ * Turns parsed bank rows into ImportedTransaction: sign → type, semantic hash and a source
+ * fingerprint numbered per occurrence so identical rows of one statement stay distinct.
+ */
+export async function toImportedTransactions(
+  accountId: string,
+  rows: { date: string; signedAmount: number; description: string; fingerprint: string; statement_balance?: number }[]
+): Promise<ImportedTransaction[]> {
+  const kept = rows.filter((r) => r.signedAmount !== 0);
+  const seen = new Map<string, number>();
+  return Promise.all(
+    kept.map(async ({ date, signedAmount, description, fingerprint, statement_balance }) => {
+      const occurrence = seen.get(fingerprint) ?? 0;
+      seen.set(fingerprint, occurrence + 1);
+      const amount = Math.abs(signedAmount);
+      return {
+        date,
+        amount,
+        type: signedAmount > 0 ? "income" : "expense",
+        description,
+        external_hash: await generateTransactionHash(accountId, date, amount, description),
+        import_source_fingerprint: `${fingerprint}|occ:${occurrence}`,
+        ...(statement_balance !== undefined && { statement_balance }),
+      } as const;
+    })
+  );
 }

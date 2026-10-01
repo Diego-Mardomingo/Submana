@@ -1,5 +1,15 @@
-import type { TradeRepublicCashTransaction, ParsedPDFResult } from "./types";
-import { parseGermanDate, parseEuropeanNumber } from "./utils";
+import type { ImportedTransaction } from "./types";
+import { capitalizeWords, fingerprintText, parseDate, parseEuropeanNumber, toImportedTransactions, type ParseCallbacks } from "./utils";
+
+/** Cash transaction row as printed in the statement (column names from the German original). */
+interface CashRow {
+  datum: string;
+  typ: string;
+  beschreibung: string;
+  zahlungseingang: string;
+  zahlungsausgang: string;
+  saldo: string;
+}
 
 interface TextItem {
   text: string;
@@ -9,503 +19,230 @@ interface TextItem {
   height: number;
 }
 
-interface ColumnBoundaries {
-  datum: { start: number; end: number };
-  typ: { start: number; end: number };
-  beschreibung: { start: number; end: number };
-  zahlungseingang: { start: number; end: number };
-  zahlungsausgang: { start: number; end: number };
-  saldo: { start: number; end: number };
-  headerY: number;
-}
+type Headers = Record<"date" | "type" | "description" | "moneyIn" | "moneyOut" | "balance", TextItem>;
+type Boundaries = { date: number; type: number; description: number; moneyIn: number; moneyOut: number; headerY: number };
 
-interface Headers {
-  DATUM: TextItem | null;
-  TYP: TextItem | null;
-  BESCHREIBUNG: TextItem | null;
-  ZAHLUNGEN: TextItem | null;
-  ZAHLUNGSEINGANG: TextItem | null;
-  ZAHLUNGSAUSGANG: TextItem | null;
-  SALDO: TextItem | null;
-}
-
+/** Text below this y is the page footer. */
 const FOOTER_BOTTOM_BAND = 120;
+const DATE_WORDS = ["FECHA", "DATUM", "DATE", "DATA"];
+const TYPE_WORDS = ["TIPO", "TYP", "TYPE"];
+const DESCRIPTION_WORDS = ["DESCRIPCIÓN", "DESCRIPCION", "BESCHREIBUNG", "DESCRIPTION", "DESCRIZIONE"];
+const BALANCE_WORDS = ["BALANCE", "SALDO"];
+const CASH_START = ["UMSATZÜBERSICHT", "TRANSAZIONI SUL CONTO", "ACCOUNT TRANSACTIONS", "TRANSACCIONES DE CUENTA"];
+const CASH_END = ["BARMITTELÜBERSICHT", "CASH SUMMARY", "BALANCE OVERVIEW", "RESUMEN DE EFECTIVO", "RESUMEN DE SALDO", "SALDO DISPONIBLE"];
+const SUMMARY_MARKERS = ["RESUMEN DEL BALANCE", "BALANCE OVERVIEW", "KONTOÜBERSICHT"];
 
-function groupTextItemsByLine(items: TextItem[], tolerance: number = 3): TextItem[][] {
-  if (items.length === 0) return [];
-  
+const lineText = (items: TextItem[]) => items.map((item) => item.text.trim()).join(" ").toUpperCase();
+const hasAny = (text: string, words: string[]) => words.some((w) => text.includes(w));
+
+function groupByLine(items: TextItem[], tolerance = 3): TextItem[][] {
   const sorted = [...items].sort((a, b) => b.y - a.y || a.x - b.x);
   const lines: TextItem[][] = [];
-  let currentLine: TextItem[] = [sorted[0]];
-  
-  for (let i = 1; i < sorted.length; i++) {
-    if (Math.abs(sorted[i].y - sorted[i - 1].y) <= tolerance) {
-      currentLine.push(sorted[i]);
-    } else {
-      lines.push(currentLine.sort((a, b) => a.x - b.x));
-      currentLine = [sorted[i]];
-    }
-  }
-  lines.push(currentLine.sort((a, b) => a.x - b.x));
-  
-  return lines;
+  sorted.forEach((item, i) => {
+    if (i === 0 || Math.abs(item.y - sorted[i - 1].y) > tolerance) lines.push([]);
+    lines.at(-1)!.push(item);
+  });
+  return lines.map((line) => line.sort((a, b) => a.x - b.x));
 }
 
-function findCashHeaders(items: TextItem[]): Headers | null {
-  const lines = groupTextItemsByLine(items);
-  
-  let headerLine: TextItem[] | null = null;
-  let headerY = 0;
-  
-  for (const line of lines) {
-    const lineText = line.map(item => item.text.trim()).join(" ").toUpperCase();
-    
-    const hasDate = lineText.includes("FECHA") || lineText.includes("DATUM") || lineText.includes("DATE") || lineText.includes("DATA");
-    const hasType = lineText.includes("TIPO") || lineText.includes("TYP") || lineText.includes("TYPE");
-    const hasDesc = lineText.includes("DESCRIPCIÓN") || lineText.includes("BESCHREIBUNG") || lineText.includes("DESCRIPTION") || lineText.includes("DESCRIZIONE");
-    const hasBalance = lineText.includes("BALANCE") || lineText.includes("SALDO");
-    
-    if (hasDate && hasDesc && hasBalance) {
-      headerLine = line;
-      headerY = line[0]?.y || 0;
-      break;
-    }
-  }
-  
-  if (!headerLine) {
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const lineText = line.map(item => item.text.trim()).join(" ").toUpperCase();
-      
-      const hasDate = lineText.includes("FECHA") || lineText.includes("DATUM") || lineText.includes("DATE") || lineText.includes("DATA");
-      const hasDesc = lineText.includes("DESCRIPCIÓN") || lineText.includes("BESCHREIBUNG") || lineText.includes("DESCRIPTION") || lineText.includes("DESCRIZIONE");
-      
-      if (hasDate && hasDesc) {
-        const combinedItems = [...line];
-        const baseY = line[0]?.y || 0;
-        
-        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-          const nextLine = lines[j];
-          if (Math.abs((nextLine[0]?.y || 0) - baseY) < 30) {
-            combinedItems.push(...nextLine);
-          }
-        }
-        
-        const combinedText = combinedItems.map(item => item.text.trim()).join(" ").toUpperCase();
-        if (combinedText.includes("BALANCE") || combinedText.includes("SALDO")) {
-          headerLine = combinedItems;
-          headerY = baseY;
-          break;
-        }
+/** Locates the column headers of the cash table (the header may wrap over a few lines). */
+function findHeaders(items: TextItem[]): Headers | null {
+  const lines = groupByLine(items);
+  let header = lines.find((line) => {
+    const text = lineText(line);
+    return hasAny(text, DATE_WORDS) && hasAny(text, DESCRIPTION_WORDS) && hasAny(text, BALANCE_WORDS);
+  });
+  if (!header) {
+    for (const [i, line] of lines.entries()) {
+      if (!hasAny(lineText(line), DATE_WORDS) || !hasAny(lineText(line), DESCRIPTION_WORDS)) continue;
+      const baseY = line[0]?.y || 0;
+      const combined = [...line, ...lines.slice(i + 1, i + 4).filter((next) => Math.abs((next[0]?.y || 0) - baseY) < 30).flat()];
+      if (hasAny(lineText(combined), BALANCE_WORDS)) {
+        header = combined;
+        break;
       }
     }
   }
-  
-  if (!headerLine) {
-    return null;
-  }
-  
-  const findItemContaining = (keywords: string[]): TextItem | null => {
-    for (const item of headerLine!) {
+  if (!header) return null;
+
+  const find = (words: string[], startsWith = false) =>
+    header.find((item) => {
       const t = item.text.trim().toUpperCase();
-      if (keywords.some(kw => t.includes(kw.toUpperCase()))) {
-        return item;
-      }
-    }
-    return null;
-  };
-  
-  const findItemStartingWith = (keywords: string[]): TextItem | null => {
-    for (const item of headerLine!) {
-      const t = item.text.trim().toUpperCase();
-      if (keywords.some(kw => t.startsWith(kw.toUpperCase()))) {
-        return item;
-      }
-    }
-    return null;
-  };
-
-  const headers: Headers = {
-    DATUM: findItemContaining(["FECHA", "DATUM", "DATE", "DATA"]),
-    TYP: findItemContaining(["TIPO", "TYP", "TYPE"]),
-    BESCHREIBUNG: findItemContaining(["DESCRIPCIÓN", "DESCRIPCION", "BESCHREIBUNG", "DESCRIPTION", "DESCRIZIONE"]),
-    ZAHLUNGEN: null,
-    ZAHLUNGSEINGANG: findItemStartingWith(["ENTRADA", "ZAHLUNGSEINGANG", "MONEY IN", "IN ENTRATA"]),
-    ZAHLUNGSAUSGANG: findItemStartingWith(["SALIDA", "ZAHLUNGSAUSGANG", "MONEY OUT", "IN USCITA"]),
-    SALDO: findItemContaining(["BALANCE", "SALDO"]),
-  };
-  
-  if (!headers.DATUM || !headers.BESCHREIBUNG || !headers.SALDO) {
-    return null;
-  }
-  
-  if (!headers.ZAHLUNGSEINGANG || !headers.ZAHLUNGSAUSGANG) {
-    const remainingItems = headerLine.filter(
-      item => 
-        item !== headers.DATUM && 
-        item !== headers.TYP && 
-        item !== headers.BESCHREIBUNG && 
-        item !== headers.SALDO
-    ).sort((a, b) => a.x - b.x);
-    
-    if (remainingItems.length >= 2) {
-      headers.ZAHLUNGSEINGANG = remainingItems[0];
-      headers.ZAHLUNGSAUSGANG = remainingItems[1];
-    }
-  }
-
-  if (!headers.ZAHLUNGSEINGANG || !headers.ZAHLUNGSAUSGANG) {
-    return null;
-  }
-
-  return headers;
-}
-
-function calculateCashColumnBoundaries(headers: Headers): ColumnBoundaries {
-  let zahlungseingangEnd: number;
-  let zahlungsausgangStart: number;
-  let paymentsStart: number;
-
-  if (headers.ZAHLUNGEN) {
-    const zahlungenMidpoint =
-      headers.ZAHLUNGEN.x + headers.ZAHLUNGEN.width / 2;
-    zahlungseingangEnd = zahlungenMidpoint;
-    zahlungsausgangStart = zahlungenMidpoint;
-    paymentsStart = headers.ZAHLUNGEN.x - 5;
-  } else {
-    zahlungseingangEnd = headers.ZAHLUNGSAUSGANG!.x - 5;
-    zahlungsausgangStart = headers.ZAHLUNGSAUSGANG!.x - 5;
-    paymentsStart = headers.ZAHLUNGSEINGANG!.x - 5;
-  }
-
-  return {
-    datum: { start: 0, end: headers.TYP!.x - 5 },
-    typ: { start: headers.TYP!.x - 5, end: headers.BESCHREIBUNG!.x - 5 },
-    beschreibung: { start: headers.BESCHREIBUNG!.x - 5, end: paymentsStart },
-    zahlungseingang: { start: paymentsStart, end: zahlungseingangEnd },
-    zahlungsausgang: { start: zahlungsausgangStart, end: headers.SALDO!.x - 5 },
-    saldo: { start: headers.SALDO!.x - 5, end: Infinity },
-    headerY: headers.DATUM!.y,
-  };
-}
-
-function extractCashTransactionsFromPage(
-  items: TextItem[],
-  boundaries: ColumnBoundaries
-): TradeRepublicCashTransaction[] {
-  const contentItems = items.filter(
-    (item) => item.y < boundaries.headerY - 5 && item.text.trim() !== ""
-  );
-  if (contentItems.length === 0) return [];
-
-  contentItems.sort((a, b) => b.y - a.y || a.x - b.x);
-
-  const rows: TextItem[][] = [];
-  if (contentItems.length > 0) {
-    const avgHeight =
-      contentItems.reduce((sum, item) => sum + item.height, 0) /
-        contentItems.length || 10;
-    const gapThreshold = avgHeight * 1.5;
-    let currentRow = [contentItems[0]];
-    for (let i = 1; i < contentItems.length; i++) {
-      if (contentItems[i - 1].y - contentItems[i].y > gapThreshold) {
-        rows.push(currentRow);
-        currentRow = [];
-      }
-      currentRow.push(contentItems[i]);
-    }
-    rows.push(currentRow);
-  }
-
-  const transactions: TradeRepublicCashTransaction[] = [];
-
-  for (const rowItems of rows) {
-    const transaction: TradeRepublicCashTransaction = {
-      datum: "",
-      typ: "",
-      beschreibung: "",
-      zahlungseingang: "",
-      zahlungsausgang: "",
-      saldo: "",
-    };
-
-    const financialItems: TextItem[] = [];
-    for (const item of rowItems) {
-      if (item.x < boundaries.datum.end) transaction.datum += " " + item.text;
-      else if (item.x < boundaries.typ.end) transaction.typ += " " + item.text;
-      else if (item.x < boundaries.beschreibung.end)
-        transaction.beschreibung += " " + item.text;
-      else financialItems.push(item);
-    }
-
-    financialItems.sort((a, b) => a.x - b.x);
-    if (financialItems.length > 0) {
-      const lastItem = financialItems.pop()!;
-      transaction.saldo = lastItem.text;
-    }
-
-    for (const item of financialItems) {
-      if (item.x < boundaries.zahlungseingang.end)
-        transaction.zahlungseingang += " " + item.text;
-      else if (item.x < boundaries.zahlungsausgang.end)
-        transaction.zahlungsausgang += " " + item.text;
-    }
-
-    Object.keys(transaction).forEach((key) => {
-      const k = key as keyof TradeRepublicCashTransaction;
-      transaction[k] = transaction[k].trim().replace(/\s+/g, " ");
+      return words.some((w) => (startsWith ? t.startsWith(w) : t.includes(w)));
     });
+  const date = find(DATE_WORDS);
+  const type = find(TYPE_WORDS);
+  const description = find(DESCRIPTION_WORDS);
+  const balance = find(BALANCE_WORDS);
+  let moneyIn = find(["ENTRADA", "ZAHLUNGSEINGANG", "MONEY IN", "IN ENTRATA"], true);
+  let moneyOut = find(["SALIDA", "ZAHLUNGSAUSGANG", "MONEY OUT", "IN USCITA"], true);
+  if (!date || !description || !balance) return null;
+  if (!moneyIn || !moneyOut) {
+    // Unlabelled payment columns: the two remaining header items, left to right.
+    const rest = header.filter((item) => ![date, type, description, balance].includes(item)).sort((a, b) => a.x - b.x);
+    if (rest.length >= 2) [moneyIn, moneyOut] = rest;
+  }
+  return moneyIn && moneyOut && type ? { date, type, description, moneyIn, moneyOut, balance } : null;
+}
 
-    if (Object.values(transaction).some((val) => val !== "")) {
-      transactions.push(transaction);
+/** Right edge of each column (left edge of the next header minus a margin). */
+const boundariesOf = (h: Headers): Boundaries => ({
+  date: h.type.x - 5,
+  type: h.description.x - 5,
+  description: h.moneyIn.x - 5,
+  moneyIn: h.moneyOut.x - 5,
+  moneyOut: h.balance.x - 5,
+  headerY: h.date.y,
+});
+
+function extractRows(items: TextItem[], b: Boundaries): CashRow[] {
+  const content = items.filter((item) => item.y < b.headerY - 5 && item.text.trim() !== "").sort((a, b2) => b2.y - a.y || a.x - b2.x);
+  if (content.length === 0) return [];
+
+  // A vertical gap larger than 1.5 line heights starts a new transaction.
+  const gap = (content.reduce((sum, item) => sum + item.height, 0) / content.length || 10) * 1.5;
+  const groups: TextItem[][] = [[content[0]]];
+  for (let i = 1; i < content.length; i++) {
+    if (content[i - 1].y - content[i].y > gap) groups.push([]);
+    groups.at(-1)!.push(content[i]);
+  }
+
+  return groups.flatMap((group) => {
+    const row: CashRow = { datum: "", typ: "", beschreibung: "", zahlungseingang: "", zahlungsausgang: "", saldo: "" };
+    const amounts = group.filter((item) => {
+      const column = item.x < b.date ? "datum" : item.x < b.type ? "typ" : item.x < b.description ? "beschreibung" : null;
+      if (column) row[column] += " " + item.text;
+      return !column;
+    });
+    amounts.sort((a, b2) => a.x - b2.x);
+    row.saldo = amounts.pop()?.text ?? ""; // The right-most amount is the running balance.
+    for (const item of amounts) {
+      if (item.x < b.moneyIn) row.zahlungseingang += " " + item.text;
+      else if (item.x < b.moneyOut) row.zahlungsausgang += " " + item.text;
     }
-  }
-
-  return transactions;
+    for (const key of Object.keys(row) as (keyof CashRow)[]) row[key] = row[key].trim().replace(/\s+/g, " ");
+    return Object.values(row).some(Boolean) ? [row] : [];
+  });
 }
 
-export interface ParseOptions {
-  onProgress?: (current: number, total: number) => void;
-  onStatus?: (status: string) => void;
-}
-
-export async function parseTradeRepublicPDF(
-  file: File,
-  options: ParseOptions = {}
-): Promise<ParsedPDFResult> {
-  const { onProgress, onStatus } = options;
-  let statementYear: string | null = null;
-
+/** Parses the cash transactions table of a Trade Republic PDF statement. */
+export async function parseTradeRepublicPDF(file: File, { onProgress, onStatus }: ParseCallbacks = {}) {
   onStatus?.("Loading PDF library...");
-
   const pdfjs = await import("pdfjs-dist");
-  
-  if (typeof window !== "undefined") {
-    pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-  }
+  pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
   onStatus?.("Reading PDF file...");
-
-  const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
-
+  const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
   onStatus?.("Parsing transactions...");
 
-  const allCashTransactions: TradeRepublicCashTransaction[] = [];
-  let cashColumnBoundaries: ColumnBoundaries | null = null;
-  let isParsingCash = false;
+  const cash: CashRow[] = [];
+  const pageTexts: string[] = [];
+  let statementYear: string | undefined;
+  let boundaries: Boundaries | null = null;
+  let inCashTable = false;
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     onProgress?.(pageNum, pdf.numPages);
     onStatus?.(`Processing page ${pageNum} of ${pdf.numPages}`);
+    const textItems = (await (await pdf.getPage(pageNum)).getTextContent()).items.filter((item) => "str" in item);
+    pageTexts.push(textItems.map((item) => item.str).join(" "));
+    statementYear ??= pageTexts.at(-1)!.match(/20\d{2}/)?.[0];
 
-    const page = await pdf.getPage(pageNum);
-    const textContent = await page.getTextContent();
+    const items: TextItem[] = textItems
+      .map((item) => ({ text: item.str, x: item.transform[4], y: item.transform[5], width: item.width, height: item.height }))
+      .filter((item) => item.y > FOOTER_BOTTOM_BAND);
 
-    if (!statementYear) {
-      const pageTextForYear = textContent.items
-        .filter((item) => "str" in item)
-        .map((item) => (item as { str: string }).str)
-        .join(" ");
+    const start: TextItem | undefined = inCashTable
+      ? undefined
+      : items.find((item) => {
+          const t = item.text.trim().toUpperCase();
+          return hasAny(t, CASH_START) || t === "TRANSACCIONES" || t === "MOVIMIENTOS" || t.startsWith("TRANSACCIONES DE") || t.startsWith("MOVIMIENTOS DE");
+        });
+    const end = items.find((item) => hasAny(item.text.trim(), CASH_END));
+    const processCash: boolean = inCashTable || !!start;
 
-      const yearMatch = pageTextForYear.match(/20\d{2}/);
-      if (yearMatch) {
-        statementYear = yearMatch[0];
+    if (processCash) {
+      const cashItems = items.filter((item) => (!start || item.y <= start.y) && (!end || item.y > end.y));
+      const headers = findHeaders(cashItems);
+      if (headers) boundaries = boundariesOf(headers);
+      if (boundaries) {
+        // Continuation pages have no header: treat everything on the page as content.
+        const pageBoundaries = !headers && inCashTable && cashItems.length > 0 ? { ...boundaries, headerY: Math.max(...cashItems.map((i) => i.y)) + 50 } : boundaries;
+        cash.push(...extractRows(cashItems, pageBoundaries));
       }
     }
-
-    const pageItems: TextItem[] = textContent.items
-      .filter((item) => "str" in item && "transform" in item)
-      .map((item) => {
-        const textItem = item as { str: string; transform: number[]; width: number; height: number };
-        return {
-          text: textItem.str,
-          x: textItem.transform[4],
-          y: textItem.transform[5],
-          width: textItem.width,
-          height: textItem.height,
-        };
-      });
-
-    const footerY = FOOTER_BOTTOM_BAND;
-    const items = pageItems.filter((it) => it.y > footerY);
-
-    let cashStartMarker: TextItem | undefined = undefined;
-    
-    if (!isParsingCash) {
-      cashStartMarker = items.find((item) => {
-        const t = item.text.trim().toUpperCase();
-        return (
-          t.includes("UMSATZÜBERSICHT") ||
-          t.includes("TRANSAZIONI SUL CONTO") ||
-          t.includes("ACCOUNT TRANSACTIONS") ||
-          t.includes("TRANSACCIONES DE CUENTA") ||
-          t === "TRANSACCIONES" ||
-          t === "MOVIMIENTOS" ||
-          t.startsWith("TRANSACCIONES DE") ||
-          t.startsWith("MOVIMIENTOS DE")
-        );
-      });
-    }
-    
-
-    const cashEndMarker = items.find((item) => {
-      const t = item.text.trim();
-      return (
-        t.includes("BARMITTELÜBERSICHT") ||
-        t.includes("CASH SUMMARY") ||
-        t.includes("BALANCE OVERVIEW") ||
-        t.includes("RESUMEN DE EFECTIVO") ||
-        t.includes("RESUMEN DE SALDO") ||
-        t.includes("SALDO DISPONIBLE")
-      );
-    });
-
-    const shouldProcessCash = isParsingCash || !!cashStartMarker;
-
-    if (shouldProcessCash) {
-      let cashItems = [...items];
-      
-      if (cashStartMarker) {
-        cashItems = cashItems.filter((item) => item.y <= cashStartMarker.y);
-      }
-      if (cashEndMarker) {
-        cashItems = cashItems.filter((item) => item.y > cashEndMarker.y);
-      }
-
-      const cashHeaders = findCashHeaders(cashItems);
-      
-      if (cashHeaders) {
-        cashColumnBoundaries = calculateCashColumnBoundaries(cashHeaders);
-      }
-
-      if (cashColumnBoundaries) {
-        let boundariesToUse = cashColumnBoundaries;
-        
-        if (!cashHeaders && isParsingCash && cashItems.length > 0) {
-          const maxY = Math.max(...cashItems.map(item => item.y));
-          boundariesToUse = {
-            ...cashColumnBoundaries,
-            headerY: maxY + 50,
-          };
-        }
-        
-        const pageCashTransactions = extractCashTransactionsFromPage(
-          cashItems,
-          boundariesToUse
-        );
-        allCashTransactions.push(...pageCashTransactions);
-      }
-    }
-
-    if (cashEndMarker) {
-      isParsingCash = false;
-    } else if (shouldProcessCash) {
-      isParsingCash = true;
-    }
+    inCashTable = end ? false : processCash || inCashTable;
   }
 
-  if (statementYear) {
-    for (const tx of allCashTransactions) {
-      if (!tx.datum) continue;
-      const existing = parseGermanDate(tx.datum);
-      if (existing) continue;
-
-      const candidate = `${tx.datum.trim()} ${statementYear}`;
-      const parsedWithYear = parseGermanDate(candidate);
-      if (parsedWithYear) {
-        tx.datum = candidate;
-      }
-    }
+  // Dates printed without a year ("05 ene") take the statement year.
+  for (const tx of cash) {
+    if (statementYear && tx.datum && !parseDate(tx.datum) && parseDate(`${tx.datum.trim()} ${statementYear}`)) tx.datum = `${tx.datum.trim()} ${statementYear}`;
   }
+  onStatus?.(`Found ${cash.length} transactions`);
 
-  onStatus?.(`Found ${allCashTransactions.length} transactions`);
-
+  // Final balance: last amount of the balance summary, else the balance of the latest row.
   let finalBalance: number | undefined;
-
-  for (let pageNum = pdf.numPages; pageNum >= 1; pageNum--) {
-    const page = await pdf.getPage(pageNum);
-    const textContent = await page.getTextContent();
-    const pageTextRaw = textContent.items
-      .filter((item) => "str" in item)
-      .map((item) => (item as { str: string }).str)
-      .join(" ");
-
-    const upper = pageTextRaw.toUpperCase();
-
-    if (
-      upper.includes("RESUMEN DEL BALANCE") ||
-      upper.includes("BALANCE OVERVIEW") ||
-      upper.includes("KONTOÜBERSICHT")
-    ) {
-      const markers = [
-        "RESUMEN DEL BALANCE",
-        "BALANCE OVERVIEW",
-        "KONTOÜBERSICHT",
-      ];
-
-      let startIndex = -1;
-      for (const marker of markers) {
-        const idx = upper.indexOf(marker);
-        if (idx !== -1 && (startIndex === -1 || idx < startIndex)) {
-          startIndex = idx;
-        }
-      }
-
-      let searchText = pageTextRaw;
-      if (startIndex !== -1) {
-        searchText = pageTextRaw.slice(startIndex);
-      }
-
-      const endNotesIdx = searchText
-        .toUpperCase()
-        .indexOf("NOTAS SOBRE EL EXTRACTO DE CUENTA");
-      if (endNotesIdx !== -1) {
-        searchText = searchText.slice(0, endNotesIdx);
-      }
-
-      const balanceMatch = searchText.match(/(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€/g);
-      if (balanceMatch && balanceMatch.length > 0) {
-        const lastBalance = balanceMatch[balanceMatch.length - 1];
-        const parsed = parseEuropeanNumber(lastBalance);
-        if (!isNaN(parsed)) {
-          finalBalance = parsed;
-          break;
-        }
-      }
+  for (const text of [...pageTexts].reverse()) {
+    const upper = text.toUpperCase();
+    const starts = SUMMARY_MARKERS.map((m) => upper.indexOf(m)).filter((i) => i !== -1);
+    if (starts.length === 0) continue;
+    const summary = text.slice(Math.min(...starts)).split(/NOTAS SOBRE EL EXTRACTO DE CUENTA/i)[0];
+    const amounts = summary.match(/(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*€/g);
+    if (amounts) {
+      finalBalance = parseEuropeanNumber(amounts.at(-1)!);
+      break;
     }
   }
-
-  if (finalBalance === undefined && allCashTransactions.length > 0) {
-    const parseDate = (dateStr: string): Date => {
-      const parts = dateStr.split(/[.\-/]/);
-      if (parts.length === 3) {
-        const day = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1;
-        const year = parseInt(parts[2], 10);
-        return new Date(year, month, day);
-      }
-      return new Date(dateStr);
-    };
-    
-    const sortedByDate = [...allCashTransactions].sort((a, b) =>
-      parseDate(b.datum).getTime() - parseDate(a.datum).getTime()
-    );
-    
-    const lastTx = sortedByDate[0];
-    if (lastTx?.saldo) {
-      const parsed = parseEuropeanNumber(lastTx.saldo);
-      if (!isNaN(parsed)) {
-        finalBalance = parsed;
-      }
-    }
+  if (finalBalance === undefined) {
+    const latest = [...cash].sort((a, b) => (parseDate(b.datum) ?? "").localeCompare(parseDate(a.datum) ?? ""))[0];
+    if (latest?.saldo) finalBalance = parseEuropeanNumber(latest.saldo);
   }
 
-  return {
-    cash: allCashTransactions,
-    interest: [],
-    portfolio: [],
-    crypto: [],
-    finalBalance,
-  };
+  return { cash, finalBalance };
+}
+
+/** Readable description from Trade Republic's type + description columns. */
+function describe(rawDescription: string, type: string): string {
+  const text = `${type} ${rawDescription}`.trim().replace(/null$/g, "").replace(/\s{2,}/g, " ").trim();
+  const merchant = (name: string) =>
+    capitalizeWords(name.replace(/null$/g, "").replace(/\s{2,}/g, " ").trim().replace(/\*\s*[A-Z0-9]+$/i, "").replace(/\s+\d{4,}$/, "").trim());
+
+  if (/\(\+34[-.]?(\d{9})\)|\+34[-.]?(\d{9})/.test(text)) {
+    const bizum = text.match(/(?:outgoing\s+transfer\s+for|incoming\s+transfer\s+from)\s+([^(+]+)/i);
+    if (bizum) return `Bizum - ${capitalizeWords(bizum[1].trim())}`;
+  }
+  const transfer =
+    text.match(/(?:transferencia\s+)?incoming\s+transfer\s+from\s+([^(]+?)(?:\s*\([^)]+\))?$/i) ?? text.match(/(?:transferencia\s+)?outgoing\s+transfer\s+for\s+([^(+]+)/i);
+  if (transfer) return `Transferencia - ${capitalizeWords(transfer[1].trim())}`;
+  if (/^transacci[oó]n\s+con\s+tarjeta\s+/i.test(text)) {
+    const name = text.replace(/^transacci[oó]n\s+con\s+tarjeta\s+/i, "").trim();
+    return name ? merchant(name) : "Pago con tarjeta";
+  }
+  if (/interest\s+payment/i.test(text) || /^inter[eé]s\s+interest/i.test(text)) return "Intereses";
+  if (/^bonificaci[oó]n/i.test(text)) return /saveback/i.test(text) ? "Saveback" : /cash\s+reward/i.test(text) ? "Recompensa" : "Bonificación";
+  if (/savings\s+plan\s+execution/i.test(text) || /^operar\s+savings/i.test(text)) {
+    const isin = text.match(/([A-Z]{2}[A-Z0-9]{10})/);
+    return isin ? `Inversión ETF - ${isin[1]}` : "Inversión ETF";
+  }
+  if (rawDescription && !/^(interest|incoming|outgoing|savings)/i.test(rawDescription)) return merchant(rawDescription);
+  if (type && !/^(transferencia|transacci[oó]n|operar|inter[eé]s|bonificaci[oó]n)/i.test(type)) return capitalizeWords(type);
+  return text ? capitalizeWords(text) : "Transacción";
+}
+
+export function normalizeTradeRepublicTransactions(rows: CashRow[], accountId: string): Promise<ImportedTransaction[]> {
+  return toImportedTransactions(
+    accountId,
+    rows.flatMap((tx) => {
+      const date = parseDate(tx.datum);
+      const moneyIn = parseEuropeanNumber(tx.zahlungseingang);
+      const moneyOut = parseEuropeanNumber(tx.zahlungsausgang);
+      if (!date || (moneyIn === 0 && moneyOut === 0)) return [];
+      return {
+        date,
+        signedAmount: moneyIn > 0 ? moneyIn : -moneyOut,
+        description: describe(tx.beschreibung.trim(), tx.typ.trim()),
+        fingerprint: ["trade_republic", ...[tx.datum, tx.typ, tx.beschreibung, tx.zahlungseingang, tx.zahlungsausgang, tx.saldo].map(fingerprintText)].join("|"),
+      };
+    })
+  );
 }

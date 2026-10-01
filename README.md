@@ -32,7 +32,7 @@ Más de 16 widgets de análisis financiero:
 - Previsión de gasto a fin de mes
 - Proyección de ahorro anual
 - Scatter de gastos por día e importe
-- Flujo de caja y gasto por día de la semana
+- Flujo de caja neto del mes
 
 ### 💸 Transacciones
 Registro de ingresos y gastos asociados a una cuenta y categoría. Navegación mensual con estadísticas de ingresos, gastos y balance del mes. Detección automática de transferencias entre cuentas propias.
@@ -76,7 +76,7 @@ Categorías y subcategorías personalizables con emojis para clasificar tus tran
 ## 🛠 Stack tecnológico
 
 <div align="center">
-  <img src="https://img.shields.io/badge/Next.js_15-000000?logo=next.js&logoColor=white" alt="Next.js">
+  <img src="https://img.shields.io/badge/Next.js_16-000000?logo=next.js&logoColor=white" alt="Next.js">
   <img src="https://img.shields.io/badge/React_19-61DAFB?logo=react&logoColor=black" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/Tailwind_v4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind">
@@ -86,7 +86,7 @@ Categorías y subcategorías personalizables con emojis para clasificar tus tran
 
 | Categoría | Tecnologías |
 |---|---|
-| Framework | Next.js 15 (App Router) · React 19 |
+| Framework | Next.js 16 (App Router) · React 19 |
 | Lenguaje | TypeScript |
 | Estilos | Tailwind CSS v4 · shadcn/ui · Radix UI |
 | Backend / Auth | Supabase (PostgreSQL + OAuth) |
@@ -121,14 +121,13 @@ src/
 ├── components/
 │   ├── dashboard/           # Widgets del dashboard
 │   ├── home/                # Cards del Home (balance, resumen, budgets, donut)
-│   ├── ui/                  # Componentes shadcn/ui personalizados
-│   └── sortable/            # Componentes de drag & drop
-├── hooks/                   # 25+ custom hooks con TanStack Query
+│   └── ui/                  # Componentes shadcn/ui personalizados
+├── hooks/                   # Hooks de datos (TanStack Query) y de UI
 ├── lib/
 │   ├── parsers/             # Parsers de extractos bancarios
 │   ├── supabase/            # Cliente Supabase (server + browser)
 │   └── i18n/               # Sistema de traducciones ES/EN
-└── contexts/                # LangContext, CalendarFilterContext
+└── contexts/                # Filtro de cuentas del calendario y rango de tendencias
 ```
 
 ---

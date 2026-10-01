@@ -1,29 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import SubscriptionDetail from "@/components/SubscriptionDetail";
 import { BackButton } from "@/components/BackButton";
+import SubscriptionDetail from "@/components/SubscriptionDetail";
+import type { Subscription } from "@/hooks/useSubscriptions";
+import { getOwnedRow } from "@/lib/supabase/server";
 
-export default async function SubscriptionDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
-
-  if (!sub) redirect("/subscriptions");
-
+export default async function SubscriptionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const sub = await getOwnedRow<Subscription>("subscriptions", (await params).id);
   return (
     <div className="page-container fade-in">
       <BackButton />

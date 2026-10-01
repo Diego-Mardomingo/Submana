@@ -2,53 +2,30 @@
 
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { SCROLL_RESTORE_KEY } from "@/lib/scrollRestore";
 
-function normalizePath(path: string): string {
-  const [pathname, search] = path.split("?");
-  const base = (pathname || "/").replace(/\/$/, "") || "/";
-  return search ? `${base}?${search}` : base;
+const KEY = "submana_scroll_restore";
+const normalize = (path: string) => path.replace(/\/(?=\?|$)/, "") || "/";
+
+/** Remembers the scroll position to restore when coming back to `path` (e.g. after editing an item). */
+export function saveScrollForReturn(path: string) {
+  sessionStorage.setItem(KEY, JSON.stringify({ path, scrollY: window.scrollY }));
 }
 
-export interface UseScrollRestoreOptions {
-  /** Cuando false, espera a que sea true antes de restaurar (útil para listas que cargan datos async) */
-  ready?: boolean;
-}
-
-export function useScrollRestore(options?: UseScrollRestoreOptions) {
-  const { ready = true } = options ?? {};
+/** Restores a position saved by `saveScrollForReturn` for this URL once `ready` (e.g. data loaded). */
+export function useScrollRestore({ ready = true }: { ready?: boolean } = {}) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const search = searchParams.toString();
+  const search = useSearchParams().toString();
 
   useEffect(() => {
-    if (typeof window === "undefined" || !pathname || !ready) return;
-
-    const raw = sessionStorage.getItem(SCROLL_RESTORE_KEY);
+    const raw = ready && sessionStorage.getItem(KEY);
     if (!raw) return;
-
-    let data: { path: string; scrollY: number };
+    sessionStorage.removeItem(KEY);
     try {
-      data = JSON.parse(raw);
+      const { path, scrollY } = JSON.parse(raw) as { path: string; scrollY: number };
+      if (normalize(path) !== normalize(pathname + (search ? `?${search}` : ""))) return;
+      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, scrollY)));
     } catch {
-      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
-      return;
+      // Ignore corrupted entries.
     }
-
-    const currentFullPath = normalizePath(pathname + (search ? `?${search}` : ""));
-    const storedPath = normalizePath(data.path);
-
-    if (currentFullPath !== storedPath) {
-      sessionStorage.removeItem(SCROLL_RESTORE_KEY);
-      return;
-    }
-
-    sessionStorage.removeItem(SCROLL_RESTORE_KEY);
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo(0, data.scrollY);
-      });
-    });
   }, [pathname, search, ready]);
 }

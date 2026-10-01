@@ -1,6 +1,6 @@
 /**
- * import_source_fingerprint: stable per bank row (no account id); server derives import_line_id.
- * external_hash: semantic fingerprint for heuristics / categories (date + amount + description).
+ * import_source_fingerprint: stable per bank row (no account id); the server derives import_line_id.
+ * external_hash: semantic fingerprint (date + amount + description).
  */
 export interface ImportedTransaction {
   date: string;
@@ -9,32 +9,15 @@ export interface ImportedTransaction {
   description: string;
   external_hash: string;
   import_source_fingerprint: string;
-  /** Saldo de cuenta según extracto (p. ej. Revolut); opcional. */
+  /** Account balance printed in the statement (e.g. Revolut), when available. */
   statement_balance?: number;
 }
 
-export interface ImportTransactionsRequest {
-  account_id: string;
-  transactions: ImportedTransaction[];
-  final_balance?: number;
-}
-
 export interface PossibleDuplicate {
-  /** SHA-256 for import_duplicate_decisions (same as buildDuplicateConflictKey: día + importe + tipo). */
+  /** Same key as buildDuplicateConflictKey (day + amount + type). */
   conflict_key: string;
-  incoming: {
-    id: string;
-    date: string;
-    amount: number;
-    description: string;
-    external_hash: string;
-  };
-  existing: {
-    id: string;
-    description: string;
-    date: string;
-    amount: number;
-  };
+  incoming: { id: string; date: string; amount: number; description: string; external_hash: string };
+  existing: { id: string; description: string; date: string; amount: number };
 }
 
 export interface ImportTransactionsResponse {
@@ -42,24 +25,7 @@ export interface ImportTransactionsResponse {
   skipped: number;
   total: number;
   new_balance: number;
-  /** Transacciones marcadas como traspaso interno (categoría "Excluir de métricas"). */
+  /** Rows tagged as internal transfers ("exclude from metrics" category). */
   internal_transfers_tagged?: number;
   possibleDuplicates?: PossibleDuplicate[];
-}
-
-export interface TradeRepublicCashTransaction {
-  datum: string;
-  typ: string;
-  beschreibung: string;
-  zahlungseingang: string;
-  zahlungsausgang: string;
-  saldo: string;
-}
-
-export interface ParsedPDFResult {
-  cash: TradeRepublicCashTransaction[];
-  interest: unknown[];
-  portfolio: unknown[];
-  crypto: unknown[];
-  finalBalance?: number;
 }

@@ -1,173 +1,143 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect } from "react";
-import { createBrowserClient } from "@supabase/ssr";
-import { Sun, Moon, Monitor, LogOut, ChevronDown, Copy, KeyRound } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useAccounts } from "@/hooks/useAccounts";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronDown, Copy, KeyRound, LogOut, Monitor, Moon, Sun } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { useLangContext } from "@/contexts/LangContext";
-import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAccounts } from "@/hooks/useAccounts";
+import { setLang, useLang } from "@/hooks/useLang";
+import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { api } from "@/lib/api";
+import { createClientStore } from "@/lib/clientStore";
+import type { UIKey } from "@/lib/i18n/ui";
 import { useTranslations } from "@/lib/i18n/utils";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-const COOKIE_THEME = "submana-theme";
-
 type Theme = "light" | "dark" | "system";
+const THEME_KEY = "submana-theme";
 
-function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+/** Persisted theme; the inline script in the root layout applies it on load and follows the OS for "system". */
+const themeStore = createClientStore<Theme>(
+  () => (localStorage.getItem(THEME_KEY) as Theme) || "system",
+  (theme) => {
+    localStorage.setItem(THEME_KEY, theme);
+    document.cookie = `${THEME_KEY}=${theme}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    const dark = theme === "dark" || (theme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  },
+  "system"
+);
+
+/** Pill selector with a sliding highlight (styled by `kind`). */
+function Segmented<T extends string>({ kind, value, options, onChange, animate = true }: {
+  kind: "theme" | "lang";
+  value: T;
+  options: { value: T; label: string; icon: React.ReactNode; className?: string }[];
+  onChange: (value: T) => void;
+  animate?: boolean;
+}) {
+  return (
+    <div className={cn(`settings-${kind}-selector`, !animate && "settings-theme-selector-no-transition")} data-active={value}>
+      <div className={`settings-${kind}-slider`} />
+      {options.map((option) => (
+        <Tooltip key={option.value}>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(`settings-${kind}-btn flex-1`, option.className, value === option.value && `settings-${kind}-btn-active`)}
+              onClick={() => onChange(option.value)}
+            >
+              {option.icon}
+              <span>{option.label}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{option.label}</TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
+  );
 }
 
-function getTheme(): Theme {
-  if (typeof document === "undefined") return "system";
-  return (localStorage.getItem(COOKIE_THEME) as Theme) || "system";
+function CopyButton({ text, label, ghost }: { text: string; label: string; ghost?: boolean }) {
+  const t = useTranslations(useLang());
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(text).catch(() => undefined);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Button type="button" variant={ghost ? "ghost" : "outline"} size="sm" className={ghost ? "shrink-0 h-8" : undefined} onClick={copy}>
+      <Copy className="size-3.5 mr-1" />
+      {copied ? t("settings.automation.copied") : label}
+    </Button>
+  );
 }
 
-function getEffectiveTheme(theme: Theme): "light" | "dark" {
-  return theme === "system" ? getSystemTheme() : theme;
-}
+const flag = (country: string) => (
+  // eslint-disable-next-line @next/next/no-img-element -- tiny remote flag
+  <img src={`https://flagcdn.com/w40/${country}.png`} alt="" className="settings-lang-flag" />
+);
 
 export default function SettingsBody() {
-  const { lang, setLang } = useLangContext();
-  const { privacyModeEnabled, setPrivacyModeEnabled } = usePrivacyMode();
+  const lang = useLang();
   const t = useTranslations(lang);
-  const [supabase] = useState(() =>
-    createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  );
-  const [user, setUser] = useState<{
-    email?: string;
-    user_metadata?: { name?: string; avatar_url?: string };
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState<Theme>("system");
-  const [sliderTransitionReady, setSliderTransitionReady] = useState(false);
+  const queryClient = useQueryClient();
+  const theme = themeStore.useValue();
+  const privacyMode = usePrivacyMode();
+  const { data: accounts = [] } = useAccounts();
+  const { data: user, isLoading } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
+  const { data: token } = useQuery({
+    queryKey: ["automation-token"],
+    queryFn: () => api<{ hasToken: boolean }>("/api/automation/token"),
+    enabled: !!user,
+  });
+  const [newToken, setNewToken] = useState<string | null>(null);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [automationOpen, setAutomationOpen] = useState(false);
-  const [automationHasToken, setAutomationHasToken] = useState<boolean | null>(null);
-  const [tokenJustGenerated, setTokenJustGenerated] = useState<string | null>(null);
-  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
-  const { data: accounts = [] } = useAccounts();
-
-  useLayoutEffect(() => {
-    const t = getTheme();
-    setTheme(t);
-    document.documentElement.setAttribute("data-theme", getEffectiveTheme(t));
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => setSliderTransitionReady(true));
-    });
-    return () => cancelAnimationFrame(id);
+  // Avoid animating the theme slider from its server position on first paint.
+  const [sliderReady, setSliderReady] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => setSliderReady(true)));
+    return () => cancelAnimationFrame(frame);
   }, []);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user: u } }) => {
-      setUser(u ?? null);
-      setLoading(false);
-    });
-  }, [supabase]);
-
-  useEffect(() => {
-    if (!user) return;
-    fetch("/api/automation/token")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { hasToken?: boolean } | null) => {
-        if (data && typeof data.hasToken === "boolean") setAutomationHasToken(data.hasToken);
-      })
-      .catch(() => setAutomationHasToken(false));
-  }, [user]);
-
-  useEffect(() => {
-    if (theme !== "system") return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, [theme]);
-
-  const handleThemeChange = (newTheme: Theme) => {
-    setTheme(newTheme);
-    const effective = getEffectiveTheme(newTheme);
-    document.documentElement.setAttribute("data-theme", effective);
-    localStorage.setItem(COOKIE_THEME, newTheme);
-    document.cookie = `${COOKIE_THEME}=${newTheme}; path=/; max-age=${60 * 60 * 24 * 365}`;
+  const generateToken = async () => {
+    const { token: plain } = await api<{ token: string }>("/api/automation/token", "POST");
+    setNewToken(plain);
+    queryClient.setQueryData(["automation-token"], { hasToken: true });
   };
 
-  const handleLangChange = (newLang: "en" | "es") => {
-    setLang(newLang);
-  };
-
-  const handleSignOutClick = () => setSignOutOpen(true);
-
-  const handleSignOutConfirm = async () => {
-    await supabase.auth.signOut();
-    document.cookie = "sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie = "sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    setSignOutOpen(false);
+  const signOut = async () => {
+    await createClient().auth.signOut();
     window.location.href = "/login";
   };
 
-  const copyToClipboard = async (text: string, key: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopyFeedback(key);
-      setTimeout(() => setCopyFeedback(null), 2000);
-    } catch {
-      setCopyFeedback(null);
-    }
-  };
-
-  const handleGenerateToken = async () => {
-    const res = await fetch("/api/automation/token", { method: "POST" });
-    if (!res.ok) return;
-    const data = (await res.json()) as { token?: string };
-    if (data.token) {
-      setTokenJustGenerated(data.token);
-      setAutomationHasToken(true);
-    }
-  };
-
-  const automationEndpointUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/api/automation/quick-transaction`
-      : "";
-  const exampleAccountId = accounts[0]?.id ?? "YOUR_ACCOUNT_ID";
-  const exampleBody = JSON.stringify(
-    { amount: "10.5", description: "Café", accountId: exampleAccountId },
-    null,
-    2
+  const endpointUrl = typeof window !== "undefined" ? `${window.location.origin}/api/automation/quick-transaction` : "";
+  const exampleBody = JSON.stringify({ amount: "10.5", description: "Café", accountId: accounts[0]?.id ?? "YOUR_ACCOUNT_ID" }, null, 2);
+  const name = user?.user_metadata?.name as string | undefined;
+  const section = (title: UIKey, description: UIKey, children: React.ReactNode) => (
+    <Card className="settings-section-card border-border">
+      <CardHeader className="pb-3">
+        <CardTitle className="settings-section-title text-base">{t(title)}</CardTitle>
+        <CardDescription className="text-muted-foreground text-sm">{t(description)}</CardDescription>
+      </CardHeader>
+      {children}
+    </Card>
   );
 
   return (
@@ -178,357 +148,170 @@ export default function SettingsBody() {
       </div>
 
       <ScrollArea className="settings-scroll-area h-[calc(100dvh-12rem)]">
-      <div className="settings-content">
-        <Card className="settings-profile-card border-border">
-          <CardContent className="pt-6 pb-6">
-            {loading ? (
-              <div className="settings-profile-loading">
-                <Skeleton className="h-20 w-20 rounded-full mx-auto mb-4" />
-                <Skeleton className="h-6 w-40 mx-auto mb-2" />
-                <Skeleton className="h-4 w-56 mx-auto" />
-              </div>
-            ) : (
-              <div className="settings-profile">
-                <Avatar className="settings-avatar">
-                  {user?.user_metadata?.avatar_url ? (
-                    <AvatarImage
-                      src={user.user_metadata.avatar_url}
-                      alt=""
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : null}
-                  <AvatarFallback className="settings-avatar-fallback">
-                    <span className="text-lg font-semibold">
-                      {(user?.user_metadata?.name || user?.email || "?")
-                        .charAt(0)
-                        .toUpperCase()}
-                    </span>
-                  </AvatarFallback>
-                </Avatar>
-                <h2 className="settings-profile-name">
-                  {user?.user_metadata?.name || "User"}
-                </h2>
-                <p className="settings-profile-email">{user?.email}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="settings-section-card border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="settings-section-title text-base">
-              {t("settings.preferences")}
-            </CardTitle>
-            <CardDescription className="text-muted-foreground text-sm">
-              {t("settings.preferencesDesc")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="settings-setting-item">
-              <Label className="settings-setting-label text-foreground font-semibold">
-                {t("settings.theme")}
-              </Label>
-              <div
-                className={cn(
-                  "settings-theme-selector",
-                  !sliderTransitionReady && "settings-theme-selector-no-transition"
-                )}
-                data-active={theme}
-              >
-                <div className="settings-theme-slider" />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "settings-theme-btn flex-1",
-                        theme === "light" && "settings-theme-btn-active"
-                      )}
-                      onClick={() => handleThemeChange("light")}
-                    >
-                      <Sun className="size-4" />
-                      <span>{t("settings.theme.light")}</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t("settings.theme.light")}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "settings-theme-btn settings-theme-btn-system flex-1",
-                        theme === "system" && "settings-theme-btn-active"
-                      )}
-                      onClick={() => handleThemeChange("system")}
-                    >
-                      <Monitor className="size-4" />
-                      <span>{t("settings.theme.system")}</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t("settings.theme.system")}</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "settings-theme-btn flex-1",
-                        theme === "dark" && "settings-theme-btn-active"
-                      )}
-                      onClick={() => handleThemeChange("dark")}
-                    >
-                      <Moon className="size-4" />
-                      <span>{t("settings.theme.dark")}</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">{t("settings.theme.dark")}</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-            <div className="settings-setting-item">
-              <Label className="settings-setting-label text-foreground font-semibold">
-                {t("settings.language")}
-              </Label>
-              <div
-                className="settings-lang-selector"
-                data-active={lang}
-              >
-                <div className="settings-lang-slider" />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "settings-lang-btn flex-1",
-                        lang === "en" && "settings-lang-btn-active"
-                      )}
-                      onClick={() => handleLangChange("en")}
-                    >
-                      <img
-                        src="https://flagcdn.com/w40/us.png"
-                        alt=""
-                        className="settings-lang-flag"
-                      />
-                      <span>English</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">English</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className={cn(
-                        "settings-lang-btn flex-1",
-                        lang === "es" && "settings-lang-btn-active"
-                      )}
-                      onClick={() => handleLangChange("es")}
-                    >
-                      <img
-                        src="https://flagcdn.com/w40/es.png"
-                        alt=""
-                        className="settings-lang-flag"
-                      />
-                      <span>Español</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Español</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-            <div className="settings-setting-item">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <Label className="settings-setting-label text-foreground font-semibold block">
-                    {t("settings.privacyMode")}
-                  </Label>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {t("settings.privacyModeDesc")}
-                  </p>
+        <div className="settings-content">
+          <Card className="settings-profile-card border-border">
+            <CardContent className="pt-6 pb-6">
+              {isLoading ? (
+                <div className="settings-profile-loading">
+                  <Skeleton className="h-20 w-20 rounded-full mx-auto mb-4" />
+                  <Skeleton className="h-6 w-40 mx-auto mb-2" />
+                  <Skeleton className="h-4 w-56 mx-auto" />
                 </div>
-                <Switch
-                  checked={privacyModeEnabled}
-                  onCheckedChange={setPrivacyModeEnabled}
-                  aria-label={t("settings.privacyMode")}
+              ) : (
+                <div className="settings-profile">
+                  <Avatar className="settings-avatar">
+                    {user?.user_metadata?.avatar_url && <AvatarImage src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" />}
+                    <AvatarFallback className="settings-avatar-fallback">
+                      <span className="text-lg font-semibold">{(name || user?.email || "?").charAt(0).toUpperCase()}</span>
+                    </AvatarFallback>
+                  </Avatar>
+                  <h2 className="settings-profile-name">{name || "User"}</h2>
+                  <p className="settings-profile-email">{user?.email}</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {section(
+            "settings.preferences",
+            "settings.preferencesDesc",
+            <CardContent className="space-y-6">
+              <div className="settings-setting-item">
+                <Label className="settings-setting-label text-foreground font-semibold">{t("settings.theme")}</Label>
+                <Segmented
+                  kind="theme"
+                  value={theme}
+                  onChange={themeStore.set}
+                  animate={sliderReady}
+                  options={[
+                    { value: "light", label: t("settings.theme.light"), icon: <Sun className="size-4" /> },
+                    { value: "system", label: t("settings.theme.system"), icon: <Monitor className="size-4" />, className: "settings-theme-btn-system" },
+                    { value: "dark", label: t("settings.theme.dark"), icon: <Moon className="size-4" /> },
+                  ]}
                 />
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="settings-section-card border-border min-w-0 overflow-hidden">
-          <Collapsible open={automationOpen} onOpenChange={setAutomationOpen}>
-            <CollapsibleTrigger className="subs-collapsible-trigger w-full rounded-lg px-4 py-3 text-left hover:bg-muted/50 transition-colors min-w-0">
-              <div className="flex items-center justify-between gap-2 min-w-0">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <KeyRound className="size-4 text-muted-foreground shrink-0" />
-                  <span className="settings-section-title text-base font-medium break-words">
-                    {t("settings.automation.title")}
-                  </span>
-                </div>
-                <ChevronDown
-                  className={cn("size-4 text-muted-foreground shrink-0 transition-transform", automationOpen && "rotate-180")}
+              <div className="settings-setting-item">
+                <Label className="settings-setting-label text-foreground font-semibold">{t("settings.language")}</Label>
+                <Segmented
+                  kind="lang"
+                  value={lang}
+                  onChange={setLang}
+                  options={[
+                    { value: "en", label: "English", icon: flag("us") },
+                    { value: "es", label: "Español", icon: flag("es") },
+                  ]}
                 />
               </div>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardHeader className="pb-2 pt-4">
-                <CardDescription className="text-muted-foreground text-sm break-words">
-                  {t("settings.automation.desc")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5 pb-6 min-w-0">
-                <div className="space-y-2 min-w-0">
-                  <Label className="text-sm font-medium">{t("settings.automation.tokenLabel")}</Label>
-                  {tokenJustGenerated !== null ? (
-                    <div className="flex flex-wrap items-center gap-2 min-w-0">
-                      <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">
-                        {tokenJustGenerated}
-                      </code>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(tokenJustGenerated, "token")}
-                      >
-                        <Copy className="size-3.5 mr-1" />
-                        {copyFeedback === "token" ? t("settings.automation.copied") : t("settings.automation.copyToken")}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={handleGenerateToken}
-                      >
-                        {automationHasToken ? t("settings.automation.regenerateToken") : t("settings.automation.generateToken")}
-                      </Button>
-                      {automationHasToken && (
-                        <span className="text-sm text-muted-foreground">{t("settings.automation.tokenConfigured")}</span>
-                      )}
-                    </div>
-                  )}
-                  {tokenJustGenerated !== null && (
-                    <p className="text-xs text-muted-foreground">{t("settings.automation.tokenOnlyOnce")}</p>
-                  )}
+              <div className="settings-setting-item">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <Label className="settings-setting-label text-foreground font-semibold block">{t("settings.privacyMode")}</Label>
+                    <p className="text-sm text-muted-foreground mt-2">{t("settings.privacyModeDesc")}</p>
+                  </div>
+                  <Switch checked={privacyMode} onCheckedChange={setPrivacyMode} aria-label={t("settings.privacyMode")} />
                 </div>
+              </div>
+            </CardContent>
+          )}
 
-                <div className="space-y-2 min-w-0">
-                  <Label className="text-sm font-medium">{t("settings.automation.endpointUrl")}</Label>
-                  <div className="flex flex-wrap items-center gap-2 min-w-0">
-                    <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">
-                      {automationEndpointUrl || "..."}
-                    </code>
-                    {automationEndpointUrl && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(automationEndpointUrl, "url")}
-                      >
-                        <Copy className="size-3.5 mr-1" />
-                        {copyFeedback === "url" ? t("settings.automation.copied") : t("settings.automation.copyUrl")}
-                      </Button>
+          <Card className="settings-section-card border-border min-w-0 overflow-hidden">
+            <Collapsible open={automationOpen} onOpenChange={setAutomationOpen}>
+              <CollapsibleTrigger className="subs-collapsible-trigger w-full rounded-lg px-4 py-3 text-left hover:bg-muted/50 transition-colors min-w-0">
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <KeyRound className="size-4 text-muted-foreground shrink-0" />
+                    <span className="settings-section-title text-base font-medium break-words">{t("settings.automation.title")}</span>
+                  </div>
+                  <ChevronDown className={cn("size-4 text-muted-foreground shrink-0 transition-transform", automationOpen && "rotate-180")} />
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardHeader className="pb-2 pt-4">
+                  <CardDescription className="text-muted-foreground text-sm break-words">{t("settings.automation.desc")}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-5 pb-6 min-w-0">
+                  <div className="space-y-2 min-w-0">
+                    <Label className="text-sm font-medium">{t("settings.automation.tokenLabel")}</Label>
+                    {newToken ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">{newToken}</code>
+                          <CopyButton text={newToken} label={t("settings.automation.copyToken")} />
+                        </div>
+                        <p className="text-xs text-muted-foreground">{t("settings.automation.tokenOnlyOnce")}</p>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={generateToken}>
+                          {t(token?.hasToken ? "settings.automation.regenerateToken" : "settings.automation.generateToken")}
+                        </Button>
+                        {token?.hasToken && <span className="text-sm text-muted-foreground">{t("settings.automation.tokenConfigured")}</span>}
+                      </div>
                     )}
                   </div>
-                </div>
 
-                <div className="space-y-2 min-w-0">
-                  <Label className="text-sm font-medium">{t("settings.automation.requestBody")}</Label>
-                  <div className="max-w-full rounded bg-muted overflow-hidden">
-                    <pre className="rounded bg-muted p-3 text-xs max-w-full whitespace-pre-wrap break-all">
-                      <code>{exampleBody}</code>
-                    </pre>
+                  <div className="space-y-2 min-w-0">
+                    <Label className="text-sm font-medium">{t("settings.automation.endpointUrl")}</Label>
+                    <div className="flex flex-wrap items-center gap-2 min-w-0">
+                      <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">{endpointUrl || "..."}</code>
+                      {endpointUrl && <CopyButton text={endpointUrl} label={t("settings.automation.copyUrl")} />}
+                    </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => copyToClipboard(exampleBody, "body")}
-                  >
-                    <Copy className="size-3.5 mr-1" />
-                    {copyFeedback === "body" ? t("settings.automation.copied") : t("settings.automation.copyBody")}
-                  </Button>
-                </div>
 
-                <div className="space-y-2 min-w-0">
-                  <Label className="text-sm font-medium">{t("settings.automation.accountsList")}</Label>
-                  {accounts.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t("accounts.noAccounts")}</p>
-                  ) : (
-                    <ul className="space-y-1.5 min-w-0">
-                      {accounts.map((acc: { id: string; name?: string }) => (
-                        <li key={acc.id} className="flex items-center justify-between gap-2 rounded bg-muted/50 px-3 py-2 min-w-0">
-                          <span className="text-sm truncate min-w-0">{acc.name ?? acc.id}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="shrink-0 h-8"
-                            onClick={() => copyToClipboard(acc.id, `id-${acc.id}`)}
-                          >
-                            <Copy className="size-3.5 mr-1" />
-                            {copyFeedback === `id-${acc.id}` ? t("settings.automation.copied") : t("settings.automation.copyId")}
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </CardContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </Card>
+                  <div className="space-y-2 min-w-0">
+                    <Label className="text-sm font-medium">{t("settings.automation.requestBody")}</Label>
+                    <div className="max-w-full rounded bg-muted overflow-hidden">
+                      <pre className="rounded bg-muted p-3 text-xs max-w-full whitespace-pre-wrap break-all">
+                        <code>{exampleBody}</code>
+                      </pre>
+                    </div>
+                    <CopyButton text={exampleBody} label={t("settings.automation.copyBody")} />
+                  </div>
 
-        <Card className="settings-section-card border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="settings-section-title text-base">
-              {t("settings.actions")}
-            </CardTitle>
-            <CardDescription className="text-muted-foreground text-sm">
-              {t("settings.actionsDesc")}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              className="settings-signout-btn w-full"
-              onClick={handleSignOutClick}
-            >
-              <LogOut className="size-4" />
-              <span>{t("settings.signout")}</span>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+                  <div className="space-y-2 min-w-0">
+                    <Label className="text-sm font-medium">{t("settings.automation.accountsList")}</Label>
+                    {accounts.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">{t("accounts.noAccounts")}</p>
+                    ) : (
+                      <ul className="space-y-1.5 min-w-0">
+                        {accounts.map((acc) => (
+                          <li key={acc.id} className="flex items-center justify-between gap-2 rounded bg-muted/50 px-3 py-2 min-w-0">
+                            <span className="text-sm truncate min-w-0">{acc.name}</span>
+                            <CopyButton text={acc.id} label={t("settings.automation.copyId")} ghost />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </Card>
+
+          {section(
+            "settings.actions",
+            "settings.actionsDesc",
+            <CardContent>
+              <Button variant="outline" className="settings-signout-btn w-full" onClick={() => setSignOutOpen(true)}>
+                <LogOut className="size-4" />
+                <span>{t("settings.signout")}</span>
+              </Button>
+            </CardContent>
+          )}
+        </div>
       </ScrollArea>
 
       <Dialog open={signOutOpen} onOpenChange={setSignOutOpen}>
         <DialogContent showCloseButton>
           <DialogHeader>
             <DialogTitle>{t("settings.signoutConfirmTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("settings.signoutConfirmDesc")}
-            </DialogDescription>
+            <DialogDescription>{t("settings.signoutConfirmDesc")}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSignOutOpen(false)}>
               {t("common.cancel")}
             </Button>
-            <Button variant="destructive" onClick={handleSignOutConfirm}>
+            <Button variant="destructive" onClick={signOut}>
               {t("settings.signout")}
             </Button>
           </DialogFooter>

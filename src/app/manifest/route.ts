@@ -1,148 +1,44 @@
-import { NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 
-const defaultManifest = {
+const icon = (size: number, purpose: "any" | "maskable") => ({
+  src: `/icons/web-app-manifest-${size}x${size}.png`,
+  sizes: `${size}x${size}`,
+  type: "image/png",
+  purpose,
+});
+
+const shortcuts = [
+  ["Transacciones", "/transactions"],
+  ["Cuentas", "/accounts"],
+  ["Presupuestos", "/budgets"],
+  ["Suscripciones", "/subscriptions"],
+].map(([name, url]) => ({ name, short_name: name, url, icons: [icon(192, "any")] }));
+
+const manifest = {
   name: "Submana",
   short_name: "Submana",
   description: "Manage your subscriptions elegantly.",
   start_url: "/",
-  display: "standalone" as const,
+  display: "standalone",
   background_color: "#0f1012",
   theme_color: "#8b5cf6",
-  orientation: "portrait" as const,
+  orientation: "portrait",
   icons: [
-    {
-      src: "/icons/web-app-manifest-192x192.png",
-      sizes: "192x192",
-      type: "image/png",
-      purpose: "maskable" as const,
-    },
-    {
-      src: "/icons/web-app-manifest-512x512.png",
-      sizes: "512x512",
-      type: "image/png",
-      purpose: "maskable" as const,
-    },
-    {
-      src: "/icons/web-app-manifest-192x192.png",
-      sizes: "192x192",
-      type: "image/png",
-      purpose: "any" as const,
-    },
-    {
-      src: "/icons/web-app-manifest-512x512.png",
-      sizes: "512x512",
-      type: "image/png",
-      purpose: "any" as const,
-    },
-    {
-      src: "/icons/favicon.svg",
-      sizes: "any",
-      type: "image/svg+xml",
-      purpose: "any" as const,
-    },
+    icon(192, "maskable"),
+    icon(512, "maskable"),
+    icon(192, "any"),
+    icon(512, "any"),
+    { src: "/favicon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
   ],
-  shortcuts: [
-    {
-      name: "Transacciones",
-      short_name: "Transacciones",
-      url: "/transactions",
-      icons: [
-        {
-          src: "/icons/web-app-manifest-192x192.png",
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "any" as const,
-        },
-      ],
-    },
-    {
-      name: "Cuentas",
-      short_name: "Cuentas",
-      url: "/accounts",
-      icons: [
-        {
-          src: "/icons/web-app-manifest-192x192.png",
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "any" as const,
-        },
-      ],
-    },
-    {
-      name: "Presupuestos",
-      short_name: "Presupuestos",
-      url: "/budgets",
-      icons: [
-        {
-          src: "/icons/web-app-manifest-192x192.png",
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "any" as const,
-        },
-      ],
-    },
-    {
-      name: "Suscripciones",
-      short_name: "Suscripciones",
-      url: "/subscriptions",
-      icons: [
-        {
-          src: "/icons/web-app-manifest-192x192.png",
-          sizes: "192x192",
-          type: "image/png",
-          purpose: "any" as const,
-        },
-      ],
-    },
-  ],
+  shortcuts,
 };
 
-const windowsManifest = {
-  ...defaultManifest,
-  theme_color: "#0f1012",
-  icons: [
-    {
-      src: "/icons/icon-192-windows.png",
-      sizes: "192x192",
-      type: "image/png",
-      purpose: "maskable" as const,
-    },
-    {
-      src: "/icons/icon-512-windows.png",
-      sizes: "512x512",
-      type: "image/png",
-      purpose: "maskable" as const,
-    },
-    {
-      src: "/icons/icon-192-windows.png",
-      sizes: "192x192",
-      type: "image/png",
-      purpose: "any" as const,
-    },
-    {
-      src: "/icons/icon-512-windows.png",
-      sizes: "512x512",
-      type: "image/png",
-      purpose: "any" as const,
-    },
-  ],
-  shortcuts: defaultManifest.shortcuts.map((s) => ({
-    ...s,
-    icons: [{ src: "/icons/icon-192-windows.png", sizes: "192x192", type: "image/png", purpose: "any" as const }],
-  })),
-};
-
-function isWindowsDesktop(userAgent: string): boolean {
-  const isWindows = /Windows|Win32|Win64/i.test(userAgent);
-  const isMobile = /Mobile|Android/i.test(userAgent);
-  return isWindows && !isMobile;
-}
-
-export async function GET(request: NextRequest) {
-  const userAgent = request.headers.get("user-agent") ?? "";
-  const manifest = isWindowsDesktop(userAgent) ? windowsManifest : defaultManifest;
-
-  return new Response(JSON.stringify(manifest), {
+/** Desktop Windows uses the dark background as title bar colour. */
+export function GET(request: NextRequest) {
+  const ua = request.headers.get("user-agent") ?? "";
+  const isWindowsDesktop = /Windows|Win32|Win64/i.test(ua) && !/Mobile|Android/i.test(ua);
+  const body = isWindowsDesktop ? { ...manifest, theme_color: manifest.background_color } : manifest;
+  return Response.json(body, {
     headers: {
       "Content-Type": "application/manifest+json",
       "Cache-Control": "public, max-age=0, must-revalidate",
