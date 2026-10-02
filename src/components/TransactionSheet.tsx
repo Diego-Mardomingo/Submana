@@ -25,7 +25,12 @@ import { useCreateTransaction, useDeleteTransaction, useTransaction, useUpdateTr
 import { parseDateString, toDateString } from "@/lib/date";
 import { useTranslations } from "@/lib/i18n/utils";
 
-function TransactionFormBody({ transaction, defaultAccountId, onDone }: { transaction: Transaction | null; defaultAccountId?: string; onDone: () => void }) {
+function TransactionFormBody({ transaction, defaultAccountId, defaultDate, onDone }: {
+  transaction: Transaction | null;
+  defaultAccountId?: string;
+  defaultDate?: Date;
+  onDone: () => void;
+}) {
   const lang = useLang();
   const es = lang === "es";
   const t = useTranslations(lang);
@@ -38,7 +43,7 @@ function TransactionFormBody({ transaction, defaultAccountId, onDone }: { transa
 
   const [type, setType] = useState<"income" | "expense">(transaction?.type ?? "expense");
   const [amount, setAmount] = useState(transaction ? Number(transaction.amount).toFixed(2).replace(".", ",") : "");
-  const [date, setDate] = useState(() => (transaction ? parseDateString(transaction.date) : new Date()));
+  const [date, setDate] = useState(() => (transaction ? parseDateString(transaction.date) : (defaultDate ?? new Date())));
   const [description, setDescription] = useState(transaction?.description ?? "");
   const [pickedAccountId, setAccountId] = useState(transaction?.account_id ?? "");
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? "");
@@ -223,13 +228,15 @@ function TransactionById({ id, onDone }: { id: string; onDone: () => void }) {
 }
 
 /** Create, edit or delete a transaction: pass the `transaction`, or only its `transactionId`. */
-export function TransactionSheet({ open, onOpenChange, transaction, transactionId, defaultAccountId }: {
+export function TransactionSheet({ open, onOpenChange, transaction, transactionId, defaultAccountId, defaultDate }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
   transactionId?: string | null;
   /** Preselected account for new transactions (e.g. from an account's page). */
   defaultAccountId?: string;
+  /** Preselected date for new transactions (e.g. the day picked in the calendar). */
+  defaultDate?: Date;
 }) {
   const t = useTranslations(useLang());
   const shown = useSheetPayload(open, transaction ?? null);
@@ -239,7 +246,7 @@ export function TransactionSheet({ open, onOpenChange, transaction, transactionI
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={t(editing ? "transactions.edit" : "transactions.add")}>
       {shown || !shownId ? (
-        <TransactionFormBody transaction={shown} defaultAccountId={defaultAccountId} onDone={close} />
+        <TransactionFormBody transaction={shown} defaultAccountId={defaultAccountId} defaultDate={defaultDate} onDone={close} />
       ) : (
         <TransactionById id={shownId} onDone={close} />
       )}
