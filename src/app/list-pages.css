@@ -1,0 +1,1406 @@
+/* ═══════════════════════════════════════════════
+   LIST PAGES — Transactions, Subscriptions, Accounts, Categories, Budgets, Settings
+   Mobile first: dense grouped lists (iOS/bank style), compact summary cards.
+   From 1024px the summary sits in a sticky left column next to the list.
+   ═══════════════════════════════════════════════ */
+
+.lp-page {
+  --lp-radius: 16px;
+  --lp-row-hover: color-mix(in srgb, var(--blanco) 4%, transparent);
+  --lp-divider: color-mix(in srgb, var(--gris) 75%, transparent);
+  padding-top: 0.75rem;
+}
+
+@media (min-width: 1024px) {
+  .lp-page.page-container {
+    max-width: 1120px;
+    padding: 1.5rem 2rem;
+  }
+}
+
+/* ── Header ── */
+.lp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+}
+
+.lp-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--blanco);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-add.add-btn {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.lp-add-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .lp-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .lp-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .lp-add.add-btn {
+    width: auto;
+    height: 40px;
+    padding: 0 1rem 0 0.8rem;
+    gap: 0.4rem;
+  }
+
+  .lp-add-label {
+    position: static;
+    width: auto;
+    height: auto;
+    clip: auto;
+  }
+}
+
+/* ── Two-column layout (desktop) ── */
+.lp-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.lp-aside,
+.lp-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .lp-layout {
+    display: grid;
+    grid-template-columns: 320px minmax(0, 1fr);
+    align-items: start;
+    gap: 2.5rem;
+  }
+
+  .lp-aside {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+/* ── Card surface ── */
+.lp-card {
+  background: var(--card-subtle-gradient), var(--gris-oscuro);
+  border: 1px solid var(--gris);
+  border-radius: var(--lp-radius);
+}
+
+/* ── Summary card ── */
+.lp-summary {
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lp-summary-divider {
+  height: 1px;
+  background: var(--lp-divider);
+  margin: 0 -1rem;
+}
+
+.lp-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gris-claro);
+  white-space: nowrap;
+}
+
+.lp-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.lp-stat:not(:first-child) {
+  padding-left: clamp(0.5rem, 3vw, 1.25rem);
+  border-left: 1px solid var(--lp-divider);
+}
+
+.lp-stat-value {
+  font-size: clamp(0.8rem, 3.6vw, 0.98rem);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--blanco);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-hero-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--blanco);
+  font-variant-numeric: tabular-nums;
+}
+
+.is-income { color: var(--success); }
+.is-expense { color: var(--blanco); }
+.is-negative { color: var(--danger); }
+.is-muted { color: var(--gris-claro); }
+
+/* Progress meter (expenses vs income, share of total…) */
+.lp-meter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.72rem;
+  color: var(--gris-claro);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-meter {
+  flex-shrink: 0;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--gris);
+  overflow: hidden;
+  display: flex;
+}
+
+.lp-meter-row .lp-meter {
+  flex: 1;
+}
+
+.lp-meter > span {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.lp-meter--segmented > span {
+  border-radius: 0;
+}
+
+.lp-meter--segmented > span + span {
+  margin-left: 2px;
+}
+
+.lp-meter--segmented > span:first-child {
+  border-radius: 99px 0 0 99px;
+}
+
+.lp-meter--segmented > span:last-child {
+  border-radius: 0 99px 99px 0;
+}
+
+.lp-meter--segmented > span:only-child {
+  border-radius: 99px;
+}
+
+/* ── Month switcher (inside the summary card) ── */
+.lp-month {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: -0.375rem -0.5rem 0;
+  touch-action: pan-y;
+}
+
+.lp-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--gris-claro);
+  flex-shrink: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lp-icon-btn:hover {
+  background: var(--gris);
+  color: var(--blanco);
+}
+
+.lp-month-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--blanco);
+}
+
+.lp-month-title span:first-child {
+  white-space: nowrap;
+}
+
+.lp-month-year {
+  color: var(--gris-claro);
+  font-weight: 600;
+}
+
+.lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 22px;
+  padding: 0 0.55rem;
+  border-radius: 99px;
+  border: none;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: var(--accent-soft);
+  color: var(--accent);
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+button.lp-chip:hover {
+  background: var(--accent-muted);
+}
+
+/* ── Section header ── */
+.lp-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.lp-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gris-muy-claro);
+}
+
+.lp-section-title {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-section-title small {
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--gris-claro);
+  margin-left: 0.35rem;
+}
+
+.lp-section-aside {
+  flex-shrink: 0;
+  font-weight: 600;
+  color: var(--gris-claro);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ── Grouped list ── */
+.lp-group {
+  overflow: hidden;
+}
+
+.lp-group > * + *,
+.lp-group > * + button.lp-row {
+  border-top: 1px solid var(--lp-divider);
+}
+
+.lp-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 56px;
+  padding: 0.55rem 0.875rem;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.lp-row:active {
+  background: var(--lp-row-hover);
+}
+
+@media (hover: hover) {
+  .lp-row:hover {
+    background: var(--lp-row-hover);
+  }
+}
+
+.lp-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.lp-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--gris);
+  color: var(--gris-muy-claro);
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.lp-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.lp-icon--contain {
+  background: var(--negro);
+}
+
+.lp-icon--contain img {
+  object-fit: contain;
+  padding: 3px;
+}
+
+.lp-icon--income {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.lp-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.lp-title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--blanco);
+  line-height: 1.3;
+}
+
+.lp-title > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  font-size: 0.74rem;
+  color: var(--gris-claro);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.lp-meta > * {
+  flex-shrink: 0;
+}
+
+.lp-meta > .lp-truncate {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lp-meta-sep {
+  opacity: 0.6;
+}
+
+.lp-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.lp-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.lp-amount {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-sub-amount {
+  font-size: 0.7rem;
+  color: var(--gris-claro);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-warn { color: var(--warning); font-weight: 600; }
+.lp-soon { color: var(--accent); font-weight: 600; }
+
+/* Dimmed rows (inactive subscriptions) */
+.lp-row--dim .lp-icon,
+.lp-row--dim .lp-main,
+.lp-row--dim .lp-end {
+  opacity: 0.55;
+}
+
+.lp-row--dim .lp-icon img {
+  filter: grayscale(0.7);
+}
+
+/* ── Swipe actions inside grouped lists ── */
+.lp-swipe .swipe-to-reveal__content > a,
+.lp-swipe .swipe-to-reveal__content > div {
+  display: flex;
+}
+
+.lp-swipe .swipe-to-reveal__actions {
+  background: var(--gris);
+  padding: 0 0.375rem;
+  gap: 0.125rem;
+}
+
+.lp-action {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.lp-action--edit { color: var(--accent); }
+.lp-action--edit:hover { background: var(--accent-soft); }
+.lp-action--warn { color: var(--warning); }
+.lp-action--warn:hover { background: var(--warning-soft); }
+.lp-action--danger { color: var(--danger); }
+.lp-action--danger:hover { background: var(--danger-soft); }
+.lp-action--add { color: var(--success); }
+.lp-action--add:hover { background: var(--success-soft); }
+
+/* Desktop: actions sit at the end of the row and appear on hover / keyboard focus */
+.lp-swipe.swipe-to-reveal--desktop .swipe-to-reveal__track {
+  align-items: stretch;
+  transition: background 0.15s ease;
+}
+
+.lp-swipe.swipe-to-reveal--desktop .swipe-to-reveal__actions {
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.lp-swipe.swipe-to-reveal--desktop:hover .swipe-to-reveal__track,
+.lp-swipe.swipe-to-reveal--desktop:focus-within .swipe-to-reveal__track {
+  background: var(--lp-row-hover);
+}
+
+.lp-swipe.swipe-to-reveal--desktop:hover .lp-row,
+.lp-swipe.swipe-to-reveal--desktop .swipe-to-reveal__content {
+  background: transparent;
+}
+
+.lp-swipe.swipe-to-reveal--desktop:hover .swipe-to-reveal__actions,
+.lp-swipe.swipe-to-reveal--desktop:focus-within .swipe-to-reveal__actions {
+  opacity: 1;
+}
+
+.lp-action .size-5 {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* ── Collapsible section trigger ── */
+.lp-collapse-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--gris-muy-claro);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.lp-collapse-trigger:hover {
+  color: var(--blanco);
+}
+
+.lp-collapse-trigger svg {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.lp-collapse-trigger[data-state="open"] svg {
+  transform: rotate(180deg);
+}
+
+/* ── Empty state ── */
+.lp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2rem 1.25rem;
+  text-align: center;
+}
+
+.lp-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.lp-empty-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--blanco);
+}
+
+.lp-empty-text {
+  margin: 0;
+  max-width: 280px;
+  font-size: 0.82rem;
+  color: var(--gris-claro);
+}
+
+.lp-empty .lp-chip {
+  height: 32px;
+  padding: 0 0.9rem;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+/* ── Month change animation ── */
+.lp-fade {
+  animation: lp-fade-in 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes lp-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-fade { animation: none; }
+}
+
+/* ── Skeletons ── */
+.lp-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.875rem;
+  min-height: 56px;
+}
+
+.lp-skeleton-row .skeleton:first-child {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  flex-shrink: 0;
+}
+
+/* ═══ Subscriptions: next charge row ═══ */
+.lp-next {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lp-next .lp-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.lp-next-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.lp-next-text strong {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--blanco);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ═══ Accounts ═══ */
+.lp-star {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: -4px 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gris-claro);
+  opacity: 0.45;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.lp-star:hover {
+  opacity: 1;
+  background: var(--gris);
+}
+
+.lp-star.is-default {
+  color: #f59e0b;
+  opacity: 1;
+}
+
+.lp-share {
+  width: 56px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--gris);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.lp-share > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.lp-interest {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  border: 2px solid var(--gris-oscuro);
+}
+
+.lp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.72rem;
+  color: var(--gris-claro);
+}
+
+.lp-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Sortable rows: the grip handle sits just outside the card on desktop */
+.lp-group--sortable {
+  overflow: visible;
+}
+
+.lp-group--sortable > :first-child :is(.lp-row, .swipe-to-reveal, .swipe-to-reveal__track) {
+  border-radius: var(--lp-radius) var(--lp-radius) 0 0;
+}
+
+.lp-group--sortable > :last-child :is(.lp-row, .swipe-to-reveal, .swipe-to-reveal__track) {
+  border-radius: 0 0 var(--lp-radius) var(--lp-radius);
+}
+
+.lp-group--sortable > :only-child :is(.lp-row, .swipe-to-reveal, .swipe-to-reveal__track) {
+  border-radius: var(--lp-radius);
+}
+
+@media (min-width: 768px) {
+  .lp-group--sortable .sortable-item--desktop {
+    margin-left: 0;
+  }
+
+  .lp-group--sortable .sortable-item--desktop .sortable-handle {
+    left: -34px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  .lp-group--sortable .sortable-item--desktop:hover .sortable-handle,
+  .lp-group--sortable .sortable-handle:focus-visible {
+    opacity: 1;
+  }
+}
+
+.lp-drag-overlay {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.lp-drag-overlay .lp-row {
+  background: var(--gris-oscuro);
+  border-radius: var(--lp-radius);
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .lp-group--sortable {
+    margin-left: 36px;
+  }
+}
+
+.lp-summary-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: -0.5rem;
+}
+
+.lp-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+/* Desktop sidebar: stats become label/value rows instead of three narrow columns */
+@media (min-width: 1024px) {
+  .lp-aside .lp-stats {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .lp-aside .lp-stat {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .lp-aside .lp-stat:not(:first-child) {
+    padding-left: 0;
+    padding-top: 0.6rem;
+    border-left: none;
+    border-top: 1px solid var(--lp-divider);
+  }
+
+  .lp-aside .lp-stat-value {
+    font-size: 1.05rem;
+  }
+}
+
+/* Rows with a variable number of actions keep their amounts aligned on desktop */
+.lp-swipe--3.swipe-to-reveal--desktop .swipe-to-reveal__actions {
+  min-width: calc(3 * 40px + 2 * 0.125rem + 0.75rem);
+  justify-content: flex-end;
+}
+
+/* Rows without a tap action (settings, system categories) */
+.lp-row.lp-row--static {
+  cursor: default;
+}
+
+.lp-row.lp-row--static:hover,
+.lp-row.lp-row--static:active {
+  background: transparent;
+}
+
+.lp-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 0.45rem;
+  border-radius: 99px;
+  background: var(--gris);
+  color: var(--gris-muy-claro);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.lp-badge--warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.lp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0 0.25rem;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--gris-claro);
+}
+
+.lp-note svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+/* ═══ Categories ═══ */
+/* Subcategories hang under their parent: the icon lines up with the parent's name
+   and the divider starts there too, so each family reads as one block. */
+.lp-sub {
+  --lp-sub-indent: calc(0.875rem + 38px + 0.75rem);
+  position: relative;
+}
+
+.lp-row--sub {
+  min-height: 46px;
+  padding-left: var(--lp-sub-indent);
+  gap: 0.6rem;
+}
+
+.lp-row--sub .lp-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: transparent;
+}
+
+.lp-row--sub .lp-title {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--gris-muy-claro);
+}
+
+.lp-group > .lp-sub {
+  border-top: none;
+}
+
+.lp-group > .lp-sub::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  left: var(--lp-sub-indent);
+  right: 0;
+  height: 1px;
+  background: var(--lp-divider);
+}
+
+/* ═══ Budgets ═══ */
+.lp-hero-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.5rem;
+}
+
+.lp-hero-sub {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-progress {
+  flex: 1 1 0;
+  min-width: 40px;
+  max-width: 220px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--gris);
+  overflow: hidden;
+}
+
+.lp-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.lp-pct {
+  min-width: 2.6em;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.is-warn { color: var(--warning); }
+
+/* ═══ Settings ═══ */
+.lp-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem;
+  min-width: 0;
+}
+
+.lp-avatar.lp-avatar {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.lp-avatar-fallback {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.lp-profile-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--blanco);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-profile-email {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--gris-claro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lp-desc {
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--gris-claro);
+}
+
+/* Preference rows: the control drops below the label on narrow screens */
+.lp-pref {
+  flex-wrap: wrap;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.lp-pref-control {
+  flex-shrink: 0;
+}
+
+.lp-pref--stack .lp-pref-control {
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .lp-pref--stack {
+    flex-wrap: nowrap;
+  }
+
+  .lp-pref--stack .lp-pref-control {
+    width: auto;
+    min-width: 260px;
+  }
+}
+
+.lp-pref .settings-theme-selector,
+.lp-pref .settings-lang-selector {
+  width: 100%;
+}
+
+.lp-row--danger .lp-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.lp-row--danger .lp-title {
+  color: var(--danger);
+}
+
+.lp-row .lp-chevron {
+  flex-shrink: 0;
+  color: var(--gris-claro);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.lp-row[data-state="open"] .lp-chevron {
+  transform: rotate(180deg);
+}
+
+button.lp-row {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+}
+
+.lp-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 0.25rem 0.875rem 1rem;
+  min-width: 0;
+}
+
+.lp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.lp-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.lp-code {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--gris);
+  border-radius: 10px;
+  background: var(--negro);
+  color: var(--gris-muy-claro);
+  font-size: 0.72rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.lp-mini-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--gris);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lp-mini-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.3rem 0.3rem 0.3rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--blanco);
+}
+
+.lp-mini-list > li + li {
+  border-top: 1px solid var(--lp-divider);
+}
+
+.lp-mini-list > li > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* User-owned categories: accent tint + left bar, so they stand apart from system ones */
+.lp-own {
+  position: relative;
+  background: var(--accent-soft);
+}
+
+.lp-own::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.lp-section-title--own,
+.lp-label--own {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.lp-section-title--own::before,
+.lp-label--own::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Archived rows keep their restore button visible at all sizes */
+.lp-restore {
+  height: 30px;
+  padding: 0 0.7rem;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  flex-shrink: 0;
+}
+
+.lp-restore:disabled {
+  opacity: 0.6;
+}
+
+.lp-swipe-tip {
+  align-items: center;
+}
+
+.lp-swipe-tip svg {
+  margin-top: 0;
+  color: var(--accent);
+}
+
+/* Rows and summary links that open a sheet are buttons */
+button.lp-next {
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lp-row:disabled {
+  opacity: 0.45;
+  cursor: default;
+  background: transparent;
+}
+
+/* ═══ Account detail ═══ */
+.ad-header .ad-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: -0.4rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.25rem;
+  border-radius: 99px;
+  color: var(--gris-muy-claro);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.ad-header .ad-back:hover {
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+}
+
+.ad-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--account-accent) 16%, transparent) 0%, transparent 60%),
+    var(--card-subtle-gradient),
+    var(--gris-oscuro);
+  border-color: color-mix(in srgb, var(--account-accent) 22%, var(--gris));
+}
+
+.ad-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.ad-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 15px;
+  color: var(--account-accent);
+  background: color-mix(in srgb, var(--account-accent) 16%, var(--negro));
+}
+
+.ad-icon--logo {
+  background: var(--negro);
+  box-shadow: inset 0 0 0 1px var(--gris);
+}
+
+.ad-icon img {
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  object-fit: contain;
+  border-radius: inherit;
+}
+
+.ad-icon .lp-interest {
+  right: -3px;
+  bottom: -3px;
+}
+
+.ad-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.ad-identity-text h1 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  color: var(--blanco);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ad-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.ad-tags .sf-badge {
+  height: 20px;
+  padding: 0 0.5rem;
+  font-size: 0.66rem;
+}
+
+.ad-balance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ad-balance .lp-hero-value {
+  font-size: 2rem;
+}
+
+.lp-icon-btn:disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.ad-action-icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ad-list-head {
+  align-items: center;
+}
+
+.ad-list-head .lp-chip {
+  height: 26px;
+  padding: 0 0.65rem;
+  font-size: 0.72rem;
+}
+
+/* The import component brings its own header; it sits in a card here. */
+.ad-import {
+  overflow: hidden;
+}
+
+.ad-import .bank-statement-upload {
+  margin: 0;
+  padding: 1rem;
+  background: transparent;
+  border-radius: 0;
+}
+
+.ad-bulk-summary {
+  border-radius: 14px;
+}

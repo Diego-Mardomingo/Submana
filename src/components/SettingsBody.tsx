@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Copy, KeyRound, LogOut, Monitor, Moon, Sun } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { ChevronDown, Copy, EyeOff, KeyRound, Languages, LogOut, Monitor, Moon, Palette, Sun } from "lucide-react";
+import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { CompactPageHeader } from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAccounts } from "@/hooks/useAccounts";
@@ -20,7 +15,6 @@ import { setLang, useLang } from "@/hooks/useLang";
 import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { api } from "@/lib/api";
 import { createClientStore } from "@/lib/clientStore";
-import type { UIKey } from "@/lib/i18n/ui";
 import { useTranslations } from "@/lib/i18n/utils";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -93,8 +87,15 @@ const flag = (country: string) => (
   <img src={`https://flagcdn.com/w40/${country}.png`} alt="" className="settings-lang-flag" />
 );
 
+const SectionHead = ({ title }: { title: string }) => (
+  <div className="lp-section-head">
+    <span className="lp-section-title">{title}</span>
+  </div>
+);
+
 export default function SettingsBody() {
   const lang = useLang();
+  const es = lang === "es";
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
   const theme = themeStore.useValue();
@@ -144,204 +145,219 @@ export default function SettingsBody() {
   const endpointUrl = typeof window !== "undefined" ? `${window.location.origin}/api/automation/quick-transaction` : "";
   const exampleBody = JSON.stringify({ amount: "10.5", description: "Café", accountId: accounts[0]?.id ?? "YOUR_ACCOUNT_ID" }, null, 2);
   const name = user?.user_metadata?.name as string | undefined;
-  const section = (title: UIKey, description: UIKey, children: React.ReactNode) => (
-    <Card className="settings-section-card border-border">
-      <CardHeader className="pb-3">
-        <CardTitle className="settings-section-title text-base">{t(title)}</CardTitle>
-        <CardDescription className="text-muted-foreground text-sm">{t(description)}</CardDescription>
-      </CardHeader>
-      {children}
-    </Card>
-  );
+  const tokenStatus = newToken || token?.hasToken
+    ? token?.lastUsedAt
+      ? `${t("settings.automation.lastUsed")} ${new Date(token.lastUsedAt).toLocaleString(es ? "es-ES" : "en-US", { dateStyle: "short", timeStyle: "short" })}`
+      : t("settings.automation.tokenConfigured")
+    : es ? "Sin token" : "No token";
 
   return (
-    <div className="settings-page animate-in fade-in duration-300">
-      <div className="settings-header">
-        <Logo variant="settings" className="settings-logo-link" />
-        <Separator className="settings-separator" />
-      </div>
+    <div className="page-container lp-page fade-in">
+      <CompactPageHeader title={t("nav.settings")} />
 
-      <ScrollArea className="settings-scroll-area h-[calc(100dvh-12rem)]">
-        <div className="settings-content">
-          <Card className="settings-profile-card border-border">
-            <CardContent className="pt-6 pb-6">
-              {isLoading ? (
-                <div className="settings-profile-loading">
-                  <Skeleton className="h-20 w-20 rounded-full mx-auto mb-4" />
-                  <Skeleton className="h-6 w-40 mx-auto mb-2" />
-                  <Skeleton className="h-4 w-56 mx-auto" />
+      <div className="lp-layout">
+        <aside className="lp-aside">
+          <div className="lp-card lp-profile">
+            {isLoading ? (
+              <>
+                <div className="skeleton" style={{ width: 52, height: 52, borderRadius: "50%", flexShrink: 0 }} />
+                <div className="flex flex-col gap-2 flex-1">
+                  <div className="skeleton" style={{ height: 14, width: "55%" }} />
+                  <div className="skeleton" style={{ height: 11, width: "80%" }} />
                 </div>
-              ) : (
-                <div className="settings-profile">
-                  <Avatar className="settings-avatar">
-                    {user?.user_metadata?.avatar_url && <AvatarImage src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" />}
-                    <AvatarFallback className="settings-avatar-fallback">
-                      <span className="text-lg font-semibold">{(name || user?.email || "?").charAt(0).toUpperCase()}</span>
-                    </AvatarFallback>
-                  </Avatar>
-                  <h2 className="settings-profile-name">{name || "User"}</h2>
-                  <p className="settings-profile-email">{user?.email}</p>
+              </>
+            ) : (
+              <>
+                <Avatar className="lp-avatar">
+                  {user?.user_metadata?.avatar_url && <AvatarImage src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" />}
+                  <AvatarFallback className="lp-avatar-fallback">{(name || user?.email || "?").charAt(0).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="lp-main">
+                  <p className="lp-profile-name">{name || "User"}</p>
+                  <p className="lp-profile-email">{user?.email}</p>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </>
+            )}
+          </div>
+        </aside>
 
-          {section(
-            "settings.preferences",
-            "settings.preferencesDesc",
-            <CardContent className="space-y-6">
-              <div className="settings-setting-item">
-                <Label className="settings-setting-label text-foreground font-semibold">{t("settings.theme")}</Label>
-                <Segmented
-                  kind="theme"
-                  value={theme}
-                  onChange={themeStore.set}
-                  animate={sliderReady}
-                  options={[
-                    { value: "light", label: t("settings.theme.light"), icon: <Sun className="size-4" /> },
-                    { value: "system", label: t("settings.theme.system"), icon: <Monitor className="size-4" />, className: "settings-theme-btn-system" },
-                    { value: "dark", label: t("settings.theme.dark"), icon: <Moon className="size-4" /> },
-                  ]}
-                />
-              </div>
-              <div className="settings-setting-item">
-                <Label className="settings-setting-label text-foreground font-semibold">{t("settings.language")}</Label>
-                <Segmented
-                  kind="lang"
-                  value={lang}
-                  onChange={setLang}
-                  options={[
-                    { value: "en", label: "English", icon: flag("us") },
-                    { value: "es", label: "Español", icon: flag("es") },
-                  ]}
-                />
-              </div>
-              <div className="settings-setting-item">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <Label className="settings-setting-label text-foreground font-semibold block">{t("settings.privacyMode")}</Label>
-                    <p className="text-sm text-muted-foreground mt-2">{t("settings.privacyModeDesc")}</p>
-                  </div>
-                  <Switch checked={privacyMode} onCheckedChange={setPrivacyMode} aria-label={t("settings.privacyMode")} />
+        <div className="lp-content">
+          <section className="lp-section">
+            <SectionHead title={t("settings.preferences")} />
+            <div className="lp-card lp-group">
+              <div className="lp-row lp-row--static lp-pref lp-pref--stack">
+                <span className="lp-icon" aria-hidden>
+                  <Palette className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{t("settings.theme")}</span>
+                  </span>
+                </span>
+                <div className="lp-pref-control">
+                  <Segmented
+                    kind="theme"
+                    value={theme}
+                    onChange={themeStore.set}
+                    animate={sliderReady}
+                    options={[
+                      { value: "light", label: t("settings.theme.light"), icon: <Sun className="size-4" /> },
+                      { value: "system", label: t("settings.theme.system"), icon: <Monitor className="size-4" />, className: "settings-theme-btn-system" },
+                      { value: "dark", label: t("settings.theme.dark"), icon: <Moon className="size-4" /> },
+                    ]}
+                  />
                 </div>
               </div>
-            </CardContent>
-          )}
 
-          <Card className="settings-section-card border-border min-w-0 overflow-hidden">
-            <Collapsible open={automationOpen} onOpenChange={setAutomationOpen}>
-              <CollapsibleTrigger className="subs-collapsible-trigger w-full rounded-lg px-4 py-3 text-left hover:bg-muted/50 transition-colors min-w-0">
-                <div className="flex items-center justify-between gap-2 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <KeyRound className="size-4 text-muted-foreground shrink-0" />
-                    <span className="settings-section-title text-base font-medium break-words">{t("settings.automation.title")}</span>
-                  </div>
-                  <ChevronDown className={cn("size-4 text-muted-foreground shrink-0 transition-transform", automationOpen && "rotate-180")} />
+              <div className="lp-row lp-row--static lp-pref lp-pref--stack">
+                <span className="lp-icon" aria-hidden>
+                  <Languages className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{t("settings.language")}</span>
+                  </span>
+                </span>
+                <div className="lp-pref-control">
+                  <Segmented
+                    kind="lang"
+                    value={lang}
+                    onChange={setLang}
+                    options={[
+                      { value: "en", label: "English", icon: flag("us") },
+                      { value: "es", label: "Español", icon: flag("es") },
+                    ]}
+                  />
                 </div>
+              </div>
+
+              <label className="lp-row lp-pref">
+                <span className="lp-icon" aria-hidden>
+                  <EyeOff className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{t("settings.privacyMode")}</span>
+                  </span>
+                  <span className="lp-desc">{t("settings.privacyModeDesc")}</span>
+                </span>
+                <Switch className="lp-pref-control" checked={privacyMode} onCheckedChange={setPrivacyMode} aria-label={t("settings.privacyMode")} />
+              </label>
+            </div>
+          </section>
+
+          <section className="lp-section">
+            <SectionHead title={es ? "Automatización" : "Automation"} />
+            <Collapsible open={automationOpen} onOpenChange={setAutomationOpen} className="lp-card lp-group">
+              <CollapsibleTrigger className="lp-row">
+                <span className="lp-icon" aria-hidden>
+                  <KeyRound className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{es ? "Transacciones desde notificaciones" : "Transactions from notifications"}</span>
+                  </span>
+                  <span className="lp-meta">
+                    <span className="lp-truncate">{tokenStatus}</span>
+                  </span>
+                </span>
+                <ChevronDown className="lp-chevron size-4" />
               </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardHeader className="pb-2 pt-4">
-                  <CardDescription className="text-muted-foreground text-sm break-words">{t("settings.automation.desc")}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5 pb-6 min-w-0">
-                  <div className="space-y-2 min-w-0">
-                    <Label className="text-sm font-medium">{t("settings.automation.tokenLabel")}</Label>
-                    {newToken ? (
-                      <>
-                        <div className="flex flex-wrap items-center gap-2 min-w-0">
-                          <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">{newToken}</code>
-                          <CopyButton text={newToken} label={t("settings.automation.copyToken")} />
-                        </div>
-                        <p className="text-xs text-muted-foreground">{t("settings.automation.tokenOnlyOnce")}</p>
-                      </>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Button type="button" variant="outline" size="sm" onClick={generateToken}>
-                          {t(token?.hasToken ? "settings.automation.regenerateToken" : "settings.automation.generateToken")}
-                        </Button>
-                        {token?.hasToken && (
-                          <>
+              <CollapsibleContent className="subs-collapsible-content">
+                <div className="subs-collapsible-inner">
+                  <div className="lp-panel">
+                    <p className="lp-desc">{t("settings.automation.desc")}</p>
+
+                    <div className="lp-field">
+                      <span className="lp-label">{t("settings.automation.tokenLabel")}</span>
+                      {newToken ? (
+                        <>
+                          <div className="lp-field-row">
+                            <code className="lp-code">{newToken}</code>
+                            <CopyButton text={newToken} label={t("settings.automation.copyToken")} />
+                          </div>
+                          <p className="lp-desc lp-warn">{t("settings.automation.tokenOnlyOnce")}</p>
+                        </>
+                      ) : (
+                        <div className="lp-field-row">
+                          <Button type="button" variant="outline" size="sm" onClick={generateToken}>
+                            {t(token?.hasToken ? "settings.automation.regenerateToken" : "settings.automation.generateToken")}
+                          </Button>
+                          {token?.hasToken && (
                             <Button type="button" variant="ghost" size="sm" onClick={revokeToken}>
                               {t("settings.automation.revokeToken")}
                             </Button>
-                            <span className="text-sm text-muted-foreground">
-                              {token.lastUsedAt
-                                ? `${t("settings.automation.lastUsed")} ${new Date(token.lastUsedAt).toLocaleString(lang === "es" ? "es-ES" : "en-US", { dateStyle: "short", timeStyle: "short" })}`
-                                : t("settings.automation.tokenConfigured")}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 min-w-0">
-                    <Label className="text-sm font-medium">{t("settings.automation.endpointUrl")}</Label>
-                    <div className="flex flex-wrap items-center gap-2 min-w-0">
-                      <code className="flex-1 min-w-0 rounded bg-muted px-2 py-1.5 text-xs break-all">{endpointUrl || "..."}</code>
-                      {endpointUrl && <CopyButton text={endpointUrl} label={t("settings.automation.copyUrl")} />}
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  <div className="space-y-2 min-w-0">
-                    <Label className="text-sm font-medium">{t("settings.automation.requestBody")}</Label>
-                    <div className="max-w-full rounded bg-muted overflow-hidden">
-                      <pre className="rounded bg-muted p-3 text-xs max-w-full whitespace-pre-wrap break-all">
+                    <div className="lp-field">
+                      <span className="lp-label">{t("settings.automation.endpointUrl")}</span>
+                      <div className="lp-field-row">
+                        <code className="lp-code">{endpointUrl || "..."}</code>
+                        {endpointUrl && <CopyButton text={endpointUrl} label={t("settings.automation.copyUrl")} />}
+                      </div>
+                    </div>
+
+                    <div className="lp-field">
+                      <span className="lp-label">{t("settings.automation.requestBody")}</span>
+                      <pre className="lp-code">
                         <code>{exampleBody}</code>
                       </pre>
+                      <div>
+                        <CopyButton text={exampleBody} label={t("settings.automation.copyBody")} />
+                      </div>
                     </div>
-                    <CopyButton text={exampleBody} label={t("settings.automation.copyBody")} />
-                  </div>
 
-                  <div className="space-y-2 min-w-0">
-                    <Label className="text-sm font-medium">{t("settings.automation.accountsList")}</Label>
-                    {accounts.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">{t("accounts.noAccounts")}</p>
-                    ) : (
-                      <ul className="space-y-1.5 min-w-0">
-                        {accounts.map((acc) => (
-                          <li key={acc.id} className="flex items-center justify-between gap-2 rounded bg-muted/50 px-3 py-2 min-w-0">
-                            <span className="text-sm truncate min-w-0">{acc.name}</span>
-                            <CopyButton text={acc.id} label={t("settings.automation.copyId")} ghost />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                    <div className="lp-field">
+                      <span className="lp-label">{t("settings.automation.accountsList")}</span>
+                      {accounts.length === 0 ? (
+                        <p className="lp-desc">{t("accounts.noAccounts")}</p>
+                      ) : (
+                        <ul className="lp-mini-list">
+                          {accounts.map((acc) => (
+                            <li key={acc.id}>
+                              <span>{acc.name}</span>
+                              <CopyButton text={acc.id} label={t("settings.automation.copyId")} ghost />
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
-                </CardContent>
+                </div>
               </CollapsibleContent>
             </Collapsible>
-          </Card>
+          </section>
 
-          {section(
-            "settings.actions",
-            "settings.actionsDesc",
-            <CardContent>
-              <Button variant="outline" className="settings-signout-btn w-full" onClick={() => setSignOutOpen(true)}>
-                <LogOut className="size-4" />
-                <span>{t("settings.signout")}</span>
-              </Button>
-            </CardContent>
-          )}
+          <section className="lp-section">
+            <SectionHead title={es ? "Sesión" : "Session"} />
+            <div className="lp-card lp-group">
+              <button type="button" className="lp-row lp-row--danger" onClick={() => setSignOutOpen(true)}>
+                <span className="lp-icon" aria-hidden>
+                  <LogOut className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{t("settings.signout")}</span>
+                  </span>
+                </span>
+              </button>
+            </div>
+          </section>
         </div>
-      </ScrollArea>
+      </div>
 
-      <Dialog open={signOutOpen} onOpenChange={setSignOutOpen}>
-        <DialogContent showCloseButton>
-          <DialogHeader>
-            <DialogTitle>{t("settings.signoutConfirmTitle")}</DialogTitle>
-            <DialogDescription>{t("settings.signoutConfirmDesc")}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSignOutOpen(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button variant="destructive" onClick={signOut}>
-              {t("settings.signout")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmSheet
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        icon={<LogOut />}
+        title={t("settings.signoutConfirmTitle")}
+        description={t("settings.signoutConfirmDesc")}
+        confirmLabel={t("settings.signout")}
+        onConfirm={signOut}
+      />
     </div>
   );
 }

@@ -14,6 +14,17 @@ import { calendarDayInAppTimeZone } from "@/lib/date";
 
 type Params = { params: Promise<{ id: string }> };
 
+export async function GET(_request: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
+
+  const { data, error } = await supabase.from("transactions").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+  if (error) return jsonServerError("crud/transactions/[id]", error);
+  if (!data) return jsonError("transaction_not_found", 404);
+  return jsonResponse({ data });
+}
+
 export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const { supabase, user } = await getAuthedClient();

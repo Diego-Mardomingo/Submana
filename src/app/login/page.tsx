@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <div className="login-page flex min-h-dvh items-center justify-center p-6">
       <section className="login-section flex flex-col items-center justify-center rounded-2xl border border-[var(--gris)] bg-[var(--gris-oscuro)] text-center">
-        <Logo variant="login" />
+        <Logo />
         <div className="login-separator h-px w-[80%] bg-[var(--gris)] max-[600px]:w-[90%]" />
         {error === "auth_callback_error" && (
           <Alert variant="destructive" className="w-full max-w-[20rem]">
