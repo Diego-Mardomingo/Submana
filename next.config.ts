@@ -37,7 +37,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The service worker's own fetches are bound by the CSP served with sw.js. With the app's
+      // connect-src it blocked every remote image it intercepts (bank/subscription logos, flags),
+      // so it gets a policy allowing https fetches. Later entries override the same header key.
+      { source: "/sw.js", headers: [{ key: "Content-Security-Policy", value: "default-src 'self'; connect-src 'self' https:" }] },
+    ];
   },
   experimental: { viewTransition: true },
 };

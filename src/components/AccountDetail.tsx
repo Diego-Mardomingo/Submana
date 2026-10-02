@@ -14,7 +14,6 @@ import { signed, TransactionDayList } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { Sheet, SheetBody, SheetFooter } from "@/components/ui/sheet";
 import { useAccounts, useDeleteAccount, useDeleteAccountTransactions, type Account } from "@/hooks/useAccounts";
-import { useCategories } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
@@ -22,7 +21,7 @@ import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
 import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
-import { metricTransactions, sumByType } from "@/lib/metricsFilters";
+import { sumByType } from "@/lib/metricsFilters";
 import { cn } from "@/lib/utils";
 
 const IMPORTABLE_PROVIDERS = ["trade_republic", "revolut", "bbva", "imagin"];
@@ -202,9 +201,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteAccount = useDeleteAccount();
 
-  // Every transaction is needed anyway to detect transfers between accounts.
   const { data: allTransactions = [], isLoading: txLoading } = useTransactions();
-  const { data: categories } = useCategories();
   const { data: accountsList } = useAccounts();
   // Cached copy first, so edits made in the sheet show up without reloading the page.
   const account = accountsList?.find((a) => a.id === initialAccount.id) ?? initialAccount;
@@ -213,7 +210,9 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
   const importable = !!account.bank_provider && IMPORTABLE_PROVIDERS.includes(account.bank_provider);
 
   const transactions = useMemo(() => allTransactions.filter((tx) => tx.account_id === account.id), [allTransactions, account.id]);
-  const countedIds = useMemo(() => new Set(metricTransactions(allTransactions, categories).map((tx) => tx.id)), [allTransactions, categories]);
+  // Unlike global metrics, every movement counts here: transfers and excluded categories
+  // (e.g. moving money between own accounts) really change this account's balance.
+  const countedIds = useMemo(() => new Set(transactions.map((tx) => tx.id)), [transactions]);
 
   // Month being looked at: from the first transaction's month up to the current one.
   const now = appNow();
@@ -253,8 +252,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
   }, [searchParams, autoUpload, router, account.id]);
 
   const monthTxs = transactions.filter((tx) => txMonthKey(tx) === selectedKey);
-  const counted = monthTxs.filter((tx) => countedIds.has(tx.id));
-  const { income, expense } = sumByType(counted);
+  const { income, expense } = sumByType(monthTxs);
   const net = income - expense;
   const balance = Number(account.balance);
   const savings = account.name.toLowerCase().includes("remunerada");
