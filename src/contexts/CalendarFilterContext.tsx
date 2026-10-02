@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { withViewTransition } from "@/lib/viewTransition";
 
 const STORAGE_KEY = "calendar_hidden_accounts";
 
@@ -15,29 +14,23 @@ function readHidden(): Set<string> {
 
 const CalendarFilterContext = createContext<{
   hiddenAccountIds: Set<string>;
-  toggleAccount: (accountId: string) => void;
-  showAll: () => void;
+  setHiddenAccountIds: (ids: Set<string>) => void;
 } | null>(null);
 
 /** Accounts hidden from the calendar (persisted in this browser). */
 export function CalendarFilterProvider({ children }: { children: ReactNode }) {
   const [hiddenAccountIds, setHidden] = useState<Set<string>>(() => (typeof window === "undefined" ? new Set() : readHidden()));
 
-  const update = (next: Set<string>) =>
-    withViewTransition(() => {
-      setHidden(next);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...next]));
-    }, "data-filter-transition");
-
-  const toggleAccount = (accountId: string) => {
-    const next = new Set(hiddenAccountIds);
-    if (!next.delete(accountId)) next.add(accountId);
-    update(next);
+  const setHiddenAccountIds = (ids: Set<string>) => {
+    setHidden(ids);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
+    } catch {
+      // Storage unavailable (private mode): the filter still applies for this visit.
+    }
   };
 
-  return (
-    <CalendarFilterContext.Provider value={{ hiddenAccountIds, toggleAccount, showAll: () => update(new Set()) }}>{children}</CalendarFilterContext.Provider>
-  );
+  return <CalendarFilterContext.Provider value={{ hiddenAccountIds, setHiddenAccountIds }}>{children}</CalendarFilterContext.Provider>;
 }
 
 export function useCalendarAccountFilter() {

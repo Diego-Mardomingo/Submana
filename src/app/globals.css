@@ -85,18 +85,6 @@ html[data-nav-direction="same"]::view-transition-new(root) {
   }
 }
 
-/* ── Calendar filter view transitions ── */
-html[data-filter-transition]::view-transition-old(root),
-html[data-filter-transition]::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-/* Keep calendar grid below popovers during transition */
-html[data-filter-transition]::view-transition-group(calendar-grid) {
-  z-index: 1;
-}
-
 /* Keep popovers on top during view transitions */
 [data-radix-popper-content-wrapper] {
   view-transition-name: popover-layer;
@@ -111,21 +99,6 @@ html[data-filter-transition]::view-transition-group(calendar-grid) {
   animation: none;
 }
 
-html[data-filter-transition]::view-transition-old(calendar-grid) {
-  animation: vt-fade-out 0.1s ease-out forwards;
-}
-
-html[data-filter-transition]::view-transition-new(calendar-grid) {
-  animation: vt-fade-in 0.12s ease-out 0.06s forwards;
-}
-
-/* ── Calendar: solo transición en iconos de subs (calendario y días instantáneos) ── */
-
-html[data-calendar-direction]::view-transition-old(root),
-html[data-calendar-direction]::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
 /* Paleta cohesiva: tonos desaturados y elegantes para diseño minimalista */
 :root,
 [data-theme="dark"] {
@@ -168,7 +141,7 @@ html[data-calendar-direction]::view-transition-new(root) {
   /* Teal - Turquesa suave */
   --teal: #5eead4;
 
-  /* Degradado sutil para tarjetas (igual que días del calendario) */
+  /* Degradado sutil para tarjetas */
   --card-subtle-gradient: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%, rgba(0, 0, 0, 0.03) 100%);
 }
 /* Paleta cohesiva para tema claro */
@@ -212,7 +185,7 @@ html[data-theme="light"] {
   /* Teal */
   --teal: #14b8a6;
 
-  /* Degradado sutil para tarjetas (igual que días del calendario) */
+  /* Degradado sutil para tarjetas */
   --card-subtle-gradient: linear-gradient(145deg, rgba(255, 255, 255, 0.02) 0%, transparent 50%, rgba(0, 0, 0, 0.03) 100%);
 }
 
@@ -458,147 +431,6 @@ button:not(:disabled),
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-.home-container {
-  width: 100%;
-  max-width: none;
-  margin: 0 auto;
-  padding: 2rem 1rem;
-  padding-bottom: 1rem;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-}
-
-/* Layout principal del home */
-.home-main {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1fr repeat(2, minmax(0, 1fr));
-  grid-template-rows: min-content 1fr;
-  gap: 1.5rem;
-  align-items: center;
-}
-
-/* Home: solo calendario con responsive */
-.home-main-calendar-only {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  width: 100%;
-  max-width: 600px;
-}
-
-.home-main-calendar-only .home-main-calendar {
-  width: 100%;
-  min-width: 0;
-}
-
-@media (max-width: 768px) {
-  .home-main-calendar-only {
-    max-width: none;
-    padding: 0;
-  }
-
-  .home-main-calendar-only .home-main-calendar {
-    width: 100%;
-  }
-}
-
-@media (min-width: 769px) and (max-width: 1200px) {
-  .home-main-calendar-only {
-    max-width: 500px;
-  }
-}
-
-.home-main-calendar {
-  grid-column: 1;
-  grid-row: 1 / -1;
-  min-width: 0;
-  width: 100%;
-  overflow: hidden;
-  align-self: center;
-}
-
-/* Entre 768px y 1770px: calendario + tarjetas apiladas verticalmente a la derecha */
-@media (max-width: 1770px) {
-  .home-main {
-    grid-template-columns: minmax(360px, 1.3fr) minmax(280px, 1fr);
-    grid-template-rows: repeat(3, auto);
-    align-items: center;
-  }
-
-  .home-main-calendar {
-    grid-column: 1;
-    grid-row: 1 / -1;
-    align-self: center;
-  }
-}
-
-/* Calendario más compacto cuando comparte espacio con las tarjetas (768–1770px) */
-@media (max-width: 1770px) and (min-width: 769px) {
-  .home-main-calendar .calendar_container {
-    padding: 0;
-  }
-
-  .home-main-calendar .nombre_mes {
-    font-size: 1.5rem;
-  }
-
-  .home-main-calendar .año {
-    font-size: 1rem;
-  }
-
-  .home-main-calendar .calendar_body,
-  .home-main-calendar .calendar_weekdays {
-    gap: 0.25rem;
-  }
-
-  .home-main-calendar .diaSemana {
-    padding: 0.35rem 0;
-    font-size: 0.6rem;
-  }
-
-  .home-main-calendar .dia_content .number {
-    font-size: 0.85rem;
-  }
-
-  .home-main-calendar .spent_value {
-    font-size: 1.2rem;
-  }
-
-  .home-main-calendar .spent_title {
-    font-size: 0.75rem;
-  }
-}
-
-/* Móvil: todo en una sola columna */
-@media (max-width: 768px) {
-  .home-container {
-    padding: 1rem 0.5rem;
-    padding-bottom: 0;
-  }
-
-  .home-main {
-    grid-template-columns: 1fr;
-    grid-template-rows: unset;
-    gap: 0.6rem;
-  }
-
-  /* Tarjetas 1 y 2 (balance y resumen) más compactas para que el calendario quepa en el viewport */
-
-  .home-main-calendar {
-    order: 3;
-    grid-column: auto;
-    grid-row: auto;
-  }
-}
-
-@media (max-width: 380px) {
-  .home-container {
-    padding: 1.5rem 0.35rem;
-  }
 }
 
 /* ── Login (astro parity) ── */

@@ -1,94 +1,85 @@
 "use client";
 
-import { Filter } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { useAccounts } from "@/hooks/useAccounts";
+import { useState } from "react";
+import { ListFilter } from "lucide-react";
+import { Chips, FieldGroup, FieldStack, SheetButton } from "@/components/SheetFields";
+import { Sheet, SheetBody, SheetFooter } from "@/components/ui/sheet";
 import { useCalendarAccountFilter } from "@/contexts/CalendarFilterContext";
+import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
-import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
+/** Header button that opens a sheet to choose which accounts the calendar shows. */
 export default function CalendarAccountFilter() {
-  const lang = useLang();
-  const t = useTranslations(lang);
+  const es = useLang() === "es";
   const { data: accounts = [] } = useAccounts();
-  const { hiddenAccountIds, toggleAccount, showAll } = useCalendarAccountFilter();
-  const hiddenCount = hiddenAccountIds.size;
+  const { hiddenAccountIds, setHiddenAccountIds } = useCalendarAccountFilter();
+  const [open, setOpen] = useState(false);
+  // Ids of accounts that no longer exist don't count.
+  const hiddenCount = accounts.filter((acc) => hiddenAccountIds.has(acc.id)).length;
 
-  if (accounts.length === 0) return null;
+  // With one account there is nothing to filter (unless it was hidden before).
+  if (accounts.length < 2 && hiddenCount === 0) return null;
+
+  const visible = accounts.filter((acc) => !hiddenAccountIds.has(acc.id)).map((acc) => acc.id);
+  const label = es ? "Filtrar cuentas" : "Filter accounts";
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="calendar-filter-btn relative shrink-0"
-          aria-label={t("calendar.filter_accounts")}
-        >
-          <Filter className="size-4" strokeWidth={2.5} />
-          {hiddenCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-primary">
-              {hiddenCount}
-            </span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 p-0">
-        <div className="border-b px-3 py-2">
-          <p className="text-sm font-medium">{t("calendar.filter_accounts")}</p>
-          <p className="text-xs text-muted-foreground">
-            {hiddenCount === 0
-              ? t("calendar.all_accounts_visible")
-              : t("calendar.hidden_accounts").replace(
-                  "{count}",
-                  String(hiddenCount)
-                )}
-          </p>
-        </div>
-        <div className="max-h-[200px] overflow-y-auto py-1">
-          {accounts.map((account) => {
-            const isHidden = hiddenAccountIds.has(account.id);
-            return (
-              <label
-                key={account.id}
-                className={cn(
-                  "flex w-full cursor-pointer items-center gap-3 px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
-                  isHidden && "opacity-50"
-                )}
-              >
-                <Checkbox
-                  checked={!isHidden}
-                  onCheckedChange={() => toggleAccount(account.id)}
-                />
-                <span
-                  className="size-3 shrink-0 rounded-full"
-                  style={{ backgroundColor: account.color || "#888" }}
-                />
-                <span className="truncate">{account.name}</span>
-              </label>
-            );
-          })}
-        </div>
-        {hiddenCount > 0 && (
-          <div className="border-t px-3 py-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={showAll}
-              className="h-7 w-full text-xs"
+    <>
+      <button
+        type="button"
+        className={cn("cal-filter-btn", hiddenCount > 0 && "is-active")}
+        onClick={() => setOpen(true)}
+        aria-label={hiddenCount > 0 ? `${label} (${hiddenCount} ${es ? "ocultas" : "hidden"})` : label}
+      >
+        <ListFilter className="size-[18px]" strokeWidth={2.25} aria-hidden />
+        {hiddenCount > 0 && <span className="cal-filter-badge">{hiddenCount}</span>}
+      </button>
+
+      <Sheet
+        open={open}
+        onOpenChange={setOpen}
+        title={es ? "Cuentas del calendario" : "Calendar accounts"}
+        description={es ? "Elige qué cuentas aparecen en el calendario" : "Choose which accounts the calendar shows"}
+      >
+        <SheetBody>
+          <FieldGroup
+            hint={es ? "Se guarda en este dispositivo. No afecta al panel ni a tus movimientos." : "Saved on this device. It doesn't affect the dashboard or your transactions."}
+          >
+            <FieldStack
+              label={es ? "Visibles" : "Visible"}
+              aside={
+                <span className="sf-row-label">
+                  {visible.length}/{accounts.length}
+                </span>
+              }
             >
-              {t("calendar.show_all")}
-            </Button>
+              <Chips
+                multiple
+                label={label}
+                value={visible}
+                onChange={(ids) => setHiddenAccountIds(new Set(accounts.filter((acc) => !ids.includes(acc.id)).map((acc) => acc.id)))}
+                options={accounts.map((acc) => ({
+                  value: acc.id,
+                  label: acc.name,
+                  color: acc.color || undefined,
+                  icon: <span className="cal-filter-dot" style={{ background: acc.color || "var(--gris-claro)" }} aria-hidden />,
+                }))}
+              />
+            </FieldStack>
+          </FieldGroup>
+        </SheetBody>
+        <SheetFooter>
+          <div className="sheet-footer-row">
+            <SheetButton type="button" variant="ghost" onClick={() => setHiddenAccountIds(new Set())} disabled={hiddenCount === 0}>
+              {es ? "Mostrar todas" : "Show all"}
+            </SheetButton>
+            <SheetButton type="button" onClick={() => setOpen(false)}>
+              {es ? "Listo" : "Done"}
+            </SheetButton>
           </div>
-        )}
-      </PopoverContent>
-    </Popover>
+        </SheetFooter>
+      </Sheet>
+    </>
   );
 }

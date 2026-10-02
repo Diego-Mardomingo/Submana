@@ -52,7 +52,7 @@ function useDateLabels() {
   return { short, relative };
 }
 
-const SubscriptionIcon = ({ sub }: { sub: Subscription }) => (
+export const SubscriptionIcon = ({ sub }: { sub: Pick<Subscription, "icon" | "service_name"> }) => (
   <span className="lp-icon" aria-hidden>
     {/* eslint-disable-next-line @next/next/no-img-element -- remote service logos */}
     <img src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt="" />
