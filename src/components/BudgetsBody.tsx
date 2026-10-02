@@ -25,8 +25,8 @@ const statusColor = (pct: number, base: string) => (pct > 100 ? "var(--danger)" 
 
 const money = (n: number) => <SensitiveAmount>{formatCurrency(n)}</SensitiveAmount>;
 
-/** Row body shared by the list and the drag overlay. */
-function BudgetRowContent({ budget, categories }: { budget: BudgetWithSpent; categories: Lookup }) {
+/** Row body shared by the list, the drag overlay and the dashboard. */
+export function BudgetRowContent({ budget, categories }: { budget: BudgetWithSpent; categories: Lookup }) {
   const lang = useLang();
   const t = useTranslations(lang);
   const amount = Number(budget.amount);

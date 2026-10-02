@@ -1,0 +1,521 @@
+/* ═══════════════════════════════════════════════
+   DASHBOARD — daily overview built on the list-pages vocabulary (lp-card, lp-row, lp-stats…).
+   Mobile: one column (balance → month → trends). Tablet: month cards in two columns.
+   Desktop: balance summary next to its chart, month cards in three columns, trends 2:1.
+   ═══════════════════════════════════════════════ */
+
+@media (min-width: 1024px) {
+  .dash-page.lp-page.page-container {
+    max-width: 1240px;
+  }
+}
+
+.dash-header {
+  justify-content: flex-start;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.75rem;
+}
+
+.dash-date {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+.dash-date::first-letter {
+  text-transform: uppercase;
+}
+
+.dash-layout,
+.dash-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.dash-layout {
+  gap: 1.5rem;
+}
+
+.dash-section {
+  gap: 0.6rem;
+}
+
+/* ── Cards ── */
+.dash-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.875rem 1rem 1rem;
+}
+
+.dash-card--list {
+  padding-bottom: 0.25rem;
+}
+
+.dash-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 24px;
+}
+
+.dash-card-head .lp-section-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gris-muy-claro);
+}
+
+.dash-see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dash-see-all:hover {
+  text-decoration: underline;
+}
+
+.dash-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: 22px;
+  padding: 0 0.5rem;
+  border-radius: 99px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-badge.is-up {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.dash-badge.is-down {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.dash-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  flex: 1;
+  min-height: 120px;
+  margin: 0;
+  padding-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--gris-claro);
+  text-align: center;
+}
+
+.dash-empty p {
+  margin: 0;
+}
+
+.dash-empty .lp-chip {
+  height: 30px;
+  padding: 0 0.85rem;
+  font-size: 0.78rem;
+  text-decoration: none;
+}
+
+.dash-block-skeleton {
+  height: 132px;
+  border-radius: 12px;
+}
+
+/* Rows inside a card run edge to edge, like the grouped lists */
+.dash-list {
+  margin: 0 -1rem;
+  border-top: 1px solid var(--lp-divider);
+  transition: opacity 0.2s ease;
+}
+
+.dash-list > a.lp-row {
+  min-height: 52px;
+}
+
+.dash-list.is-refreshing {
+  opacity: 0.6;
+}
+
+/* ── Hero: total balance + accounts + chart ── */
+.dash-hero {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dash-hero-skeleton {
+  height: 420px;
+}
+
+.dash-hero-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 1rem 1rem 0.875rem;
+}
+
+.dash-hero-value-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+
+.dash-hero-value {
+  font-size: clamp(2rem, 9vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  color: var(--blanco);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-delta {
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-hero-meter {
+  height: 8px;
+}
+
+.dash-hero-meter > span {
+  transition: opacity 0.2s ease, width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dash-hero-meter > span.is-dim {
+  opacity: 0.25;
+}
+
+.dash-hero-caption {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+/* Account selector: horizontal strip on phones, list on desktop */
+.dash-accounts {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0 -1rem;
+  padding: 0.125rem 1rem 0.25rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 1rem;
+  scrollbar-width: none;
+}
+
+.dash-accounts::-webkit-scrollbar {
+  display: none;
+}
+
+.dash-account {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  flex: 0 0 auto;
+  min-width: 128px;
+  max-width: 180px;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--gris);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+  .dash-account:hover {
+    background: var(--lp-row-hover);
+  }
+}
+
+.dash-account[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.dash-account:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dash-account-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  min-width: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-muy-claro);
+}
+
+.dash-account-name > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-account-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dash-account-dot--all {
+  background: conic-gradient(var(--accent), var(--success), var(--info, #3b82f6), var(--accent));
+}
+
+.dash-account-logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: var(--negro);
+  flex-shrink: 0;
+}
+
+.dash-account-value {
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--blanco);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-hero-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.875rem 1rem 1rem;
+  border-top: 1px solid var(--lp-divider);
+}
+
+/* ── Charts ── */
+.dash-chart {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  touch-action: pan-y pinch-zoom;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.dash-chart--hero {
+  height: 220px;
+}
+
+.dash-chart-skeleton {
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+}
+
+.dash-legend {
+  display: flex;
+  gap: 1rem;
+  margin-top: -0.4rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+.dash-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dash-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.dash-card-foot {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--lp-divider);
+}
+
+/* ── Month section ── */
+.dash-month {
+  margin: 0;
+}
+
+.dash-month-grid,
+.dash-trends {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.dash-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.dash-summary-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-content: stretch;
+}
+
+.dash-kv {
+  display: flex;
+  flex-direction: column;
+}
+
+.dash-kv > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  font-size: 0.8rem;
+  color: var(--gris-claro);
+}
+
+.dash-kv > div + div {
+  border-top: 1px solid var(--lp-divider);
+}
+
+.dash-kv > div > span:last-child {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--blanco);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-kv > div > span.is-income { color: var(--success); }
+.dash-kv > div > span.is-negative { color: var(--danger); }
+.dash-kv > div > span.is-muted { color: var(--gris-claro); }
+
+@media (min-width: 768px) {
+  .dash-chart {
+    height: 230px;
+  }
+
+  .dash-chart--hero {
+    height: 260px;
+  }
+
+  .dash-month-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dash-month-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dash-hero {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+
+  .dash-hero-summary {
+    padding: 1.25rem;
+    border-right: 1px solid var(--lp-divider);
+  }
+
+  .dash-hero-chart {
+    padding: 1.25rem 1.25rem 1rem;
+    border-top: none;
+  }
+
+  .dash-chart--hero {
+    height: auto;
+    flex: 1;
+    min-height: 260px;
+  }
+
+  .dash-accounts {
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.25rem -0.5rem 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .dash-account {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-width: 0;
+    max-width: none;
+    padding: 0.5rem 0.6rem;
+    border-color: transparent;
+    border-radius: 10px;
+  }
+
+  .dash-account-name {
+    font-size: 0.85rem;
+    color: var(--blanco);
+  }
+
+  .dash-account-value {
+    font-size: 0.85rem;
+  }
+
+  .dash-month-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dash-month-grid > :first-child {
+    grid-column: auto;
+  }
+
+  .dash-trends {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+
+  .dash-month {
+    justify-content: flex-start;
+  }
+
+  .dash-month .lp-month-title {
+    flex: 0 1 auto;
+    min-width: 11rem;
+  }
+}

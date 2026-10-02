@@ -7,7 +7,6 @@ import { Bell, Calendar, ChevronDown, ChevronUp, CreditCard, House, LayoutDashbo
 import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
 import { LogoMark, TransactionsIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import type { UIKey } from "@/lib/i18n/ui";
@@ -30,19 +29,6 @@ const NAV_ITEMS: { href: string; shortcut: string; labelKey: UIKey; icon: React.
   { href: "/settings", shortcut: "x", labelKey: "nav.settings", icon: Settings, extra: true },
 ];
 const ADD_SHORTCUT = "w";
-
-/** Wraps `children` in a tooltip on desktop only. */
-function DesktopTooltip({ tip, enabled, children }: { tip: string; enabled: boolean; children: React.ReactElement }) {
-  if (!enabled) return children;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side="top" sideOffset={8}>
-        {tip}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -69,39 +55,36 @@ export default function Navigation() {
   }, []);
 
   const navLink = ({ href, shortcut, labelKey, icon: Icon, extra }: (typeof NAV_ITEMS)[number]) => (
-    <DesktopTooltip key={href} enabled={!isMobile} tip={`${t(labelKey)} (${shortcut.toUpperCase()})`}>
-      <Link
-        href={href}
-        className={cn(styles.navItem, currentPath === href && styles.active, extra && styles.extraItem)}
-        onClick={() => {
-          setExpanded(false);
-          setShowAdd(false);
-        }}
-      >
-        <Icon {...iconProps} />
-        <span>{t(labelKey)}</span>
-        <kbd className={styles.shortcutBadge}>{shortcut.toUpperCase()}</kbd>
-      </Link>
-    </DesktopTooltip>
+    <Link
+      key={href}
+      href={href}
+      className={cn(styles.navItem, currentPath === href && styles.active, extra && styles.extraItem)}
+      onClick={() => {
+        setExpanded(false);
+        setShowAdd(false);
+      }}
+    >
+      <Icon {...iconProps} />
+      <span>{t(labelKey)}</span>
+      <kbd className={styles.shortcutBadge}>{shortcut.toUpperCase()}</kbd>
+    </Link>
   );
 
   const menuLabel = t(expanded ? "nav.close" : "nav.menu");
   const menuButton = (
-    <DesktopTooltip enabled={!isMobile} tip={menuLabel}>
-      <Button
-        type="button"
-        variant="ghost"
-        className={cn(styles.navItem, styles.moreBtn)}
-        onClick={() => {
-          setShowAdd(false);
-          setExpanded((e) => !e);
-        }}
-        aria-label={t("nav.menu")}
-      >
-        <div className={styles.iconContainer}>{expanded ? <ChevronDown {...iconProps} /> : <ChevronUp {...iconProps} />}</div>
-        <span>{menuLabel}</span>
-      </Button>
-    </DesktopTooltip>
+    <Button
+      type="button"
+      variant="ghost"
+      className={cn(styles.navItem, styles.moreBtn)}
+      onClick={() => {
+        setShowAdd(false);
+        setExpanded((e) => !e);
+      }}
+      aria-label={t("nav.menu")}
+    >
+      <div className={styles.iconContainer}>{expanded ? <ChevronDown {...iconProps} /> : <ChevronUp {...iconProps} />}</div>
+      <span>{menuLabel}</span>
+    </Button>
   );
   const compactMobile = isMobile && !expanded;
 
@@ -135,13 +118,11 @@ export default function Navigation() {
             ) : (
               <>
                 {!isMobile && (
-                  <DesktopTooltip enabled tip={`${t("nav.add")} (W)`}>
-                    <button type="button" className={cn("add-btn", styles.navAddBtn)} onClick={() => setShowAdd(true)} aria-label={t("nav.add")}>
-                      <Plus className="h-5 w-5" strokeWidth={2.5} />
-                      <span>{t("nav.add")}</span>
-                      <kbd className={styles.shortcutBadge}>W</kbd>
-                    </button>
-                  </DesktopTooltip>
+                  <button type="button" className={cn("add-btn", styles.navAddBtn)} onClick={() => setShowAdd(true)} aria-label={t("nav.add")}>
+                    <Plus className="h-5 w-5" strokeWidth={2.5} />
+                    <span>{t("nav.add")}</span>
+                    <kbd className={styles.shortcutBadge}>W</kbd>
+                  </button>
                 )}
                 {NAV_ITEMS.map(navLink)}
                 {menuButton}

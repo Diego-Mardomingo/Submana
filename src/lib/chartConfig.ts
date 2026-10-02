@@ -17,22 +17,34 @@ import {
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Filler, Tooltip, Legend);
 
 if (typeof window !== "undefined") {
-  // On touch devices tooltips open on tap only, and any scroll dismisses them.
-  if ("ontouchstart" in window || navigator.maxTouchPoints > 0) ChartJS.defaults.events = ["click"];
+  // On touch devices tooltips open on tap only; tapping the chart again, tapping anywhere else
+  // or scrolling dismisses them.
+  const touch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  if (touch) ChartJS.defaults.events = ["click"];
+  const hasTooltip = (chart: ChartJS) => !!chart.tooltip?.getActiveElements().length;
+  const hideTooltip = (chart: ChartJS) => {
+    chart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    chart.setActiveElements([]);
+    chart.update("none");
+  };
   ChartJS.register({
-    id: "dismissOnScroll",
+    id: "dismissTooltip",
     beforeInit(chart: ChartJS) {
-      const handler = () => {
-        if (!chart.tooltip?.getActiveElements().length) return;
-        chart.tooltip.setActiveElements([], { x: 0, y: 0 });
-        chart.update("none");
-      };
-      window.addEventListener("scroll", handler, { passive: true, capture: true });
+      const onScroll = () => hasTooltip(chart) && hideTooltip(chart);
+      const onPointerDown = (e: PointerEvent) => e.target !== chart.canvas && hasTooltip(chart) && hideTooltip(chart);
+      window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+      if (touch) document.addEventListener("pointerdown", onPointerDown, { passive: true, capture: true });
       const destroy = chart.destroy.bind(chart);
       chart.destroy = () => {
-        window.removeEventListener("scroll", handler, { capture: true });
+        window.removeEventListener("scroll", onScroll, { capture: true });
+        document.removeEventListener("pointerdown", onPointerDown, { capture: true });
         destroy();
       };
+    },
+    beforeEvent(chart: ChartJS, args: { event: { type: string } }) {
+      if (!touch || args.event.type !== "click" || !hasTooltip(chart)) return;
+      hideTooltip(chart);
+      return false;
     },
   });
 }
