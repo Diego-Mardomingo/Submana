@@ -16,6 +16,19 @@ const iconSizes: Record<Variant, string> = {
   settings: "h-12 w-12",
 };
 
+// Cristal de maná: facetas con los colores del tema (acento, acento suave, éxito)
+const deep = "color-mix(in srgb, var(--accent) 55%, #000)";
+const facets = [
+  { points: "20,12 26,25 8,25", fill: "var(--accent-light)" },
+  { points: "20,12 32,12 26,25", fill: "var(--accent)" },
+  { points: "32,12 38,25 26,25", fill: "var(--success)" },
+  { points: "32,12 44,12 38,25", fill: "var(--accent-light)" },
+  { points: "44,12 56,25 38,25", fill: "var(--accent)" },
+  { points: "8,25 26,25 32,55", fill: deep },
+  { points: "26,25 38,25 32,55", fill: "var(--accent)" },
+  { points: "38,25 56,25 32,55", fill: "var(--accent-light)" },
+];
+
 export function Logo({ variant = "large", className = "" }: LogoProps) {
   return (
     <Link
@@ -33,32 +46,15 @@ export function Logo({ variant = "large", className = "" }: LogoProps) {
           <svg
             width="100%"
             height="100%"
-            viewBox="0 0 24 24"
-            fill="none"
+            viewBox="0 8 64 52"
             xmlns="http://www.w3.org/2000/svg"
             style={{ filter: "drop-shadow(0 0 12px var(--accent-muted))" }}
           >
-            <path
-              d="M12 2L2 7L12 12L22 7L12 2Z"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M2 17L12 22L22 17"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M2 12L12 17L22 12"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <g style={{ stroke: "var(--negro)" }} strokeWidth="1.6" strokeLinejoin="round">
+              {facets.map(({ points, fill }) => (
+                <polygon key={points} points={points} style={{ fill }} />
+              ))}
+            </g>
           </svg>
         </div>
         <span
