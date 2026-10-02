@@ -1,90 +1,32 @@
+import { useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useCallback } from "react";
+import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 
-type ReorderableTable = "accounts" | "budgets";
-
-interface ReorderItem {
-  id: string;
-  display_order: number;
-}
-
-interface UseReorderOptions {
-  table: ReorderableTable;
-  onSuccess?: () => void;
-  onError?: (error: Error) => void;
-}
-
-async function reorderItems(table: ReorderableTable, items: ReorderItem[]) {
-  const res = await fetch("/api/reorder", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ table, items }),
-  });
-
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.error || "Error al reordenar");
-  }
-
-  return res.json();
-}
-
-function getInvalidateKey(table: ReorderableTable) {
-  if (table === "accounts") {
-    return queryKeys.accounts.all;
-  }
-  return queryKeys.budgets.all;
-}
-
-export function useReorder<T extends { id: string }>({ table, onSuccess, onError }: UseReorderOptions) {
+/** Persists a drag & drop order for accounts or budgets, updating the cached lists optimistically. */
+export function useReorder<T extends { id: string }>({ table }: { table: "accounts" | "budgets" }) {
   const queryClient = useQueryClient();
+  const queryKey = queryKeys[table].all;
 
-  const mutation = useMutation({
-    mutationFn: (items: ReorderItem[]) => reorderItems(table, items),
-    onError: (error: Error) => {
+  const { mutate, isPending } = useMutation({
+    mutationFn: (items: { id: string; display_order: number }[]) => api("/api/reorder", "POST", { table, items }),
+    onError: () => {
       toast.error("Error al reordenar");
-      queryClient.invalidateQueries({ queryKey: getInvalidateKey(table) });
-      onError?.(error);
-    },
-    onSuccess: () => {
-      onSuccess?.();
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 
   const handleReorder = useCallback(
     (newItems: T[]) => {
-      const items: ReorderItem[] = newItems.map((item, index) => ({
-        id: item.id,
-        display_order: index,
-      }));
-
-      // Actualización optimista: actualiza todas las queries que coincidan con el prefijo
-      const queryKey = getInvalidateKey(table);
-      queryClient.setQueriesData<T[]>(
-        { queryKey },
-        (oldData) => {
-          if (!oldData) return oldData;
-          // Crear un mapa de id -> nuevo orden
-          const orderMap = new Map(newItems.map((item, idx) => [item.id, idx]));
-          // Reordenar los datos existentes según el nuevo orden
-          return [...oldData].sort((a, b) => {
-            const orderA = orderMap.get(a.id) ?? Infinity;
-            const orderB = orderMap.get(b.id) ?? Infinity;
-            return orderA - orderB;
-          });
-        }
+      const order = new Map(newItems.map((item, index) => [item.id, index]));
+      queryClient.setQueriesData<T[]>({ queryKey }, (old) =>
+        old && [...old].sort((a, b) => (order.get(a.id) ?? Infinity) - (order.get(b.id) ?? Infinity))
       );
-
-      mutation.mutate(items);
+      mutate(newItems.map((item, index) => ({ id: item.id, display_order: index })));
     },
-    [queryClient, table, mutation]
+    [queryClient, queryKey, mutate]
   );
 
-  return {
-    handleReorder,
-    isReordering: mutation.isPending,
-    error: mutation.error,
-  };
+  return { handleReorder, isReordering: isPending };
 }

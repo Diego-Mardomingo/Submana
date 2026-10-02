@@ -4,17 +4,14 @@ import {
 	buildDuplicateConflictKey,
 	buildDuplicateConflictKeyLegacy,
 } from "@/lib/parsers/importKeys";
-import {
-	amountsEqualExactCents,
-	calendarDateKeyForDuplicate,
-} from "@/lib/duplicateImport";
+import { calendarDayInAppTimeZone } from "@/lib/date";
 
 /** Margen horario para considerar la misma fila de extracto reexportada con otra zona horaria. */
 const SHIFTED_REIMPORT_WINDOW_MS = 3 * 60 * 60 * 1000;
 const QUERY_BATCH_SIZE = 80;
 const QUERY_PAGE_SIZE = 1000;
 
-export interface ReimportComparable {
+interface ReimportComparable {
 	date: string;
 	amount: number | string;
 	type: string;
@@ -22,7 +19,7 @@ export interface ReimportComparable {
 	statement_balance?: number | string | null;
 }
 
-function toCents(value: number | string): number {
+export function toCents(value: number | string): number {
 	return Math.round(Number(value) * 100);
 }
 
@@ -155,17 +152,10 @@ export async function collectPossibleDuplicatesManualVsImport(args: {
 			.eq("amount", inserted.amount)
 			.eq("type", inserted.type);
 
-		const candidates = (manualSameAmount || []).filter((row) =>
-			amountsEqualExactCents(Number(row.amount), Number(inserted.amount))
-		);
-
-		const insertedDay = calendarDateKeyForDuplicate(String(inserted.date));
-		for (const existing of candidates) {
-			if (
-				calendarDateKeyForDuplicate(String(existing.date)) !== insertedDay
-			) {
-				continue;
-			}
+		const insertedDay = calendarDayInAppTimeZone(String(inserted.date));
+		for (const existing of manualSameAmount ?? []) {
+			if (toCents(existing.amount) !== toCents(inserted.amount)) continue;
+			if (calendarDayInAppTimeZone(String(existing.date)) !== insertedDay) continue;
 
 			const conflict_key = await buildDuplicateConflictKey(
 				accountId,

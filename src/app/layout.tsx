@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Sora, Inter } from "next/font/google";
 import "./globals.css";
 import "./components.css";
+import "./list-pages.css";
+import "./dashboard.css";
+import "./home.css";
+import "./sheet.css";
 import { Providers } from "./providers";
 
 const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });
@@ -16,10 +20,7 @@ export const metadata: Metadata = {
   openGraph: { type: "website", siteName: "Submana", title: "Submana", description: "Manage your subscriptions elegantly." },
   twitter: { card: "summary", title: "Submana", description: "Manage your subscriptions elegantly." },
   icons: {
-    icon: [
-      { url: "/icons/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
+    icon: { url: "/favicon.svg", type: "image/svg+xml" },
     apple: "/icons/apple-touch-icon.png",
   },
   manifest: "/manifest",
@@ -38,11 +39,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${sora.variable} ${inter.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${sora.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="antialiased font-sans" suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var t=localStorage.getItem('submana-theme');if(!t){var m=document.cookie.match(/submana-theme=([^;]+)/);t=m?m[1]:'system';}var e=t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',e);})();`,
+            // Applies the saved theme before paint and follows the OS while it is "system".
+            __html: `(function(){var c=(document.cookie.match(/submana-theme=([^;]+)/)||[])[1],m=matchMedia('(prefers-color-scheme: dark)');function a(){var t=localStorage.getItem('submana-theme')||c||'system';document.documentElement.setAttribute('data-theme',t==='system'?(m.matches?'dark':'light'):t)}a();m.addEventListener('change',a)})();`,
           }}
         />
         <Providers>{children}</Providers>

@@ -1,39 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
+import { getAuthedClient, isOwnedAccount, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
+  const { id } = await parseRequestBody(request);
+  if (!id) return jsonError("missing_id");
 
-  const { body } = await parseRequestBody(request);
-  const id = body.id;
+  if (!(await isOwnedAccount(supabase, user.id, id))) return jsonError("Account not found", 404);
 
-  if (!id) {
-    return jsonError("missing_id");
-  }
-
-  await supabase
-    .from("accounts")
-    .update({ is_default: false })
-    .eq("user_id", user.id);
-
-  const { error } = await supabase
-    .from("accounts")
-    .update({ is_default: true })
-    .eq("id", id)
-    .eq("user_id", user.id);
-
-  if (error) {
-    return jsonError(error.message, 500);
-  }
-
+  const { error: resetError } = await supabase.from("accounts").update({ is_default: false }).eq("user_id", user.id);
+  if (resetError) return jsonServerError("accounts/set-default", resetError);
+  const { error } = await supabase.from("accounts").update({ is_default: true }).eq("id", id).eq("user_id", user.id);
+  if (error) return jsonServerError("accounts/set-default", error);
   return jsonResponse({ data: { success: true } });
 }

@@ -1,312 +1,214 @@
 "use client";
 
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useCallback, useEffect } from "react";
-import {
-  House,
-  LayoutDashboard,
-  Calendar,
-  CreditCard,
-  Tags,
-  Bell,
-  Settings,
-  Wallet,
-  ChevronUp,
-  ChevronDown,
-  Plus,
-  type LucideIcon,
-} from "lucide-react";
-
-function TransactionsIcon({ size = 20, strokeWidth = 1.5 }: { size?: number; strokeWidth?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}>
-      <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16l-3 -2l-2 2l-2 -2l-2 2l-2 -2l-3 2" />
-      <path d="M15 7.8c-.523 -.502 -1.172 -.8 -1.875 -.8c-1.727 0 -3.125 1.791 -3.125 4s1.398 4 3.125 4c.703 0 1.352 -.298 1.874 -.8" />
-      <path d="M9 11h4" />
-    </svg>
-  );
-}
+import { Bell, Calendar, ChevronRight, CreditCard, House, LayoutDashboard, Menu, Plus, Settings, Tags, Wallet } from "lucide-react";
+import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
+import { LogoMark, TransactionsIcon } from "@/components/icons";
+import { FieldGroup } from "@/components/SheetFields";
+import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { useTranslations } from "@/lib/i18n/utils";
 import type { UIKey } from "@/lib/i18n/ui";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { useTranslations } from "@/lib/i18n/utils";
+import { getParentRoute } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
-import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
 import styles from "./Navigation.module.css";
 
-const iconProps = { size: 20, strokeWidth: 1.5 };
+const iconProps = { size: 20, strokeWidth: 1.75 };
 
-type NavItem = {
-  href: string;
-  shortcut: string;
-  labelKey: UIKey;
-  icon: LucideIcon | React.ComponentType<{ size?: number; strokeWidth?: number }>;
-  extra?: boolean;
+type NavItem = { href: string; shortcut: string; labelKey: UIKey; icon: React.ComponentType<typeof iconProps> };
+
+/** Keyboard shortcut → page. `main` sits in the mobile bar; the rest open from its menu sheet. */
+const NAV_GROUPS: Record<"main" | "manage" | "system", NavItem[]> = {
+  main: [
+    { href: "/", shortcut: "f", labelKey: "nav.home", icon: House },
+    { href: "/dashboard", shortcut: "d", labelKey: "nav.dashboard", icon: LayoutDashboard },
+    { href: "/transactions", shortcut: "q", labelKey: "nav.transactions", icon: TransactionsIcon },
+  ],
+  manage: [
+    { href: "/accounts", shortcut: "a", labelKey: "nav.accounts", icon: CreditCard },
+    { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: Tags },
+    { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: Calendar },
+    { href: "/budgets", shortcut: "e", labelKey: "nav.budgets", icon: Wallet },
+  ],
+  system: [
+    { href: "/notifications", shortcut: "z", labelKey: "nav.notifications", icon: Bell },
+    { href: "/settings", shortcut: "x", labelKey: "nav.settings", icon: Settings },
+  ],
 };
+const NAV_ITEMS = Object.values(NAV_GROUPS).flat();
+const MENU_ITEMS = [...NAV_GROUPS.manage, ...NAV_GROUPS.system];
+const ADD_SHORTCUT = "w";
 
-const navItems: NavItem[] = [
-  { href: "/", shortcut: "f", labelKey: "nav.home", icon: House },
-  { href: "/dashboard", shortcut: "d", labelKey: "nav.dashboard", icon: LayoutDashboard },
-  { href: "/transactions", shortcut: "q", labelKey: "nav.transactions", icon: TransactionsIcon },
-  { href: "/accounts", shortcut: "a", labelKey: "nav.accounts", icon: CreditCard, extra: true },
-  { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: Tags, extra: true },
-  { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: Calendar, extra: true },
-  { href: "/budgets", shortcut: "e", labelKey: "nav.budgets", icon: Wallet, extra: true },
-  { href: "/notifications", shortcut: "z", labelKey: "nav.notifications", icon: Bell, extra: true },
-  { href: "/settings", shortcut: "x", labelKey: "nav.settings", icon: Settings, extra: true },
-];
+/** Section a route belongs to (an account page lights up "Accounts"). */
+function sectionOf(pathname: string) {
+  const path = pathname.replace(/\/$/, "") || "/";
+  const parent = getParentRoute(path);
+  return parent === "/" ? path : parent;
+}
 
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const lang = useLang();
-  const t = useTranslations(lang);
+  const t = useTranslations(useLang());
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addAnchor, setAddAnchor] = useState<DOMRect | null>(null);
+  const addBtnRef = useRef<HTMLButtonElement>(null);
+  const section = sectionOf(pathname);
+  const inMenuSection = MENU_ITEMS.some((item) => item.href === section);
 
-  const currentPath = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
-
-  const [expanded, setExpanded] = useState(false);
-  const [showAddShortcuts, setShowAddShortcuts] = useState(false);
-
-  const closeExpand = useCallback(() => setExpanded(false), []);
-  const closeAddShortcuts = useCallback(() => setShowAddShortcuts(false), []);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-
-      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-
-      if (e.key.toLowerCase() === "w") {
-        e.preventDefault();
-        setShowAddShortcuts(true);
-        return;
-      }
-
-      const item = navItems.find((n) =>
-        n.shortcut.toLowerCase() === e.key.toLowerCase()
-      );
-      if (item) {
-        e.preventDefault();
-        router.push(item.href);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [router]);
-
-  useEffect(() => {
-    const mainRoutes = ["/", "/dashboard", "/transactions"];
-    mainRoutes.forEach((route) => router.prefetch(route));
-  }, [router]);
-
-  const NavLink = ({
-    href,
-    children,
-    extra,
-    label,
-    shortcut,
-    onClick: onNavClick,
-  }: {
-    href: string;
-    children: React.ReactNode;
-    extra?: boolean;
-    label: string;
-    shortcut: string;
-    onClick?: () => void;
-  }) => {
-    const isActive = currentPath === href;
-    const displayShortcut = shortcut.toLowerCase() === "tab" ? "⇥ TAB" : shortcut.toUpperCase();
-    const tooltipShortcut = shortcut.toLowerCase() === "tab" ? "Tab" : shortcut.toUpperCase();
-    const handleClick = () => {
-      closeExpand();
-      onNavClick?.();
-    };
-    const linkEl = (
-      <Link
-        href={href}
-        prefetch={true}
-        className={`${styles.navItem} ${isActive ? styles.active : ""} ${extra ? styles.extraItem : ""}`}
-        onClick={handleClick}
-      >
-        {children}
-        <kbd className={styles.shortcutBadge}>{displayShortcut}</kbd>
-      </Link>
-    );
-    if (isMobile) return linkEl;
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8}>
-          {label} ({tooltipShortcut})
-        </TooltipContent>
-      </Tooltip>
-    );
+  const openAdd = () => {
+    setMenuOpen(false);
+    setAddAnchor(addBtnRef.current?.getBoundingClientRect() ?? null);
+    setShowAdd(true);
   };
+
+  const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+    if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+    const key = e.key.toLowerCase();
+    const item = NAV_ITEMS.find((n) => n.shortcut === key);
+    if (key !== ADD_SHORTCUT && !item) return;
+    e.preventDefault();
+    if (item) router.push(item.href);
+    else openAdd();
+  });
+  useEffect(() => {
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  const closeAll = () => {
+    setMenuOpen(false);
+    setShowAdd(false);
+  };
+
+  const sidebarLink = ({ href, shortcut, labelKey, icon: Icon }: NavItem) => (
+    <Link
+      key={href}
+      href={href}
+      className={cn(styles.sideItem, section === href && styles.active)}
+      aria-current={section === href ? "page" : undefined}
+      onClick={closeAll}
+    >
+      <Icon {...iconProps} />
+      <span>{t(labelKey)}</span>
+      <kbd className={styles.kbd}>{shortcut.toUpperCase()}</kbd>
+    </Link>
+  );
 
   return (
     <>
-      <nav
-        className={`${styles.navigation} ${expanded ? styles.expanded : ""}`}
-        id="main-nav"
-      >
-        <div className={styles.navContent}>
-          <div className={styles.logoContainer}>
-            <Link href="/" className={styles.logoLink}>
-              <div className={styles.logoInner}>
-                <div className={styles.logoIcon}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                    <path d="M2 17L12 22L22 17" />
-                    <path d="M2 12L12 17L22 12" />
-                  </svg>
-                </div>
-                <span className={styles.submanaText}>Submana</span>
-              </div>
-            </Link>
-          </div>
-          <div
-            className={cn(
-              styles.navItemsWrapper,
-              isMobile && !expanded && styles.navItemsWrapperWithNotch
-            )}
+      {isMobile ? (
+        <nav className={styles.bar} id="main-nav" aria-label={t("nav.menu")}>
+          {NAV_GROUPS.main.slice(0, 2).map(({ href, icon, labelKey }) => (
+            <BarTab key={href} href={href} icon={icon} label={t(labelKey)} active={section === href} onClick={closeAll} />
+          ))}
+          <button
+            type="button"
+            className={cn(styles.notch, showAdd && styles.notchOpen)}
+            onClick={() => (showAdd ? setShowAdd(false) : openAdd())}
+            aria-label={t(showAdd ? "nav.close" : "nav.add")}
+            aria-expanded={showAdd}
           >
-            {isMobile && !expanded ? (
-              <>
-                <NavLink href="/" label={t("nav.home")} shortcut="f" onClick={closeAddShortcuts}>
-                  <House {...iconProps} />
-                  <span>{t("nav.home")}</span>
-                </NavLink>
-                <NavLink href="/dashboard" label={t("nav.dashboard")} shortcut="d" onClick={closeAddShortcuts}>
-                  <LayoutDashboard {...iconProps} />
-                  <span>{t("nav.dashboard")}</span>
-                </NavLink>
-                <button
-                  type="button"
-                  className={styles.navNotch}
-                  onClick={() => setShowAddShortcuts(true)}
-                  aria-label="Add"
-                >
-                  <svg className={styles.navNotchShape} viewBox="0 0 120 56" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M0 0 C28 0 24 40 60 40 C96 40 92 0 120 0 Z" fill="var(--accent)" />
-                  </svg>
-                  <Plus className={styles.navNotchIcon} strokeWidth={2.5} />
-                </button>
-                <NavLink href="/transactions" label={t("nav.transactions")} shortcut="q" onClick={closeAddShortcuts}>
-                  <TransactionsIcon {...iconProps} />
-                  <span>{t("nav.transactions")}</span>
-                </NavLink>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className={cn(styles.navItem, styles.moreBtn)}
-                  onClick={() => { closeAddShortcuts(); setExpanded((e) => !e); }}
-                  aria-label={t("nav.menu")}
-                >
-                  <div className={styles.iconContainer}>
-                    <ChevronUp {...iconProps} />
-                  </div>
-                  <span>{t("nav.menu")}</span>
-                </Button>
-              </>
-            ) : (
-              <>
-                {!isMobile && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn("add-btn", styles.navAddBtn)}
-                        onClick={() => setShowAddShortcuts(true)}
-                        aria-label={t("nav.add")}
-                      >
-                        <Plus className="h-5 w-5" strokeWidth={2.5} />
-                        <span>{t("nav.add")}</span>
-                        <kbd className={styles.shortcutBadge}>W</kbd>
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>
-                      {t("nav.add")} (W)
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {navItems.map((item) => (
-                  <NavLink
-                    key={item.href}
-                    href={item.href}
-                    label={t(item.labelKey)}
-                    extra={item.extra}
-                    shortcut={item.shortcut}
-                  >
-                    <item.icon {...iconProps} />
-                    <span>{t(item.labelKey)}</span>
-                  </NavLink>
-                ))}
-                {isMobile ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className={cn(styles.navItem, styles.moreBtn)}
-                    onClick={() => setExpanded((e) => !e)}
-                    aria-label={t("nav.menu")}
-                  >
-                    <div className={styles.iconContainer}>
-                      {expanded ? (
-                        <ChevronDown {...iconProps} />
-                      ) : (
-                        <ChevronUp {...iconProps} />
-                      )}
-                    </div>
-                    <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
-                  </Button>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className={cn(styles.navItem, styles.moreBtn)}
-                        onClick={() => setExpanded((e) => !e)}
-                        aria-label={t("nav.menu")}
-                      >
-                        <div className={styles.iconContainer}>
-                          {expanded ? (
-                            <ChevronDown {...iconProps} />
-                          ) : (
-                            <ChevronUp {...iconProps} />
-                          )}
-                        </div>
-                        <span>{expanded ? t("nav.close") : t("nav.menu")}</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" sideOffset={8}>
-                      {expanded ? t("nav.close") : t("nav.menu")}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </>
-            )}
+            <svg className={styles.notchShape} viewBox="0 0 120 44" aria-hidden>
+              <path d="M0 0 C28 0 24 40 60 40 C96 40 92 0 120 0 Z" />
+            </svg>
+            <Plus className={styles.notchIcon} strokeWidth={2.5} aria-hidden />
+          </button>
+          <BarTab href="/transactions" icon={TransactionsIcon} label={t("nav.transactions")} active={section === "/transactions"} onClick={closeAll} />
+          <BarTab
+            icon={Menu}
+            label={t("nav.menu")}
+            active={menuOpen || (inMenuSection && !showAdd)}
+            onClick={() => {
+              setShowAdd(false);
+              setMenuOpen(true);
+            }}
+          />
+        </nav>
+      ) : (
+        <nav className={styles.sidebar} id="main-nav">
+          <Link href="/" className={styles.brand} onClick={closeAll}>
+            <span className={styles.brandMark}>
+              <LogoMark />
+            </span>
+            <span className={styles.brandName}>Submana</span>
+          </Link>
+          <button
+            ref={addBtnRef}
+            type="button"
+            className={cn(styles.addBtn, showAdd && styles.addBtnOpen)}
+            onClick={() => (showAdd ? setShowAdd(false) : openAdd())}
+            aria-expanded={showAdd}
+          >
+            <Plus className={styles.addIcon} size={18} strokeWidth={2.5} aria-hidden />
+            <span>{t("nav.add")}</span>
+            <kbd className={styles.kbd}>W</kbd>
+          </button>
+          <div className={styles.sideGroup}>{NAV_GROUPS.main.map(sidebarLink)}</div>
+          <div className={styles.sideGroup}>
+            <span className={styles.sideHeading}>{t("nav.manage")}</span>
+            {NAV_GROUPS.manage.map(sidebarLink)}
           </div>
-        </div>
-      </nav>
-      <div
-        className={`${styles.navBackdrop} ${expanded ? styles.visible : ""}`}
-        onClick={closeExpand}
-        onKeyDown={(e) => e.key === "Escape" && closeExpand()}
-        role="button"
-        tabIndex={0}
-        aria-label="Close menu"
-      />
-      <AddShortcutsOverlay open={showAddShortcuts} onClose={() => setShowAddShortcuts(false)} />
+          <div className={cn(styles.sideGroup, styles.sideFooter)}>{NAV_GROUPS.system.map(sidebarLink)}</div>
+        </nav>
+      )}
+
+      {isMobile && (
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen} title={t("nav.menu")}>
+          <SheetBody className={styles.menuBody}>
+            {(["manage", "system"] as const).map((group) => (
+              <FieldGroup key={group} title={group === "manage" ? t("nav.manage") : undefined}>
+                {NAV_GROUPS[group].map(({ href, labelKey, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn("sf-row sf-action", styles.menuRow, section === href && styles.active)}
+                    aria-current={section === href ? "page" : undefined}
+                    onClick={closeAll}
+                  >
+                    <span className={styles.menuIcon}>
+                      <Icon {...iconProps} />
+                    </span>
+                    <span>{t(labelKey)}</span>
+                    <ChevronRight className={styles.menuChevron} aria-hidden />
+                  </Link>
+                ))}
+              </FieldGroup>
+            ))}
+          </SheetBody>
+        </Sheet>
+      )}
+
+      <AddShortcutsOverlay open={showAdd} anchor={isMobile ? null : addAnchor} onClose={() => setShowAdd(false)} />
     </>
+  );
+}
+
+/** Mobile bar tab: icon only, with its label shown while active. A link, or a button without `href`. */
+function BarTab({ href, icon: Icon, label, active, onClick }: { href?: string; icon: NavItem["icon"]; label: string; active: boolean; onClick: () => void }) {
+  const className = cn(styles.tab, active && styles.active);
+  const content = (
+    <>
+      <span className={styles.tabIcon}>
+        <Icon {...iconProps} />
+      </span>
+      <span className={styles.tabLabel}>{label}</span>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={className} aria-label={label} aria-current={active ? "page" : undefined} onClick={onClick}>
+      {content}
+    </Link>
+  ) : (
+    <button type="button" className={className} aria-label={label} aria-haspopup="dialog" onClick={onClick}>
+      {content}
+    </button>
   );
 }

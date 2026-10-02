@@ -1,63 +1,55 @@
-import type { CategoryWithSubs, CategoryItem } from "@/hooks/useCategories";
+import type { CategoryWithSubs } from "@/hooks/useCategories";
+import { detectTransferIds, type TransferDetectable } from "@/lib/transferDetection";
 
-/** IDs de categorías (o subcategorías) que excluyen transacciones de métricas */
-function getExcludedFromMetricsIds(categories: CategoryWithSubs[]): Set<string> {
-  const ids = new Set<string>();
-  const walk = (list: (CategoryWithSubs | CategoryItem)[]) => {
-    for (const c of list) {
-      if (c.exclude_from_metrics) ids.add(c.id);
-      const subs = (c as CategoryWithSubs).subcategories;
-      if (subs?.length) walk(subs);
-    }
-  };
-  walk(categories);
-  return ids;
-}
+type MetricTx = TransferDetectable & { category_id?: string | null; subcategory_id?: string | null };
 
-/** Map de subcategory_id -> parent category_id */
-function getSubToParent(categories: CategoryWithSubs[]): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const p of categories) {
-    for (const s of p.subcategories ?? []) {
-      m.set(s.id, p.id);
+/**
+ * Transactions that count for metrics (dashboard, summaries, budgets): drops detected transfers
+ * between own accounts and categories (or parents of subcategories) flagged exclude_from_metrics.
+ */
+export function metricTransactions<T extends MetricTx>(
+  transactions: T[],
+  categories?: { defaultCategories: CategoryWithSubs[]; userCategories: CategoryWithSubs[] }
+): T[] {
+  const excluded = new Set<string>();
+  const parentOf = new Map<string, string>();
+  for (const cat of [...(categories?.defaultCategories ?? []), ...(categories?.userCategories ?? [])]) {
+    if (cat.exclude_from_metrics) excluded.add(cat.id);
+    for (const sub of cat.subcategories ?? []) {
+      parentOf.set(sub.id, cat.id);
+      if (sub.exclude_from_metrics) excluded.add(sub.id);
     }
   }
-  return m;
+  const transferIds = detectTransferIds(transactions);
+  return transactions.filter((tx) => {
+    const categoryId = tx.category_id ?? (tx.subcategory_id && (parentOf.get(tx.subcategory_id) ?? tx.subcategory_id));
+    return !transferIds.has(tx.id) && !(categoryId && excluded.has(categoryId));
+  });
 }
 
-export interface MetricsFilterContext {
-  defaultCategories: CategoryWithSubs[];
-  userCategories: CategoryWithSubs[];
-}
-
-/**
- * Devuelve true si la transacción NO debe contarse en métricas.
- * Usar para filtrar antes de sumar/contar en dashboard, resúmenes y presupuestos.
- */
-export function shouldExcludeFromMetrics(
-  tx: { category_id?: string | null; subcategory_id?: string | null },
-  context: MetricsFilterContext
-): boolean {
-  const excludedIds = getExcludedFromMetricsIds([
-    ...context.defaultCategories,
-    ...context.userCategories,
-  ]);
-  if (excludedIds.size === 0) return false;
-
-  const catId = tx.category_id ?? (tx.subcategory_id
-    ? getSubToParent([...context.defaultCategories, ...context.userCategories]).get(tx.subcategory_id)
-    : undefined)
-    ?? tx.subcategory_id;
-
-  return catId ? excludedIds.has(catId) : false;
+/** Total income and expense of a list of transactions. */
+export function sumByType(transactions: { amount?: number | string; type?: string }[]) {
+  let income = 0;
+  let expense = 0;
+  for (const tx of transactions) {
+    if (tx.type === "income") income += Number(tx.amount) || 0;
+    else expense += Number(tx.amount) || 0;
+  }
+  return { income, expense };
 }
 
 /**
- * Filtra transacciones excluyendo las que tienen categoría marcada para no contar en métricas.
+ * Net effect of transactions on a balance (income adds, expense subtracts). Rebuilding historical
+ * balances uses ALL transactions: transfers and excluded categories also move money.
  */
-export function filterForMetrics<T extends { category_id?: string | null; subcategory_id?: string | null }>(
-  transactions: T[],
-  context: MetricsFilterContext
-): T[] {
-  return transactions.filter((tx) => !shouldExcludeFromMetrics(tx, context));
+export function netBalanceChange(transactions: { amount?: number | string; type?: string }[]) {
+  const { income, expense } = sumByType(transactions);
+  return income - expense;
+}
+
+/** Running totals of `values` starting at `start`, rounded to cents. */
+export function runningTotals(values: number[], start = 0) {
+  const totals: number[] = [];
+  for (const value of values) totals.push((totals.at(-1) ?? start) + value);
+  return totals.map((v) => Math.round(v * 100) / 100);
 }

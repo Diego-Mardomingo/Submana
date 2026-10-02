@@ -1,898 +1,490 @@
 "use client";
 
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import { useDeleteAccount } from "@/hooks/useAccountMutations";
-import { useTransactions } from "@/hooks/useTransactions";
-import { useLang } from "@/hooks/useLang";
-import { useTranslations } from "@/lib/i18n/utils";
-import { parseDateString } from "@/lib/date";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
-  type CarouselApi,
-} from "@/components/ui/carousel";
+import { ChevronDown, ChevronLeft, ChevronRight, FileUp, ListX, Plus, SquarePen, Star, Trash2 } from "lucide-react";
+import { Bones } from "@/components/Bones";
+import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
 import BankStatementUpload from "@/components/BankStatementUpload";
-import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
-import { useDeleteTransaction } from "@/hooks/useDeleteTransaction";
-import { useCategories } from "@/hooks/useCategories";
-import { filterForMetrics } from "@/lib/metricsFilters";
-import { saveScrollForReturn } from "@/lib/scrollRestore";
-import { useScrollRestore } from "@/hooks/useScrollRestore";
-import { ListX, Pencil, Trash2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useDeleteAccountTransactions } from "@/hooks/useDeleteAccountTransactions";
-import { useAccounts } from "@/hooks/useAccounts";
-import type { BankProvider } from "@/lib/bankProviders";
+import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
-import { detectTransferIds } from "@/lib/transferDetection";
+import { FieldGroup, FieldStack, FormError, Segmented, SheetButton } from "@/components/SheetFields";
+import { signed, TransactionDayList } from "@/components/TransactionDayList";
+import { TransactionSheet } from "@/components/TransactionSheet";
+import { Sheet, SheetBody, SheetFooter } from "@/components/ui/sheet";
+import { useAccounts, useDeleteAccount, useDeleteAccountTransactions, type Account } from "@/hooks/useAccounts";
+import { useLang } from "@/hooks/useLang";
+import { useSwipe } from "@/hooks/useSwipe";
+import { useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
+import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
+import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
+import { useTranslations } from "@/lib/i18n/utils";
+import { sumByType } from "@/lib/metricsFilters";
+import { cn } from "@/lib/utils";
 
-interface Account {
-  id: string;
-  name: string;
-  balance: number;
-  icon?: string;
-  color?: string;
-  is_default?: boolean;
-  bank_provider?: string | null;
-}
+const IMPORTABLE_PROVIDERS = ["trade_republic", "revolut", "bbva", "imagin"];
 
-interface TransactionItem {
-  id: string;
-  date: string;
-  amount: number;
-  type: string;
-  account_id?: string;
-  description?: string;
-  category?: { name: string } | null;
-  subcategory?: { name: string } | null;
-  category_id?: string | null;
-  subcategory_id?: string | null;
-}
+/** "YYYY-MM" of a transaction, in the app's time zone (same as its day group). */
+const txMonthKey = (tx: Transaction) => calendarDayInAppTimeZone(tx.date).slice(0, 7);
 
-function transactionMonthKey(dateStr: string) {
-  const d = parseDateString(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-export default function AccountDetail({ account }: { account: Account }) {
-  useScrollRestore();
+/** Months with transactions laid out by year: tap the first month, then the last one. */
+function MonthRangePicker({ counts, range, onChange }: {
+  counts: Map<string, number>;
+  range: { start: string; end: string; picking: boolean };
+  onChange: (range: { start: string; end: string; picking: boolean }) => void;
+}) {
   const lang = useLang();
-  const t = useTranslations(lang);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const importSectionRef = useRef<HTMLDivElement>(null);
-  const shouldScrollToImport = searchParams.get("import") === "1";
-  const shouldAutoOpenFilePicker = searchParams.get("autoupload") === "1";
-  const [showDelete, setShowDelete] = useState(false);
-  const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
-  const [showDeleteTx, setShowDeleteTx] = useState(false);
-  const [showBulkDeleteTx, setShowBulkDeleteTx] = useState(false);
-  const [bulkDeleteMode, setBulkDeleteMode] = useState<"all" | "range">("all");
-  const [rangeStartKey, setRangeStartKey] = useState("");
-  const [rangeEndKey, setRangeEndKey] = useState("");
-  const [bulkDeleteError, setBulkDeleteError] = useState<string | null>(null);
-  const deleteAccount = useDeleteAccount();
-  const deleteTransaction = useDeleteTransaction();
-  const deleteAccountTransactions = useDeleteAccountTransactions();
-
-  const { data: transactions = [], isLoading: txLoading } = useTransactions(
-    undefined,
-    undefined,
-    account.id
-  );
-  const { data: allTransactions = [] } = useTransactions();
-  const { data: categoriesData } = useCategories();
-  const { data: accountsList } = useAccounts();
-
-  const displayBalance = useMemo(() => {
-    const list = accountsList as Account[] | undefined;
-    const fromCache = list?.find((a) => a.id === account.id)?.balance;
-    return fromCache !== undefined ? Number(fromCache) : Number(account.balance);
-  }, [accountsList, account.id, account.balance]);
-
-  const formatCurrency = (n: number) => {
-    const formatted = new Intl.NumberFormat("es-ES", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-      useGrouping: true,
-    }).format(n);
-    return `${formatted} €`;
-  };
-
-  const formatDate = (dateStr: string) => {
-    const d = parseDateString(dateStr);
-    const day = d.getDate().toString().padStart(2, "0");
-    const month = (d.getMonth() + 1).toString().padStart(2, "0");
-    const year = d.getFullYear();
-    return `${day}-${month}-${year}`;
-  };
-
-  const formatMonthYear = (dateStr: string) => {
-    const d = parseDateString(dateStr);
-    const months = lang === "es"
-      ? ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-      : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    return `${months[d.getMonth()]} ${d.getFullYear()}`;
-  };
-
-  const formatDayMonth = (dateStr: string) => {
-    const d = parseDateString(dateStr);
-    const day = d.getDate();
-    const months = lang === "es"
-      ? ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-      : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${day} ${months[d.getMonth()]}`;
-  };
-
-  useEffect(() => {
-    if ((!shouldScrollToImport && !shouldAutoOpenFilePicker) || !importSectionRef.current) {
-      return;
-    }
-    if (shouldScrollToImport) {
-      importSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-    const cleanupTimer = window.setTimeout(() => {
-      router.replace(`/account/${account.id}`, { scroll: false });
-    }, 350);
-    return () => window.clearTimeout(cleanupTimer);
-  }, [shouldScrollToImport, shouldAutoOpenFilePicker, router, account.id]);
-
-  const groupTransactionsByMonthAndDay = (txs: TransactionItem[]) => {
-    const sorted = [...txs].sort((a, b) => parseDateString(b.date).getTime() - parseDateString(a.date).getTime());
-    const byMonth: Record<string, Record<string, TransactionItem[]>> = {};
-
-    for (const tx of sorted) {
-      const d = parseDateString(tx.date);
-      const monthKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}`;
-      const dayKey = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
-
-      if (!byMonth[monthKey]) byMonth[monthKey] = {};
-      if (!byMonth[monthKey][dayKey]) byMonth[monthKey][dayKey] = [];
-      byMonth[monthKey][dayKey].push(tx);
-    }
-
-    return byMonth;
-  };
-
-  const handleDelete = async () => {
-    await deleteAccount.mutateAsync(account.id);
-    router.push("/accounts");
-  };
-
-  const groupedTransactions = groupTransactionsByMonthAndDay(transactions as TransactionItem[]);
-
-  const monthsWithTransactions = useMemo(() => {
-    const txs = transactions as TransactionItem[];
-    const keys = new Set<string>();
-    for (const tx of txs) {
-      keys.add(transactionMonthKey(tx.date));
-    }
-    return Array.from(keys)
-      .sort()
-      .map((key) => {
-        const [y, m] = key.split("-").map(Number);
-        return { key, year: y, month1to12: m };
-      });
-  }, [transactions]);
-
-  const bulkDeleteCount = useMemo(() => {
-    const txs = transactions as TransactionItem[];
-    if (bulkDeleteMode === "all") return txs.length;
-    if (!rangeStartKey || !rangeEndKey || rangeStartKey > rangeEndKey) return 0;
-    return txs.filter((tx) => {
-      const k = transactionMonthKey(tx.date);
-      return k >= rangeStartKey && k <= rangeEndKey;
-    }).length;
-  }, [transactions, bulkDeleteMode, rangeStartKey, rangeEndKey]);
-
-  const handleBulkDeleteConfirm = useCallback(async () => {
-    setBulkDeleteError(null);
-    try {
-      if (bulkDeleteMode === "all") {
-        await deleteAccountTransactions.mutateAsync({
-          accountId: account.id,
-          payload: { mode: "all" },
-        });
-      } else {
-        const [sy, sm] = rangeStartKey.split("-").map(Number);
-        const [ey, em] = rangeEndKey.split("-").map(Number);
-        await deleteAccountTransactions.mutateAsync({
-          accountId: account.id,
-          payload: {
-            mode: "range",
-            startYear: sy,
-            startMonth: sm,
-            endYear: ey,
-            endMonth: em,
-          },
-        });
-      }
-      router.refresh();
-      setShowBulkDeleteTx(false);
-    } catch {
-      setBulkDeleteError(t("accounts.deleteTransactionsError"));
-    }
-  }, [
-    bulkDeleteMode,
-    rangeStartKey,
-    rangeEndKey,
-    account.id,
-    deleteAccountTransactions,
-    router,
-    t,
-  ]);
-
-  const subToParent = useMemo(() => {
-    const m = new Map<string, string>();
-    const walk = (list: Array<{ id: string; subcategories?: Array<{ id: string }> }>) => {
-      for (const p of list) {
-        for (const s of p.subcategories ?? []) m.set(s.id, p.id);
-      }
-    };
-    walk(categoriesData?.defaultCategories ?? []);
-    walk(categoriesData?.userCategories ?? []);
-    return m;
-  }, [categoriesData]);
-
-  const categoryIdToEmoji = useMemo(() => {
-    const m = new Map<string, string>();
-    const walk = (list: Array<{ id: string; emoji?: string | null; subcategories?: Array<{ id: string; emoji?: string | null }> }>) => {
-      for (const p of list) {
-        if (p.emoji) m.set(p.id, p.emoji);
-        for (const s of p.subcategories ?? []) {
-          if (s.emoji) m.set(s.id, s.emoji);
-        }
-      }
-    };
-    walk(categoriesData?.defaultCategories ?? []);
-    walk(categoriesData?.userCategories ?? []);
-    return m;
-  }, [categoriesData]);
-
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  const months = useMemo(() => {
-    const txs = transactions as TransactionItem[];
-    if (!txs.length) {
-      return [{ year: currentYear, month: currentMonth }];
-    }
-    const dates = txs.map((tx) => parseDateString(tx.date));
-    const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
-    const result: { year: number; month: number }[] = [];
-    let y = minDate.getFullYear();
-    let m = minDate.getMonth();
-    const endY = currentYear;
-    const endM = currentMonth;
-    while (y < endY || (y === endY && m <= endM)) {
-      result.push({ year: y, month: m });
-      m++;
-      if (m > 11) {
-        m = 0;
-        y++;
-      }
-    }
-    return result.length ? result : [{ year: currentYear, month: currentMonth }];
-  }, [transactions, currentYear, currentMonth]);
-
-  const transferIds = useMemo(() => {
-    const allTx = allTransactions as TransactionItem[];
-    return detectTransferIds(
-      allTx.map((tx) => ({
-        id: tx.id,
-        amount: Number(tx.amount) || 0,
-        type: tx.type || "",
-        date: tx.date || "",
-        account_id: tx.account_id,
-      }))
+  const es = lang === "es";
+  const keys = [...counts.keys()].sort();
+  const firstYear = Number(keys[0]?.slice(0, 4));
+  const lastYear = Number(keys.at(-1)?.slice(0, 4));
+  const years = keys.length ? Array.from({ length: lastYear - firstYear + 1 }, (_, i) => firstYear + i) : [];
+  const pick = (key: string) =>
+    onChange(
+      range.picking
+        ? { start: key < range.start ? key : range.start, end: key < range.start ? range.start : key, picking: false }
+        : { start: key, end: key, picking: true }
     );
-  }, [allTransactions]);
-
-  const getMonthStats = useCallback(
-    (year: number, month: number) => {
-      const monthTxs = (transactions as TransactionItem[]).filter((tx) => {
-        const d = parseDateString(tx.date);
-        return d.getFullYear() === year && d.getMonth() === month;
-      });
-      const ctx = {
-        defaultCategories: categoriesData?.defaultCategories ?? [],
-        userCategories: categoriesData?.userCategories ?? [],
-      };
-      const forMetrics = filterForMetrics(
-        monthTxs.filter((tx) => !transferIds.has(tx.id)),
-        ctx
-      );
-      const income = forMetrics
-        .filter((tx) => tx.type === "income")
-        .reduce((sum, tx) => sum + Number(tx.amount), 0);
-      const expense = forMetrics
-        .filter((tx) => tx.type === "expense")
-        .reduce((sum, tx) => sum + Number(tx.amount), 0);
-      return {
-        income,
-        expense,
-        balance: income - expense,
-        count: monthTxs.length,
-        incomeCount: forMetrics.filter((tx) => tx.type === "income").length,
-        expenseCount: forMetrics.filter((tx) => tx.type === "expense").length,
-      };
-    },
-    [transactions, categoriesData, transferIds]
-  );
-
-  const formatMonthYearDisplay = (year: number, month: number) => {
-    const monthsNames =
-      lang === "es"
-        ? ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"]
-        : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    return `${monthsNames[month]} ${year}`;
-  };
-
-  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const [selectedIndex, setSelectedIndex] = useState(
-    months.findIndex((m) => m.year === currentYear && m.month === currentMonth)
-  );
-
-  const carouselOpts = useMemo(
-    () => ({
-      align: "center" as const,
-      loop: false,
-      duration: 25,
-      startIndex: (() => {
-        const idx = months.findIndex((m) => m.year === currentYear && m.month === currentMonth);
-        return idx >= 0 ? idx : Math.max(0, months.length - 1);
-      })(),
-    }),
-    [months, currentYear, currentMonth]
-  );
-
-  useEffect(() => {
-    if (!carouselApi) return;
-    const updateIndex = () => setSelectedIndex(carouselApi.selectedScrollSnap());
-    updateIndex();
-    carouselApi.on("select", updateIndex);
-    carouselApi.on("scroll", updateIndex);
-    return () => {
-      carouselApi.off("select", updateIndex);
-      carouselApi.off("scroll", updateIndex);
-    };
-  }, [carouselApi]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (!carouselApi) return;
-
-      if (e.key === "ArrowLeft" && carouselApi.canScrollPrev()) {
-        e.preventDefault();
-        carouselApi.scrollPrev();
-      } else if (e.key === "ArrowRight" && carouselApi.canScrollNext()) {
-        e.preventDefault();
-        carouselApi.scrollNext();
-      }
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [carouselApi]);
-
-  const accentColor = account.color || "var(--accent)";
 
   return (
     <>
-      <div 
-        className="account-detail"
-        style={{ "--account-accent": accentColor } as React.CSSProperties}
-      >
-        <div className="account-detail-header">
-          <div className="account-detail-icon-wrapper">
-            <div className="account-detail-icon">
-              {account.icon ? (
-                <img src={account.icon} alt={account.name} />
-              ) : (
-                <svg
-                  width="48"
-                  height="48"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke={accentColor}
-                  strokeWidth="1.5"
-                >
-                  <rect x="1" y="4" width="22" height="16" rx="2" />
-                  <line x1="1" y1="10" x2="23" y2="10" />
-                </svg>
-              )}
-            </div>
-            {account.name?.toLowerCase().includes("remunerada") && (
-              <div className="account-badge-interest account-badge-interest-lg" title={lang === "es" ? "Cuenta remunerada" : "Savings account"}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
-                  <polyline points="17 6 23 6 23 12" />
-                </svg>
-              </div>
-            )}
+      <FieldStack>
+        <div className="sf-months-summary">
+          <div className="sf-months-edge">
+            <span className="lp-label">{es ? "Desde" : "From"}</span>
+            <strong>{monthKeyLabel(range.start, lang, "long")}</strong>
           </div>
-          <h1 className="account-detail-name">{account.name}</h1>
-          <div className="account-detail-balance">
-            <SensitiveAmount>{formatCurrency(displayBalance)}</SensitiveAmount>
+          <ChevronRight className="sf-months-arrow size-4" aria-hidden />
+          <div className={cn("sf-months-edge", range.picking && "is-pending")}>
+            <span className="lp-label">{es ? "Hasta" : "To"}</span>
+            <strong>{range.picking ? (es ? "Elige el último" : "Pick the last") : monthKeyLabel(range.end, lang, "long")}</strong>
           </div>
-          {account.is_default && (
-            <span className="account-badge-default">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-              </svg>
-              {lang === "es" ? "Principal" : "Default"}
-            </span>
-          )}
         </div>
-
-        <div className="account-stats-carousel">
-          <div className="account-stats-month-header">
-            <button
-              type="button"
-              className="account-stats-month-title"
-              onClick={() => {
-                const currentIdx = months.findIndex(
-                  (m) => m.year === currentYear && m.month === currentMonth
-                );
-                if (currentIdx >= 0 && carouselApi) {
-                  carouselApi.scrollTo(currentIdx);
-                }
-              }}
-              title={lang === "es" ? "Ir al mes actual" : "Go to current month"}
-            >
-              {months[selectedIndex] && formatMonthYearDisplay(months[selectedIndex].year, months[selectedIndex].month)}
-              {months[selectedIndex] && (months[selectedIndex].year !== currentYear || months[selectedIndex].month !== currentMonth) && (
-                <svg className="account-stats-home-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-              )}
-            </button>
-          </div>
-          <Carousel
-            opts={carouselOpts}
-            setApi={setCarouselApi}
-            className="account-stats-carousel-inner"
-          >
-            <CarouselContent>
-              {months.map(({ year, month }) => {
-                const stats = getMonthStats(year, month);
-                const balanceClass =
-                  stats.balance > 0 ? "positive" : stats.balance < 0 ? "negative" : "neutral";
+      </FieldStack>
+      <FieldStack>
+        {years.map((year) => (
+          <div key={year} className="sf-months-year">
+            <span className="sf-months-year-label">{year}</span>
+            <div className="sf-months-grid">
+              {Array.from({ length: 12 }, (_, i) => {
+                const key = monthKey(year, i + 1);
+                const count = counts.get(key) ?? 0;
+                const inRange = key >= range.start && key <= range.end;
                 return (
-                  <CarouselItem key={`${year}-${month}`}>
-                    <div className="account-detail-stats">
-                      <div className={`account-stat-card balance ${balanceClass}`}>
-                        <span className="account-stat-label">{lang === "es" ? "Balance del Mes" : "Month Balance"}</span>
-                        <span className="account-stat-value account-stat-value-balance">
-                          {stats.balance >= 0 ? "+" : ""}
-                          <SensitiveAmount>{formatCurrency(stats.balance)}</SensitiveAmount>
-                        </span>
-                      </div>
-                      <div className="account-stat-card account-stat-transactions">
-                        <span className="account-stat-label">{lang === "es" ? "Transacciones" : "Transactions"}</span>
-                        <div className="account-stat-row">
-                          <span className="account-stat-value">{stats.count}</span>
-                          <span className="account-stat-separator">|</span>
-                          <span className="account-stat-inline income">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <polyline points="17 11 12 6 7 11" />
-                            </svg>
-                            {stats.incomeCount}
-                          </span>
-                          <span className="account-stat-inline expense">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <polyline points="7 13 12 18 17 13" />
-                            </svg>
-                            {stats.expenseCount}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="account-stat-card income">
-                        <span className="account-stat-label">{lang === "es" ? "Ingresos" : "Income"}</span>
-                        <span className="account-stat-value">
-                          <SensitiveAmount>{formatCurrency(stats.income)}</SensitiveAmount>
-                        </span>
-                      </div>
-                      <div className="account-stat-card expense">
-                        <span className="account-stat-label">{lang === "es" ? "Gastos" : "Expenses"}</span>
-                        <span className="account-stat-value">
-                          <SensitiveAmount>{formatCurrency(stats.expense)}</SensitiveAmount>
-                        </span>
-                      </div>
-                    </div>
-                  </CarouselItem>
+                  <button
+                    key={key}
+                    type="button"
+                    className={cn("sf-month", inRange && "in-range", key === range.start && "is-start", key === range.end && "is-end")}
+                    disabled={count === 0}
+                    aria-pressed={inRange}
+                    aria-label={`${monthKeyLabel(key, lang, "long")}: ${count}`}
+                    onClick={() => pick(key)}
+                  >
+                    {monthName(i + 1, lang)}
+                    <small>{count}</small>
+                  </button>
                 );
               })}
-            </CarouselContent>
-            <CarouselPrevious className="account-stats-carousel-nav account-stats-carousel-prev" />
-            <CarouselNext className="account-stats-carousel-nav account-stats-carousel-next" />
-          </Carousel>
-        </div>
-
-        <div className="account-detail-actions">
-          <Link href={`/account/${account.id}/edit`} className="btn-edit">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            {t("common.edit")}
-          </Link>
-          <Button
-            type="button"
-            variant="outline"
-            className="btn-clear-tx"
-            disabled={txLoading || (transactions as TransactionItem[]).length === 0}
-            onClick={() => {
-              setBulkDeleteError(null);
-              if (monthsWithTransactions.length > 0) {
-                setRangeStartKey(monthsWithTransactions[0].key);
-                setRangeEndKey(monthsWithTransactions[monthsWithTransactions.length - 1].key);
-              }
-              setBulkDeleteMode("all");
-              setShowBulkDeleteTx(true);
-            }}
-          >
-            <ListX className="size-[18px]" aria-hidden />
-            {t("accounts.deleteTransactions")}
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setShowDelete(true)}
-            className="btn-delete"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="3 6 5 6 21 6" />
-              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              <line x1="10" y1="11" x2="10" y2="17" />
-              <line x1="14" y1="11" x2="14" y2="17" />
-            </svg>
-            {t("common.delete")}
-          </Button>
-        </div>
-
-        {account.bank_provider && (account.bank_provider === "trade_republic" || account.bank_provider === "revolut" || account.bank_provider === "bbva" || account.bank_provider === "imagin") && (
-          <div ref={importSectionRef}>
-            <BankStatementUpload
-              accountId={account.id}
-              bankProvider={account.bank_provider as BankProvider}
-              autoOpenFilePicker={shouldAutoOpenFilePicker}
-            />
-          </div>
-        )}
-
-        <div className="account-transactions-section">
-          <h2 className="account-transactions-title">
-            {lang === "es" ? "Transacciones" : "Transactions"}
-          </h2>
-
-          {txLoading ? (
-            <div className="account-transactions-list">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="account-tx-skeleton h-16 w-full rounded-lg" />
-              ))}
             </div>
-          ) : (transactions as TransactionItem[]).length === 0 ? (
-            <div className="account-transactions-empty">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
-              <p>{lang === "es" ? "No hay transacciones" : "No transactions"}</p>
+          </div>
+        ))}
+      </FieldStack>
+    </>
+  );
+}
+
+/** "Delete transactions" sheet: all of them or a month range. */
+function BulkDeleteSheet({ open, onOpenChange, accountId, transactions }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  accountId: string;
+  transactions: Transaction[];
+}) {
+  const lang = useLang();
+  const es = lang === "es";
+  const t = useTranslations(lang);
+  const router = useRouter();
+  const deleteTransactions = useDeleteAccountTransactions();
+  const counts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tx of transactions) map.set(txMonthKey(tx), (map.get(txMonthKey(tx)) ?? 0) + 1);
+    return map;
+  }, [transactions]);
+  const keys = [...counts.keys()].sort();
+  const [mode, setMode] = useState<"all" | "range">("all");
+  const [picked, setPicked] = useState<{ start: string; end: string; picking: boolean } | null>(null);
+  // Defaults to the latest month; months change after deleting, so fall back when one is gone.
+  const range =
+    picked && counts.has(picked.start) && (picked.picking || counts.has(picked.end))
+      ? picked
+      : { start: keys.at(-1) ?? "", end: keys.at(-1) ?? "", picking: false };
+  const [error, setError] = useState(false);
+  const count =
+    mode === "all"
+      ? transactions.length
+      : range.picking
+        ? 0
+        : transactions.filter((tx) => txMonthKey(tx) >= range.start && txMonthKey(tx) <= range.end).length;
+
+  const confirm = async () => {
+    setError(false);
+    const [startYear, startMonth] = range.start.split("-").map(Number);
+    const [endYear, endMonth] = range.end.split("-").map(Number);
+    try {
+      await deleteTransactions.mutateAsync({
+        accountId,
+        payload: mode === "all" ? { mode } : { mode, startYear, startMonth, endYear, endMonth },
+      });
+      router.refresh();
+      onOpenChange(false);
+    } catch {
+      setError(true);
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange} title={t("accounts.deleteTransactionsTitle")} description={es ? "El saldo de la cuenta se recalcula" : "The account balance is recalculated"}>
+      <SheetBody>
+        <Segmented
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "all", label: es ? "Todas" : "All" },
+            { value: "range", label: es ? "Por meses" : "By month" },
+          ]}
+        />
+        {mode === "range" && (
+          <FieldGroup hint={es ? "Toca el primer mes y después el último. El número es la cantidad de movimientos." : "Tap the first month, then the last one. The number is how many transactions it has."}>
+            <MonthRangePicker counts={counts} range={range} onChange={setPicked} />
+          </FieldGroup>
+        )}
+        <div className="sf-confirm sf-confirm--danger ad-bulk-summary">
+          <p className="sf-confirm-title">
+            {range.picking && mode === "range"
+              ? es
+                ? "Elige el último mes del rango"
+                : "Pick the last month of the range"
+              : es
+                ? `Se borrarán ${count} transacci${count === 1 ? "ón" : "ones"}`
+                : `${count} transaction${count === 1 ? "" : "s"} will be deleted`}
+          </p>
+          <div className="sf-confirm-text">{es ? "Esta acción no se puede deshacer." : "This can't be undone."}</div>
+        </div>
+      </SheetBody>
+      <SheetFooter>
+        <FormError>{error && t("accounts.deleteTransactionsError")}</FormError>
+        <SheetButton variant="danger" onClick={confirm} pending={deleteTransactions.isPending} disabled={count === 0}>
+          <Trash2 aria-hidden />
+          {es ? `Borrar ${count}` : `Delete ${count}`}
+        </SheetButton>
+      </SheetFooter>
+    </Sheet>
+  );
+}
+
+/** Account page: balance, month summary, actions, statement import and the month's transactions. */
+export default function AccountDetail({ account: initialAccount }: { account: Account }) {
+  const lang = useLang();
+  const es = lang === "es";
+  const t = useTranslations(lang);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const importRef = useRef<HTMLDivElement>(null);
+  const [swipeArea, setSwipeArea] = useState<HTMLDivElement | null>(null);
+  const autoUpload = searchParams.get("autoupload") === "1";
+  const [importOpen, setImportOpen] = useState(searchParams.get("import") === "1" || autoUpload);
+  const [editOpen, setEditOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deleteAccount = useDeleteAccount();
+
+  const { data: allTransactions = [], isLoading: txLoading } = useTransactions();
+  const { data: accountsList } = useAccounts();
+  // Cached copy first, so edits made in the sheet show up without reloading the page.
+  const account = accountsList?.find((a) => a.id === initialAccount.id) ?? initialAccount;
+  const accent = account.color || "var(--accent)";
+  const bank = getBankProvider(account.bank_provider);
+  const importable = !!account.bank_provider && IMPORTABLE_PROVIDERS.includes(account.bank_provider);
+
+  const transactions = useMemo(() => allTransactions.filter((tx) => tx.account_id === account.id), [allTransactions, account.id]);
+  // Unlike global metrics, every movement counts here: transfers and excluded categories
+  // (e.g. moving money between own accounts) really change this account's balance.
+  const countedIds = useMemo(() => new Set(transactions.map((tx) => tx.id)), [transactions]);
+
+  // Month being looked at: from the first transaction's month up to the current one.
+  const now = appNow();
+  const currentKey = monthKey(now.getFullYear(), now.getMonth() + 1);
+  const firstKey = transactions.reduce((min, tx) => (txMonthKey(tx) < min ? txMonthKey(tx) : min), currentKey);
+  const [selected, setSelected] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  const selectedKey = monthKey(selected.year, selected.month);
+  const canPrev = selectedKey > firstKey;
+  const canNext = selectedKey < currentKey;
+  const changeMonth = (delta: number) => {
+    const target = shiftMonth(selected.year, selected.month, delta);
+    const key = monthKey(target.year, target.month);
+    if (key >= firstKey && key <= currentKey) setSelected(target);
+  };
+  const goToToday = () => setSelected({ year: now.getFullYear(), month: now.getMonth() + 1 });
+
+  useSwipe(swipeArea, { onSwipeLeft: () => changeMonth(1), onSwipeRight: () => changeMonth(-1) }, 50);
+  const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.closest("[role=dialog]")) return;
+    if (e.key === "ArrowLeft") changeMonth(-1);
+    else if (e.key === "ArrowRight") changeMonth(1);
+    else return;
+    e.preventDefault();
+  });
+  useEffect(() => {
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Coming from the "import" shortcut: show the import panel and drop the query string.
+  useEffect(() => {
+    if (!searchParams.get("import") && !autoUpload) return;
+    importRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const timer = window.setTimeout(() => router.replace(`/account/${account.id}`, { scroll: false }), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchParams, autoUpload, router, account.id]);
+
+  const monthTxs = transactions.filter((tx) => txMonthKey(tx) === selectedKey);
+  const { income, expense } = sumByType(monthTxs);
+  const net = income - expense;
+  const balance = Number(account.balance);
+  const savings = account.name.toLowerCase().includes("remunerada");
+
+  const toggleImport = () => {
+    setImportOpen((open) => !open);
+    if (!importOpen) requestAnimationFrame(() => importRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+  };
+
+  return (
+    <div className="page-container lp-page ad-page fade-in" style={{ "--account-accent": accent } as React.CSSProperties}>
+      <header className="lp-header ad-header">
+        <Link href="/accounts" className="ad-back" aria-label={t("accounts.title")}>
+          <ChevronLeft className="size-5" strokeWidth={2.25} />
+          <span>{t("accounts.title")}</span>
+        </Link>
+        <button type="button" className="add-btn lp-add" onClick={() => setEditOpen(true)} aria-label={t("common.edit")}>
+          <SquarePen className="size-[18px]" strokeWidth={2.25} aria-hidden />
+          <span className="lp-add-label">{t("common.edit")}</span>
+        </button>
+      </header>
+
+      <div className="lp-layout">
+        <aside className="lp-aside">
+          <div className="lp-card ad-hero">
+            <div className="ad-identity">
+              <span className={cn("ad-icon", account.icon && "ad-icon--logo")}>
+                {account.icon ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- remote logos from arbitrary hosts
+                  <img src={account.icon} alt="" />
+                ) : (
+                  <CardIcon size={26} strokeWidth={1.8} />
+                )}
+                {savings && (
+                  <span className="lp-interest" title={es ? "Cuenta remunerada" : "Savings account"}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                      <polyline points="17 6 23 6 23 12" />
+                    </svg>
+                  </span>
+                )}
+              </span>
+              <div className="ad-identity-text">
+                <h1>{account.name}</h1>
+                <div className="ad-tags">
+                  {account.is_default && (
+                    <span className="sf-badge sf-badge--star">
+                      <Star fill="currentColor" aria-hidden />
+                      {es ? "Por defecto" : "Default"}
+                    </span>
+                  )}
+                  {bank && <span className="sf-badge">{bank.name}</span>}
+                </div>
+              </div>
+            </div>
+            <div className="ad-balance">
+              <span className="lp-label">{es ? "Saldo actual" : "Current balance"}</span>
+              <span className={cn("lp-hero-value", balance < 0 && "is-negative")}>
+                <SensitiveAmount>{formatCurrency(balance)}</SensitiveAmount>
+              </span>
+            </div>
+          </div>
+
+          <div ref={setSwipeArea} className="lp-card lp-summary">
+            <div className="lp-month">
+              <button type="button" className="lp-icon-btn" onClick={() => changeMonth(-1)} disabled={!canPrev} aria-label={es ? "Mes anterior" : "Previous month"}>
+                <ChevronLeft className="size-5" strokeWidth={2} />
+              </button>
+              <div className="lp-month-title">
+                <span>{monthName(selected.month, lang, "long")}</span>
+                <span className="lp-month-year">{selected.year}</span>
+                {canNext && (
+                  <button type="button" className="lp-chip" onClick={goToToday}>
+                    {es ? "Hoy" : "Today"}
+                  </button>
+                )}
+              </div>
+              <button type="button" className="lp-icon-btn" onClick={() => changeMonth(1)} disabled={!canNext} aria-label={es ? "Mes siguiente" : "Next month"}>
+                <ChevronRight className="size-5" strokeWidth={2} />
+              </button>
+            </div>
+            <Bones
+              name="account-summary"
+              loading={txLoading}
+              fallback={
+                <div className="lp-stats" aria-hidden>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="lp-stat">
+                      <div className="skeleton" style={{ height: 9, width: "60%" }} />
+                      <div className="skeleton" style={{ height: 16, width: "80%", marginTop: 4 }} />
+                    </div>
+                  ))}
+                </div>
+              }
+            >
+              <div className="lp-stats lp-fade" key={selectedKey}>
+                <div className="lp-stat">
+                  <span className="lp-label">{es ? "Ingresos" : "Income"}</span>
+                  <span className={cn("lp-stat-value", income > 0 ? "is-income" : "is-muted")}>
+                    <SensitiveAmount>{formatCurrency(income)}</SensitiveAmount>
+                  </span>
+                </div>
+                <div className="lp-stat">
+                  <span className="lp-label">{es ? "Gastos" : "Expenses"}</span>
+                  <span className={cn("lp-stat-value", expense === 0 && "is-muted")}>
+                    <SensitiveAmount>{formatCurrency(expense)}</SensitiveAmount>
+                  </span>
+                </div>
+                <div className="lp-stat">
+                  <span className="lp-label">Balance</span>
+                  <span className={cn("lp-stat-value", net > 0 ? "is-income" : net < 0 ? "is-negative" : "is-muted")}>
+                    <SensitiveAmount>{net === 0 ? formatCurrency(0) : signed(net)}</SensitiveAmount>
+                  </span>
+                </div>
+              </div>
+            </Bones>
+          </div>
+
+          <div className="lp-card lp-group">
+            {importable && bank && (
+              <button type="button" className="lp-row" onClick={toggleImport} aria-expanded={importOpen} data-state={importOpen ? "open" : "closed"}>
+                <span className="lp-icon ad-action-icon">
+                  <FileUp className="size-[18px]" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{es ? "Importar extracto" : "Import statement"}</span>
+                  </span>
+                  <span className="lp-meta">
+                    {bank.name} · {bank.formatLabel}
+                  </span>
+                </span>
+                <ChevronDown className="lp-chevron size-4" />
+              </button>
+            )}
+            <button type="button" className="lp-row" onClick={() => setBulkOpen(true)} disabled={txLoading || transactions.length === 0}>
+              <span className="lp-icon ad-action-icon">
+                <ListX className="size-[18px]" />
+              </span>
+              <span className="lp-main">
+                <span className="lp-title">
+                  <span>{t("accounts.deleteTransactions")}</span>
+                </span>
+                <span className="lp-meta">{es ? "Todas o por meses" : "All or by month"}</span>
+              </span>
+            </button>
+            <button type="button" className="lp-row lp-row--danger" onClick={() => setDeleteOpen(true)}>
+              <span className="lp-icon">
+                <Trash2 className="size-[18px]" />
+              </span>
+              <span className="lp-main">
+                <span className="lp-title">
+                  <span>{es ? "Eliminar cuenta" : "Delete account"}</span>
+                </span>
+              </span>
+            </button>
+          </div>
+        </aside>
+
+        <div className="lp-content">
+          {importable && importOpen && (
+            <div ref={importRef} className="lp-card ad-import lp-fade">
+              <BankStatementUpload accountId={account.id} bankProvider={account.bank_provider as BankProvider} autoOpenFilePicker={autoUpload} />
+            </div>
+          )}
+
+          <section className="lp-section">
+            <div className="lp-section-head ad-list-head">
+              <span className="lp-section-title">
+                {es ? "Movimientos" : "Activity"} · {monthTxs.length}
+              </span>
+              <button type="button" className="lp-chip" onClick={() => setCreateOpen(true)}>
+                <Plus className="size-3.5" strokeWidth={2.75} />
+                {es ? "Añadir" : "Add"}
+              </button>
+            </div>
+          </section>
+
+          {!txLoading && monthTxs.length === 0 ? (
+            <div className="lp-card lp-empty lp-fade" key={`empty-${selectedKey}`}>
+              <p className="lp-empty-title">{t("transactions.emptyThisMonth")}</p>
+              <p className="lp-empty-text">
+                {canPrev
+                  ? es
+                    ? "Desliza el resumen o usa las flechas para ver otros meses"
+                    : "Swipe the summary or use the arrows to see other months"
+                  : es
+                    ? "Añade una transacción o importa un extracto"
+                    : "Add a transaction or import a statement"}
+              </p>
             </div>
           ) : (
-            <div className="account-transactions-grouped">
-              {Object.entries(groupedTransactions).map(([monthKey, days]) => (
-                <div key={monthKey} className="account-tx-month-group">
-                  <h3 className="account-tx-month-header">
-                    {formatMonthYear(monthKey + "-01")}
-                  </h3>
-                  <div className="account-tx-days">
-                    {Object.entries(days).map(([dayKey, txs]) => (
-                      <div key={dayKey} className="account-tx-day-group">
-                        <div className="account-tx-day-header">
-                          {formatDayMonth(dayKey)}
-                        </div>
-                        <SwipeToRevealGroup className="account-tx-day-items">
-                          {txs.map((tx) => (
-                            <SwipeToReveal
-                              key={tx.id}
-                              id={tx.id}
-                              className="account-tx-swipe-wrapper"
-                              swipeHint
-                              desktopMinWidth={1024}
-                              actions={
-                                <div className="account-tx-actions-reveal flex items-center gap-2">
-                                  <Link
-                                    href={`/transactions/edit/${tx.id}?returnTo=${encodeURIComponent(`/account/${account.id}`)}`}
-                                    className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
-                                    aria-label={t("common.edit")}
-                                    onClick={() => saveScrollForReturn(`/account/${account.id}`)}
-                                  >
-                                    <Pencil className="size-5" />
-                                  </Link>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      setTxToDelete(tx);
-                                      setShowDeleteTx(true);
-                                    }}
-                                    className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--danger)] transition-colors hover:bg-[var(--danger-soft)]"
-                                    aria-label={t("common.delete")}
-                                  >
-                                    <Trash2 className="size-5" />
-                                  </button>
-                                </div>
-                              }
-                            >
-                              <div className={`account-transaction-item ${tx.type}`}>
-                                <span className="account-transaction-desc">
-                                  {tx.description || (tx.type === "income" ? (lang === "es" ? "Ingreso" : "Income") : (lang === "es" ? "Gasto" : "Expense"))}
-                                </span>
-                                <div className="account-transaction-footer">
-                                  {(tx.category?.name || tx.subcategory?.name) ? (
-                                    <span className="account-transaction-category">
-                                      {tx.category?.name && (
-                                        <>
-                                          {categoryIdToEmoji.get(tx.category_id ?? "") && (
-                                            <span className="tx-card-category-emoji">{categoryIdToEmoji.get(tx.category_id ?? "")}</span>
-                                          )}
-                                          {tx.category.name}
-                                        </>
-                                      )}
-                                      {tx.category?.name && tx.subcategory?.name && " › "}
-                                      {tx.subcategory?.name && (
-                                        <>
-                                          {(categoryIdToEmoji.get(tx.subcategory_id ?? "") ?? categoryIdToEmoji.get(subToParent.get(tx.subcategory_id ?? "") ?? "")) && (
-                                            <span className="tx-card-category-emoji">
-                                              {categoryIdToEmoji.get(tx.subcategory_id ?? "") ?? categoryIdToEmoji.get(subToParent.get(tx.subcategory_id ?? "") ?? "")}
-                                            </span>
-                                          )}
-                                          {tx.subcategory.name}
-                                        </>
-                                      )}
-                                    </span>
-                                  ) : (
-                                    <span />
-                                  )}
-                                  <span className={`account-transaction-amount ${tx.type}`}>
-                                    {tx.type === "income" ? "+" : "-"}
-                                    <SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
-                                  </span>
-                                </div>
-                              </div>
-                            </SwipeToReveal>
-                          ))}
-                        </SwipeToRevealGroup>
+            <Bones
+              name="account-transactions"
+              loading={txLoading}
+              fallback={
+                <div className="lp-card lp-group">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="lp-skeleton-row">
+                      <div className="skeleton" />
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div className="skeleton" style={{ height: 12, width: "55%" }} />
+                        <div className="skeleton" style={{ height: 10, width: "35%" }} />
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              }
+            >
+              <div className="lp-fade" key={`list-${selectedKey}`}>
+                <TransactionDayList transactions={monthTxs} countedIds={countedIds} hideAccount />
+              </div>
+            </Bones>
           )}
         </div>
       </div>
 
-      <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
-            </div>
-            <AlertDialogTitle className="text-center">
-              {t("accounts.delete")}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              {t("accounts.deleteConfirm")}
-            </AlertDialogDescription>
-            {(transactions as TransactionItem[]).length > 0 && (
-              <div className="mt-3 p-3 rounded-lg bg-[var(--danger-soft)] border border-[var(--danger)] text-center">
-                <p className="text-sm font-medium text-[var(--danger)]">
-                  {lang === "es" 
-                    ? `Se eliminarán ${(transactions as TransactionItem[]).length} transaccion${(transactions as TransactionItem[]).length === 1 ? '' : 'es'} asociadas a esta cuenta`
-                    : `${(transactions as TransactionItem[]).length} transaction${(transactions as TransactionItem[]).length === 1 ? '' : 's'} associated with this account will be deleted`}
-                </p>
-              </div>
-            )}
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:justify-center gap-3">
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteAccount.isPending}
-            >
-              {deleteAccount.isPending && <Spinner className="size-4 mr-2" />}
-              {t("common.delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={showDeleteTx} onOpenChange={setShowDeleteTx}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)] mx-auto mb-2">
-              <Trash2 className="h-6 w-6 text-[var(--danger)]" />
-            </div>
-            <AlertDialogTitle className="text-center">
-              {t("transactions.delete")}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              {txToDelete && (
-                <span>
-                  {txToDelete.description || (txToDelete.type === "income" ? t("transactions.income") : t("transactions.expense"))}
-                  {" - "}
-                  <SensitiveAmount>{formatCurrency(Number(txToDelete.amount))}</SensitiveAmount>
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="sm:justify-center gap-3">
-            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={() => {
-                if (txToDelete) {
-                  deleteTransaction.mutate(txToDelete.id);
-                  setShowDeleteTx(false);
-                  setTxToDelete(null);
-                }
-              }}
-              disabled={deleteTransaction.isPending}
-            >
-              {deleteTransaction.isPending && <Spinner className="size-4 mr-2" />}
-              {t("common.delete")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog
-        open={showBulkDeleteTx}
-        onOpenChange={(open) => {
-          setShowBulkDeleteTx(open);
-          if (!open) setBulkDeleteError(null);
+      <AccountSheet open={editOpen} onOpenChange={setEditOpen} account={account} onDeleted={() => router.push("/accounts")} />
+      <TransactionSheet open={createOpen} onOpenChange={setCreateOpen} defaultAccountId={account.id} />
+      <BulkDeleteSheet open={bulkOpen} onOpenChange={setBulkOpen} accountId={account.id} transactions={transactions} />
+      <ConfirmDeleteSheet
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={es ? `¿Eliminar «${account.name}»?` : `Delete “${account.name}”?`}
+        description={<AccountDeleteWarning accountId={account.id} />}
+        confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
+        pending={deleteAccount.isPending}
+        onConfirm={async () => {
+          await deleteAccount.mutateAsync(account.id);
+          router.push("/accounts");
         }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t("accounts.deleteTransactionsTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("accounts.deleteTransactionsConfirm").replace("{count}", String(bulkDeleteCount))}
-            </DialogDescription>
-          </DialogHeader>
-          {bulkDeleteError && (
-            <p className="text-destructive text-sm" role="alert">
-              {bulkDeleteError}
-            </p>
-          )}
-          <RadioGroup
-            className="gap-4"
-            value={bulkDeleteMode}
-            onValueChange={(v) => setBulkDeleteMode(v as "all" | "range")}
-          >
-            <div className="flex items-center gap-3">
-              <RadioGroupItem value="all" id="bulk-delete-all" />
-              <Label htmlFor="bulk-delete-all" className="font-normal">
-                {t("accounts.deleteTransactionsAll")}
-              </Label>
-            </div>
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <RadioGroupItem value="range" id="bulk-delete-range" />
-                <Label htmlFor="bulk-delete-range" className="font-normal">
-                  {t("accounts.deleteTransactionsRange")}
-                </Label>
-              </div>
-              {bulkDeleteMode === "range" && (
-                <div className="grid gap-4 pl-7 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label className="text-muted-foreground text-xs">
-                      {t("accounts.deleteTransactionsStartMonth")}
-                    </Label>
-                    <Select
-                      value={rangeStartKey}
-                      onValueChange={(v) => {
-                        setRangeStartKey(v);
-                        if (v > rangeEndKey) setRangeEndKey(v);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthsWithTransactions.map((m) => (
-                          <SelectItem key={`start-${m.key}`} value={m.key}>
-                            {formatMonthYearDisplay(m.year, m.month1to12 - 1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="text-muted-foreground text-xs">
-                      {t("accounts.deleteTransactionsEndMonth")}
-                    </Label>
-                    <Select
-                      value={rangeEndKey}
-                      onValueChange={(v) => {
-                        setRangeEndKey(v);
-                        if (v < rangeStartKey) setRangeStartKey(v);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthsWithTransactions.map((m) => (
-                          <SelectItem key={`end-${m.key}`} value={m.key}>
-                            {formatMonthYearDisplay(m.year, m.month1to12 - 1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-            </div>
-          </RadioGroup>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setShowBulkDeleteTx(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={bulkDeleteCount === 0 || deleteAccountTransactions.isPending}
-              onClick={() => void handleBulkDeleteConfirm()}
-            >
-              {deleteAccountTransactions.isPending && <Spinner className="mr-2 size-4" />}
-              {t("common.delete")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+      />
+    </div>
   );
 }

@@ -1,21 +1,16 @@
 import { fromZonedTime } from "date-fns-tz";
+import { APP_TIME_ZONE } from "@/lib/date";
 
-const MADRID = "Europe/Madrid";
-
-/**
- * Interpreta "Fecha de inicio" del CSV Revolut (hora local de Madrid) y devuelve ISO UTC para timestamptz.
- */
+/** Parses Revolut's "Fecha de inicio" (Madrid local time) into a UTC ISO string for timestamptz. */
 export function parseRevolutFechaInicioToIsoUtc(fechaInicio: string): string | null {
-	const raw = fechaInicio.trim();
-	if (!raw) return null;
-	const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
-	const d = fromZonedTime(normalized, MADRID);
-	if (Number.isNaN(d.getTime())) return null;
-	return d.toISOString();
+  const raw = fechaInicio.trim();
+  if (!raw) return null;
+  const d = fromZonedTime(raw.includes("T") ? raw : raw.replace(" ", "T"), APP_TIME_ZONE);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** Milisegundos UTC para ordenar filas Revolut por fecha de inicio (Madrid). */
+/** UTC milliseconds used to sort Revolut rows by start date. */
 export function revolutFechaInicioToMs(fechaInicio: string): number {
-	const iso = parseRevolutFechaInicioToIsoUtc(fechaInicio);
-	return iso ? new Date(iso).getTime() : 0;
+  const iso = parseRevolutFechaInicioToIsoUtc(fechaInicio);
+  return iso ? new Date(iso).getTime() : 0;
 }

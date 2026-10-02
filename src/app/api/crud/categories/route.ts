@@ -1,215 +1,79 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
+import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+
+type Category = { id: string; parent_id: string | null; exclude_from_metrics?: boolean };
+
+/** Nests `subs` under each root of `parents`, tagging system (isDefault) vs user categories. */
+function withSubcategories<T extends Category>(parents: T[], subs: T[], isDefault: (c: T) => boolean) {
+  return parents
+    .filter((p) => !p.parent_id)
+    .map((p) => ({
+      ...p,
+      isDefault: isDefault(p),
+      subcategories: subs.filter((c) => c.parent_id === p.id).map((c) => ({ ...c, isDefault: isDefault(c) })),
+    }));
+}
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
+  const { data: archivedRows } = await supabase.from("user_archived_categories").select("category_id").eq("user_id", user.id);
+  const archivedIds = new Set((archivedRows ?? []).map((r) => r.category_id as string));
 
-  const { searchParams } = new URL(request.url);
-  const archived = searchParams.get("archived") === "true";
-
-  if (archived) {
-    const { data: archivedRows } = await supabase
-      .from("user_archived_categories")
-      .select("category_id")
-      .eq("user_id", user.id);
-
-    const archivedIds = new Set((archivedRows ?? []).map((r) => r.category_id));
-
-    const { data: archivedCats, error } = await supabase
+  if (request.nextUrl.searchParams.get("archived") === "true") {
+    const { data: archived, error } = await supabase
       .from("categories")
       .select("*")
       .is("user_id", null)
-      .in("id", Array.from(archivedIds))
+      .in("id", [...archivedIds])
       .order("name", { ascending: true });
+    if (error) return jsonServerError("crud/categories", error);
 
-    if (error) return jsonError(error.message, 500);
-
-    const archived = archivedCats ?? [];
-    const archivedParents = archived.filter((c) => !c.parent_id);
-    const archivedChildren = archived.filter((c) => c.parent_id);
-
-    // Orphan subcategories: archived children whose parent is not archived
-    const orphanParentIds = [...new Set(archivedChildren.map((c) => c.parent_id!))].filter(
-      (pid) => !archivedIds.has(pid)
-    );
-
-    let structuralParents: { id: string; name: string; name_en?: string; emoji?: string; parent_id?: string | null }[] = [];
-    if (orphanParentIds.length > 0) {
-      const { data: parents } = await supabase
-        .from("categories")
-        .select("id, name, name_en, emoji, parent_id")
-        .in("id", orphanParentIds);
-      structuralParents = parents ?? [];
-    }
-
-    const allParents = [
-      ...archivedParents.map((c) => ({ ...c, isArchived: true })),
-      ...structuralParents.map((c) => ({ ...c, isArchived: false })),
+    // Archived subcategories whose parent is still active are shown under that (non-archived) parent.
+    const children = archived.filter((c) => c.parent_id);
+    const orphanParentIds = [...new Set(children.map((c) => c.parent_id as string))].filter((id) => !archivedIds.has(id));
+    const { data: structural } = orphanParentIds.length
+      ? await supabase.from("categories").select("id, name, name_en, emoji, parent_id").in("id", orphanParentIds)
+      : { data: [] };
+    const parents = [
+      ...archived.map((c) => ({ ...c, isArchived: true })),
+      ...(structural ?? []).map((c) => ({ ...c, isArchived: false })),
     ];
-    const allChildren = archivedChildren.map((c) => ({ ...c, isArchived: true }));
-
-    const defaultCategories = buildStructuredCategoriesWithArchived(allParents, allChildren);
-
-    return jsonCachedResponse({
-      data: {
-        defaultCategories,
-        userCategories: [],
-      },
-    }, 200, 180, 900);
+    const defaultCategories = withSubcategories(parents, children.map((c) => ({ ...c, isArchived: true })), () => true);
+    return jsonCachedResponse({ data: { defaultCategories, userCategories: [] } });
   }
 
-  const { data: archivedRows } = await supabase
-    .from("user_archived_categories")
-    .select("category_id")
-    .eq("user_id", user.id);
-  const archivedIds = new Set((archivedRows ?? []).map((r) => r.category_id));
-
-  const [userCatsResult, systemCatsResult] = await Promise.all([
-    supabase
-      .from("categories")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("name", { ascending: true }),
-    supabase
-      .from("categories")
-      .select("*")
-      .is("user_id", null)
-      .order("name", { ascending: true }),
+  const [userResult, systemResult] = await Promise.all([
+    supabase.from("categories").select("*").eq("user_id", user.id).order("name", { ascending: true }),
+    supabase.from("categories").select("*").is("user_id", null).order("name", { ascending: true }),
   ]);
+  if (userResult.error) return jsonServerError("crud/categories", userResult.error);
+  if (systemResult.error) return jsonServerError("crud/categories", systemResult.error);
 
-  if (userCatsResult.error) return jsonError(userCatsResult.error.message, 500);
-  if (systemCatsResult.error) return jsonError(systemCatsResult.error.message, 500);
-
-  const userCats = userCatsResult.data ?? [];
-  const systemCats = (systemCatsResult.data ?? []).filter((c) => !archivedIds.has(c.id));
-
+  const userCats: Category[] = userResult.data;
+  const systemCats: Category[] = systemResult.data.filter((c) => !archivedIds.has(c.id));
   const systemIds = new Set(systemCats.map((c) => c.id));
-  const userParents = userCats.filter((c) => !c.parent_id);
-  const userChildrenUserParent = userCats.filter(
-    (c) => c.parent_id && !systemIds.has(c.parent_id)
-  );
-  const userChildrenSystemParent = userCats.filter(
-    (c) => c.parent_id && systemIds.has(c.parent_id)
-  );
+  const isSystem = (c: Category) => systemIds.has(c.id);
 
-  const structuredUser = userParents.map((parent) => ({
-    ...parent,
-    isDefault: false,
-    subcategories: userChildrenUserParent
-      .filter((c) => c.parent_id === parent.id)
-      .map((c) => ({ ...c, isDefault: false })),
-  }));
-
-  const systemParents = systemCats.filter((c) => !c.parent_id);
-  const systemChildren = systemCats.filter((c) => c.parent_id);
-
-  const structuredSystem = systemParents
-    .map((parent) => {
-      const sysSubs = systemChildren
-        .filter((c) => c.parent_id === parent.id)
-        .map((c) => ({ ...c, isDefault: true }));
-      const usrSubs = userChildrenSystemParent
-        .filter((c) => c.parent_id === parent.id)
-        .map((c) => ({ ...c, isDefault: false }));
-      return {
-        ...parent,
-        isDefault: true,
-        subcategories: [...sysSubs, ...usrSubs],
-      };
-    })
-    .sort((a, b) => {
-      const aExclude = (a as { exclude_from_metrics?: boolean }).exclude_from_metrics;
-      const bExclude = (b as { exclude_from_metrics?: boolean }).exclude_from_metrics;
-      if (aExclude && !bExclude) return 1;
-      if (!aExclude && bExclude) return -1;
-      return 0;
-    });
-
-  return jsonCachedResponse({
-    data: {
-      defaultCategories: structuredSystem,
-      userCategories: structuredUser,
-    },
-  }, 200, 180, 900);
-}
-
-function buildStructuredCategories(
-  parents: { id: string; name: string; name_en?: string; emoji?: string; parent_id?: string | null }[],
-  children: { id: string; name: string; name_en?: string; emoji?: string; parent_id?: string | null }[]
-) {
-  const tops = parents.filter((c) => !c.parent_id);
-  const subs = children.filter((c) => c.parent_id);
-  return tops.map((parent) => ({
-    ...parent,
-    isDefault: true,
-    subcategories: subs
-      .filter((c) => c.parent_id === parent.id)
-      .map((c) => ({ ...c, isDefault: true })),
-  }));
-}
-
-type CatWithArchived = {
-  id: string;
-  name: string;
-  name_en?: string;
-  emoji?: string;
-  parent_id?: string | null;
-  isArchived?: boolean;
-  [k: string]: unknown;
-};
-
-function buildStructuredCategoriesWithArchived(
-  parents: CatWithArchived[],
-  children: CatWithArchived[]
-) {
-  const tops = parents.filter((c) => !c.parent_id);
-  const subs = children.filter((c) => c.parent_id);
-  return tops.map((parent) => ({
-    ...parent,
-    isDefault: true,
-    subcategories: subs
-      .filter((c) => c.parent_id === parent.id)
-      .map((c) => ({ ...c, isDefault: true })),
-  }));
+  const userCategories = withSubcategories(userCats, userCats.filter((c) => !systemIds.has(c.parent_id ?? "")), isSystem);
+  const defaultCategories = withSubcategories(systemCats, [...systemCats, ...userCats], isSystem)
+    // Exclude-from-metrics categories go last (stable sort keeps alphabetical order otherwise).
+    .sort((a, b) => Number(!!a.exclude_from_metrics) - Number(!!b.exclude_from_metrics));
+  return jsonCachedResponse({ data: { defaultCategories, userCategories } });
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
-
-  const { body } = await parseRequestBody(request);
-  const name = body.name;
-  const emoji = body.emoji || null;
-  const parent_id =
-    body.parent_id === "null" || body.parent_id === "" ? null : body.parent_id;
-
-  if (!name) {
-    return jsonError("missing_fields");
-  }
+  const body = await parseRequestBody(request);
+  const parent_id = body.parent_id && body.parent_id !== "null" ? body.parent_id : null;
+  if (!body.name) return jsonError("missing_fields");
 
   if (parent_id) {
-    const { data: parent } = await supabase
-      .from("categories")
-      .select("id, user_id")
-      .eq("id", parent_id)
-      .single();
-    if (!parent) return jsonError("parent_not_found");
+    const { data: parent } = await supabase.from("categories").select("user_id").eq("id", parent_id).single();
+    if (!parent || (parent.user_id !== null && parent.user_id !== user.id)) return jsonError("parent_not_found");
     if (parent.user_id === null) {
       const { data: archived } = await supabase
         .from("user_archived_categories")
@@ -221,15 +85,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const { data: insertedData, error } = await supabase
+  const { data, error } = await supabase
     .from("categories")
-    .insert({ user_id: user.id, name, parent_id, emoji })
+    .insert({ user_id: user.id, name: body.name, parent_id, emoji: body.emoji || null })
     .select()
     .single();
-
-  if (error) {
-    return jsonError(error.message, 500);
-  }
-
-  return jsonResponse({ data: insertedData }, 201);
+  if (error) return jsonServerError("crud/categories", error);
+  return jsonResponse({ data }, 201);
 }

@@ -1,121 +1,81 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
-import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
 import { NextRequest } from "next/server";
+import {
+  areAccessibleCategories,
+  fetchAllPages,
+  getAuthedClient,
+  isOwnedAccount,
+  jsonCachedResponse,
+  jsonError,
+  jsonResponse,
+  jsonServerError,
+  parseRequestBody,
+  readTransactionInput,
+  unauthorized,
+} from "@/lib/apiHelpers";
+import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
+  const params = request.nextUrl.searchParams;
+  const accountId = params.get("account_id");
+  // "minimal": only what aggregates (balance trends) need, without joins.
+  const minimal = params.get("fields") === "minimal";
+
+  let range: { startIso: string; endExclusiveIso: string } | undefined;
+  if (params.get("year")) {
+    const year = parseInt(params.get("year")!, 10);
+    const month = params.get("month") ? parseInt(params.get("month")!, 10) : null; // 1-12
+    if (!Number.isInteger(year) || (month !== null && !(month >= 1 && month <= 12))) return jsonError("invalid_period");
+    // Without a month: the whole year.
+    range = calendarMonthsUtcHalfOpenRange(year, month ?? 1, year, month ?? 12);
   }
 
-  const { searchParams } = new URL(request.url);
-  const yearParam = searchParams.get("year");
-  const monthParam = searchParams.get("month");
-  const accountIdParam = searchParams.get("account_id");
-
-  let query = supabase
-    .from("transactions")
-    .select(
-      `
-      *,
-      account:accounts(name, color),
-      category:categories!category_id(name),
-      subcategory:categories!subcategory_id(name)
-    `
-    )
-    .eq("user_id", user.id)
-    .order("date", { ascending: false });
-
-  if (yearParam && monthParam) {
-    const year = parseInt(yearParam, 10);
-    const month = parseInt(monthParam, 10); // 1-12 from client
-    const { startIso, endExclusiveIso } = calendarMonthsUtcHalfOpenRange(
-      year,
-      month,
-      year,
-      month
-    );
-    query = query.gte("date", startIso).lt("date", endExclusiveIso);
+  try {
+    // PostgREST caps responses at 1000 rows: paginate so the history (balances, trends) isn't truncated.
+    const data = await fetchAllPages((from, to) => {
+      let query = supabase
+        .from("transactions")
+        .select(
+          minimal
+            ? "id, amount, type, date, account_id, category_id, subcategory_id"
+            : "*, account:accounts(name, color), category:categories!category_id(name), subcategory:categories!subcategory_id(name)"
+        )
+        .eq("user_id", user.id)
+        .order("date", { ascending: false })
+        .order("id", { ascending: true });
+      if (range) query = query.gte("date", range.startIso).lt("date", range.endExclusiveIso);
+      if (accountId) query = query.eq("account_id", accountId);
+      return query.range(from, to);
+    });
+    return jsonCachedResponse({ data });
+  } catch (error) {
+    return jsonServerError("crud/transactions", error);
   }
-
-  if (accountIdParam) {
-    query = query.eq("account_id", accountIdParam);
-  }
-
-  const { data: transactions, error } = await query;
-
-  if (error) {
-    return jsonError(error.message, 500);
-  }
-
-  return jsonCachedResponse({ data: transactions }, 200, 30, 120);
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
+  const tx = readTransactionInput(await parseRequestBody(request));
+  if (!Number.isFinite(tx.amount) || tx.amount <= 0 || !tx.date || !tx.account_id) return jsonError("missing_fields");
+  if (tx.type !== "income" && tx.type !== "expense") return jsonError("invalid_type");
+  if (!(await isOwnedAccount(supabase, user.id, tx.account_id))) return jsonError("Account not found", 404);
+  if (!(await areAccessibleCategories(supabase, user.id, [tx.category_id, tx.subcategory_id]))) return jsonError("invalid_category");
 
-  const { body } = await parseRequestBody(request);
-  const amount = parseFloat(body.amount || "");
-  const type = body.type;
-  const date = body.date;
-  const description = body.description;
-  const account_id = body.account_id || null;
-  const category_id = body.category_id && body.category_id !== "" ? body.category_id : null;
-  const subcategory_id = body.subcategory_id && body.subcategory_id !== "" ? body.subcategory_id : null;
-
-  if (isNaN(amount) || !type || !date) {
-    return jsonError("missing_fields");
-  }
-
-  const { data: insertedData, error } = await supabase
-    .from("transactions")
-    .insert({
-      user_id: user.id,
-      amount,
-      type,
-      date,
-      description: description || null,
-      account_id: account_id && account_id !== "" ? account_id : null,
-      category_id,
-      subcategory_id,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    return jsonError(error.message, 500);
-  }
-
-  if (account_id && account_id !== "") {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", account_id)
-      .single();
-    if (account) {
-      let newBalance = Number(account.balance);
-      if (type === "income") newBalance += amount;
-      else newBalance -= amount;
-      await supabase
-        .from("accounts")
-        .update({ balance: newBalance })
-        .eq("id", account_id);
-    }
-  }
-
-  return jsonResponse({ data: insertedData }, 201);
+  // Insert and balance update in a single Postgres transaction.
+  const { data, error } = await supabase.rpc("create_transaction_with_balance", {
+    p_user_id: user.id,
+    p_account_id: tx.account_id,
+    p_amount: tx.amount,
+    p_type: tx.type,
+    p_date: tx.date,
+    p_description: tx.description,
+    p_category_id: tx.category_id,
+    p_subcategory_id: tx.subcategory_id,
+  });
+  if (error) return jsonServerError("crud/transactions", error);
+  return jsonResponse({ data }, 201);
 }

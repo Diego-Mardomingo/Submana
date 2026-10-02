@@ -1,63 +1,23 @@
 /**
- * Opaque import line identity and duplicate-resolution keys shared client/server.
+ * Opaque import identities and duplicate-resolution keys, shared by client and server.
+ * Their formats are persisted: changing them breaks deduplication of past imports.
  */
-
-import { calendarDateKeyForDuplicate } from "@/lib/duplicateImport";
+import { calendarDayInAppTimeZone } from "@/lib/date";
 
 export async function sha256Hex(text: string): Promise<string> {
-	const encoder = new TextEncoder();
-	const dataBuffer = encoder.encode(text);
-	const hashBuffer = await crypto.subtle.digest("SHA-256", dataBuffer);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Per-account unique id for a bank row: hash(accountId|importSourceFingerprint). */
-export async function buildImportLineId(
-	accountId: string,
-	importSourceFingerprint: string
-): Promise<string> {
-	return sha256Hex(`${accountId}|${importSourceFingerprint}`);
-}
+/** Per-account unique id of a bank row. */
+export const buildImportLineId = (accountId: string, importSourceFingerprint: string) => sha256Hex(`${accountId}|${importSourceFingerprint}`);
 
-/**
- * Stable key for “same conflict” across imports (used with import_duplicate_decisions).
- * Día calendario + importe exacto (céntimos) + tipo (income/expense).
- * Debe coincidir con la ruta duplicate-decisions y la UI.
- */
-export async function buildDuplicateConflictKey(
-	accountId: string,
-	date: string,
-	amount: number,
-	type: string
-): Promise<string> {
-	const dayKey = calendarDateKeyForDuplicate(date);
-	const cents = Math.round(Number(amount) * 100);
-	const normalizedType = (type || "").trim().toLowerCase();
-	return sha256Hex(`${accountId}|${dayKey}|${cents}|${normalizedType}`);
-}
+const cents = (amount: number) => Math.round(Number(amount) * 100);
 
-/** Legacy key (día + importe) para compatibilidad de decisiones antiguas. */
-export async function buildDuplicateConflictKeyLegacy(
-	accountId: string,
-	date: string,
-	amount: number
-): Promise<string> {
-	const dayKey = calendarDateKeyForDuplicate(date);
-	const cents = Math.round(Number(amount) * 100);
-	return sha256Hex(`${accountId}|${dayKey}|${cents}`);
-}
+/** Key of a manual-vs-import conflict (calendar day + exact cents + type) for import_duplicate_decisions. */
+export const buildDuplicateConflictKey = (accountId: string, date: string, amount: number, type: string) =>
+  sha256Hex(`${accountId}|${calendarDayInAppTimeZone(date)}|${cents(amount)}|${(type || "").trim().toLowerCase()}`);
 
-/** Ordinal for identical base fingerprints within one parse (0-based). */
-export function assignOccurrenceIndices(fingerprints: string[]): number[] {
-	const seen = new Map<string, number>();
-	return fingerprints.map((fp) => {
-		const n = seen.get(fp) ?? 0;
-		seen.set(fp, n + 1);
-		return n;
-	});
-}
-
-export function buildImportSourceFingerprint(baseFingerprint: string, occurrenceIndex: number): string {
-	return `${baseFingerprint}|occ:${occurrenceIndex}`;
-}
+/** Legacy key (day + amount) kept to honour decisions saved before the type was included. */
+export const buildDuplicateConflictKeyLegacy = (accountId: string, date: string, amount: number) =>
+  sha256Hex(`${accountId}|${calendarDayInAppTimeZone(date)}|${cents(amount)}`);

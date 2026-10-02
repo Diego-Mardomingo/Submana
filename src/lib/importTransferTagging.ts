@@ -5,7 +5,7 @@ const TRANSFER_WINDOW_HOURS = 48;
 const QUERY_BATCH_SIZE = 80;
 const QUERY_PAGE_SIZE = 1000;
 
-type UncategorizedTransaction = TransferDetectable & { account_id: string | null };
+type UncategorizedTransaction = TransferDetectable & { date: string };
 
 /** Categoría raíz con exclude_from_metrics; prioriza la por defecto sobre las del usuario. */
 async function findExcludeFromMetricsCategoryId(
@@ -104,18 +104,7 @@ export async function tagInternalTransfersAfterImport(args: {
 	const byId = new Map<string, UncategorizedTransaction>();
 	for (const tx of [...inserted, ...counterparts]) byId.set(tx.id, tx);
 
-	const transferIds = [
-		...detectTransferIds(
-			[...byId.values()].map((tx) => ({
-				id: tx.id,
-				amount: Number(tx.amount) || 0,
-				type: tx.type || "",
-				date: tx.date || "",
-				account_id: tx.account_id,
-			})),
-			{ windowHours: TRANSFER_WINDOW_HOURS }
-		),
-	];
+	const transferIds = [...detectTransferIds([...byId.values()], TRANSFER_WINDOW_HOURS)];
 	if (transferIds.length === 0) return 0;
 
 	let tagged = 0;

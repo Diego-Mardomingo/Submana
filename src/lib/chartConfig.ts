@@ -1,118 +1,115 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
+  ArcElement,
   BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LinearScale,
   LineElement,
   PointElement,
-  ArcElement,
-  Filler,
   Tooltip,
-  Legend,
 } from "chart.js";
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  ArcElement,
-  Filler,
-  Tooltip,
-  Legend,
-);
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Filler, Tooltip, Legend);
 
 if (typeof window !== "undefined") {
-  const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-  if (isTouch) {
-    ChartJS.defaults.events = ["click"];
-  }
-
+  // On touch devices tooltips open on tap only; tapping the chart again, tapping anywhere else
+  // or scrolling dismisses them.
+  const touch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  if (touch) ChartJS.defaults.events = ["click"];
+  const hasTooltip = (chart: ChartJS) => !!chart.tooltip?.getActiveElements().length;
+  const hideTooltip = (chart: ChartJS) => {
+    chart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+    chart.setActiveElements([]);
+    chart.update("none");
+  };
   ChartJS.register({
-    id: "dismissOnScroll",
+    id: "dismissTooltip",
     beforeInit(chart: ChartJS) {
-      const handler = () => {
-        const tooltip = chart.tooltip;
-        if (tooltip && tooltip.getActiveElements().length) {
-          tooltip.setActiveElements([], { x: 0, y: 0 });
-          chart.update("none");
-        }
-      };
-      window.addEventListener("scroll", handler, { passive: true, capture: true });
-      const origDestroy = chart.destroy.bind(chart);
+      const onScroll = () => hasTooltip(chart) && hideTooltip(chart);
+      const onPointerDown = (e: PointerEvent) => e.target !== chart.canvas && hasTooltip(chart) && hideTooltip(chart);
+      window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+      if (touch) document.addEventListener("pointerdown", onPointerDown, { passive: true, capture: true });
+      const destroy = chart.destroy.bind(chart);
       chart.destroy = () => {
-        window.removeEventListener("scroll", handler, { capture: true });
-        origDestroy();
+        window.removeEventListener("scroll", onScroll, { capture: true });
+        document.removeEventListener("pointerdown", onPointerDown, { capture: true });
+        destroy();
       };
+    },
+    beforeEvent(chart: ChartJS, args: { event: { type: string } }) {
+      if (!touch || args.event.type !== "click" || !hasTooltip(chart)) return;
+      hideTooltip(chart);
+      return false;
     },
   });
 }
 
-function getCSSVar(name: string): string {
-  if (typeof document === "undefined") return "";
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const COLOR_VARS = {
+  accent: ["--accent", "#6366f1"],
+  success: ["--success", "#10b981"],
+  danger: ["--danger", "#ef4444"],
+  info: ["--info", "#3b82f6"],
+  warning: ["--warning", "#f59e0b"],
+  teal: ["--teal", "#14b8a6"],
+  muted: ["--muted-foreground", "#888"],
+  border: ["--border", "#333333"],
+  card: ["--card", "#1a1a2e"],
+  foreground: ["--blanco", "#fff"],
+} as const;
+
+type ChartColors = Record<keyof typeof COLOR_VARS, string>;
+
+/** Theme colours resolved from CSS variables (fallbacks when unavailable, e.g. during SSR). */
+function getChartColors(): ChartColors {
+  const style = typeof document === "undefined" ? null : getComputedStyle(document.documentElement);
+  return Object.fromEntries(
+    Object.entries(COLOR_VARS).map(([key, [cssVar, fallback]]) => [key, style?.getPropertyValue(cssVar).trim() || fallback])
+  ) as ChartColors;
 }
 
-export function getChartColors() {
-  return {
-    accent: getCSSVar("--accent"),
-    success: getCSSVar("--success"),
-    danger: getCSSVar("--danger"),
-    info: getCSSVar("--info"),
-    warning: getCSSVar("--warning"),
-    teal: getCSSVar("--teal"),
-    muted: getCSSVar("--muted-foreground"),
-    border: getCSSVar("--border"),
-    card: getCSSVar("--card"),
-    foreground: getCSSVar("--blanco"),
-  };
-}
-
-export const CHART_PALETTE = [
-  "var(--accent)",
-  "var(--success)",
-  "var(--info)",
-  "var(--warning)",
-  "var(--teal)",
-  "var(--danger)",
-  "#ec4899",
-  "#8b5cf6",
-  "#06b6d4",
-  "#f97316",
-  "#84cc16",
-  "#14b8a6",
-  "#6366f1",
-  "#e11d48",
-  "#0ea5e9",
-  "#a855f7",
-  "#f43f5e",
-  "#22d3ee",
-  "#4ade80",
-  "#fb923c",
+const PALETTE_EXTRA = [
+  "#ec4899", "#8b5cf6", "#06b6d4", "#f97316", "#84cc16", "#14b8a6", "#6366f1",
+  "#e11d48", "#0ea5e9", "#a855f7", "#f43f5e", "#22d3ee", "#4ade80", "#fb923c",
 ];
 
-export function resolveChartPalette(): string[] {
-  if (typeof document === "undefined") return CHART_PALETTE;
-  const style = getComputedStyle(document.documentElement);
-  return CHART_PALETTE.map((c) => {
-    if (c.startsWith("var(--")) {
-      const varName = c.slice(4, -1);
-      return style.getPropertyValue(varName).trim() || c;
-    }
-    return c;
-  });
+function buildTheme(theme: string | null) {
+  const colors = getChartColors();
+  const { accent, success, info, warning, teal, danger } = colors;
+  return { theme, colors, palette: [accent, success, info, warning, teal, danger, ...PALETTE_EXTRA] };
+}
+
+const SERVER_THEME = buildTheme(null);
+let cached: ReturnType<typeof buildTheme> | undefined;
+
+function readTheme() {
+  const theme = document.documentElement.getAttribute("data-theme");
+  if (cached?.theme !== theme) cached = buildTheme(theme);
+  return cached;
+}
+
+function subscribeTheme(onChange: () => void) {
+  const observer = new MutationObserver(onChange);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  return () => observer.disconnect();
+}
+
+/** Chart colours and categorical palette for the current theme (re-renders on theme change). */
+export function useChartTheme() {
+  return useSyncExternalStore(subscribeTheme, readTheme, () => SERVER_THEME);
 }
 
 export function tooltipConfig() {
-  const colors = getChartColors();
+  const { card, foreground, border } = getChartColors();
   return {
-    backgroundColor: colors.card || "#1a1a2e",
-    titleColor: colors.foreground || "#fff",
-    bodyColor: colors.foreground || "#fff",
-    borderColor: colors.border || "#333",
+    backgroundColor: card,
+    titleColor: foreground,
+    bodyColor: foreground,
+    borderColor: border,
     borderWidth: 1,
     cornerRadius: 8,
     padding: 10,
@@ -123,27 +120,17 @@ export function tooltipConfig() {
   };
 }
 
-export function gridConfig() {
-  const colors = getChartColors();
+/** Axis styling; `ticks` overrides are merged into the default tick style. */
+export function axisConfig(ticks: Record<string, unknown> = {}) {
+  const { muted, border } = getChartColors();
   return {
-    color: colors.border ? `${colors.border}50` : "rgba(255,255,255,0.08)",
-  };
-}
-
-export function axisConfig() {
-  const colors = getChartColors();
-  return {
-    ticks: {
-      color: colors.muted || "#888",
-      font: { size: 10 },
-    },
-    grid: gridConfig(),
+    ticks: { color: muted, font: { size: 10 }, ...ticks },
+    grid: { color: `${border}50` },
     border: { display: false },
   };
 }
 
 export function formatK(v: number | string): string {
   const n = Number(v);
-  if (Math.abs(n) >= 1000) return `${(n / 1000).toFixed(0)}k`;
-  return String(n);
+  return Math.abs(n) >= 1000 ? `${(n / 1000).toFixed(0)}k` : String(n);
 }

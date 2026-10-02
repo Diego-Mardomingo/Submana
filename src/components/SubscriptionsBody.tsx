@@ -1,482 +1,333 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSubscriptions } from "@/hooks/useSubscriptions";
-import { useUpdateSubscription, useDeleteSubscription } from "@/hooks/useSubscriptionMutations";
-import { useLang } from "@/hooks/useLang";
-import { useTranslations } from "@/lib/i18n/utils";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
-import { Pencil, XCircle, Trash2 } from "lucide-react";
-import { AddButton } from "@/components/ui/add-button";
-import { toDateString } from "@/lib/date";
+import { memo, useCallback, useState } from "react";
+import { ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { Bones } from "@/components/Bones";
+import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
-import { useState, memo } from "react";
+import { SubscriptionDialogs, useFrequencyLabel, type SubscriptionAction } from "@/components/SubscriptionDialogs";
+import { SubscriptionSheet } from "@/components/SubscriptionSheet";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useCreateDialog } from "@/hooks/useCreateDialog";
+import { useLang } from "@/hooks/useLang";
+import { useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
+import { parseDateString } from "@/lib/date";
+import { formatCurrency, localeOf } from "@/lib/format";
+import { useTranslations } from "@/lib/i18n/utils";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
+import { isSubscriptionActive, monthlyCost, nextPaymentDate } from "@/lib/subscriptions";
 
-type Sub = {
-  id: string;
-  service_name: string;
-  icon?: string;
-  cost: number;
-  start_date: string;
-  end_date?: string | null;
-  frequency: string;
-  frequency_value: number;
+const CalendarIcon = ({ size = 24 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+    <line x1="16" y1="2" x2="16" y2="6" />
+    <line x1="8" y1="2" x2="8" y2="6" />
+    <line x1="3" y1="10" x2="21" y2="10" />
+  </svg>
+);
+
+const DAY_MS = 86_400_000;
+const daysFromToday = (date: Date) => {
+  const now = new Date();
+  return Math.round((date.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime()) / DAY_MS);
 };
 
-function setToNoon(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+/** "Hoy", "Mañana", "En 5 días" for the coming week, otherwise "14 mar" (plus the year when it differs). */
+function useDateLabels() {
+  const lang = useLang();
+  const es = lang === "es";
+  const short = (date: Date) =>
+    date.toLocaleDateString(localeOf(lang), {
+      day: "numeric",
+      month: "short",
+      ...(date.getFullYear() !== new Date().getFullYear() && { year: "numeric" }),
+    });
+  const relative = (date: Date) => {
+    const days = daysFromToday(date);
+    if (days === 0) return es ? "Hoy" : "Today";
+    if (days === 1) return es ? "Mañana" : "Tomorrow";
+    if (days > 1 && days <= 7) return es ? `En ${days} días` : `In ${days} days`;
+    return short(date);
+  };
+  return { short, relative };
 }
 
-function isSubActive(sub: Sub) {
-  const current = setToNoon(new Date());
-  const start = setToNoon(new Date(sub.start_date));
-  if (start > current) return false;
-  if (sub.end_date) {
-    const end = setToNoon(new Date(sub.end_date));
-    if (end < current) return false;
-  }
-  return true;
-}
+export const SubscriptionIcon = ({ sub }: { sub: Pick<Subscription, "icon" | "service_name"> }) => (
+  <span className="lp-icon" aria-hidden>
+    {/* eslint-disable-next-line @next/next/no-img-element -- remote service logos */}
+    <img src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt="" />
+  </span>
+);
 
-function calculateMonthly(subs: Sub[]) {
-  return subs.reduce((acc, sub) => {
-    let monthly = Number(sub.cost);
-    if (sub.frequency === "yearly") monthly /= 12;
-    if (sub.frequency === "weekly") monthly *= 4;
-    if ((sub.frequency_value || 1) > 1) monthly /= sub.frequency_value;
-    return acc + monthly;
-  }, 0);
-}
-
-type SubscriptionCardContentProps = {
-  sub: Sub;
-  isActive: boolean;
-  freqLabel: string;
-  activeLabel: string;
-  inactiveLabel: string;
-  formattedCost: string;
-};
-
-const SubscriptionCardContent = memo(function SubscriptionCardContent({
-  sub,
-  isActive,
-  freqLabel,
-  activeLabel,
-  inactiveLabel,
-  formattedCost,
-}: SubscriptionCardContentProps) {
+const SubscriptionRow = memo(function SubscriptionRow({ sub, active, meta, perMonth, onOpen }: {
+  sub: Subscription;
+  active: boolean;
+  meta: React.ReactNode;
+  perMonth?: string;
+  onOpen: (sub: Subscription) => void;
+}) {
   return (
-    <Link href={`/subscription/${sub.id}`} style={{ textDecoration: "none", color: "inherit", display: "block" }}>
-      <div className={`subs-card ${isActive ? "active" : "inactive"}`}>
-        <div className="subs-card-icon">
-          <img src={sub.icon || "/placeholder-icon.png"} alt="" />
-        </div>
-        <div className="subs-card-content">
-          <span className="subs-card-name">{sub.service_name}</span>
-          <div className="subs-card-badges">
-            <span className="subs-badge subs-badge-freq">{freqLabel}</span>
-            <span className={`subs-badge ${isActive ? "subs-badge-active" : "subs-badge-inactive"}`}>
-              {isActive ? activeLabel : inactiveLabel}
-            </span>
-          </div>
-          <span className="subs-card-cost">
-            <SensitiveAmount>{formattedCost}</SensitiveAmount>
-          </span>
-        </div>
-        {isActive && (
-          <svg className="subs-card-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        )}
-      </div>
-    </Link>
+    <button type="button" className={`lp-row ${active ? "" : "lp-row--dim"}`} onClick={() => onOpen(sub)}>
+      <SubscriptionIcon sub={sub} />
+      <span className="lp-main">
+        <span className="lp-title">
+          <span>{sub.service_name}</span>
+        </span>
+        <span className="lp-meta">{meta}</span>
+      </span>
+      <span className="lp-end">
+        <span className="lp-amount">
+          <SensitiveAmount>{formatCurrency(Number(sub.cost))}</SensitiveAmount>
+        </span>
+        {perMonth && <span className="lp-sub-amount">{perMonth}</span>}
+      </span>
+    </button>
   );
 });
 
 export default function SubscriptionsBody() {
   const lang = useLang();
   const t = useTranslations(lang);
-  const router = useRouter();
-  const isMobile = useMediaQuery("(max-width: 767px)");
+  const es = lang === "es";
+  const freqLabel = useFrequencyLabel();
+  const dates = useDateLabels();
   const { data: subscriptions = [], isLoading } = useSubscriptions();
-  const updateSub = useUpdateSubscription();
-  const deleteSub = useDeleteSubscription();
   const [inactiveOpen, setInactiveOpen] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
-  const [showCancel, setShowCancel] = useState(false);
-  const [subToDelete, setSubToDelete] = useState<Sub | null>(null);
-  const [subToCancel, setSubToCancel] = useState<Sub | null>(null);
+  const [action, setAction] = useState<SubscriptionAction>(null);
+  const [createOpen, setCreateOpen] = useCreateDialog();
+  const [sheet, setSheet] = useState<{ sub: Subscription; mode: "view" | "edit" } | null>(null);
+  const openSub = useCallback((sub: Subscription) => setSheet({ sub, mode: "view" }), []);
+  // Live data for the open subscription (falls back to the snapshot once deleted).
+  const sheetSub = sheet ? (subscriptions.find((s) => s.id === sheet.sub.id) ?? sheet.sub) : null;
 
-  const formatCurrency = (amount: number) => {
-    const formatted = new Intl.NumberFormat("es-ES", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-      useGrouping: true,
-    }).format(amount);
-    return `${formatted} €`;
-  };
+  const next = new Map(subscriptions.map((sub) => [sub.id, nextPaymentDate(sub)]));
+  const nextTime = (sub: Subscription) => next.get(sub.id)?.getTime() ?? Infinity;
+  const activeSubs = subscriptions
+    .filter(isSubscriptionActive)
+    .sort((a, b) => nextTime(a) - nextTime(b) || Number(b.cost) - Number(a.cost));
+  const inactiveSubs = subscriptions.filter((s) => !isSubscriptionActive(s)).sort((a, b) => Number(b.cost) - Number(a.cost));
+  const totalMonthly = activeSubs.reduce((sum, sub) => sum + monthlyCost(sub), 0);
+  const upcoming = activeSubs.find((sub) => next.get(sub.id));
 
-  const activeSubs = (subscriptions as Sub[]).filter(isSubActive);
-  const inactiveSubs = (subscriptions as Sub[]).filter((s) => !isSubActive(s));
-  activeSubs.sort((a, b) => Number(b.cost) - Number(a.cost));
-  inactiveSubs.sort((a, b) => Number(b.cost) - Number(a.cost));
-  
-  const totalMonthly = calculateMonthly(activeSubs);
-  const totalYearly = totalMonthly * 12;
+  const perMonthLabel = (sub: Subscription) =>
+    sub.frequency === "monthly" && (sub.frequency_value || 1) === 1 ? undefined : `≈ ${formatCurrency(monthlyCost(sub))}/${es ? "mes" : "mo"}`;
 
-  const getFreqLabel = (freq: string, val: number) => {
-    if (val === 1) {
-      if (freq === "monthly") return t("sub.monthly");
-      if (freq === "yearly") return t("sub.yearly");
-      if (freq === "weekly") return t("sub.weekly");
-    } else {
-      if (freq === "monthly") return `${t("sub.every")} ${val} ${t("sub.months")}`;
-      if (freq === "yearly") return `${t("sub.every")} ${val} ${t("sub.years")}`;
-      if (freq === "weekly") return `${t("sub.every")} ${val} ${t("sub.weeks")}`;
-    }
-    return freq;
-  };
-
-  const handleDelete = async () => {
-    if (!subToDelete) return;
-    await deleteSub.mutateAsync(subToDelete.id);
-    setShowDelete(false);
-    setSubToDelete(null);
-    router.push("/subscriptions");
-  };
-
-  const handleCancel = async () => {
-    if (!subToCancel) return;
-    const today = toDateString(new Date());
-    await updateSub.mutateAsync({ id: subToCancel.id, end_date: today });
-    setShowCancel(false);
-    setSubToCancel(null);
-    router.refresh();
-  };
-
-  const renderSubCard = (sub: Sub, isActive: boolean) => {
-    const canCancel = isActive && !sub.end_date;
-    const cardContent = (
-      <SubscriptionCardContent
-        sub={sub}
-        isActive={isActive}
-        freqLabel={getFreqLabel(sub.frequency, sub.frequency_value || 1)}
-        activeLabel={t("sub.active")}
-        inactiveLabel={t("sub.inactive")}
-        formattedCost={formatCurrency(Number(sub.cost))}
-      />
-    );
-
-    if (!isMobile) {
-      return <div key={sub.id}>{cardContent}</div>;
-    }
-
+  const activeMeta = (sub: Subscription) => {
+    const date = next.get(sub.id);
+    const soon = date && daysFromToday(date) <= 3;
     return (
-      <SwipeToReveal
-        key={sub.id}
-        id={sub.id}
-        className="subs-swipe-wrapper"
-        swipeHint
-        desktopMinWidth={768}
-        actions={
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/subscription/${sub.id}/edit`}
-              onClick={(e) => e.stopPropagation()}
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--accent)] transition-colors hover:bg-[var(--accent-soft)]"
-              aria-label={t("sub.edit")}
-            >
-              <Pencil className="size-5" />
-            </Link>
-            {canCancel && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setSubToCancel(sub);
-                  setShowCancel(true);
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--warning)] transition-colors hover:bg-[var(--warning-soft)]"
-                aria-label={t("sub.cancel")}
-              >
-                <XCircle className="size-5" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setSubToDelete(sub);
-                setShowDelete(true);
-              }}
-              className="flex h-10 w-10 items-center justify-center rounded-lg text-[var(--danger)] transition-colors hover:bg-[var(--danger-soft)]"
-              aria-label={t("sub.delete")}
-            >
-              <Trash2 className="size-5" />
-            </button>
-          </div>
-        }
-      >
-        {cardContent}
-      </SwipeToReveal>
+      <>
+        <span className={soon ? "lp-soon" : undefined}>{date ? dates.relative(date) : es ? "Sin más cobros" : "No more charges"}</span>
+        <span className="lp-meta-sep">·</span>
+        {sub.end_date ? (
+          <span className="lp-warn lp-truncate">
+            {es ? "Termina" : "Ends"} {dates.short(parseDateString(sub.end_date))}
+          </span>
+        ) : (
+          <span className="lp-truncate">{freqLabel(sub)}</span>
+        )}
+      </>
     );
   };
+
+  const inactiveMeta = (sub: Subscription) => {
+    const upcomingStart = parseDateString(sub.start_date) > new Date();
+    const date = upcomingStart ? sub.start_date : sub.end_date;
+    return (
+      <>
+        {date && (
+          <>
+            <span>
+              {upcomingStart ? (es ? "Empieza" : "Starts") : es ? "Finalizó" : "Ended"} {dates.short(parseDateString(date))}
+            </span>
+            <span className="lp-meta-sep">·</span>
+          </>
+        )}
+        <span className="lp-truncate">{freqLabel(sub)}</span>
+      </>
+    );
+  };
+
+  const renderList = (subs: Subscription[], active: boolean) => (
+    <SwipeToRevealGroup className="lp-card lp-group">
+      {subs.map((sub) => {
+        const button = (type: "cancel" | "delete", className: string, label: string, icon: React.ReactNode) => (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setAction({ type, sub });
+            }}
+            className={`lp-action ${className}`}
+            aria-label={label}
+          >
+            {icon}
+          </button>
+        );
+        return (
+          <SwipeToReveal
+            key={sub.id}
+            id={sub.id}
+            className="lp-swipe lp-swipe--3"
+            desktopMinWidth={1024}
+            actions={
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSheet({ sub, mode: "edit" });
+                  }}
+                  className="lp-action lp-action--edit"
+                  aria-label={t("sub.edit")}
+                >
+                  <Pencil className="size-5" />
+                </button>
+                {active && !sub.end_date && button("cancel", "lp-action--warn", t("sub.cancel"), <XCircle className="size-5" />)}
+                {button("delete", "lp-action--danger", t("sub.delete"), <Trash2 className="size-5" />)}
+              </>
+            }
+          >
+            <SubscriptionRow sub={sub} active={active} meta={active ? activeMeta(sub) : inactiveMeta(sub)} perMonth={perMonthLabel(sub)} onOpen={openSub} />
+          </SwipeToReveal>
+        );
+      })}
+    </SwipeToRevealGroup>
+  );
+
+  const header = <CompactPageHeader title={t("nav.subscriptions")} addLabel={t("sub.new")} onAdd={() => setCreateOpen(true)} />;
+  const sheets = (
+    <SubscriptionSheet
+      open={createOpen || !!sheet}
+      onOpenChange={(open) => {
+        if (open) return;
+        setCreateOpen(false);
+        setSheet(null);
+      }}
+      subscription={sheetSub}
+      mode={sheet?.mode}
+    />
+  );
 
   if (isLoading) {
     return (
-      <div className="page-container">
-        <header className="page-header-clean">
-          <div className="page-header-left">
-            <div className="page-header-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                <line x1="16" y1="2" x2="16" y2="6" />
-                <line x1="8" y1="2" x2="8" y2="6" />
-                <line x1="3" y1="10" x2="21" y2="10" />
-              </svg>
+      <div className="page-container lp-page">
+        {header}
+        <Bones
+          name="subscriptions"
+          loading
+          fallback={
+            <div className="lp-layout">
+              <div className="lp-aside">
+                <div className="skeleton" style={{ height: 128, borderRadius: 16 }} />
+              </div>
+              <div className="lp-content">
+                <div className="skeleton" style={{ height: 4 * 57, borderRadius: 16 }} />
+              </div>
             </div>
-            <div className="page-header-text">
-              <h1>{t("nav.subscriptions")}</h1>
-              <p>{t("sub.heroSubtitle")}</p>
-            </div>
-          </div>
-        </header>
-        <div className="info-stats-row">
-          <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
-          <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 24 }}>
-          <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />
-          <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />
-          <div className="skeleton" style={{ height: 80, borderRadius: 14 }} />
-        </div>
+          }
+        />
       </div>
     );
   }
 
-  const hasNoSubs = activeSubs.length === 0 && inactiveSubs.length === 0;
-
+  const upcomingDate = upcoming && next.get(upcoming.id);
   return (
-    <div className="page-container fade-in">
-      {/* Page Header */}
-      <header className="page-header-clean">
-        <div className="page-header-left">
-          <div className="page-header-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-          </div>
-          <div className="page-header-text">
-            <h1>{t("nav.subscriptions")}</h1>
-            <p>{t("sub.heroSubtitle")}</p>
-          </div>
-        </div>
-        <AddButton href="/subscriptions/new">
-          {t("sub.new")}
-        </AddButton>
-      </header>
+    <div className="page-container lp-page fade-in">
+      {header}
 
-      {/* Stats Cards */}
-      {!hasNoSubs && (
-        <div className="info-stats-row">
-          <div className="info-stat-card">
-            <div className="info-stat-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M2 17a5 5 0 0 0 10 0c0-2.76-2.24-5-5-5s-5 2.24-5 5Z" />
-                <path d="M12 17a5 5 0 0 0 10 0c0-2.76-2.24-5-5-5s-5 2.24-5 5Z" />
-                <path d="M7 7a5 5 0 0 0 10 0c0-2.76-2.24-5-5-5S7 4.24 7 7Z" />
-              </svg>
-            </div>
-            <div className="info-stat-content">
-              <span className="info-stat-label">{t("sub.monthlyCost")}</span>
-              <span className="info-stat-value">
-                <SensitiveAmount>{formatCurrency(totalMonthly)}</SensitiveAmount>
-              </span>
-            </div>
+      {subscriptions.length === 0 ? (
+        <div className="lp-card lp-empty">
+          <div className="lp-empty-icon">
+            <CalendarIcon />
           </div>
-          <div className="info-stat-card">
-            <div className="info-stat-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 3v18h18" />
-                <path d="m19 9-5 5-4-4-3 3" />
-              </svg>
-            </div>
-            <div className="info-stat-content">
-              <span className="info-stat-label">{t("sub.annualCost")}</span>
-              <span className="info-stat-value">
-                <SensitiveAmount>{formatCurrency(totalYearly)}</SensitiveAmount>
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {hasNoSubs ? (
-        <div className="subs-empty">
-          <div className="subs-empty-icon">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-              <line x1="9" y1="14" x2="15" y2="14" />
-              <line x1="9" y1="18" x2="15" y2="18" />
-            </svg>
-          </div>
-          <p className="subs-empty-title">
-            {lang === "es" ? "Sin suscripciones" : "No subscriptions yet"}
+          <p className="lp-empty-title">{es ? "Sin suscripciones" : "No subscriptions yet"}</p>
+          <p className="lp-empty-text">
+            {es ? "Añade tus suscripciones para controlar tus gastos recurrentes" : "Add your subscriptions to track your recurring expenses"}
           </p>
-          <p className="subs-empty-text">
-            {lang === "es" 
-              ? "Añade tus suscripciones para controlar tus gastos recurrentes"
-              : "Add your subscriptions to track your recurring expenses"
-            }
-          </p>
-          <Link href="/subscriptions/new" className="subs-empty-cta">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+          <button type="button" className="lp-chip" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" strokeWidth={2.5} />
             {t("sub.new")}
-          </Link>
+          </button>
         </div>
       ) : (
-        <>
-          {/* Active Subscriptions */}
-          {activeSubs.length > 0 && (
-            <section className="subs-section">
-              <div className="subs-section-header">
-                <span className="subs-section-title">{t("sub.active")}</span>
-                <span className="subs-section-count">{activeSubs.length}</span>
+        <Bones name="subscriptions" loading={false}>
+          <div className="lp-layout">
+            <aside className="lp-aside">
+              <div className="lp-card lp-summary">
+                <div className="lp-stats">
+                  <div className="lp-stat">
+                    <span className="lp-label">{es ? "Al mes" : "Monthly"}</span>
+                    <span className="lp-stat-value">
+                      <SensitiveAmount>{formatCurrency(totalMonthly)}</SensitiveAmount>
+                    </span>
+                  </div>
+                  <div className="lp-stat">
+                    <span className="lp-label">{es ? "Al año" : "Yearly"}</span>
+                    <span className="lp-stat-value">
+                      <SensitiveAmount>{formatCurrency(totalMonthly * 12)}</SensitiveAmount>
+                    </span>
+                  </div>
+                  <div className="lp-stat">
+                    <span className="lp-label">{es ? "Activas" : "Active"}</span>
+                    <span className="lp-stat-value">{activeSubs.length}</span>
+                  </div>
+                </div>
+                {upcoming && upcomingDate && (
+                  <>
+                    <div className="lp-summary-divider" />
+                    <button type="button" className="lp-next" onClick={() => openSub(upcoming)}>
+                      <SubscriptionIcon sub={upcoming} />
+                      <span className="lp-next-text">
+                        <span className="lp-label">{t("sub.nextPayment")}</span>
+                        <strong>
+                          {upcoming.service_name} · <span className="lp-soon">{dates.relative(upcomingDate)}</span>
+                        </strong>
+                      </span>
+                      <span className="lp-amount">
+                        <SensitiveAmount>{formatCurrency(Number(upcoming.cost))}</SensitiveAmount>
+                      </span>
+                    </button>
+                  </>
+                )}
               </div>
-              {isMobile ? (
-                <SwipeToRevealGroup className="subs-list">
-                  {activeSubs.map((sub) => renderSubCard(sub, true))}
-                </SwipeToRevealGroup>
-              ) : (
-                <div className="subs-list">
-                  {activeSubs.map((sub) => renderSubCard(sub, true))}
-                </div>
-              )}
-            </section>
-          )}
+            </aside>
 
-          {/* Inactive Subscriptions */}
-          {inactiveSubs.length > 0 && (
-            <Collapsible open={inactiveOpen} onOpenChange={setInactiveOpen}>
-              <CollapsibleTrigger className="subs-collapsible-trigger">
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span>{t("sub.inactive")}</span>
-                  <span className="subs-section-count inactive">{inactiveSubs.length}</span>
-                </div>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="subs-collapsible-content">
-                <div className="subs-collapsible-inner" style={{ paddingTop: 12 }}>
-                  {isMobile ? (
-                    <SwipeToRevealGroup className="subs-list">
-                      {inactiveSubs.map((sub) => renderSubCard(sub, false))}
-                    </SwipeToRevealGroup>
-                  ) : (
-                    <div className="subs-list">
-                      {inactiveSubs.map((sub) => renderSubCard(sub, false))}
-                    </div>
-                  )}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-        </>
+            <div className="lp-content">
+              {activeSubs.length > 0 && (
+                <section className="lp-section">
+                  <div className="lp-section-head">
+                    <span className="lp-section-title">
+                      {es ? "Activas" : "Active"} · {activeSubs.length}
+                    </span>
+                    <span className="lp-section-aside">{es ? "Por próximo cobro" : "By next charge"}</span>
+                  </div>
+                  {renderList(activeSubs, true)}
+                </section>
+              )}
+
+              {inactiveSubs.length > 0 && (
+                <Collapsible open={inactiveOpen} onOpenChange={setInactiveOpen} className="lp-section">
+                  <CollapsibleTrigger className="lp-collapse-trigger">
+                    <span>
+                      {es ? "Inactivas" : "Inactive"} · {inactiveSubs.length}
+                    </span>
+                    <ChevronDown className="size-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="subs-collapsible-content">
+                    <div className="subs-collapsible-inner">{renderList(inactiveSubs, false)}</div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </div>
+          </div>
+        </Bones>
       )}
 
-      {/* Cancel Confirmation Dialog */}
-      <Dialog open={showCancel} onOpenChange={(open) => { setShowCancel(open); if (!open) setSubToCancel(null); }}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <DialogHeader className="items-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--warning-soft)]">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M15 9l-6 6M9 9l6 6" />
-              </svg>
-            </div>
-            <DialogTitle className="text-center">
-              {lang === "es" ? "¿Cancelar suscripción?" : "Cancel subscription?"}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {subToCancel && (
-                lang === "es"
-                  ? `Se establecerá la fecha de fin de ${subToCancel.service_name} como hoy.`
-                  : `This will set ${subToCancel.service_name}'s end date to today.`
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:justify-center gap-3 pt-2">
-            <Button variant="outline" onClick={() => { setShowCancel(false); setSubToCancel(null); }}>
-              {t("sub.cancelAction")}
-            </Button>
-            <Button
-              variant="default"
-              onClick={handleCancel}
-              disabled={updateSub.isPending}
-              className="bg-[var(--warning)] hover:bg-[var(--warning-hover)] text-black"
-            >
-              {updateSub.isPending && <Spinner className="size-4" />}
-              {t("sub.cancel")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDelete} onOpenChange={(open) => { setShowDelete(open); if (!open) setSubToDelete(null); }}>
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
-          <DialogHeader className="items-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--danger-soft)]">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="2">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-            </div>
-            <DialogTitle className="text-center">{t("sub.deleteTitle")}</DialogTitle>
-            <DialogDescription className="text-center">
-              {t("sub.deleteConfirm")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="sm:justify-center gap-3 pt-2">
-            <Button variant="outline" onClick={() => { setShowDelete(false); setSubToDelete(null); }}>
-              {t("sub.cancelAction")}
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleteSub.isPending}
-            >
-              {deleteSub.isPending && <Spinner className="size-4" />}
-              {t("sub.delete")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SubscriptionDialogs action={action} onClose={() => setAction(null)} />
+      {sheets}
     </div>
   );
 }

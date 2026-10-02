@@ -1,75 +1,41 @@
-import { createClient } from "@/lib/supabase/server";
-import { jsonError, jsonResponse, jsonCachedResponse, parseRequestBody } from "@/lib/apiHelpers";
 import { NextRequest } from "next/server";
+import { getAuthedClient, isOwnedAccount, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
+import { validateSubscriptionFields } from "@/lib/subscriptionValidation";
 
 export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
-
-  const { data: subscriptions, error } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("id", { ascending: true });
-
-  if (error) {
-    return jsonError(error.message, 500);
-  }
-
-  return jsonCachedResponse({ data: subscriptions }, 200, 120, 600);
+  const { data, error } = await supabase.from("subscriptions").select("*").eq("user_id", user.id).order("id", { ascending: true });
+  if (error) return jsonServerError("crud/subscriptions", error);
+  return jsonCachedResponse({ data });
 }
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
 
-  if (authError || !user) {
-    return jsonError("Unauthorized", 401);
-  }
+  const body = await parseRequestBody(request);
+  const name = body.service_name;
+  if (!name || !body.start_date) return jsonError("missing_fields");
+  const fields = {
+    cost: body.cost ? parseFloat(body.cost) : 0,
+    start_date: body.start_date,
+    end_date: body.end_date || null,
+    frequency: body.frequency || "monthly",
+    frequency_value: body.frequency_value ? Number(body.frequency_value) : 1,
+    account_id: body.account_id || null,
+  };
+  const invalid = validateSubscriptionFields(fields);
+  if (invalid) return jsonError(invalid);
+  if (fields.account_id && !(await isOwnedAccount(supabase, user.id, fields.account_id))) return jsonError("Account not found", 404);
 
-  const { body } = await parseRequestBody(request);
-  const service_name = (body.service_name || body.name) as string;
-  const icon = body.icon;
-  const cost = body.cost ? parseFloat(body.cost) : 0;
-  const startDate = (body.startDate || body.start_date) as string;
-  const endDate = (body.endDate || body.end_date) as string;
-  const frequency = body.frequency || "monthly";
-  const frequencyValue = body.frequency_value
-    ? parseInt(body.frequency_value, 10)
-    : 1;
-  const accountId = body.account_id as string | null | undefined;
-
-  const defaultIcon = `https://ui-avatars.com/api/?name=${encodeURIComponent(service_name || "Sub")}&length=2&background=random&color=fff&size=256`;
-
-  const { data: insertedData, error } = await supabase
+  const { data, error } = await supabase
     .from("subscriptions")
-    .insert({
-      user_id: user.id,
-      service_name,
-      icon: icon || defaultIcon,
-      cost,
-      start_date: startDate,
-      end_date: endDate || null,
-      frequency,
-      frequency_value: frequencyValue,
-      account_id: accountId || null,
-    })
+    .insert({ user_id: user.id, service_name: name, icon: body.icon || initialsAvatarDataUri(name), ...fields })
     .select()
     .single();
-
-  if (error) {
-    return jsonError(error.message, 500);
-  }
-
-  return jsonResponse({ data: insertedData }, 201);
+  if (error) return jsonServerError("crud/subscriptions", error);
+  return jsonResponse({ data }, 201);
 }

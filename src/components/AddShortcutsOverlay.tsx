@@ -1,315 +1,264 @@
 "use client";
 
+import { useEffect, useEffectEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useState, useCallback, useEffect } from "react";
-import {
-  Calendar,
-  Receipt,
-  CreditCard,
-  Wallet,
-  Tags,
-  FileUp,
-  MessageCircle,
-  type LucideIcon,
-} from "lucide-react";
-import { useLang } from "@/hooks/useLang";
-import { useTranslations } from "@/lib/i18n/utils";
-import { useAccounts } from "@/hooks/useAccounts";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Send, Tags, Wallet, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { ActionRow, FieldGroup, Segmented, SheetButton } from "@/components/SheetFields";
+import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
+import { useAccounts } from "@/hooks/useAccounts";
+import { useLang } from "@/hooks/useLang";
+import { api } from "@/lib/api";
 import { getBankProvider } from "@/lib/bankProviders";
 import type { UIKey } from "@/lib/i18n/ui";
+import { useTranslations } from "@/lib/i18n/utils";
+import { cn } from "@/lib/utils";
 
-const ACCOUNTS_WITH_IMPORT = ["trade_republic", "revolut", "bbva", "imagin"];
+type Modal = "import" | "feedback";
+/** `shortKey`: label under the arc bubble, where the + already says "new" and room is tight. */
+type Shortcut = { icon: LucideIcon; labelKey: UIKey; shortKey?: UIKey; href?: string; modal?: Modal };
 
-interface AccountWithProvider {
-  id: string;
-  name: string;
-  bank_provider?: string | null;
-}
+const TRANSACTION: Shortcut = { icon: Receipt, labelKey: "addShortcuts.newTransaction", shortKey: "addShortcuts.transaction", href: "/transactions?open=create" };
+const IMPORT: Shortcut = { icon: FileUp, labelKey: "addShortcuts.import", shortKey: "addShortcuts.importShort", modal: "import" };
+const SUBSCRIPTION: Shortcut = { icon: Calendar, labelKey: "addShortcuts.newSubscription", shortKey: "addShortcuts.subscription", href: "/subscriptions?open=create" };
+const FEEDBACK: Shortcut = { icon: MessageCircle, labelKey: "addShortcuts.feedback", shortKey: "addShortcuts.feedbackShort", modal: "feedback" };
 
-type ShortcutId =
-  | "subscription"
-  | "transaction"
-  | "account"
-  | "budget"
-  | "category"
-  | "import"
-  | "feedback";
-
-interface ShortcutItem {
-  id: ShortcutId;
-  icon: LucideIcon;
-  labelKey: UIKey;
-}
-
-/* Orden: import último para que ocupe 2 columnas en el grid */
-const SHORTCUTS: ShortcutItem[] = [
-  { id: "subscription", icon: Calendar, labelKey: "addShortcuts.newSubscription" },
-  { id: "transaction", icon: Receipt, labelKey: "addShortcuts.newTransaction" },
-  { id: "account", icon: CreditCard, labelKey: "addShortcuts.newAccount" },
-  { id: "budget", icon: Wallet, labelKey: "addShortcuts.newBudget" },
-  { id: "category", icon: Tags, labelKey: "addShortcuts.newCategory" },
-  { id: "feedback", icon: MessageCircle, labelKey: "addShortcuts.feedback" },
-  { id: "import", icon: FileUp, labelKey: "addShortcuts.import" },
+/** Desktop list: the two most used actions (transaction, import) first, feedback last. */
+const FLYOUT: Shortcut[][] = [
+  [TRANSACTION, IMPORT],
+  [
+    SUBSCRIPTION,
+    { icon: CreditCard, labelKey: "addShortcuts.newAccount", href: "/accounts?open=create" },
+    { icon: Wallet, labelKey: "addShortcuts.newBudget", href: "/budgets?open=create" },
+    { icon: Tags, labelKey: "addShortcuts.newCategory", href: "/categories?open=create" },
+  ],
+  [FEEDBACK],
 ];
 
-interface AddShortcutsOverlayProps {
-  open: boolean;
-  onClose: () => void;
-}
+/**
+ * Phones: four bubbles fan out above the + (left to right). The two most used (import, transaction)
+ * sit in the middle in the accent colour; the rest of the create actions live on their pages.
+ */
+const ARC_ITEMS = [SUBSCRIPTION, IMPORT, TRANSACTION, FEEDBACK];
+const ARC_PRIMARY = [IMPORT, TRANSACTION];
 
-export default function AddShortcutsOverlay({ open, onClose }: AddShortcutsOverlayProps) {
+/** Point on the arc (degrees, left to right); the radii live in CSS so they can follow the viewport. */
+const ARC = { from: 160, to: 20 };
+const arcPoint = (index: number) => {
+  const angle = ((ARC.from - ((ARC.from - ARC.to) * index) / (ARC_ITEMS.length - 1)) * Math.PI) / 180;
+  return { cos: Math.cos(angle).toFixed(3), sin: Math.sin(angle).toFixed(3) };
+};
+
+const CLOSE_MS = 300;
+const IMPORTABLE_PROVIDERS = ["trade_republic", "revolut", "bbva", "imagin"];
+
+/**
+ * Quick-add menu, with the import and feedback sheets. Phones: the actions fan out in an arc from
+ * the + of the bottom bar (which stays on top, turned into a ×). Desktop: a flyout beside the
+ * sidebar's add button (`anchor`). Plays its closing animation once `open` turns false.
+ */
+export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: boolean; anchor: DOMRect | null; onClose: () => void }) {
   const router = useRouter();
   const lang = useLang();
+  const es = lang === "es";
   const t = useTranslations(lang);
   const { data: accounts = [] } = useAccounts();
-
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [rendered, setRendered] = useState(open);
+  const [modal, setModal] = useState<Modal | null>(null);
   const [feedbackType, setFeedbackType] = useState<"error" | "suggestion">("suggestion");
   const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [feedbackSending, setFeedbackSending] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const importableAccounts = accounts.filter((a: AccountWithProvider) => {
-    if (!a.bank_provider || !ACCOUNTS_WITH_IMPORT.includes(a.bank_provider))
-      return false;
-    // Excluir Revolut remunerada: el extracto se sube a la principal de Revolut
-    if (a.bank_provider === "revolut" && a.name?.toLowerCase().includes("remunerada"))
-      return false;
-    if (a.bank_provider === "revolut" && a.name?.toLowerCase().includes("savings"))
-      return false;
-    return true;
-  }) as AccountWithProvider[];
-
-  const handleShortcut = useCallback(
-    (id: ShortcutId) => {
-      switch (id) {
-        case "subscription":
-          onClose();
-          router.push("/subscriptions/new");
-          break;
-        case "transaction":
-          onClose();
-          router.push("/transactions/new");
-          break;
-        case "account":
-          onClose();
-          router.push("/accounts?open=create");
-          break;
-        case "budget":
-          onClose();
-          router.push("/budgets?open=create");
-          break;
-        case "category":
-          onClose();
-          router.push("/categories?open=create");
-          break;
-        case "import":
-          setShowImportModal(true);
-          break;
-        case "feedback":
-          setShowFeedbackModal(true);
-          break;
-      }
-    },
-    [onClose, router]
-  );
-
+  if (open && !rendered) setRendered(true);
   useEffect(() => {
-    if (open) {
-      setShowImportModal(false);
-      setShowFeedbackModal(false);
-      setFeedbackMessage("");
-    }
+    if (open) return;
+    const timer = setTimeout(() => {
+      setRendered(false);
+      setModal(null);
+    }, CLOSE_MS);
+    return () => clearTimeout(timer);
   }, [open]);
 
-  const handleImportAccount = (accountId: string) => {
-    onClose();
-    setShowImportModal(false);
-    router.push(`/account/${accountId}?import=1&autoupload=1`);
-  };
+  // Escape inside a sheet is handled by the sheet itself.
+  const onEscape = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape" && !modal) onClose();
+  });
+  useEffect(() => {
+    if (!open) return;
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [open]);
 
-  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+  if (!rendered) return null;
+
+  // Revolut savings accounts are filled from the main Revolut statement.
+  const importable = accounts.filter(
+    (a) => a.bank_provider && IMPORTABLE_PROVIDERS.includes(a.bank_provider) && !(a.bank_provider === "revolut" && /remunerada|savings/i.test(a.name))
+  );
+
+  const close = () => {
+    setModal(null);
+    onClose();
+  };
+  const go = (href: string) => {
+    close();
+    router.push(href);
+  };
+  const pick = ({ href, modal: target }: Shortcut) => (target ? setModal(target) : go(href!));
+  // Closing a sheet closes the whole menu.
+  const closeModal = (isOpen: boolean) => !isOpen && close();
+
+  const sendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    const msg = feedbackMessage.trim();
-    if (!msg) return;
-    setFeedbackSending(true);
+    const message = feedbackMessage.trim();
+    if (!message) return;
+    setSending(true);
     try {
-      const res = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: feedbackType, message: msg }),
-      });
-      if (!res.ok) {
-        const json = await res.json();
-        throw new Error(json.error || "Failed to send");
-      }
-      setShowFeedbackModal(false);
+      await api("/api/feedback", "POST", { type: feedbackType, message });
+      close();
       setFeedbackMessage("");
-      onClose();
       toast.success(t("feedback.success"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error sending feedback");
     } finally {
-      setFeedbackSending(false);
+      setSending(false);
     }
   };
 
-  const handleRequestClose = useCallback(() => {
-    if (showImportModal || showFeedbackModal) return;
-    setIsClosing(true);
-    setTimeout(() => {
-      onClose();
-      setIsClosing(false);
-    }, 400);
-  }, [showImportModal, showFeedbackModal, onClose]);
+  const closeOnBackdrop = (e: React.MouseEvent) => e.target === e.currentTarget && onClose();
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) handleRequestClose();
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape" && !showImportModal && !showFeedbackModal) {
-      handleRequestClose();
-    }
-  };
-
-  if (!open && !isClosing) return null;
-
-  const showBubbles = !showFeedbackModal && !showImportModal;
-
-  const content = (
+  return createPortal(
     <div
-      className={`add-shortcuts-overlay ${isClosing ? "add-shortcuts-overlay--closing" : ""}`}
-      onClick={handleBackdropClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Quick add menu"
+      className="add-fan"
+      data-state={!open ? "closing" : modal ? "covered" : "open"}
+      data-variant={anchor ? "flyout" : "arc"}
+      onClick={closeOnBackdrop}
     >
-      {showBubbles && (
-        <div className={`add-shortcuts-bubbles ${isClosing ? "add-shortcuts-bubbles--closing" : ""}`}>
-          {SHORTCUTS.map((item, index) => {
-            const Icon = item.icon;
-            const isLast = index === SHORTCUTS.length - 1;
+      {anchor ? (
+        <div className="add-flyout" role="menu" aria-label={t("nav.add")} style={{ top: anchor.top, left: anchor.right + 12 }}>
+          {FLYOUT.map((group, g) => (
+            <div key={g} className="add-flyout-group">
+              {group.map((item, i) => (
+                <button
+                  key={item.labelKey}
+                  type="button"
+                  role="menuitem"
+                  className="add-flyout-item"
+                  style={{ "--i": FLYOUT.slice(0, g).flat().length + i } as React.CSSProperties}
+                  autoFocus={g === 0 && i === 0}
+                  onClick={() => pick(item)}
+                >
+                  <span className="add-flyout-icon">
+                    <item.icon aria-hidden />
+                  </span>
+                  {t(item.labelKey)}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="add-arc" role="menu" aria-label={t("nav.add")} onClick={closeOnBackdrop}>
+          {ARC_ITEMS.map((item, i) => {
+            const { cos, sin } = arcPoint(i);
             return (
               <button
-                key={item.id}
+                key={item.labelKey}
                 type="button"
-                className={`add-shortcuts-bubble ${isLast ? "add-shortcuts-bubble--span-2" : ""}`}
-                style={{ animationDelay: `${index * 50}ms` }}
-                onClick={() => handleShortcut(item.id)}
+                role="menuitem"
+                aria-label={t(item.labelKey)}
+                className={cn("add-arc-item", ARC_PRIMARY.includes(item) && "add-arc-item--primary")}
+                // Stagger from the middle out.
+                style={{ "--cos": cos, "--sin": sin, "--i": ARC_PRIMARY.includes(item) ? 0 : 1 } as React.CSSProperties}
+                onClick={() => pick(item)}
               >
-                <Icon className="add-shortcuts-bubble-icon" strokeWidth={2} />
-                <span className="add-shortcuts-bubble-label">{t(item.labelKey)}</span>
+                <span className="add-arc-bubble">
+                  <item.icon aria-hidden />
+                </span>
+                <span className="add-arc-label">{t(item.shortKey ?? item.labelKey)}</span>
               </button>
             );
           })}
         </div>
       )}
 
-      {showImportModal && (
-        <Dialog open={showImportModal} onOpenChange={(o) => !o && setShowImportModal(false)}>
-          <DialogContent className="add-shortcuts-import-dialog add-shortcuts-dialog-elevated">
-            <DialogHeader>
-              <DialogTitle>{t("addShortcuts.importTitle")}</DialogTitle>
-            </DialogHeader>
-            {importableAccounts.length === 0 ? (
-              <p className="text-[var(--gris-claro)] text-sm py-4">
-                {t("addShortcuts.noAccountsImport")}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {importableAccounts.map((acc) => {
-                  const provider = getBankProvider(acc.bank_provider);
-                  return (
-                    <Button
-                      key={acc.id}
-                      variant="outline"
-                      className="justify-start gap-3 h-auto py-3"
-                      onClick={() => handleImportAccount(acc.id)}
-                    >
-                      {provider?.icon && (
-                        <img
-                          src={provider.icon}
-                          alt=""
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      )}
-                      <span>{acc.name}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-      )}
+      <Sheet
+        open={modal === "import"}
+        onOpenChange={closeModal}
+        title={t("addShortcuts.importTitle")}
+        description={es ? "Elige la cuenta del extracto" : "Pick the statement's account"}
+      >
+        <SheetBody>
+          {importable.length === 0 ? (
+            <p className="sf-hint">{t("addShortcuts.noAccountsImport")}</p>
+          ) : (
+            <FieldGroup>
+              {importable.map((acc) => {
+                const bank = getBankProvider(acc.bank_provider);
+                return (
+                  <ActionRow
+                    key={acc.id}
+                    className="sf-action--account"
+                    // eslint-disable-next-line @next/next/no-img-element -- remote brand logo
+                    icon={<img src={bank?.icon} alt="" />}
+                    onClick={() => go(`/account/${acc.id}?import=1&autoupload=1`)}
+                  >
+                    <span className="sf-action-text">
+                      {acc.name}
+                      <small>
+                        {bank?.name} · {bank?.formatLabel}
+                      </small>
+                    </span>
+                    <ChevronRight className="sf-action-chevron" aria-hidden />
+                  </ActionRow>
+                );
+              })}
+            </FieldGroup>
+          )}
+        </SheetBody>
+      </Sheet>
 
-      {showFeedbackModal && (
-        <Dialog open={showFeedbackModal} onOpenChange={(o) => !o && setShowFeedbackModal(false)}>
-          <DialogContent className="add-shortcuts-feedback-dialog add-shortcuts-dialog-elevated">
-            <DialogHeader>
-              <DialogTitle>{t("feedback.title")}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleFeedbackSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>{t("feedback.message")}</Label>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={feedbackType === "error" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setFeedbackType("error")}
-                  >
-                    {t("feedback.typeError")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={feedbackType === "suggestion" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setFeedbackType("suggestion")}
-                  >
-                    {t("feedback.typeSuggestion")}
-                  </Button>
-                </div>
-              </div>
-              <Textarea
+      <Sheet open={modal === "feedback"} onOpenChange={closeModal} title={t("feedback.title")}>
+        <SheetForm onSubmit={sendFeedback}>
+          <SheetBody>
+            <Segmented
+              label={t("feedback.message")}
+              value={feedbackType}
+              onChange={setFeedbackType}
+              options={[
+                { value: "suggestion", label: t("feedback.typeSuggestion") },
+                { value: "error", label: t("feedback.typeError") },
+              ]}
+            />
+            <FieldGroup title={t("feedback.message")}>
+              <textarea
+                className="sf-textarea"
                 value={feedbackMessage}
                 onChange={(e) => setFeedbackMessage(e.target.value)}
-                placeholder={lang === "es" ? "Describe el error o tu sugerencia..." : "Describe the error or your suggestion..."}
-                rows={4}
-                className="resize-none !field-sizing-fixed w-full max-w-full"
-                required
+                placeholder={
+                  feedbackType === "error"
+                    ? es
+                      ? "¿Qué ha fallado y qué estabas haciendo?"
+                      : "What went wrong and what were you doing?"
+                    : es
+                      ? "¿Qué te gustaría mejorar o añadir?"
+                      : "What would you like to improve or add?"
+                }
+                rows={6}
+                aria-label={t("feedback.message")}
               />
-              <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => setShowFeedbackModal(false)}>
-                  {t("common.cancel")}
-                </Button>
-                <Button type="submit" disabled={feedbackSending || !feedbackMessage.trim()}>
-                  {feedbackSending ? "…" : t("feedback.send")}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
+            </FieldGroup>
+          </SheetBody>
+          <SheetFooter>
+            <SheetButton type="submit" pending={sending} disabled={!feedbackMessage.trim()}>
+              <Send aria-hidden />
+              {t("feedback.send")}
+            </SheetButton>
+          </SheetFooter>
+        </SheetForm>
+      </Sheet>
+    </div>,
+    document.body
   );
-
-  return typeof document !== "undefined"
-    ? createPortal(content, document.body)
-    : content;
 }

@@ -1,143 +1,126 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { XIcon } from "lucide-react"
-import { Dialog as SheetPrimitive } from "radix-ui"
+import { useRef, useState } from "react";
+import { XIcon } from "lucide-react";
+import { Dialog as DialogPrimitive } from "radix-ui";
+import { useLang } from "@/hooks/useLang";
+import { cn } from "@/lib/utils";
 
-import { cn } from "@/lib/utils"
+const MOBILE_QUERY = "(max-width: 767px)";
+/** Dragging the sheet down further than this (or flicking it) dismisses it. */
+const DISMISS_DISTANCE = 120;
+const DISMISS_VELOCITY = 0.5;
 
-function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
-  return <SheetPrimitive.Root data-slot="sheet" {...props} />
+/**
+ * Keeps showing the last payload while the sheet plays its closing animation, after the parent
+ * has already cleared it (e.g. `editing` set back to null).
+ */
+export function useSheetPayload<T>(open: boolean, payload: T): T {
+  const [kept, setKept] = useState(payload);
+  if (open && payload !== kept) setKept(payload);
+  return open ? payload : kept;
 }
 
-function SheetTrigger({
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Trigger>) {
-  return <SheetPrimitive.Trigger data-slot="sheet-trigger" {...props} />
-}
-
-function SheetClose({
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Close>) {
-  return <SheetPrimitive.Close data-slot="sheet-close" {...props} />
-}
-
-function SheetPortal({
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Portal>) {
-  return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />
-}
-
-function SheetOverlay({
-  className,
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Overlay>) {
-  return (
-    <SheetPrimitive.Overlay
-      data-slot="sheet-overlay"
-      className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-
-function SheetContent({
-  className,
-  children,
-  side = "right",
-  showCloseButton = true,
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content> & {
-  side?: "top" | "right" | "bottom" | "left"
-  showCloseButton?: boolean
+/**
+ * Modal panel for creating and editing: a bottom sheet that can be dragged down to close on
+ * phones, a panel sliding in from the right from tablet up. The page behind is dimmed.
+ */
+export function Sheet({ open, onOpenChange, title, description, headerAction, className, children }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  /** Extra button next to the close button (e.g. "Edit" on a detail view). */
+  headerAction?: React.ReactNode;
+  className?: string;
+  /** `SheetBody` and an optional `SheetFooter`, or a form wrapping both. */
+  children: React.ReactNode;
 }) {
+  const es = useLang() === "es";
+  const contentRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const drag = useRef<{ y: number; time: number; dy: number } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 || !matchMedia(MOBILE_QUERY).matches || (e.target as Element).closest("button, a, input")) return;
+    drag.current = { y: e.clientY, time: Date.now(), dy: 0 };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    contentRef.current?.style.setProperty("transition", "none");
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!drag.current || !contentRef.current) return;
+    drag.current.dy = Math.max(0, e.clientY - drag.current.y);
+    contentRef.current.style.transform = `translateY(${drag.current.dy}px)`;
+  };
+  const onPointerUp = () => {
+    const el = contentRef.current;
+    const state = drag.current;
+    drag.current = null;
+    if (!el || !state) return;
+    el.style.removeProperty("transition");
+    const velocity = state.dy / Math.max(Date.now() - state.time, 1);
+    if (state.dy > DISMISS_DISTANCE || (state.dy > 24 && velocity > DISMISS_VELOCITY)) {
+      // The closing animation starts from where the finger left the sheet.
+      el.style.setProperty("--sheet-drag", `${state.dy}px`);
+      el.style.transform = "";
+      closeRef.current?.click();
+    } else {
+      el.style.transform = "";
+    }
+  };
+
   return (
-    <SheetPortal>
-      <SheetOverlay />
-      <SheetPrimitive.Content
-        data-slot="sheet-content"
-        className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
-          side === "right" &&
-            "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
-          side === "left" &&
-            "data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
-          side === "top" &&
-            "data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto border-b",
-          side === "bottom" &&
-            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
-            <XIcon className="size-4" />
-            <span className="sr-only">Close</span>
-          </SheetPrimitive.Close>
-        )}
-      </SheetPrimitive.Content>
-    </SheetPortal>
-  )
+    <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="sheet-overlay" />
+        <DialogPrimitive.Content
+          ref={contentRef}
+          className={cn("sheet", className)}
+          // Focusing the first field would pop up the keyboard on phones.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            contentRef.current?.focus();
+          }}
+        >
+          <div
+            className="sheet-header"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          >
+            <span className="sheet-grabber" aria-hidden />
+            <div className="sheet-heading">
+              <DialogPrimitive.Title className="sheet-title">{title}</DialogPrimitive.Title>
+              {description ? (
+                <DialogPrimitive.Description className="sheet-description">{description}</DialogPrimitive.Description>
+              ) : (
+                <DialogPrimitive.Description className="sr-only">{title}</DialogPrimitive.Description>
+              )}
+            </div>
+            {headerAction}
+            <DialogPrimitive.Close ref={closeRef} className="sheet-icon-btn" aria-label={es ? "Cerrar" : "Close"}>
+              <XIcon className="size-[18px]" strokeWidth={2.25} />
+            </DialogPrimitive.Close>
+          </div>
+          {children}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
 }
 
-function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 p-4", className)}
-      {...props}
-    />
-  )
+/** Scrollable content of a sheet. */
+export function SheetBody({ className, ...props }: React.ComponentProps<"div">) {
+  return <div className={cn("sheet-body", className)} {...props} />;
 }
 
-function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
-      {...props}
-    />
-  )
+/** Actions pinned to the bottom of a sheet. */
+export function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return <div className={cn("sheet-footer", className)} {...props} />;
 }
 
-function SheetTitle({
-  className,
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Title>) {
-  return (
-    <SheetPrimitive.Title
-      data-slot="sheet-title"
-      className={cn("text-foreground font-semibold", className)}
-      {...props}
-    />
-  )
-}
-
-function SheetDescription({
-  className,
-  ...props
-}: React.ComponentProps<typeof SheetPrimitive.Description>) {
-  return (
-    <SheetPrimitive.Description
-      data-slot="sheet-description"
-      className={cn("text-muted-foreground text-sm", className)}
-      {...props}
-    />
-  )
-}
-
-export {
-  Sheet,
-  SheetTrigger,
-  SheetClose,
-  SheetContent,
-  SheetHeader,
-  SheetFooter,
-  SheetTitle,
-  SheetDescription,
+/** Form filling a sheet, so its footer buttons can submit it. */
+export function SheetForm({ className, ...props }: React.ComponentProps<"form">) {
+  return <form className={cn("sheet-form", className)} noValidate {...props} />;
 }

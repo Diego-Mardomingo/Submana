@@ -1,8 +1,11 @@
 "use client";
 
-import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryKeys";
 import { useEffect } from "react";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { monthKey, shiftMonth } from "@/lib/date";
+import { queryKeys } from "@/lib/queryKeys";
+import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
 
 export interface BudgetWithSpent {
   id: string;
@@ -15,56 +18,64 @@ export interface BudgetWithSpent {
   spent: number;
 }
 
-async function fetchBudgets(month?: string): Promise<BudgetWithSpent[]> {
-  const params = month ? `?month=${encodeURIComponent(month)}` : "";
-  const res = await fetch(`/api/crud/budgets${params}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error("Failed to fetch budgets");
-  const json = await res.json();
-  return json.data ?? [];
+export function fetchBudgets(month?: string): Promise<BudgetWithSpent[]> {
+  return api(`/api/crud/budgets${month ? `?month=${encodeURIComponent(month)}` : ""}`);
 }
 
-function getAdjacentMonths(month: string): { prev: string; next: string } {
-  const [yearStr, monthStr] = month.split("-");
-  const year = parseInt(yearStr, 10);
-  const m = parseInt(monthStr, 10);
-  
-  const prevMonth = m === 1 ? 12 : m - 1;
-  const prevYear = m === 1 ? year - 1 : year;
-  const nextMonth = m === 12 ? 1 : m + 1;
-  const nextYear = m === 12 ? year + 1 : year;
-  
-  return {
-    prev: `${prevYear}-${String(prevMonth).padStart(2, "0")}`,
-    next: `${nextYear}-${String(nextMonth).padStart(2, "0")}`,
-  };
-}
-
+/** Budgets with the amount spent in `month` ("YYYY-MM"), prefetching the adjacent months. */
 export function useBudgets(month?: string) {
   const queryClient = useQueryClient();
 
-  // Prefetch meses adyacentes
   useEffect(() => {
     if (!month) return;
-    const { prev, next } = getAdjacentMonths(month);
-    
-    // Prefetch con baja prioridad (no bloquea la UI)
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.budgets.list({ month: prev }),
-      queryFn: () => fetchBudgets(prev),
-      staleTime: 10 * 60 * 1000, // 10 minutos para prefetch
-    });
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.budgets.list({ month: next }),
-      queryFn: () => fetchBudgets(next),
-      staleTime: 10 * 60 * 1000,
-    });
+    const [year, m] = month.split("-").map(Number);
+    for (const delta of [-1, 1]) {
+      const adjacent = shiftMonth(year, m, delta);
+      const key = monthKey(adjacent.year, adjacent.month);
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.budgets.list({ month: key }),
+        queryFn: () => fetchBudgets(key),
+        staleTime: 10 * 60 * 1000,
+      });
+    }
   }, [month, queryClient]);
 
   return useQuery({
     queryKey: queryKeys.budgets.list({ month }),
     queryFn: () => fetchBudgets(month),
     placeholderData: keepPreviousData,
+  });
+}
+
+interface BudgetInput {
+  amount?: number;
+  color?: string | null;
+  category_ids?: string[];
+}
+
+const invalidate = [queryKeys.budgets.all];
+
+export function useCreateBudget() {
+  return useOptimisticMutation({
+    mutationFn: (input: BudgetInput & { amount: number }) => api("/api/crud/budgets", "POST", input),
+    invalidate,
+  });
+}
+
+export function useUpdateBudget() {
+  return useOptimisticMutation({
+    mutationFn: ({ id, ...input }: BudgetInput & { id: string }) => api(`/api/crud/budgets/${id}`, "PATCH", input),
+    queryKey: queryKeys.budgets.lists(),
+    update: replaceById,
+    invalidate,
+  });
+}
+
+export function useDeleteBudget() {
+  return useOptimisticMutation({
+    mutationFn: (id: string) => api(`/api/crud/budgets/${id}`, "DELETE"),
+    queryKey: queryKeys.budgets.lists(),
+    update: removeById,
+    invalidate,
   });
 }
