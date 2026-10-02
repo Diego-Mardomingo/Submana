@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Sora, Inter } from "next/font/google";
 import "./globals.css";
 import "./components.css";
+import "./list-pages.css";
+import "./sheet.css";
 import { Providers } from "./providers";
 
 const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });

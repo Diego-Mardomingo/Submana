@@ -1,11 +1,10 @@
 /**
- * Parent of a route in the app tree: "back" goes up one level instead of through browser
- * history (home → sections → detail/new → edit).
+ * Parent of a route in the app tree (home → sections → account page), used to pick the
+ * direction of page transitions. Creating and editing happen in sheets, not routes.
  */
 export function getParentRoute(pathname: string): string {
-  const [section, id, action] = pathname.split("/").filter(Boolean);
-  if (section === "transactions" && id === "edit") return "/transactions";
-  if ((section === "account" || section === "subscription") && id) return action === "edit" ? `/${section}/${id}` : `/${section}s`;
+  const [section, id] = pathname.split("/").filter(Boolean);
+  if (section === "account" && id) return "/accounts";
   if (id === "new") return `/${section}`;
   return "/";
 }

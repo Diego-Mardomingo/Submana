@@ -121,6 +121,15 @@ export function useTransactionsRange(accountId?: string, range?: DateRange) {
   return { ...grouped, keys, isLoading };
 }
 
+/** A single transaction (e.g. opened from a notification). */
+export function useTransaction(id: string | null | undefined) {
+  return useQuery<Transaction>({
+    queryKey: queryKeys.transactions.detail(id ?? ""),
+    queryFn: () => api(`/api/crud/transactions/${id}`),
+    enabled: !!id,
+  });
+}
+
 interface TransactionInput {
   amount: number;
   type: "income" | "expense";

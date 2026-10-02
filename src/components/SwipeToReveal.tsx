@@ -3,11 +3,34 @@
 import { createContext, useContext, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
 import { GripVertical } from "lucide-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { createClientStore } from "@/lib/clientStore";
 import { cn } from "@/lib/utils";
 
 const OPEN_THRESHOLD = 20;
 const VELOCITY_THRESHOLD = 0.25;
 const DIRECTION_LOCK_THRESHOLD = 10;
+
+const SWIPE_LEARNED_KEY = "submana-swipe-learned";
+
+// Once the user has opened a row by swiping, swipe hints (peek animation, help text) stop showing.
+// Server value is `true` so hints never flash during hydration.
+const swipeLearnedStore = createClientStore(
+  () => {
+    try {
+      return localStorage.getItem(SWIPE_LEARNED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  },
+  (learned: boolean) => {
+    try {
+      localStorage.setItem(SWIPE_LEARNED_KEY, String(learned));
+    } catch {}
+  },
+  true
+);
+
+export const useSwipeLearned = swipeLearnedStore.useValue;
 
 const SwipeGroupContext = createContext<{ openId: string | null; setOpenId: (id: string | null) => void } | null>(null);
 
@@ -43,11 +66,13 @@ export function SwipeToRevealGroup({ children, className, style }: { children: R
  * Row whose `actions` are revealed by swiping left on touch layouts; from `desktopMinWidth`
  * up the actions are always visible next to the content.
  */
-export function SwipeToReveal({ id, children, actions, swipeHint, desktopMinWidth = 641, className, contentClassName }: {
+export function SwipeToReveal({ id, children, actions, swipeHint, peek, desktopMinWidth = 641, className, contentClassName }: {
   id?: string;
   children: React.ReactNode;
   actions: React.ReactNode;
   swipeHint?: boolean;
+  /** Briefly slides the row open on mount to show that it can be swiped, until the user has swiped once. */
+  peek?: boolean;
   desktopMinWidth?: number;
   className?: string;
   contentClassName?: string;
@@ -59,6 +84,9 @@ export function SwipeToReveal({ id, children, actions, swipeHint, desktopMinWidt
   const [actionsWidth, setActionsWidth] = useState(88);
   const [localOpen, setLocalOpen] = useState(false);
   const [dragOffset, setDragOffset] = useState<number | null>(null);
+  const learned = useSwipeLearned();
+  const [peekDone, setPeekDone] = useState(false);
+  const peeking = !!peek && !learned && !peekDone;
   // Inside a group the open row is the group's; another row opening closes this one.
   const isOpen = group && id ? group.openId === id : localOpen;
   const translateX = dragOffset ?? (isOpen ? -actionsWidth : 0);
@@ -77,6 +105,7 @@ export function SwipeToReveal({ id, children, actions, swipeHint, desktopMinWidt
   const maxOffset = useEffectEvent(() => actionsWidth);
   const settle = useEffectEvent((open: boolean) => {
     setDragOffset(null);
+    if (open && !learned) swipeLearnedStore.set(true);
     if (!group || !id) setLocalOpen(open);
     else if (open) group.setOpenId(id);
     else if (isOpen) group.setOpenId(null);
@@ -97,6 +126,7 @@ export function SwipeToReveal({ id, children, actions, swipeHint, desktopMinWidt
       lastX = touch.clientX;
       horizontal = null;
       offset = restingOffset();
+      setPeekDone(true);
     };
     const onMove = (e: TouchEvent) => {
       const touch = e.touches[0];
@@ -145,9 +175,10 @@ export function SwipeToReveal({ id, children, actions, swipeHint, desktopMinWidt
   }
 
   return (
-    <div ref={containerRef} className={cn("swipe-to-reveal", className)} data-swipe-id={id} style={{ "--actions-width": `${actionsWidth}px` } as React.CSSProperties}>
+    <div ref={containerRef} className={cn("swipe-to-reveal", peeking && "swipe-to-reveal--peek", className)} data-swipe-id={id} style={{ "--actions-width": `${actionsWidth}px` } as React.CSSProperties}>
       <div
         className={cn("swipe-to-reveal__track", contentClassName)}
+        onAnimationEnd={() => setPeekDone(true)}
         style={{ transform: `translateX(${translateX}px)`, width: `calc(100% + ${actionsWidth}px)`, minWidth: `calc(100% + ${actionsWidth}px)` }}
       >
         <div className={cn("swipe-to-reveal__content flex-1 min-w-0", swipeHint && "relative")}>

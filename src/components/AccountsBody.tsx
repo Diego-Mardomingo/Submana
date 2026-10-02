@@ -1,16 +1,17 @@
 "use client";
 
-import { useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { AccountForm } from "@/components/AccountForm";
-import { PageHeader } from "@/components/PageHeader";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
+import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
+import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SortableContainer, SortableItem } from "@/components/Sortable";
-import { AddButton } from "@/components/ui/add-button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useAccounts, type Account } from "@/hooks/useAccounts";
+import { useAccounts, useDeleteAccount, type Account } from "@/hooks/useAccounts";
 import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useLang } from "@/hooks/useLang";
 import { useReorder } from "@/hooks/useReorder";
@@ -20,41 +21,62 @@ import { useTranslations } from "@/lib/i18n/utils";
 import { queryKeys } from "@/lib/queryKeys";
 import { cn } from "@/lib/utils";
 
-const CardIcon = ({ size, strokeWidth = 2 }: { size?: number; strokeWidth?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}>
-    <rect x="1" y="4" width="22" height="16" rx="2" />
-    <line x1="1" y1="10" x2="23" y2="10" />
+const StarIcon = ({ filled }: { filled?: boolean }) => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
 
-function AccountCardContent({ account, savingsLabel }: { account: Account; savingsLabel?: string }) {
+const accountColor = (account: Account) => account.color || "var(--accent)";
+
+/** Row body shared by the list and the drag overlay; `star` is the default-account toggle. */
+function AccountRowContent({ account, share, savingsLabel, star }: {
+  account: Account;
+  /** Fraction (0-1) of the positive total, or null for accounts in the red (no share bar). */
+  share: number | null;
+  savingsLabel: string;
+  star?: React.ReactNode;
+}) {
+  const balance = Number(account.balance);
   return (
-    <div className="card-content">
-      <div className="account-icon-wrapper">
+    <>
+      <span
+        className={cn("lp-icon", account.icon && "lp-icon--contain")}
+        style={account.icon ? undefined : { color: accountColor(account), background: `color-mix(in srgb, ${accountColor(account)} 14%, transparent)` }}
+      >
         {account.icon ? (
           // eslint-disable-next-line @next/next/no-img-element -- remote logos from arbitrary hosts
-          <img src={account.icon} alt={account.name} className="account-img" />
+          <img src={account.icon} alt="" />
         ) : (
-          <div className="account-icon-fallback" style={{ color: account.color || "var(--accent)" }}>
-            <CardIcon size={24} />
-          </div>
+          <CardIcon />
         )}
-        {savingsLabel && account.name.toLowerCase().includes("remunerada") && (
-          <div className="account-badge-interest" title={savingsLabel}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        {account.name.toLowerCase().includes("remunerada") && (
+          <span className="lp-interest" title={savingsLabel}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
               <polyline points="17 6 23 6 23 12" />
             </svg>
-          </div>
+          </span>
         )}
-      </div>
-      <div className="account-info">
-        <h3 className="account-name">{account.name}</h3>
-        <p className="account-balance">
-          <SensitiveAmount>{formatCurrency(Number(account.balance))}</SensitiveAmount>
-        </p>
-      </div>
-    </div>
+      </span>
+      <span className="lp-main">
+        <span className="lp-title">
+          <span>{account.name}</span>
+          {star}
+        </span>
+        {share !== null && share > 0 && (
+          <span className="lp-meta">
+            <span className="lp-share" aria-hidden>
+              <span style={{ width: `${Math.max(share * 100, 3)}%`, background: accountColor(account) }} />
+            </span>
+            <span>{share < 0.01 ? "<1" : Math.round(share * 100)}%</span>
+          </span>
+        )}
+      </span>
+      <span className={cn("lp-amount", balance < 0 && "is-negative")}>
+        <SensitiveAmount>{formatCurrency(balance)}</SensitiveAmount>
+      </span>
+    </>
   );
 }
 
@@ -66,8 +88,10 @@ export default function AccountsBody() {
   const queryClient = useQueryClient();
   const { data: accounts = [], isLoading } = useAccounts();
   const { handleReorder } = useReorder<Account>({ table: "accounts" });
-  const [dialogOpen, setDialogOpen] = useCreateDialog();
-  const bankSelectOpenRef = useRef(false);
+  const deleteAccount = useDeleteAccount();
+  const [createOpen, setCreateOpen] = useCreateDialog();
+  const [editing, setEditing] = useState<Account | null>(null);
+  const [toDelete, setToDelete] = useState<Account | null>(null);
 
   /** Marks the default account (moved first) used when creating transactions. */
   const setDefault = async (account: Account) => {
@@ -80,131 +104,194 @@ export default function AccountsBody() {
     }
   };
 
-  const header = (
-    <PageHeader icon={<CardIcon strokeWidth={2.5} />} title={t("accounts.title")} subtitle={t("accounts.heroSubtitle")}>
-      {!isLoading && <AddButton onClick={() => setDialogOpen(true)}>{t("accounts.add")}</AddButton>}
-    </PageHeader>
+  const header = <CompactPageHeader title={t("accounts.title")} addLabel={t("accounts.add")} onAdd={() => setCreateOpen(true)} />;
+
+  const dialog = (
+    <>
+      <AccountSheet
+        open={createOpen || !!editing}
+        onOpenChange={(open) => {
+          if (open) return;
+          setCreateOpen(false);
+          setEditing(null);
+        }}
+        account={editing}
+      />
+      <ConfirmDeleteSheet
+        open={!!toDelete}
+        onOpenChange={(open) => !open && setToDelete(null)}
+        title={toDelete && (es ? `¿Eliminar «${toDelete.name}»?` : `Delete “${toDelete.name}”?`)}
+        description={toDelete && <AccountDeleteWarning accountId={toDelete.id} />}
+        confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
+        pending={deleteAccount.isPending}
+        onConfirm={async () => {
+          if (toDelete) await deleteAccount.mutateAsync(toDelete.id).catch(() => undefined);
+          setToDelete(null);
+        }}
+      />
+    </>
   );
 
   if (isLoading) {
     return (
-      <div className="page-container">
+      <div className="page-container lp-page">
         {header}
-        <div className="info-stats-row single">
-          <div className="skeleton" style={{ height: 90, borderRadius: 18, flex: 1 }} />
-        </div>
-        <div className="accounts-grid">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="skeleton" style={{ height: 140, borderRadius: 16 }} />
-          ))}
+        <div className="lp-layout">
+          <div className="lp-aside">
+            <div className="skeleton" style={{ height: 112, borderRadius: 16 }} />
+          </div>
+          <div className="lp-content">
+            <div className="skeleton" style={{ height: 3 * 57, borderRadius: 16 }} />
+          </div>
         </div>
       </div>
     );
   }
 
-  const accentStyle = (account: Account) => ({ "--accent-account": account.color || "var(--accent)" }) as React.CSSProperties;
+  if (accounts.length === 0) {
+    return (
+      <div className="page-container lp-page fade-in">
+        {header}
+        <div className="lp-card lp-empty">
+          <div className="lp-empty-icon">
+            <CardIcon size={24} strokeWidth={2.5} />
+          </div>
+          <p className="lp-empty-title">{t("accounts.noAccounts")}</p>
+          <p className="lp-empty-text">{es ? "Añade tus cuentas bancarias para ver tu patrimonio de un vistazo" : "Add your bank accounts to see your net worth at a glance"}</p>
+          <button type="button" className="lp-chip" onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" strokeWidth={2.5} />
+            {t("accounts.add")}
+          </button>
+        </div>
+        {dialog}
+      </div>
+    );
+  }
+
+  const total = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
+  const positiveTotal = accounts.reduce((sum, acc) => sum + Math.max(0, Number(acc.balance)), 0);
+  const shareOf = (account: Account) => {
+    const balance = Number(account.balance);
+    return balance < 0 ? null : positiveTotal > 0 ? balance / positiveTotal : 0;
+  };
+  const savingsLabel = es ? "Cuenta remunerada" : "Savings account";
+  const open = (account: Account) => router.push(`/account/${account.id}`);
+  const stop = (action: () => void) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    action();
+  };
+
   return (
-    <div className="page-container fade-in">
+    <div className="page-container lp-page fade-in">
       {header}
 
-      {accounts.length > 0 && (
-        <div className="info-stats-row single">
-          <div className="info-stat-card">
-            <div className="info-stat-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" />
-                <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4" />
-              </svg>
-            </div>
-            <div className="info-stat-content">
-              <span className="info-stat-label">{es ? "Balance Total" : "Total Balance"}</span>
-              <span className="info-stat-value">
-                <SensitiveAmount>{formatCurrency(accounts.reduce((sum, acc) => sum + Number(acc.balance), 0))}</SensitiveAmount>
+      <div className="lp-layout">
+        <aside className="lp-aside">
+          <div className="lp-card lp-summary">
+            <div className="lp-summary-top">
+              <span className="lp-label">{es ? "Saldo total" : "Total balance"}</span>
+              <span className="lp-count">
+                {accounts.length} {es ? (accounts.length === 1 ? "cuenta" : "cuentas") : accounts.length === 1 ? "account" : "accounts"}
               </span>
             </div>
-          </div>
-        </div>
-      )}
-
-      {accounts.length === 0 ? (
-        <div className="accounts-grid">
-          <div className="empty-state">
-            <div className="empty-icon">
-              <CardIcon size={48} strokeWidth={1} />
-            </div>
-            <p>{t("accounts.noAccounts")}</p>
-          </div>
-        </div>
-      ) : (
-        <SortableContainer
-          items={accounts}
-          onReorder={handleReorder}
-          className="accounts-grid"
-          strategy="grid"
-          renderOverlay={(active) =>
-            active && (
-              <div className="account-card sortable-overlay" style={accentStyle(active)}>
-                <AccountCardContent account={active} />
+            <span className={cn("lp-hero-value", total < 0 && "is-negative")}>
+              <SensitiveAmount>{formatCurrency(total)}</SensitiveAmount>
+            </span>
+            {positiveTotal > 0 && (
+              <div className="lp-meter lp-meter--segmented" aria-hidden>
+                {accounts
+                  .filter((acc) => Number(acc.balance) > 0)
+                  .map((acc) => (
+                    <span key={acc.id} style={{ width: `${(Number(acc.balance) / positiveTotal) * 100}%`, background: accountColor(acc) }} />
+                  ))}
               </div>
-            )
-          }
-          renderItem={(account) => (
-            <SortableItem key={account.id} id={account.id}>
-              <div
-                role="button"
-                tabIndex={0}
-                className="account-card"
-                style={accentStyle(account)}
-                onClick={() => router.push(`/account/${account.id}`)}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter" && e.key !== " ") return;
-                  e.preventDefault();
-                  router.push(`/account/${account.id}`);
-                }}
-                aria-label={`${account.name} - ${formatCurrency(Number(account.balance))}`}
-              >
-                <AccountCardContent account={account} savingsLabel={es ? "Cuenta remunerada" : "Savings account"} />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn("favorite-btn", account.is_default && "is-default")}
-                      onClick={(e) => {
+            )}
+          </div>
+        </aside>
+
+        <div className="lp-content">
+          <SwipeToRevealGroup>
+            <SortableContainer
+              items={accounts}
+              onReorder={handleReorder}
+              className="lp-card lp-group lp-group--sortable"
+              strategy="vertical"
+              renderOverlay={(active) =>
+                active && (
+                  <div className="lp-card lp-drag-overlay">
+                    <div className="lp-row">
+                      <AccountRowContent account={active} share={shareOf(active)} savingsLabel={savingsLabel} />
+                    </div>
+                  </div>
+                )
+              }
+              renderItem={(account) => (
+                <SortableItem key={account.id} id={account.id}>
+                  <SwipeToReveal
+                    id={account.id}
+                    className="lp-swipe"
+                    desktopMinWidth={1024}
+                    actions={
+                      <>
+                        <button type="button" onClick={stop(() => setEditing(account))} className="lp-action lp-action--edit" aria-label={t("accounts.edit")}>
+                          <Pencil className="size-5" />
+                        </button>
+                        <button type="button" onClick={stop(() => setToDelete(account))} className="lp-action lp-action--danger" aria-label={t("accounts.delete")}>
+                          <Trash2 className="size-5" />
+                        </button>
+                      </>
+                    }
+                  >
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="lp-row"
+                      onClick={() => open(account)}
+                      onKeyDown={(e) => {
+                        if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
                         e.preventDefault();
-                        e.stopPropagation();
-                        setDefault(account);
+                        open(account);
                       }}
-                      aria-label="Set as default"
+                      aria-label={`${account.name} - ${formatCurrency(Number(account.balance))}`}
                     >
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill={account.is_default ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{es ? "Cuenta por defecto para crear transacciones" : "Default account for creating transactions"}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </SortableItem>
-          )}
-        />
-      )}
+                      <AccountRowContent
+                        account={account}
+                        share={shareOf(account)}
+                        savingsLabel={savingsLabel}
+                        star={
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className={cn("lp-star", account.is_default && "is-default")}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (!account.is_default) setDefault(account);
+                                }}
+                                aria-label={es ? "Marcar como cuenta por defecto" : "Set as default"}
+                                aria-pressed={!!account.is_default}
+                              >
+                                <StarIcon filled={!!account.is_default} />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{es ? "Cuenta por defecto para crear transacciones" : "Default account for creating transactions"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        }
+                      />
+                    </div>
+                  </SwipeToReveal>
+                </SortableItem>
+              )}
+            />
+          </SwipeToRevealGroup>
+        </div>
+      </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent
-          className="sm:max-w-md max-h-[calc(100dvh-11rem)] md:max-h-[calc(100dvh-5rem)] overflow-y-auto overscroll-contain pb-4 !top-[calc(50%-40px)] md:!top-[50%]"
-          onInteractOutside={(e) => bankSelectOpenRef.current && e.preventDefault()}
-          onPointerDownOutside={(e) => bankSelectOpenRef.current && e.preventDefault()}
-        >
-          <DialogTitle className="sr-only">
-            {t("accounts.add")} {t("accounts.title")}
-          </DialogTitle>
-          {dialogOpen && (
-            <AccountForm onDone={() => setDialogOpen(false)} onCancel={() => setDialogOpen(false)} selectOpenRef={bankSelectOpenRef} />
-          )}
-        </DialogContent>
-      </Dialog>
+      {dialog}
     </div>
   );
 }
