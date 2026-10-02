@@ -100,6 +100,11 @@ html[data-nav-direction="same"]::view-transition-new(root) {
 }
 
 /* Paleta cohesiva: tonos desaturados y elegantes para diseño minimalista */
+:root {
+  /* Height of the mobile bottom navigation (without the safe area). */
+  --nav-h: 68px;
+}
+
 :root,
 [data-theme="dark"] {
   --negro: #0f1012;
@@ -256,7 +261,7 @@ button:not(:disabled),
 
 @media (max-width: 767px) {
   .auth-content-shell {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
     overflow-x: hidden;
   }
 }

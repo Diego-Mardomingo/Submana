@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Send, Tags, Wallet, type LucideIcon } from "lucide-react";
@@ -13,50 +13,101 @@ import { api } from "@/lib/api";
 import { getBankProvider } from "@/lib/bankProviders";
 import type { UIKey } from "@/lib/i18n/ui";
 import { useTranslations } from "@/lib/i18n/utils";
+import { cn } from "@/lib/utils";
 
 type Modal = "import" | "feedback";
+/** `shortKey`: label under the arc bubble, where the + already says "new" and room is tight. */
+type Shortcut = { icon: LucideIcon; labelKey: UIKey; shortKey?: UIKey; href?: string; modal?: Modal };
 
-/** Import goes last so it spans two grid columns. */
-const SHORTCUTS: { icon: LucideIcon; labelKey: UIKey; href?: string; modal?: Modal }[] = [
-  { icon: Calendar, labelKey: "addShortcuts.newSubscription", href: "/subscriptions?open=create" },
-  { icon: Receipt, labelKey: "addShortcuts.newTransaction", href: "/transactions?open=create" },
-  { icon: CreditCard, labelKey: "addShortcuts.newAccount", href: "/accounts?open=create" },
-  { icon: Wallet, labelKey: "addShortcuts.newBudget", href: "/budgets?open=create" },
-  { icon: Tags, labelKey: "addShortcuts.newCategory", href: "/categories?open=create" },
-  { icon: MessageCircle, labelKey: "addShortcuts.feedback", modal: "feedback" },
-  { icon: FileUp, labelKey: "addShortcuts.import", modal: "import" },
+const TRANSACTION: Shortcut = { icon: Receipt, labelKey: "addShortcuts.newTransaction", shortKey: "addShortcuts.transaction", href: "/transactions?open=create" };
+const IMPORT: Shortcut = { icon: FileUp, labelKey: "addShortcuts.import", shortKey: "addShortcuts.importShort", modal: "import" };
+const SUBSCRIPTION: Shortcut = { icon: Calendar, labelKey: "addShortcuts.newSubscription", shortKey: "addShortcuts.subscription", href: "/subscriptions?open=create" };
+const FEEDBACK: Shortcut = { icon: MessageCircle, labelKey: "addShortcuts.feedback", shortKey: "addShortcuts.feedbackShort", modal: "feedback" };
+
+/** Desktop list: the two most used actions (transaction, import) first, feedback last. */
+const FLYOUT: Shortcut[][] = [
+  [TRANSACTION, IMPORT],
+  [
+    SUBSCRIPTION,
+    { icon: CreditCard, labelKey: "addShortcuts.newAccount", href: "/accounts?open=create" },
+    { icon: Wallet, labelKey: "addShortcuts.newBudget", href: "/budgets?open=create" },
+    { icon: Tags, labelKey: "addShortcuts.newCategory", href: "/categories?open=create" },
+  ],
+  [FEEDBACK],
 ];
 
+/**
+ * Phones: four bubbles fan out above the + (left to right). The two most used (import, transaction)
+ * sit in the middle in the accent colour; the rest of the create actions live on their pages.
+ */
+const ARC_ITEMS = [SUBSCRIPTION, IMPORT, TRANSACTION, FEEDBACK];
+const ARC_PRIMARY = [IMPORT, TRANSACTION];
+
+/** Point on the arc (degrees, left to right); the radii live in CSS so they can follow the viewport. */
+const ARC = { from: 160, to: 20 };
+const arcPoint = (index: number) => {
+  const angle = ((ARC.from - ((ARC.from - ARC.to) * index) / (ARC_ITEMS.length - 1)) * Math.PI) / 180;
+  return { cos: Math.cos(angle).toFixed(3), sin: Math.sin(angle).toFixed(3) };
+};
+
+const CLOSE_MS = 300;
 const IMPORTABLE_PROVIDERS = ["trade_republic", "revolut", "bbva", "imagin"];
 
-/** Quick-add bubbles (mounted only while open), with the import and feedback dialogs. */
-export default function AddShortcutsOverlay({ onClose }: { onClose: () => void }) {
+/**
+ * Quick-add menu, with the import and feedback sheets. Phones: the actions fan out in an arc from
+ * the + of the bottom bar (which stays on top, turned into a ×). Desktop: a flyout beside the
+ * sidebar's add button (`anchor`). Plays its closing animation once `open` turns false.
+ */
+export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: boolean; anchor: DOMRect | null; onClose: () => void }) {
   const router = useRouter();
   const lang = useLang();
   const es = lang === "es";
   const t = useTranslations(lang);
   const { data: accounts = [] } = useAccounts();
+  const [rendered, setRendered] = useState(open);
   const [modal, setModal] = useState<Modal | null>(null);
-  const [isClosing, setIsClosing] = useState(false);
   const [feedbackType, setFeedbackType] = useState<"error" | "suggestion">("suggestion");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [sending, setSending] = useState(false);
+
+  if (open && !rendered) setRendered(true);
+  useEffect(() => {
+    if (open) return;
+    const timer = setTimeout(() => {
+      setRendered(false);
+      setModal(null);
+    }, CLOSE_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  // Escape inside a sheet is handled by the sheet itself.
+  const onEscape = useEffectEvent((e: KeyboardEvent) => {
+    if (e.key === "Escape" && !modal) onClose();
+  });
+  useEffect(() => {
+    if (!open) return;
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [open]);
+
+  if (!rendered) return null;
 
   // Revolut savings accounts are filled from the main Revolut statement.
   const importable = accounts.filter(
     (a) => a.bank_provider && IMPORTABLE_PROVIDERS.includes(a.bank_provider) && !(a.bank_provider === "revolut" && /remunerada|savings/i.test(a.name))
   );
 
-  const go = (href: string) => {
+  const close = () => {
+    setModal(null);
     onClose();
+  };
+  const go = (href: string) => {
+    close();
     router.push(href);
   };
-
-  const requestClose = () => {
-    if (modal) return;
-    setIsClosing(true);
-    setTimeout(onClose, 400);
-  };
+  const pick = ({ href, modal: target }: Shortcut) => (target ? setModal(target) : go(href!));
+  // Closing a sheet closes the whole menu.
+  const closeModal = (isOpen: boolean) => !isOpen && close();
 
   const sendFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +116,8 @@ export default function AddShortcutsOverlay({ onClose }: { onClose: () => void }
     setSending(true);
     try {
       await api("/api/feedback", "POST", { type: feedbackType, message });
-      onClose();
+      close();
+      setFeedbackMessage("");
       toast.success(t("feedback.success"));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error sending feedback");
@@ -74,32 +126,60 @@ export default function AddShortcutsOverlay({ onClose }: { onClose: () => void }
     }
   };
 
-  const closeModal = (open: boolean) => !open && setModal(null);
+  const closeOnBackdrop = (e: React.MouseEvent) => e.target === e.currentTarget && onClose();
 
   return createPortal(
     <div
-      className={`add-shortcuts-overlay ${isClosing ? "add-shortcuts-overlay--closing" : ""}`}
-      onClick={(e) => e.target === e.currentTarget && requestClose()}
-      // Escape inside a sheet only closes the sheet (React events bubble out of portals).
-      onKeyDown={(e) => e.key === "Escape" && !(e.target as Element).closest(".sheet") && requestClose()}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Quick add menu"
+      className="add-fan"
+      data-state={!open ? "closing" : modal ? "covered" : "open"}
+      data-variant={anchor ? "flyout" : "arc"}
+      onClick={closeOnBackdrop}
     >
-      {!modal && (
-        <div className={`add-shortcuts-bubbles ${isClosing ? "add-shortcuts-bubbles--closing" : ""}`}>
-          {SHORTCUTS.map(({ icon: Icon, labelKey, href, modal: target }, index) => (
-            <button
-              key={labelKey}
-              type="button"
-              className={`add-shortcuts-bubble ${index === SHORTCUTS.length - 1 ? "add-shortcuts-bubble--span-2" : ""}`}
-              style={{ animationDelay: `${index * 50}ms` }}
-              onClick={() => (href ? go(href) : setModal(target!))}
-            >
-              <Icon className="add-shortcuts-bubble-icon" strokeWidth={2} />
-              <span className="add-shortcuts-bubble-label">{t(labelKey)}</span>
-            </button>
+      {anchor ? (
+        <div className="add-flyout" role="menu" aria-label={t("nav.add")} style={{ top: anchor.top, left: anchor.right + 12 }}>
+          {FLYOUT.map((group, g) => (
+            <div key={g} className="add-flyout-group">
+              {group.map((item, i) => (
+                <button
+                  key={item.labelKey}
+                  type="button"
+                  role="menuitem"
+                  className="add-flyout-item"
+                  style={{ "--i": FLYOUT.slice(0, g).flat().length + i } as React.CSSProperties}
+                  autoFocus={g === 0 && i === 0}
+                  onClick={() => pick(item)}
+                >
+                  <span className="add-flyout-icon">
+                    <item.icon aria-hidden />
+                  </span>
+                  {t(item.labelKey)}
+                </button>
+              ))}
+            </div>
           ))}
+        </div>
+      ) : (
+        <div className="add-arc" role="menu" aria-label={t("nav.add")} onClick={closeOnBackdrop}>
+          {ARC_ITEMS.map((item, i) => {
+            const { cos, sin } = arcPoint(i);
+            return (
+              <button
+                key={item.labelKey}
+                type="button"
+                role="menuitem"
+                aria-label={t(item.labelKey)}
+                className={cn("add-arc-item", ARC_PRIMARY.includes(item) && "add-arc-item--primary")}
+                // Stagger from the middle out.
+                style={{ "--cos": cos, "--sin": sin, "--i": ARC_PRIMARY.includes(item) ? 0 : 1 } as React.CSSProperties}
+                onClick={() => pick(item)}
+              >
+                <span className="add-arc-bubble">
+                  <item.icon aria-hidden />
+                </span>
+                <span className="add-arc-label">{t(item.shortKey ?? item.labelKey)}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
