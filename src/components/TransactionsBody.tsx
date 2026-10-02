@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
+import { Bones } from "@/components/Bones";
 import { TransactionsIcon } from "@/components/icons";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -136,54 +137,57 @@ export default function TransactionsBody() {
         </button>
       </div>
 
-      {isLoading || isPlaceholderData ? (
-        <div className="lp-stats" aria-hidden>
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="lp-stat">
-              <div className="skeleton" style={{ height: 9, width: "60%" }} />
-              <div className="skeleton" style={{ height: 16, width: "80%", marginTop: 4 }} />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="lp-stats lp-fade" key={`stats-${year}-${month}`}>
-            <div className="lp-stat">
-              <span className="lp-label">{es ? "Ingresos" : "Income"}</span>
-              <span className={`lp-stat-value ${income > 0 ? "is-income" : "is-muted"}`}>
-                <SensitiveAmount>{formatCurrency(income)}</SensitiveAmount>
-              </span>
-            </div>
-            <div className="lp-stat">
-              <span className="lp-label">{es ? "Gastos" : "Expenses"}</span>
-              <span className={`lp-stat-value ${expense > 0 ? "" : "is-muted"}`}>
-                <SensitiveAmount>{formatCurrency(expense)}</SensitiveAmount>
-              </span>
-            </div>
-            <div className="lp-stat">
-              <span className="lp-label">Balance</span>
-              <span className={`lp-stat-value ${balance > 0 ? "is-income" : balance < 0 ? "is-negative" : "is-muted"}`}>
-                <SensitiveAmount>{balance === 0 ? formatCurrency(0) : signed(balance)}</SensitiveAmount>
-              </span>
-            </div>
-          </div>
-          {spentRatio !== null && (
-            <div className="lp-meter-row" title={es ? "Gastos sobre ingresos" : "Expenses over income"}>
-              <div className="lp-meter">
-                <span
-                  style={{
-                    width: `${Math.min(spentRatio, 1) * 100}%`,
-                    background: spentRatio > 1 ? "var(--danger)" : spentRatio > 0.8 ? "var(--warning)" : "var(--accent)",
-                  }}
-                />
+      <Bones
+        name="transactions-summary"
+        loading={isLoading || isPlaceholderData}
+        className="lp-stack"
+        fallback={
+          <div className="lp-stats" aria-hidden>
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="lp-stat">
+                <div className="skeleton" style={{ height: 9, width: "60%" }} />
+                <div className="skeleton" style={{ height: 16, width: "80%", marginTop: 4 }} />
               </div>
-              <span>
-                {Math.round(spentRatio * 100)}% {es ? "gastado" : "spent"}
-              </span>
+            ))}
+          </div>
+        }
+      >
+        <div className="lp-stats lp-fade" key={`stats-${year}-${month}`}>
+          <div className="lp-stat">
+            <span className="lp-label">{es ? "Ingresos" : "Income"}</span>
+            <span className={`lp-stat-value ${income > 0 ? "is-income" : "is-muted"}`}>
+              <SensitiveAmount>{formatCurrency(income)}</SensitiveAmount>
+            </span>
+          </div>
+          <div className="lp-stat">
+            <span className="lp-label">{es ? "Gastos" : "Expenses"}</span>
+            <span className={`lp-stat-value ${expense > 0 ? "" : "is-muted"}`}>
+              <SensitiveAmount>{formatCurrency(expense)}</SensitiveAmount>
+            </span>
+          </div>
+          <div className="lp-stat">
+            <span className="lp-label">Balance</span>
+            <span className={`lp-stat-value ${balance > 0 ? "is-income" : balance < 0 ? "is-negative" : "is-muted"}`}>
+              <SensitiveAmount>{balance === 0 ? formatCurrency(0) : signed(balance)}</SensitiveAmount>
+            </span>
+          </div>
+        </div>
+        {spentRatio !== null && (
+          <div className="lp-meter-row" title={es ? "Gastos sobre ingresos" : "Expenses over income"}>
+            <div className="lp-meter">
+              <span
+                style={{
+                  width: `${Math.min(spentRatio, 1) * 100}%`,
+                  background: spentRatio > 1 ? "var(--danger)" : spentRatio > 0.8 ? "var(--warning)" : "var(--accent)",
+                }}
+              />
             </div>
-          )}
-        </>
-      )}
+            <span>
+              {Math.round(spentRatio * 100)}% {es ? "gastado" : "spent"}
+            </span>
+          </div>
+        )}
+      </Bones>
     </div>
   );
 
@@ -195,8 +199,6 @@ export default function TransactionsBody() {
         <aside className="lp-aside">{summary}</aside>
 
         <div className="lp-content">
-          {!monthDataReady && <ListSkeleton />}
-
           {monthDataReady && transactions.length === 0 && (
             <div className="lp-card lp-empty lp-fade" key={`empty-${year}-${month}`}>
               <div className="lp-empty-icon">
@@ -210,10 +212,12 @@ export default function TransactionsBody() {
             </div>
           )}
 
-          {monthDataReady && transactions.length > 0 && (
-            <div className="lp-fade" key={`list-${year}-${month}`}>
-              <TransactionDayList transactions={transactions} countedIds={countedIds} />
-            </div>
+          {(!monthDataReady || transactions.length > 0) && (
+            <Bones name="transactions" loading={!monthDataReady} fallback={<ListSkeleton />}>
+              <div className="lp-fade" key={`list-${year}-${month}`}>
+                <TransactionDayList transactions={transactions} countedIds={countedIds} />
+              </div>
+            </Bones>
           )}
         </div>
       </div>

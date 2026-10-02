@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Bones } from "@/components/Bones";
 import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -136,14 +137,20 @@ export default function AccountsBody() {
     return (
       <div className="page-container lp-page">
         {header}
-        <div className="lp-layout">
-          <div className="lp-aside">
-            <div className="skeleton" style={{ height: 112, borderRadius: 16 }} />
-          </div>
-          <div className="lp-content">
-            <div className="skeleton" style={{ height: 3 * 57, borderRadius: 16 }} />
-          </div>
-        </div>
+        <Bones
+          name="accounts"
+          loading
+          fallback={
+            <div className="lp-layout">
+              <div className="lp-aside">
+                <div className="skeleton" style={{ height: 112, borderRadius: 16 }} />
+              </div>
+              <div className="lp-content">
+                <div className="skeleton" style={{ height: 3 * 57, borderRadius: 16 }} />
+              </div>
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -186,110 +193,112 @@ export default function AccountsBody() {
     <div className="page-container lp-page fade-in">
       {header}
 
-      <div className="lp-layout">
-        <aside className="lp-aside">
-          <div className="lp-card lp-summary">
-            <div className="lp-summary-top">
-              <span className="lp-label">{es ? "Saldo total" : "Total balance"}</span>
-              <span className="lp-count">
-                {accounts.length} {es ? (accounts.length === 1 ? "cuenta" : "cuentas") : accounts.length === 1 ? "account" : "accounts"}
-              </span>
-            </div>
-            <span className={cn("lp-hero-value", total < 0 && "is-negative")}>
-              <SensitiveAmount>{formatCurrency(total)}</SensitiveAmount>
-            </span>
-            {positiveTotal > 0 && (
-              <div className="lp-meter lp-meter--segmented" aria-hidden>
-                {accounts
-                  .filter((acc) => Number(acc.balance) > 0)
-                  .map((acc) => (
-                    <span key={acc.id} style={{ width: `${(Number(acc.balance) / positiveTotal) * 100}%`, background: accountColor(acc) }} />
-                  ))}
+      <Bones name="accounts" loading={false}>
+        <div className="lp-layout">
+          <aside className="lp-aside">
+            <div className="lp-card lp-summary">
+              <div className="lp-summary-top">
+                <span className="lp-label">{es ? "Saldo total" : "Total balance"}</span>
+                <span className="lp-count">
+                  {accounts.length} {es ? (accounts.length === 1 ? "cuenta" : "cuentas") : accounts.length === 1 ? "account" : "accounts"}
+                </span>
               </div>
-            )}
-          </div>
-        </aside>
-
-        <div className="lp-content">
-          <SwipeToRevealGroup>
-            <SortableContainer
-              items={accounts}
-              onReorder={handleReorder}
-              className="lp-card lp-group lp-group--sortable"
-              strategy="vertical"
-              renderOverlay={(active) =>
-                active && (
-                  <div className="lp-card lp-drag-overlay">
-                    <div className="lp-row">
-                      <AccountRowContent account={active} share={shareOf(active)} savingsLabel={savingsLabel} />
-                    </div>
-                  </div>
-                )
-              }
-              renderItem={(account) => (
-                <SortableItem key={account.id} id={account.id}>
-                  <SwipeToReveal
-                    id={account.id}
-                    className="lp-swipe"
-                    desktopMinWidth={1024}
-                    actions={
-                      <>
-                        <button type="button" onClick={stop(() => setEditing(account))} className="lp-action lp-action--edit" aria-label={t("accounts.edit")}>
-                          <Pencil className="size-5" />
-                        </button>
-                        <button type="button" onClick={stop(() => setToDelete(account))} className="lp-action lp-action--danger" aria-label={t("accounts.delete")}>
-                          <Trash2 className="size-5" />
-                        </button>
-                      </>
-                    }
-                  >
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      className="lp-row"
-                      onClick={() => open(account)}
-                      onKeyDown={(e) => {
-                        if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
-                        e.preventDefault();
-                        open(account);
-                      }}
-                      aria-label={`${account.name} - ${formatCurrency(Number(account.balance))}`}
-                    >
-                      <AccountRowContent
-                        account={account}
-                        share={shareOf(account)}
-                        savingsLabel={savingsLabel}
-                        star={
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                className={cn("lp-star", account.is_default && "is-default")}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  if (!account.is_default) setDefault(account);
-                                }}
-                                aria-label={es ? "Marcar como cuenta por defecto" : "Set as default"}
-                                aria-pressed={!!account.is_default}
-                              >
-                                <StarIcon filled={!!account.is_default} />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{es ? "Cuenta por defecto para crear transacciones" : "Default account for creating transactions"}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        }
-                      />
-                    </div>
-                  </SwipeToReveal>
-                </SortableItem>
+              <span className={cn("lp-hero-value", total < 0 && "is-negative")}>
+                <SensitiveAmount>{formatCurrency(total)}</SensitiveAmount>
+              </span>
+              {positiveTotal > 0 && (
+                <div className="lp-meter lp-meter--segmented" aria-hidden>
+                  {accounts
+                    .filter((acc) => Number(acc.balance) > 0)
+                    .map((acc) => (
+                      <span key={acc.id} style={{ width: `${(Number(acc.balance) / positiveTotal) * 100}%`, background: accountColor(acc) }} />
+                    ))}
+                </div>
               )}
-            />
-          </SwipeToRevealGroup>
+            </div>
+          </aside>
+
+          <div className="lp-content">
+            <SwipeToRevealGroup>
+              <SortableContainer
+                items={accounts}
+                onReorder={handleReorder}
+                className="lp-card lp-group lp-group--sortable"
+                strategy="vertical"
+                renderOverlay={(active) =>
+                  active && (
+                    <div className="lp-card lp-drag-overlay">
+                      <div className="lp-row">
+                        <AccountRowContent account={active} share={shareOf(active)} savingsLabel={savingsLabel} />
+                      </div>
+                    </div>
+                  )
+                }
+                renderItem={(account) => (
+                  <SortableItem key={account.id} id={account.id}>
+                    <SwipeToReveal
+                      id={account.id}
+                      className="lp-swipe"
+                      desktopMinWidth={1024}
+                      actions={
+                        <>
+                          <button type="button" onClick={stop(() => setEditing(account))} className="lp-action lp-action--edit" aria-label={t("accounts.edit")}>
+                            <Pencil className="size-5" />
+                          </button>
+                          <button type="button" onClick={stop(() => setToDelete(account))} className="lp-action lp-action--danger" aria-label={t("accounts.delete")}>
+                            <Trash2 className="size-5" />
+                          </button>
+                        </>
+                      }
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="lp-row"
+                        onClick={() => open(account)}
+                        onKeyDown={(e) => {
+                          if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                          e.preventDefault();
+                          open(account);
+                        }}
+                        aria-label={`${account.name} - ${formatCurrency(Number(account.balance))}`}
+                      >
+                        <AccountRowContent
+                          account={account}
+                          share={shareOf(account)}
+                          savingsLabel={savingsLabel}
+                          star={
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={cn("lp-star", account.is_default && "is-default")}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (!account.is_default) setDefault(account);
+                                  }}
+                                  aria-label={es ? "Marcar como cuenta por defecto" : "Set as default"}
+                                  aria-pressed={!!account.is_default}
+                                >
+                                  <StarIcon filled={!!account.is_default} />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{es ? "Cuenta por defecto para crear transacciones" : "Default account for creating transactions"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          }
+                        />
+                      </div>
+                    </SwipeToReveal>
+                  </SortableItem>
+                )}
+              />
+            </SwipeToRevealGroup>
+          </div>
         </div>
-      </div>
+      </Bones>
 
       {dialog}
     </div>

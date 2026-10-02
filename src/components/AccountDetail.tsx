@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronLeft, ChevronRight, FileUp, ListX, Plus, SquarePen, Star, Trash2 } from "lucide-react";
+import { Bones } from "@/components/Bones";
 import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
 import BankStatementUpload from "@/components/BankStatementUpload";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
@@ -335,16 +336,20 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
                 <ChevronRight className="size-5" strokeWidth={2} />
               </button>
             </div>
-            {txLoading ? (
-              <div className="lp-stats" aria-hidden>
-                {[0, 1, 2].map((i) => (
-                  <div key={i} className="lp-stat">
-                    <div className="skeleton" style={{ height: 9, width: "60%" }} />
-                    <div className="skeleton" style={{ height: 16, width: "80%", marginTop: 4 }} />
-                  </div>
-                ))}
-              </div>
-            ) : (
+            <Bones
+              name="account-summary"
+              loading={txLoading}
+              fallback={
+                <div className="lp-stats" aria-hidden>
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="lp-stat">
+                      <div className="skeleton" style={{ height: 9, width: "60%" }} />
+                      <div className="skeleton" style={{ height: 16, width: "80%", marginTop: 4 }} />
+                    </div>
+                  ))}
+                </div>
+              }
+            >
               <div className="lp-stats lp-fade" key={selectedKey}>
                 <div className="lp-stat">
                   <span className="lp-label">{es ? "Ingresos" : "Income"}</span>
@@ -365,7 +370,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
                   </span>
                 </div>
               </div>
-            )}
+            </Bones>
           </div>
 
           <div className="lp-card lp-group">
@@ -428,19 +433,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
             </div>
           </section>
 
-          {txLoading ? (
-            <div className="lp-card lp-group">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="lp-skeleton-row">
-                  <div className="skeleton" />
-                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
-                    <div className="skeleton" style={{ height: 12, width: "55%" }} />
-                    <div className="skeleton" style={{ height: 10, width: "35%" }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : monthTxs.length === 0 ? (
+          {!txLoading && monthTxs.length === 0 ? (
             <div className="lp-card lp-empty lp-fade" key={`empty-${selectedKey}`}>
               <p className="lp-empty-title">{t("transactions.emptyThisMonth")}</p>
               <p className="lp-empty-text">
@@ -454,9 +447,27 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
               </p>
             </div>
           ) : (
-            <div className="lp-fade" key={`list-${selectedKey}`}>
-              <TransactionDayList transactions={monthTxs} countedIds={countedIds} hideAccount />
-            </div>
+            <Bones
+              name="account-transactions"
+              loading={txLoading}
+              fallback={
+                <div className="lp-card lp-group">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="lp-skeleton-row">
+                      <div className="skeleton" />
+                      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div className="skeleton" style={{ height: 12, width: "55%" }} />
+                        <div className="skeleton" style={{ height: 10, width: "35%" }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              }
+            >
+              <div className="lp-fade" key={`list-${selectedKey}`}>
+                <TransactionDayList transactions={monthTxs} countedIds={countedIds} hideAccount />
+              </div>
+            </Bones>
           )}
         </div>
       </div>

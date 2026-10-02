@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, TrendingDown, TrendingUp } from "lucide-react";
+import { Bones } from "@/components/Bones";
 import { BudgetRowContent } from "@/components/BudgetsBody";
 import { TransactionRow, transactionEmoji } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
@@ -52,9 +53,7 @@ function SummaryCard({ month, es }: { month: Month; es: boolean }) {
           </span>
         )}
       </CardHead>
-      {current.isLoading ? (
-        <div className="skeleton dash-block-skeleton" aria-hidden />
-      ) : (
+      <Bones name="dashboard-summary" loading={current.isLoading} fallback={<div className="skeleton dash-block-skeleton" aria-hidden />}>
         <div className="dash-summary lp-fade" key={monthKey(month.year, month.month)}>
           <div>
             <span className={cn("lp-hero-value", signClass(current.balance))}>{signedMoney(current.balance)}</span>
@@ -80,7 +79,7 @@ function SummaryCard({ month, es }: { month: Month; es: boolean }) {
             </div>
           )}
         </div>
-      )}
+      </Bones>
     </div>
   );
 }
@@ -95,9 +94,7 @@ function BudgetsCard({ month, es }: { month: Month; es: boolean }) {
       <CardHead title={t("home.budgetsTitle")}>
         <SeeAll href="/budgets" label={es ? "Ver todos" : "See all"} />
       </CardHead>
-      {isLoading ? (
-        <div className="skeleton dash-block-skeleton" aria-hidden />
-      ) : budgets.length === 0 ? (
+      {!isLoading && budgets.length === 0 ? (
         <div className="dash-empty">
           <p>{t("home.noActiveBudgets")}</p>
           <Link href="/budgets" className="lp-chip">
@@ -105,13 +102,15 @@ function BudgetsCard({ month, es }: { month: Month; es: boolean }) {
           </Link>
         </div>
       ) : (
-        <div className={cn("lp-group dash-list", isPlaceholderData && "is-refreshing")}>
-          {budgets.map((budget) => (
-            <Link key={budget.id} href="/budgets" className="lp-row">
-              <BudgetRowContent budget={budget} categories={categories} />
-            </Link>
-          ))}
-        </div>
+        <Bones name="dashboard-budgets" loading={isLoading} fallback={<div className="skeleton dash-block-skeleton" aria-hidden />}>
+          <div className={cn("lp-group dash-list", isPlaceholderData && "is-refreshing")}>
+            {budgets.map((budget) => (
+              <Link key={budget.id} href="/budgets" className="lp-row">
+                <BudgetRowContent budget={budget} categories={categories} />
+              </Link>
+            ))}
+          </div>
+        </Bones>
       )}
     </div>
   );
@@ -132,22 +131,22 @@ function TopExpensesCard({ month, es }: { month: Month; es: boolean }) {
       <CardHead title={t("dashboard.topExpenses")}>
         <SeeAll href={`/transactions?year=${month.year}&month=${month.month}`} label={es ? "Ver todas" : "See all"} />
       </CardHead>
-      {isLoading ? (
-        <div className="skeleton dash-block-skeleton" aria-hidden />
-      ) : top.length === 0 ? (
+      {!isLoading && top.length === 0 ? (
         <p className="dash-empty">{t("home.noExpensesThisMonth")}</p>
       ) : (
-        <div className="lp-group dash-list">
-          {top.map((tx) => (
-            <TransactionRow
-              key={tx.id}
-              tx={tx}
-              emoji={transactionEmoji(categories, tx)}
-              fallbackLabel={t("transactions.expense")}
-              onOpen={setEditing}
-            />
-          ))}
-        </div>
+        <Bones name="dashboard-top-expenses" loading={isLoading} fallback={<div className="skeleton dash-block-skeleton" aria-hidden />}>
+          <div className="lp-group dash-list">
+            {top.map((tx) => (
+              <TransactionRow
+                key={tx.id}
+                tx={tx}
+                emoji={transactionEmoji(categories, tx)}
+                fallbackLabel={t("transactions.expense")}
+                onOpen={setEditing}
+              />
+            ))}
+          </div>
+        </Bones>
       )}
       <TransactionSheet open={!!editing} onOpenChange={(open) => !open && setEditing(null)} transaction={editing} />
     </div>

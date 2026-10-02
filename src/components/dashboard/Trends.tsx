@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Bones } from "@/components/Bones";
 import { MonthRangePicker } from "@/components/dashboard/MonthRangePicker";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
@@ -97,9 +98,7 @@ export function SavingsProjectionCard({ lang }: { lang: Lang }) {
   return (
     <div className="lp-card dash-card">
       <CardHead title={`${es ? "Ahorro" : "Savings"} ${year}`} />
-      {isLoading ? (
-        <div className="skeleton dash-block-skeleton" aria-hidden />
-      ) : (
+      <Bones name="dashboard-savings" loading={isLoading} fallback={<div className="skeleton dash-block-skeleton" aria-hidden />}>
         <div className="dash-summary">
           <div>
             <span className={cn("lp-hero-value", signClass(saved))}>{signedMoney(saved)}</span>
@@ -122,7 +121,7 @@ export function SavingsProjectionCard({ lang }: { lang: Lang }) {
             </div>
           </div>
         </div>
-      )}
+      </Bones>
     </div>
   );
 }
