@@ -23,7 +23,13 @@ export const TrendIcon = ({ income, size = 18 }: { income: boolean; size?: numbe
 /** "+1.234,56 €" / "-12,00 €" */
 export const signed = (n: number) => `${n >= 0 ? "+" : "-"}${formatCurrency(Math.abs(n))}`;
 
-const TransactionRow = memo(function TransactionRow(props: {
+/** Emoji of a transaction's subcategory or category, if any. */
+export function transactionEmoji(lookup: ReturnType<typeof useCategoryLookup>, tx: Transaction) {
+  const find = (id?: string | null) => (id ? lookup.emoji.get(id) : undefined);
+  return find(tx.subcategory_id) ?? find(tx.category_id) ?? find(lookup.parent.get(tx.subcategory_id ?? ""));
+}
+
+export const TransactionRow = memo(function TransactionRow(props: {
   tx: Transaction;
   emoji?: string;
   fallbackLabel: string;
@@ -101,10 +107,6 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
   };
   const dayNet = (txs: Transaction[]) =>
     txs.reduce((sum, tx) => (countedIds.has(tx.id) ? sum + (tx.type === "income" ? 1 : -1) * Number(tx.amount) : sum), 0);
-  const emoji = (tx: Transaction) => {
-    const lookup = (id?: string | null) => (id ? categoryLookup.emoji.get(id) : undefined);
-    return lookup(tx.subcategory_id) ?? lookup(tx.category_id) ?? lookup(categoryLookup.parent.get(tx.subcategory_id ?? ""));
-  };
 
   return (
     <>
@@ -144,7 +146,7 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
                   >
                     <TransactionRow
                       tx={tx}
-                      emoji={emoji(tx)}
+                      emoji={transactionEmoji(categoryLookup, tx)}
                       fallbackLabel={t(tx.type === "income" ? "transactions.income" : "transactions.expense")}
                       onOpen={setEditing}
                       hideAccount={hideAccount}
