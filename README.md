@@ -81,7 +81,11 @@ pnpm dev          # servidor de desarrollo
 pnpm test         # tests (parsers y lógica de dominio)
 pnpm lint
 pnpm typecheck
+pnpm bones -- --cookie "sb-<ref>-auth-token.0=…" --cookie "sb-<ref>-auth-token.1=…"
+                  # regenera los esqueletos de carga (boneyard) con `pnpm dev` en marcha
 ```
+
+Los esqueletos de carga se capturan del layout real con [boneyard](https://github.com/0xGF/boneyard): cada estado de carga va envuelto en `<Bones name="…">` y `src/bones/` guarda las posiciones generadas. Tras cambiar el layout de una página, vuelve a ejecutar `pnpm bones`: recorre las rutas de la app y conserva los esqueletos que no encuentre (p. ej. una lista vacía este mes). Sin captura se muestra el esqueleto manual de `fallback`.
 
 ---
 

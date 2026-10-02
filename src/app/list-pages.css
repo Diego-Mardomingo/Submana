@@ -1404,3 +1404,10 @@ button.lp-next {
 .ad-bulk-summary {
   border-radius: 14px;
 }
+
+/* Keeps the card's vertical rhythm inside a <Bones> wrapper (its first child holds the content) */
+.lp-stack > :first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}

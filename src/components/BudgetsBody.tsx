@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { Bones } from "@/components/Bones";
 import { BudgetSheet, rootIds } from "@/components/BudgetSheet";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -105,14 +106,20 @@ export default function BudgetsBody() {
     return (
       <div className="page-container lp-page">
         {header}
-        <div className="lp-layout">
-          <div className="lp-aside">
-            <div className="skeleton" style={{ height: 168, borderRadius: 16 }} />
-          </div>
-          <div className="lp-content">
-            <div className="skeleton" style={{ height: 3 * 57, borderRadius: 16 }} />
-          </div>
-        </div>
+        <Bones
+          name="budgets"
+          loading
+          fallback={
+            <div className="lp-layout">
+              <div className="lp-aside">
+                <div className="skeleton" style={{ height: 168, borderRadius: 16 }} />
+              </div>
+              <div className="lp-content">
+                <div className="skeleton" style={{ height: 3 * 57, borderRadius: 16 }} />
+              </div>
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -164,94 +171,96 @@ export default function BudgetsBody() {
     <div className="page-container lp-page fade-in">
       {header}
 
-      <div className="lp-layout">
-        <aside className="lp-aside">
-          <div className="lp-card lp-summary">
-            <div className="lp-summary-top">
-              <span className="lp-label">
-                {es ? "Disponible" : "Left to spend"} · {monthName(now.getMonth() + 1, lang, "long")}
-              </span>
-              <span className="lp-count">
-                {budgets.length} {es ? (budgets.length === 1 ? "presupuesto" : "presupuestos") : budgets.length === 1 ? "budget" : "budgets"}
-              </span>
-            </div>
-            <span className={cn("lp-hero-value", remaining < 0 && "is-negative")}>{money(remaining)}</span>
-            <div className="lp-meter-row">
-              <div className="lp-meter" aria-hidden>
-                <span style={{ width: `${Math.min(100, pct)}%`, background: statusColor(pct, "var(--accent)") }} />
+      <Bones name="budgets" loading={false}>
+        <div className="lp-layout">
+          <aside className="lp-aside">
+            <div className="lp-card lp-summary">
+              <div className="lp-summary-top">
+                <span className="lp-label">
+                  {es ? "Disponible" : "Left to spend"} · {monthName(now.getMonth() + 1, lang, "long")}
+                </span>
+                <span className="lp-count">
+                  {budgets.length} {es ? (budgets.length === 1 ? "presupuesto" : "presupuestos") : budgets.length === 1 ? "budget" : "budgets"}
+                </span>
               </div>
-              <span>
-                {money(spent)} {es ? "de" : "of"} {money(limit)}
-              </span>
+              <span className={cn("lp-hero-value", remaining < 0 && "is-negative")}>{money(remaining)}</span>
+              <div className="lp-meter-row">
+                <div className="lp-meter" aria-hidden>
+                  <span style={{ width: `${Math.min(100, pct)}%`, background: statusColor(pct, "var(--accent)") }} />
+                </div>
+                <span>
+                  {money(spent)} {es ? "de" : "of"} {money(limit)}
+                </span>
+              </div>
+              <div className="lp-summary-divider" />
+              <div className="lp-stats">
+                {stat(es ? "Al día" : "Per day", money(Math.max(0, remaining) / daysLeft))}
+                {stat(es ? "Quedan" : "Days left", `${daysLeft} ${es ? (daysLeft === 1 ? "día" : "días") : daysLeft === 1 ? "day" : "days"}`)}
+                {stat(es ? "Superados" : "Exceeded", overCount, overCount > 0 ? "is-negative" : "is-muted")}
+              </div>
             </div>
-            <div className="lp-summary-divider" />
-            <div className="lp-stats">
-              {stat(es ? "Al día" : "Per day", money(Math.max(0, remaining) / daysLeft))}
-              {stat(es ? "Quedan" : "Days left", `${daysLeft} ${es ? (daysLeft === 1 ? "día" : "días") : daysLeft === 1 ? "day" : "days"}`)}
-              {stat(es ? "Superados" : "Exceeded", overCount, overCount > 0 ? "is-negative" : "is-muted")}
-            </div>
-          </div>
-        </aside>
+          </aside>
 
-        <div className="lp-content">
-          <section className="lp-section">
-            <div className="lp-section-head">
-              <span className="lp-section-title">{es ? "Límites mensuales" : "Monthly limits"}</span>
-              <span className="lp-section-aside">{es ? "Gastado" : "Spent"}</span>
-            </div>
-            <SwipeToRevealGroup>
-              <SortableContainer
-                items={budgets}
-                onReorder={handleReorder}
-                className="lp-card lp-group lp-group--sortable"
-                strategy="vertical"
-                renderOverlay={(active) =>
-                  active && (
-                    <div className="lp-card lp-drag-overlay">
-                      <div className="lp-row">
-                        <BudgetRowContent budget={active} categories={categories} />
+          <div className="lp-content">
+            <section className="lp-section">
+              <div className="lp-section-head">
+                <span className="lp-section-title">{es ? "Límites mensuales" : "Monthly limits"}</span>
+                <span className="lp-section-aside">{es ? "Gastado" : "Spent"}</span>
+              </div>
+              <SwipeToRevealGroup>
+                <SortableContainer
+                  items={budgets}
+                  onReorder={handleReorder}
+                  className="lp-card lp-group lp-group--sortable"
+                  strategy="vertical"
+                  renderOverlay={(active) =>
+                    active && (
+                      <div className="lp-card lp-drag-overlay">
+                        <div className="lp-row">
+                          <BudgetRowContent budget={active} categories={categories} />
+                        </div>
                       </div>
-                    </div>
-                  )
-                }
-                renderItem={(budget) => (
-                  <SortableItem key={budget.id} id={budget.id}>
-                    <SwipeToReveal
-                      id={budget.id}
-                      className="lp-swipe"
-                      desktopMinWidth={1024}
-                      actions={
-                        <>
-                          <button type="button" onClick={stop(() => setEditing(budget))} className="lp-action lp-action--edit" aria-label={t("common.edit")}>
-                            <Pencil className="size-5" />
-                          </button>
-                          <button type="button" onClick={stop(() => setToDelete(budget.id))} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
-                            <Trash2 className="size-5" />
-                          </button>
-                        </>
-                      }
-                    >
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="lp-row"
-                        onClick={() => setEditing(budget)}
-                        onKeyDown={(e) => {
-                          if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
-                          e.preventDefault();
-                          setEditing(budget);
-                        }}
+                    )
+                  }
+                  renderItem={(budget) => (
+                    <SortableItem key={budget.id} id={budget.id}>
+                      <SwipeToReveal
+                        id={budget.id}
+                        className="lp-swipe"
+                        desktopMinWidth={1024}
+                        actions={
+                          <>
+                            <button type="button" onClick={stop(() => setEditing(budget))} className="lp-action lp-action--edit" aria-label={t("common.edit")}>
+                              <Pencil className="size-5" />
+                            </button>
+                            <button type="button" onClick={stop(() => setToDelete(budget.id))} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
+                              <Trash2 className="size-5" />
+                            </button>
+                          </>
+                        }
                       >
-                        <BudgetRowContent budget={budget} categories={categories} />
-                      </div>
-                    </SwipeToReveal>
-                  </SortableItem>
-                )}
-              />
-            </SwipeToRevealGroup>
-          </section>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className="lp-row"
+                          onClick={() => setEditing(budget)}
+                          onKeyDown={(e) => {
+                            if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                            e.preventDefault();
+                            setEditing(budget);
+                          }}
+                        >
+                          <BudgetRowContent budget={budget} categories={categories} />
+                        </div>
+                      </SwipeToReveal>
+                    </SortableItem>
+                  )}
+                />
+              </SwipeToRevealGroup>
+            </section>
+          </div>
         </div>
-      </div>
+      </Bones>
 
       {dialogs}
     </div>

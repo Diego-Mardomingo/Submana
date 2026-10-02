@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Archive, ArchiveRestore, ChevronDown, ChevronsLeft, Info, Pencil, Plus, Tags, Trash2 } from "lucide-react";
+import { Bones } from "@/components/Bones";
 import { CategorySheet, type CategoryFormState } from "@/components/CategorySheet";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -175,14 +176,20 @@ export default function CategoriesBody() {
     return (
       <div className="page-container lp-page">
         {header}
-        <div className="lp-layout">
-          <div className="lp-aside">
-            <div className="skeleton" style={{ height: 66, borderRadius: 16 }} />
-          </div>
-          <div className="lp-content">
-            <div className="skeleton" style={{ height: 6 * 57, borderRadius: 16 }} />
-          </div>
-        </div>
+        <Bones
+          name="categories"
+          loading
+          fallback={
+            <div className="lp-layout">
+              <div className="lp-aside">
+                <div className="skeleton" style={{ height: 66, borderRadius: 16 }} />
+              </div>
+              <div className="lp-content">
+                <div className="skeleton" style={{ height: 6 * 57, borderRadius: 16 }} />
+              </div>
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -210,71 +217,73 @@ export default function CategoriesBody() {
     <div className="page-container lp-page fade-in">
       {header}
 
-      <div className="lp-layout">
-        <aside className="lp-aside">
-          <div className="lp-card lp-summary">
-            <div className="lp-stats">
-              {stat(es ? "Propias" : "Custom", countWithSubs(userCategories), true)}
-              {stat(es ? "Sistema" : "System", countWithSubs(defaultCategories))}
-              {stat(es ? "Archivadas" : "Archived", countWithSubs(archivedCategories))}
-            </div>
-          </div>
-        </aside>
-
-        <div className="lp-content">
-          {showSwipeHint && (
-            <p className="lp-note lp-swipe-tip">
-              <ChevronsLeft className="size-3.5" aria-hidden />
-              {es ? "Desliza una categoría a la izquierda para ver sus opciones" : "Swipe a category left to see its options"}
-            </p>
-          )}
-          {userCategories.length > 0 ? (
-            <section className="lp-section">
-              {sectionHead(es ? "Mis categorías" : "My categories", userCategories.length, true)}
-              {renderList(userCategories, false, true)}
-            </section>
-          ) : (
-            <div className="lp-card lp-empty">
-              <div className="lp-empty-icon">
-                <Tags size={24} strokeWidth={2.5} />
+      <Bones name="categories" loading={false}>
+        <div className="lp-layout">
+          <aside className="lp-aside">
+            <div className="lp-card lp-summary">
+              <div className="lp-stats">
+                {stat(es ? "Propias" : "Custom", countWithSubs(userCategories), true)}
+                {stat(es ? "Sistema" : "System", countWithSubs(defaultCategories))}
+                {stat(es ? "Archivadas" : "Archived", countWithSubs(archivedCategories))}
               </div>
-              <p className="lp-empty-title">{es ? "Sin categorías propias" : "No custom categories"}</p>
-              <p className="lp-empty-text">
-                {es ? "Crea las tuyas o añade subcategorías a las del sistema" : "Create your own or add subcategories to the system ones"}
-              </p>
-              <button type="button" className="lp-chip" onClick={() => setCreateOpen(true)}>
-                <Plus className="size-4" strokeWidth={2.5} />
-                {t("categories.add")}
-              </button>
             </div>
-          )}
+          </aside>
 
-          <section className="lp-section">
-            {sectionHead(es ? "Sistema" : "System", defaultCategories.length)}
-            {renderList(defaultCategories, false, userCategories.length === 0)}
-            {hasExcluded && (
-              <p className="lp-note">
-                <Info className="size-3.5" aria-hidden />
-                {t("categories.excludeFromMetricsInfo")}
+          <div className="lp-content">
+            {showSwipeHint && (
+              <p className="lp-note lp-swipe-tip">
+                <ChevronsLeft className="size-3.5" aria-hidden />
+                {es ? "Desliza una categoría a la izquierda para ver sus opciones" : "Swipe a category left to see its options"}
               </p>
             )}
-          </section>
+            {userCategories.length > 0 ? (
+              <section className="lp-section">
+                {sectionHead(es ? "Mis categorías" : "My categories", userCategories.length, true)}
+                {renderList(userCategories, false, true)}
+              </section>
+            ) : (
+              <div className="lp-card lp-empty">
+                <div className="lp-empty-icon">
+                  <Tags size={24} strokeWidth={2.5} />
+                </div>
+                <p className="lp-empty-title">{es ? "Sin categorías propias" : "No custom categories"}</p>
+                <p className="lp-empty-text">
+                  {es ? "Crea las tuyas o añade subcategorías a las del sistema" : "Create your own or add subcategories to the system ones"}
+                </p>
+                <button type="button" className="lp-chip" onClick={() => setCreateOpen(true)}>
+                  <Plus className="size-4" strokeWidth={2.5} />
+                  {t("categories.add")}
+                </button>
+              </div>
+            )}
 
-          {archivedCategories.length > 0 && (
-            <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen} className="lp-section">
-              <CollapsibleTrigger className="lp-collapse-trigger">
-                <span>
-                  {es ? "Archivadas" : "Archived"} · {archivedCategories.length}
-                </span>
-                <ChevronDown className="size-4" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="subs-collapsible-content">
-                <div className="subs-collapsible-inner">{renderList(archivedCategories, true)}</div>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
+            <section className="lp-section">
+              {sectionHead(es ? "Sistema" : "System", defaultCategories.length)}
+              {renderList(defaultCategories, false, userCategories.length === 0)}
+              {hasExcluded && (
+                <p className="lp-note">
+                  <Info className="size-3.5" aria-hidden />
+                  {t("categories.excludeFromMetricsInfo")}
+                </p>
+              )}
+            </section>
+
+            {archivedCategories.length > 0 && (
+              <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen} className="lp-section">
+                <CollapsibleTrigger className="lp-collapse-trigger">
+                  <span>
+                    {es ? "Archivadas" : "Archived"} · {archivedCategories.length}
+                  </span>
+                  <ChevronDown className="size-4" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="subs-collapsible-content">
+                  <div className="subs-collapsible-inner">{renderList(archivedCategories, true)}</div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
         </div>
-      </div>
+      </Bones>
 
       <CategorySheet form={activeForm} onClose={closeForm} />
 

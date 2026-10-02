@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useState } from "react";
 import { ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { Bones } from "@/components/Bones";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SubscriptionDialogs, useFrequencyLabel, type SubscriptionAction } from "@/components/SubscriptionDialogs";
@@ -214,14 +215,20 @@ export default function SubscriptionsBody() {
     return (
       <div className="page-container lp-page">
         {header}
-        <div className="lp-layout">
-          <div className="lp-aside">
-            <div className="skeleton" style={{ height: 128, borderRadius: 16 }} />
-          </div>
-          <div className="lp-content">
-            <div className="skeleton" style={{ height: 4 * 57, borderRadius: 16 }} />
-          </div>
-        </div>
+        <Bones
+          name="subscriptions"
+          loading
+          fallback={
+            <div className="lp-layout">
+              <div className="lp-aside">
+                <div className="skeleton" style={{ height: 128, borderRadius: 16 }} />
+              </div>
+              <div className="lp-content">
+                <div className="skeleton" style={{ height: 4 * 57, borderRadius: 16 }} />
+              </div>
+            </div>
+          }
+        />
       </div>
     );
   }
@@ -246,75 +253,77 @@ export default function SubscriptionsBody() {
           </button>
         </div>
       ) : (
-        <div className="lp-layout">
-          <aside className="lp-aside">
-            <div className="lp-card lp-summary">
-              <div className="lp-stats">
-                <div className="lp-stat">
-                  <span className="lp-label">{es ? "Al mes" : "Monthly"}</span>
-                  <span className="lp-stat-value">
-                    <SensitiveAmount>{formatCurrency(totalMonthly)}</SensitiveAmount>
-                  </span>
+        <Bones name="subscriptions" loading={false}>
+          <div className="lp-layout">
+            <aside className="lp-aside">
+              <div className="lp-card lp-summary">
+                <div className="lp-stats">
+                  <div className="lp-stat">
+                    <span className="lp-label">{es ? "Al mes" : "Monthly"}</span>
+                    <span className="lp-stat-value">
+                      <SensitiveAmount>{formatCurrency(totalMonthly)}</SensitiveAmount>
+                    </span>
+                  </div>
+                  <div className="lp-stat">
+                    <span className="lp-label">{es ? "Al año" : "Yearly"}</span>
+                    <span className="lp-stat-value">
+                      <SensitiveAmount>{formatCurrency(totalMonthly * 12)}</SensitiveAmount>
+                    </span>
+                  </div>
+                  <div className="lp-stat">
+                    <span className="lp-label">{es ? "Activas" : "Active"}</span>
+                    <span className="lp-stat-value">{activeSubs.length}</span>
+                  </div>
                 </div>
-                <div className="lp-stat">
-                  <span className="lp-label">{es ? "Al año" : "Yearly"}</span>
-                  <span className="lp-stat-value">
-                    <SensitiveAmount>{formatCurrency(totalMonthly * 12)}</SensitiveAmount>
-                  </span>
-                </div>
-                <div className="lp-stat">
-                  <span className="lp-label">{es ? "Activas" : "Active"}</span>
-                  <span className="lp-stat-value">{activeSubs.length}</span>
-                </div>
+                {upcoming && upcomingDate && (
+                  <>
+                    <div className="lp-summary-divider" />
+                    <button type="button" className="lp-next" onClick={() => openSub(upcoming)}>
+                      <SubscriptionIcon sub={upcoming} />
+                      <span className="lp-next-text">
+                        <span className="lp-label">{t("sub.nextPayment")}</span>
+                        <strong>
+                          {upcoming.service_name} · <span className="lp-soon">{dates.relative(upcomingDate)}</span>
+                        </strong>
+                      </span>
+                      <span className="lp-amount">
+                        <SensitiveAmount>{formatCurrency(Number(upcoming.cost))}</SensitiveAmount>
+                      </span>
+                    </button>
+                  </>
+                )}
               </div>
-              {upcoming && upcomingDate && (
-                <>
-                  <div className="lp-summary-divider" />
-                  <button type="button" className="lp-next" onClick={() => openSub(upcoming)}>
-                    <SubscriptionIcon sub={upcoming} />
-                    <span className="lp-next-text">
-                      <span className="lp-label">{t("sub.nextPayment")}</span>
-                      <strong>
-                        {upcoming.service_name} · <span className="lp-soon">{dates.relative(upcomingDate)}</span>
-                      </strong>
+            </aside>
+
+            <div className="lp-content">
+              {activeSubs.length > 0 && (
+                <section className="lp-section">
+                  <div className="lp-section-head">
+                    <span className="lp-section-title">
+                      {es ? "Activas" : "Active"} · {activeSubs.length}
                     </span>
-                    <span className="lp-amount">
-                      <SensitiveAmount>{formatCurrency(Number(upcoming.cost))}</SensitiveAmount>
+                    <span className="lp-section-aside">{es ? "Por próximo cobro" : "By next charge"}</span>
+                  </div>
+                  {renderList(activeSubs, true)}
+                </section>
+              )}
+
+              {inactiveSubs.length > 0 && (
+                <Collapsible open={inactiveOpen} onOpenChange={setInactiveOpen} className="lp-section">
+                  <CollapsibleTrigger className="lp-collapse-trigger">
+                    <span>
+                      {es ? "Inactivas" : "Inactive"} · {inactiveSubs.length}
                     </span>
-                  </button>
-                </>
+                    <ChevronDown className="size-4" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="subs-collapsible-content">
+                    <div className="subs-collapsible-inner">{renderList(inactiveSubs, false)}</div>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
             </div>
-          </aside>
-
-          <div className="lp-content">
-            {activeSubs.length > 0 && (
-              <section className="lp-section">
-                <div className="lp-section-head">
-                  <span className="lp-section-title">
-                    {es ? "Activas" : "Active"} · {activeSubs.length}
-                  </span>
-                  <span className="lp-section-aside">{es ? "Por próximo cobro" : "By next charge"}</span>
-                </div>
-                {renderList(activeSubs, true)}
-              </section>
-            )}
-
-            {inactiveSubs.length > 0 && (
-              <Collapsible open={inactiveOpen} onOpenChange={setInactiveOpen} className="lp-section">
-                <CollapsibleTrigger className="lp-collapse-trigger">
-                  <span>
-                    {es ? "Inactivas" : "Inactive"} · {inactiveSubs.length}
-                  </span>
-                  <ChevronDown className="size-4" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="subs-collapsible-content">
-                  <div className="subs-collapsible-inner">{renderList(inactiveSubs, false)}</div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
           </div>
-        </div>
+        </Bones>
       )}
 
       <SubscriptionDialogs action={action} onClose={() => setAction(null)} />
