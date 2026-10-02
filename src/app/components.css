@@ -573,134 +573,278 @@
   }
 }
 
-/* Add Shortcuts Overlay */
-.add-shortcuts-overlay {
+/* ═══════════════════════════════════════════════
+   QUICK ADD (components/AddShortcutsOverlay.tsx)
+   Phones: four bubbles fan out in an arc from the + of the bottom bar, which stays above the
+   backdrop (turned into a ×); the two most used, in the middle, in the accent colour.
+   Desktop: a flyout next to the sidebar's add button.
+   ═══════════════════════════════════════════════ */
+
+.add-fan {
+  --fan-ease: cubic-bezier(0.32, 0.72, 0, 1);
   position: fixed;
   inset: 0;
   z-index: 2147483646;
-  background: rgba(15, 16, 18, 0.85);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  animation: add-shortcuts-fade-in 0.25s ease-out forwards;
+  background: color-mix(in srgb, var(--negro) 78%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: add-fan-fade-in 0.25s ease-out;
+  transition: background 0.25s ease, backdrop-filter 0.25s ease;
 }
 
-.add-shortcuts-overlay.add-shortcuts-overlay--closing {
-  animation: add-shortcuts-fade-out 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+.add-fan[data-variant="flyout"] {
+  background: rgba(0, 0, 0, 0.18);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-@keyframes add-shortcuts-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.add-fan[data-state="closing"] {
+  animation: add-fan-fade-out 0.3s ease-in forwards;
+  pointer-events: none;
 }
 
-@keyframes add-shortcuts-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
+/* A sheet (import, feedback) brings its own backdrop. */
+.add-fan[data-state="covered"] {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.add-shortcuts-bubbles {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
-  max-width: 320px;
-  width: 100%;
-  animation: add-shortcuts-bubbles-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  transform-origin: center center;
+.add-fan[data-state="covered"] :is(.add-arc, .add-flyout) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
 }
 
-.add-shortcuts-bubble--span-2 {
-  grid-column: 1 / -1;
+@keyframes add-fan-fade-in {
+  from { opacity: 0; }
 }
 
-.add-shortcuts-bubbles.add-shortcuts-bubbles--closing {
-  animation: add-shortcuts-bubbles-out 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+@keyframes add-fan-fade-out {
+  to { opacity: 0; }
 }
 
-/* Apertura: de escala pequeña + abajo hacia centro */
-@keyframes add-shortcuts-bubbles-in {
-  from {
-    opacity: 0;
-    transform: scale(0.6) translateY(40px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+/* ── Arc (phones) ── origin: centre of the bar's top edge */
+.add-arc {
+  --rx: min(148px, 50vw - 48px);
+  --ry: 112px;
+  --lift: 44px;
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  width: 0;
+  height: 0;
 }
 
-/* Cierre: inversa exacta, de centro hacia escala pequeña + abajo */
-@keyframes add-shortcuts-bubbles-out {
-  from {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: scale(0.6) translateY(40px);
-  }
-}
-
-.add-shortcuts-bubble {
+.add-arc-item {
+  --bubble: 56px;
+  position: absolute;
+  top: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 1rem 0.75rem;
-  background: var(--gris-oscuro) !important;
-  border: 1px solid var(--gris);
-  border-radius: 16px;
+  gap: 0.4rem;
+  width: 96px;
+  padding: 0;
+  border: none;
+  background: none;
   color: var(--blanco);
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s, transform 0.2s, border-color 0.2s;
-  animation: add-shortcuts-bubble-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+  /* Bubble centre on the ellipse point (--cos, --sin), lifted off the bar. */
+  transform: translate(
+    calc(var(--cos) * var(--rx) - 50%),
+    calc(-1 * (var(--lift) + var(--sin) * var(--ry)) - var(--bubble) / 2)
+  );
+  animation: add-arc-in 0.45s var(--fan-ease) backwards;
+  animation-delay: calc(var(--i) * 35ms);
 }
 
-.add-shortcuts-bubble:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent-muted);
-  transform: scale(1.02);
+.add-fan[data-state="closing"] .add-arc-item {
+  animation: add-arc-out 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
+  animation-delay: calc((1 - var(--i)) * 30ms);
 }
 
-.add-shortcuts-bubble:active {
-  transform: scale(0.98);
-}
-
-.add-shortcuts-bubble-icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  color: var(--accent);
-}
-
-.add-shortcuts-bubble:hover .add-shortcuts-bubble-icon {
-  color: var(--accent);
-}
-
-.add-shortcuts-bubble-label {
-  text-align: center;
-  line-height: 1.2;
-}
-
-@keyframes add-shortcuts-bubble-pop {
+/* From (and back into) the + */
+@keyframes add-arc-in {
   from {
     opacity: 0;
-    transform: scale(0.5);
+    transform: translate(-50%, -12px) scale(0.2);
   }
+}
+
+@keyframes add-arc-out {
   to {
-    opacity: 1;
-    transform: scale(1);
+    opacity: 0;
+    transform: translate(-50%, -12px) scale(0.2);
+  }
+}
+
+.add-arc-bubble {
+  display: grid;
+  place-items: center;
+  width: var(--bubble);
+  height: var(--bubble);
+  border-radius: 999px;
+  border: 1px solid var(--gris);
+  background: var(--gris-oscuro);
+  color: var(--accent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s var(--fan-ease), background 0.2s ease, border-color 0.2s ease;
+}
+
+.add-arc-bubble svg {
+  width: 22px;
+  height: 22px;
+}
+
+.add-arc-item:hover .add-arc-bubble {
+  border-color: var(--accent-muted);
+  background: color-mix(in srgb, var(--accent) 12%, var(--gris-oscuro));
+}
+
+.add-arc-item:active .add-arc-bubble {
+  transform: scale(0.92);
+}
+
+.add-arc-item:focus-visible {
+  outline: none;
+}
+
+.add-arc-item:focus-visible .add-arc-bubble {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* The two most used actions */
+.add-arc-item--primary {
+  --bubble: 62px;
+}
+
+.add-arc-item--primary .add-arc-bubble {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--negro);
+  box-shadow: 0 10px 28px -6px var(--accent);
+}
+
+.add-arc-item--primary:hover .add-arc-bubble {
+  border-color: transparent;
+  background: var(--accent-hover);
+}
+
+.add-arc-item--primary .add-arc-bubble svg {
+  width: 26px;
+  height: 26px;
+}
+
+html[data-theme="light"] .add-arc-item--primary .add-arc-bubble {
+  color: #ffffff;
+}
+
+.add-arc-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Flyout (desktop) ── */
+.add-flyout {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  width: 248px;
+  padding: 0.35rem;
+  border: 1px solid var(--gris);
+  border-radius: 18px;
+  background: var(--negro);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.4);
+  transform-origin: top left;
+  animation: add-flyout-in 0.28s var(--fan-ease);
+}
+
+.add-fan[data-state="closing"] .add-flyout {
+  animation: add-flyout-out 0.18s ease-in forwards;
+}
+
+@keyframes add-flyout-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.96);
+  }
+}
+
+@keyframes add-flyout-out {
+  to {
+    opacity: 0;
+    transform: translateX(-8px) scale(0.96);
+  }
+}
+
+.add-flyout-group + .add-flyout-group {
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--gris);
+}
+
+.add-flyout-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  height: 42px;
+  padding: 0 0.5rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--blanco);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  animation: add-flyout-item-in 0.32s var(--fan-ease) backwards;
+  animation-delay: calc(var(--i) * 22ms);
+  transition: background 0.15s ease;
+}
+
+.add-flyout-item:hover,
+.add-flyout-item:focus-visible {
+  outline: none;
+  background: var(--gris-oscuro);
+}
+
+.add-flyout-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.add-flyout-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes add-flyout-item-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .add-fan,
+  .add-arc-item,
+  .add-flyout,
+  .add-flyout-item {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
   }
 }
