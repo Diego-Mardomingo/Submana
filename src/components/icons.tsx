@@ -1,11 +1,24 @@
 type IconProps = { size?: number | string; strokeWidth?: number; className?: string; style?: React.CSSProperties };
 
-/** Submana's stacked-layers mark. */
-export const LogoMark = ({ size = "100%", strokeWidth = 2, className, style }: IconProps) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
-    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-    <path d="M2 17L12 22L22 17" />
-    <path d="M2 12L12 17L22 12" />
+/** Submana's "Cristal de maná" mark; facets follow the theme's accent and success colors. */
+const LOGO_FACETS = [
+  { points: "20,12 26,25 8,25", fill: "var(--accent-light)" },
+  { points: "20,12 32,12 26,25", fill: "var(--accent)" },
+  { points: "32,12 38,25 26,25", fill: "var(--success)" },
+  { points: "32,12 44,12 38,25", fill: "var(--accent-light)" },
+  { points: "44,12 56,25 38,25", fill: "var(--accent)" },
+  { points: "8,25 26,25 32,55", fill: "color-mix(in srgb, var(--accent) 55%, #000)" },
+  { points: "26,25 38,25 32,55", fill: "var(--accent)" },
+  { points: "38,25 56,25 32,55", fill: "var(--accent-light)" },
+];
+
+export const LogoMark = ({ size = "100%", className, style }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 8 64 52" className={className} style={style}>
+    <g style={{ stroke: "var(--negro)" }} strokeWidth={1.6} strokeLinejoin="round">
+      {LOGO_FACETS.map(({ points, fill }) => (
+        <polygon key={points} points={points} style={{ fill }} />
+      ))}
+    </g>
   </svg>
 );
 
