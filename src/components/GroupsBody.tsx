@@ -65,7 +65,7 @@ function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
       onOpenChange(false);
       setName("");
       setMemberIds([]);
-      router.push(`/groups/${group.id}`);
+      router.push(`/subcount/${group.id}`);
     } catch (err) {
       setError(sharedErrorText(t, err instanceof Error ? err.message : undefined));
     }
@@ -109,7 +109,7 @@ function GroupRow({ group, meId, label }: { group: GroupSummary; meId: string; l
   const t = useTranslations(useLang());
   const others = group.members.filter((m) => m.user_id !== meId);
   return (
-    <Link href={`/groups/${group.id}`} className="lp-row">
+    <Link href={`/subcount/${group.id}`} className="lp-row">
       <span className="group-avatars" aria-hidden>
         {(group.kind === "direct" ? others : group.members).slice(0, 3).map((m) => (
           <ProfileAvatar key={m.user_id} name={m.display_name} url={m.avatar_url} size={32} />
@@ -181,7 +181,7 @@ export default function GroupsBody() {
 
   const withFriend = (friendId: string) =>
     openDirect.mutate(friendId, {
-      onSuccess: (group) => router.push(`/groups/${group.id}`),
+      onSuccess: (group) => router.push(`/subcount/${group.id}`),
       onError: (err) => toast.error(sharedErrorText(t, err.message)),
     });
 

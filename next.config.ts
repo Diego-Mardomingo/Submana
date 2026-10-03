@@ -45,6 +45,13 @@ const nextConfig: NextConfig = {
       { source: "/sw.js", headers: [{ key: "Content-Security-Policy", value: "default-src 'self'; connect-src 'self' https:" }] },
     ];
   },
+  async redirects() {
+    // Old URLs from before the "My profile" and "Subcount" renames.
+    return [
+      { source: "/settings", destination: "/profile", permanent: true },
+      { source: "/groups/:path*", destination: "/subcount/:path*", permanent: true },
+    ];
+  },
   experimental: { viewTransition: true },
 };
 

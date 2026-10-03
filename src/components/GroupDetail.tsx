@@ -331,7 +331,7 @@ export default function GroupDetail({ id }: { id: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const back = (
-    <Link href="/groups" className="group-back">
+    <Link href="/subcount" className="group-back">
       <ChevronLeft className="size-4" aria-hidden />
       {t("groups.title")}
     </Link>

@@ -60,7 +60,7 @@ export function TransactionSplitSection({ selection, onChange, totalCents, descr
   if (!profile) {
     return (
       <FieldGroup hint={t("split.needProfile")}>
-        <Link href="/groups" className="sf-row sf-action">
+        <Link href="/subcount" className="sf-row sf-action">
           <Users aria-hidden />
           <span>{t("split.with")}</span>
         </Link>
@@ -147,13 +147,13 @@ export function LinkedSharedInfo({ transaction }: { transaction: Transaction }) 
           <AlertTriangle className="size-4" aria-hidden />
           <span>
             {interpolate(t("shared.mismatch"), { total: formatCurrency(Number(shared.total_amount)), bank: formatCurrency(Number(transaction.amount)) })}{" "}
-            <Link href={`/groups/${shared.group_id}`} className="underline">
+            <Link href={`/subcount/${shared.group_id}`} className="underline">
               {t("shared.openGroup")}
             </Link>
           </span>
         </p>
       )}
-      <Link href={`/groups/${shared.group_id}`} className="sf-row sf-action sf-action--accent">
+      <Link href={`/subcount/${shared.group_id}`} className="sf-row sf-action sf-action--accent">
         <Users aria-hidden />
         <span>{t("shared.openGroup")}</span>
       </Link>
@@ -179,7 +179,7 @@ export function VirtualRowInfo({ transaction }: { transaction: Transaction }) {
         <SensitiveAmount>{formatCurrency(Number(transaction.amount))}</SensitiveAmount>
       </InfoRow>
       {shared && (
-        <Link href={`/groups/${shared.group_id}`} className="sf-row sf-action sf-action--accent">
+        <Link href={`/subcount/${shared.group_id}`} className="sf-row sf-action sf-action--accent">
           <Users aria-hidden />
           <span>{t("shared.openGroup")}</span>
         </Link>
