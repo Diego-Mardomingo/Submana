@@ -51,6 +51,17 @@ export function useUpdateGroup() {
   );
 }
 
+export function useDeleteGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api(`/api/shared/groups/${id}`, "DELETE"),
+    // Not awaited: the caller leaves the group page before its query refetches into "not found".
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.shared.all });
+    },
+  });
+}
+
 export function useAddGroupMember() {
   return useSharedMutation(({ groupId, userId }: { groupId: string; userId: string }) =>
     api(`/api/shared/groups/${groupId}/members`, "POST", { user_id: userId })
