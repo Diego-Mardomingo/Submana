@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Copy, EyeOff, KeyRound, Languages, LogOut, Monitor, Moon, Palette, Sun } from "lucide-react";
+import { ChevronDown, Copy, EyeOff, KeyRound, Languages, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
+import { HandleSetup } from "@/components/HandleSetup";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useAccounts } from "@/hooks/useAccounts";
 import { setLang, useLang } from "@/hooks/useLang";
 import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { useProfile } from "@/hooks/useProfile";
 import { api } from "@/lib/api";
 import { createClientStore } from "@/lib/clientStore";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -101,6 +103,7 @@ export default function SettingsBody() {
   const theme = themeStore.useValue();
   const privacyMode = usePrivacyMode();
   const { data: accounts = [] } = useAccounts();
+  const { data: profile } = useProfile();
   const { data: user, isLoading } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
   const { data: token } = useQuery({
     queryKey: ["automation-token"],
@@ -110,6 +113,7 @@ export default function SettingsBody() {
   const [newToken, setNewToken] = useState<string | null>(null);
   const [signOutOpen, setSignOutOpen] = useState(false);
   const [automationOpen, setAutomationOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   // Avoid animating the theme slider from its server position on first paint.
   const [sliderReady, setSliderReady] = useState(false);
   useEffect(() => {
@@ -182,6 +186,33 @@ export default function SettingsBody() {
         </aside>
 
         <div className="lp-content">
+          <section className="lp-section">
+            <SectionHead title={t("profile.title")} />
+            <Collapsible open={profileOpen} onOpenChange={setProfileOpen} className="lp-card lp-group">
+              <CollapsibleTrigger className="lp-row">
+                <span className="lp-icon" aria-hidden>
+                  <UserRound className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{profile ? profile.display_name : t("profile.setup.title")}</span>
+                  </span>
+                  <span className="lp-meta">
+                    <span className="lp-truncate">{profile ? "@" + profile.handle : t("profile.settings.desc")}</span>
+                  </span>
+                </span>
+                <ChevronDown className="lp-chevron size-4" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="subs-collapsible-content">
+                <div className="subs-collapsible-inner">
+                  <div className="lp-panel">
+                    <HandleSetup key={profile?.handle ?? "new"} profile={profile} showIntro={false} onDone={() => setProfileOpen(false)} />
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </section>
+
           <section className="lp-section">
             <SectionHead title={t("settings.preferences")} />
             <div className="lp-card lp-group">

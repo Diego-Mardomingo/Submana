@@ -25,4 +25,13 @@ export const queryKeys = {
     lists: () => [...queryKeys.budgets.all, "list"] as const,
     list: (filters?: { month?: string }) => [...queryKeys.budgets.lists(), filters] as const,
   },
+  profile: {
+    all: ["profile"] as const,
+    me: () => [...queryKeys.profile.all, "me"] as const,
+    handle: (handle: string) => [...queryKeys.profile.all, "handle", handle] as const,
+  },
+  friends: {
+    all: ["friends"] as const,
+    list: () => [...queryKeys.friends.all, "list"] as const,
+  },
 };
