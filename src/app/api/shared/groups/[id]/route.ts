@@ -115,8 +115,16 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   return updateGroup(id, patch);
 }
 
-/** Archive (groups are never hard-deleted: their balances may still matter). */
+/** Delete the group for everyone, with its expenses and activity (any member, even with open balances). */
 export async function DELETE(_request: NextRequest, { params }: Params) {
   const { id } = await params;
-  return updateGroup(id, { archived: true });
+  const { supabase, user } = await getAuthedClient();
+  if (!user) return unauthorized();
+  if (!UUID.test(id)) return jsonError("group_not_found", 404);
+  const limited = await limitSharedWrites(user.id);
+  if (limited) return limited;
+
+  const { error } = await supabase.rpc("delete_group", { p_group_id: id });
+  if (error) return rpcErrorResponse("shared/groups/[id]", error);
+  return jsonResponse({ data: { success: true } });
 }

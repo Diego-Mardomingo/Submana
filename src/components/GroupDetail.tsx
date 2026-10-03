@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronLeft, HandCoins, Plus, Settings2, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { NetAmount } from "@/components/GroupsBody";
@@ -14,7 +15,7 @@ import { useMemberLabel } from "@/components/SplitEditor";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useFriends } from "@/hooks/useFriends";
-import { useAddGroupMember, useGroup, useRemoveGroupMember, useUpdateGroup } from "@/hooks/useGroups";
+import { useAddGroupMember, useDeleteGroup, useGroup, useRemoveGroupMember, useUpdateGroup } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
 import { useDeleteSharedExpense } from "@/hooks/useSharedExpenses";
 import { useProfile } from "@/hooks/useProfile";
@@ -43,6 +44,8 @@ function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   const update = useUpdateGroup();
   const add = useAddGroupMember();
   const remove = useRemoveGroupMember();
+  const deleteGroup = useDeleteGroup();
+  const router = useRouter();
   const [name, setName] = useState(data.group.name);
   const [error, setError] = useState("");
   const archived = !!data.group.archived_at;
@@ -141,6 +144,21 @@ function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
                 }}
               />
             )}
+            <DeleteAction
+              label={t("groups.delete")}
+              confirmTitle={t("groups.deleteTitle")}
+              confirmText={t(data.transfers.length > 0 ? "groups.deleteDescDebts" : "groups.deleteDesc")}
+              pending={deleteGroup.isPending}
+              onConfirm={async () => {
+                try {
+                  await deleteGroup.mutateAsync(data.group.id);
+                  onOpenChange(false);
+                  router.replace("/subcount");
+                } catch (err) {
+                  fail(err as Error);
+                }
+              }}
+            />
           </FieldGroup>
         </SheetBody>
         <SheetFooter>
