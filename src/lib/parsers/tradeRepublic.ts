@@ -29,7 +29,7 @@ const TYPE_WORDS = ["TIPO", "TYP", "TYPE"];
 const DESCRIPTION_WORDS = ["DESCRIPCIÓN", "DESCRIPCION", "BESCHREIBUNG", "DESCRIPTION", "DESCRIZIONE"];
 const BALANCE_WORDS = ["BALANCE", "SALDO"];
 const CASH_START = ["UMSATZÜBERSICHT", "TRANSAZIONI SUL CONTO", "ACCOUNT TRANSACTIONS", "TRANSACCIONES DE CUENTA"];
-const CASH_END = ["BARMITTELÜBERSICHT", "CASH SUMMARY", "BALANCE OVERVIEW", "RESUMEN DE EFECTIVO", "RESUMEN DE SALDO", "SALDO DISPONIBLE"];
+const CASH_END = ["BARMITTELÜBERSICHT", "CASH SUMMARY", "BALANCE OVERVIEW", "RESUMEN DE EFECTIVO", "RESUMEN DE SALDO", "RESUMEN DEL BALANCE", "SALDO DISPONIBLE"];
 const SUMMARY_MARKERS = ["RESUMEN DEL BALANCE", "BALANCE OVERVIEW", "KONTOÜBERSICHT"];
 
 const lineText = (items: TextItem[]) => items.map((item) => item.text.trim()).join(" ").toUpperCase();
@@ -95,8 +95,25 @@ const boundariesOf = (h: Headers): Boundaries => ({
   headerY: h.date.y,
 });
 
+const AMOUNT = /-?\d{1,3}(?:\.\d{3})*,\d{2}\s*€/g;
+
+/**
+ * pdf.js sometimes returns two adjacent amounts as one text item ("10.000,00 € 13.136,09 €"):
+ * split it, placing each part proportionally to its offset so it falls in its own column.
+ * Without this the payment was read as part of the balance and the row was dropped.
+ */
+export function splitMergedAmounts(item: TextItem): TextItem[] {
+  const matches = [...item.text.matchAll(AMOUNT)];
+  if (matches.length < 2 || item.text.replace(AMOUNT, "").trim() !== "") return [item];
+  const perChar = item.width / Math.max(item.text.length, 1);
+  return matches.map((m) => ({ ...item, text: m[0], x: item.x + m.index! * perChar, width: m[0].length * perChar }));
+}
+
 function extractRows(items: TextItem[], b: Boundaries): CashRow[] {
-  const content = items.filter((item) => item.y < b.headerY - 5 && item.text.trim() !== "").sort((a, b2) => b2.y - a.y || a.x - b2.x);
+  const content = items
+    .filter((item) => item.y < b.headerY - 5 && item.text.trim() !== "")
+    .flatMap(splitMergedAmounts)
+    .sort((a, b2) => b2.y - a.y || a.x - b2.x);
   if (content.length === 0) return [];
 
   // A vertical gap larger than 1.5 line heights starts a new transaction.

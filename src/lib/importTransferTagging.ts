@@ -24,10 +24,15 @@ async function findExcludeFromMetricsCategoryId(
 	return (defaultCategory ?? data[0]!).id;
 }
 
-async function fetchUncategorizedByIds(
+/**
+ * Filas importadas sin categoría o que ya heredaron "Excluir de métricas" (misma descripción que un
+ * traspaso anterior): estas también deben emparejarse para etiquetar su contrapartida en la otra cuenta.
+ */
+async function fetchTaggableByIds(
 	supabase: SupabaseClient,
 	userId: string,
-	ids: string[]
+	ids: string[],
+	excludeCategoryId: string
 ): Promise<UncategorizedTransaction[]> {
 	const result: UncategorizedTransaction[] = [];
 	for (let i = 0; i < ids.length; i += QUERY_BATCH_SIZE) {
@@ -35,7 +40,7 @@ async function fetchUncategorizedByIds(
 			.from("transactions")
 			.select("id, amount, type, date, account_id, shared_expense_id")
 			.eq("user_id", userId)
-			.is("category_id", null)
+			.or(`category_id.is.null,category_id.eq.${excludeCategoryId}`)
 			.is("subcategory_id", null)
 			.in("id", ids.slice(i, i + QUERY_BATCH_SIZE));
 		if (data) result.push(...data);
@@ -106,7 +111,7 @@ export async function tagInternalTransfersAfterImport(args: {
 
 	const { jointIds } = await listAccessibleAccounts(supabase, userId);
 	const jointSet = new Set(jointIds);
-	const inserted = (await fetchUncategorizedByIds(supabase, userId, insertedIds)).filter((tx) => !tx.account_id || !jointSet.has(tx.account_id));
+	const inserted = (await fetchTaggableByIds(supabase, userId, insertedIds, excludeCategoryId)).filter((tx) => !tx.account_id || !jointSet.has(tx.account_id));
 	if (inserted.length === 0) return 0;
 
 	const counterparts = (await fetchUncategorizedCounterparts(supabase, userId, inserted)).filter(
