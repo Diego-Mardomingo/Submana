@@ -13,6 +13,22 @@ import {
   unauthorized,
 } from "@/lib/apiHelpers";
 import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
+import { fetchProfiles } from "@/lib/shared/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+type WithSharedExpense = { shared_expense?: { paid_by: string; paid_by_handle?: string | null } | null };
+
+/** Adds the payer's @handle to the embedded shared expense when somebody else paid ("Paid by @ana"). */
+async function withPayerHandles<T>(supabase: SupabaseClient, userId: string, rows: T[]): Promise<T[]> {
+  const payers = new Set<string>();
+  for (const row of rows as WithSharedExpense[]) if (row.shared_expense && row.shared_expense.paid_by !== userId) payers.add(row.shared_expense.paid_by);
+  if (payers.size === 0) return rows;
+  const profiles = await fetchProfiles(supabase, [...payers]);
+  for (const row of rows as WithSharedExpense[]) {
+    if (row.shared_expense) row.shared_expense.paid_by_handle = profiles.get(row.shared_expense.paid_by)?.handle ?? null;
+  }
+  return rows;
+}
 
 export async function GET(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
@@ -39,8 +55,8 @@ export async function GET(request: NextRequest) {
         .from("transactions")
         .select(
           minimal
-            ? "id, amount, type, date, account_id, category_id, subcategory_id, source, booked_at"
-            : "*, account:accounts(name, color), category:categories!category_id(name), subcategory:categories!subcategory_id(name)"
+            ? "id, amount, type, date, account_id, category_id, subcategory_id, source, booked_at, metric_amount, shared_expense_id"
+            : "*, account:accounts(name, color), category:categories!category_id(name), subcategory:categories!subcategory_id(name), shared_expense:shared_expenses!shared_expense_id(id, group_id, kind, title, total_amount, paid_by, split_mode)"
         )
         .eq("user_id", user.id)
         .order("date", { ascending: false })
@@ -49,7 +65,7 @@ export async function GET(request: NextRequest) {
       if (accountId) query = query.eq("account_id", accountId);
       return query.range(from, to);
     });
-    return jsonCachedResponse({ data });
+    return jsonCachedResponse({ data: minimal ? data : await withPayerHandles(supabase, user.id, data) });
   } catch (error) {
     return jsonServerError("crud/transactions", error);
   }

@@ -48,4 +48,6 @@ export const RATE_LIMITS = {
   importPreview: { limit: 60, windowSeconds: 600 },
   /** Solicitudes de amistad por usuario. */
   friends: { limit: 10, windowSeconds: 60 },
+  /** Escrituras de grupos, gastos compartidos y liquidaciones por usuario. */
+  shared: { limit: 60, windowSeconds: 60 },
 } as const;

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import BalanceHero from "@/components/dashboard/BalanceHero";
+import FriendsCard from "@/components/dashboard/FriendsCard";
 import MonthOverview from "@/components/dashboard/MonthOverview";
 import { IncomeExpenseCard, SavingsProjectionCard } from "@/components/dashboard/Trends";
 import { useLang } from "@/hooks/useLang";
@@ -36,6 +37,7 @@ export default function DashboardPage() {
 
       <div className="dash-layout">
         <BalanceHero />
+        <FriendsCard />
         <MonthOverview />
         <section className="dash-section" aria-label={lang === "es" ? "Tendencias" : "Trends"}>
           <div className="lp-section-head">

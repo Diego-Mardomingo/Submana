@@ -30,11 +30,31 @@ export interface ImportRowMatch {
   descScore: number | null;
 }
 
+/** A statement line that looks like a repayment between friends (see src/lib/shared/settlementMatch.ts). */
+export interface ImportSettlementSuggestion {
+  group_id: string;
+  friend_id: string;
+  friend_handle: string;
+  friend_name: string;
+  /** from_friend: they pay me back; to_friend: I pay them back. */
+  direction: "from_friend" | "to_friend";
+  amount_cents: number;
+  exact: boolean;
+  score: number;
+}
+
 /** Classification of one statement line, keyed by its import_source_fingerprint. */
 export interface ImportPreviewRow {
   fingerprint: string;
   status: ImportRowStatus;
   match?: ImportRowMatch;
+  settlementSuggestion?: ImportSettlementSuggestion;
+}
+
+/** Accepted settlement suggestion: the server revalidates it and links the row after inserting. */
+export interface ImportSettlementChoice {
+  group_id: string;
+  friend_id: string;
 }
 
 export interface ImportPreviewResponse {
@@ -48,6 +68,8 @@ export interface ImportResolution {
   action: "merge" | "insert" | "skip";
   /** Manual transaction to merge into (defaults to the best match). */
   target_id?: string;
+  /** Accepted settlement suggestion for this line. */
+  settlement?: ImportSettlementChoice;
 }
 
 export interface ImportTransactionsResponse {
@@ -59,4 +81,6 @@ export interface ImportTransactionsResponse {
   new_balance: number;
   /** Rows tagged as internal transfers ("exclude from metrics" category). */
   internal_transfers_tagged?: number;
+  /** Rows linked as settlements with a friend. */
+  settlements_linked?: number;
 }

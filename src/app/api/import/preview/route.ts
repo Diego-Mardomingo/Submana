@@ -5,6 +5,7 @@ import { prepareImport, toPreviewRows } from "@/lib/importTransactions";
 import { validateImportPayload } from "@/lib/importValidation";
 import type { ImportedTransaction, ImportPreviewResponse } from "@/lib/parsers/types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
+import { attachSettlementSuggestions } from "@/lib/shared/importSettlements";
 
 /**
  * Classifies statement rows (new / sure / possible / already imported / skipped) before importing.
@@ -40,7 +41,12 @@ export async function POST(request: NextRequest) {
   try {
     const response: ImportPreviewResponse = { transactions: [], deposit: [] };
     if (transactions.length > 0) {
-      response.transactions = toPreviewRows((await prepareImport({ supabase, userId: user.id, accountId: account_id, transactions })).rows);
+      response.transactions = await attachSettlementSuggestions(
+        supabase,
+        user.id,
+        transactions,
+        toPreviewRows((await prepareImport({ supabase, userId: user.id, accountId: account_id, transactions })).rows)
+      );
     }
     if (deposit.length > 0) {
       const { data: depositAccount } = await supabase

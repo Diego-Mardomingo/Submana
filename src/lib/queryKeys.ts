@@ -34,4 +34,11 @@ export const queryKeys = {
     all: ["friends"] as const,
     list: () => [...queryKeys.friends.all, "list"] as const,
   },
+  shared: {
+    all: ["shared"] as const,
+    groups: () => [...queryKeys.shared.all, "groups"] as const,
+    group: (id: string) => [...queryKeys.shared.all, "group", id] as const,
+    balances: () => [...queryKeys.shared.all, "balances"] as const,
+    suggestions: () => [...queryKeys.shared.all, "suggestions"] as const,
+  },
 };

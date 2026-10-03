@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { unlinkLinkedTransactions } from "@/lib/shared/server";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -37,6 +38,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
+  await unlinkLinkedTransactions(supabase, user.id, id);
   const { error } = await supabase.from("accounts").delete().eq("id", id).eq("user_id", user.id);
   if (error) return jsonServerError("crud/accounts/[id]", error);
   return jsonResponse({ data: { success: true } });

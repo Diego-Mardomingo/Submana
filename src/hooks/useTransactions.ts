@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { monthKey, shiftMonth, toAppDate } from "@/lib/date";
 import { metricTransactions } from "@/lib/metricsFilters";
 import { queryKeys } from "@/lib/queryKeys";
+import type { TransactionSharedExpense } from "@/lib/shared/types";
 import { fetchBudgets } from "./useBudgets";
 import { useCategories } from "./useCategories";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
@@ -22,6 +23,11 @@ export interface Transaction {
   /** Date and text of the bank line backing this row (null while it is only a manual entry). */
   booked_at?: string | null;
   bank_description?: string | null;
+  /** What counts in metrics and budgets: null = amount, 0 = does not count (settlements). */
+  metric_amount?: number | null;
+  /** Shared expense or settlement this row belongs to. */
+  shared_expense_id?: string | null;
+  shared_expense?: TransactionSharedExpense | null;
   category_id?: string | null;
   subcategory_id?: string | null;
   account?: { name: string; color?: string | null } | null;
@@ -188,7 +194,7 @@ interface TransactionInput {
   subcategory_id?: string;
 }
 
-const invalidate = [queryKeys.transactions.all, queryKeys.accounts.all];
+const invalidate = [queryKeys.transactions.all, queryKeys.accounts.all, queryKeys.budgets.all, queryKeys.shared.all];
 
 export function useCreateTransaction() {
   return useOptimisticMutation({

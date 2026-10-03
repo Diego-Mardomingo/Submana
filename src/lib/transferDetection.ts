@@ -4,6 +4,8 @@ export interface TransferDetectable {
   type?: string;
   date?: string;
   account_id?: string | null;
+  /** Rows linked to a shared expense or settlement are never half of an own-account transfer. */
+  shared_expense_id?: string | null;
 }
 
 /**
@@ -22,7 +24,7 @@ export function detectTransferIds(transactions: TransferDetectable[], windowHour
       cents: Math.round(Math.abs(Number(tx.amount) || 0) * 100),
       kind: (tx.type || "").toLowerCase(),
     }))
-    .filter((tx) => tx.account_id && tx.cents > 0 && Number.isFinite(tx.ts))
+    .filter((tx) => tx.account_id && !tx.shared_expense_id && tx.cents > 0 && Number.isFinite(tx.ts))
     .sort((a, b) => a.ts - b.ts);
 
   const incomesByAmount = new Map<number, typeof normalized>();

@@ -10,7 +10,7 @@ import { appNow, monthKey, shiftMonth } from "@/lib/date";
 import { monthKeyLabel } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import type { Lang } from "@/lib/i18n/ui";
-import { metricTransactions, sumByType } from "@/lib/metricsFilters";
+import { metricTransactions, sumMetricsByType } from "@/lib/metricsFilters";
 import { cn } from "@/lib/utils";
 import { CardHead, IncomeExpenseBars, money, signClass, signedMoney, Stat } from "./shared";
 
@@ -30,7 +30,7 @@ export function IncomeExpenseCard({ lang }: { lang: Lang }) {
   const { byMonth, keys, availableRange, isLoading } = useTransactionsRange(undefined, range);
   const { data: categories } = useCategories();
 
-  const totals = keys.map((key) => sumByType(metricTransactions(byMonth.get(key) ?? [], categories)));
+  const totals = keys.map((key) => sumMetricsByType(metricTransactions(byMonth.get(key) ?? [], categories)));
   const avg = (pick: (m: (typeof totals)[number]) => number) => (totals.length ? totals.reduce((sum, m) => sum + pick(m), 0) / totals.length : 0);
   const avgIncome = avg((m) => m.income);
   const avgExpense = avg((m) => m.expense);
@@ -88,7 +88,7 @@ export function SavingsProjectionCard({ lang }: { lang: Lang }) {
 
   let saved = 0;
   for (let m = 1; m <= completedMonths; m++) {
-    const { income, expense } = sumByType(metricTransactions(byMonth.get(monthKey(year, m)) ?? [], categories));
+    const { income, expense } = sumMetricsByType(metricTransactions(byMonth.get(monthKey(year, m)) ?? [], categories));
     saved += income - expense;
   }
   const avgMonthly = completedMonths > 0 ? saved / completedMonths : 0;

@@ -4,6 +4,7 @@ import { classifyImportRows, decisionAction, type ClassifyCandidate } from "@/li
 import { matchScore } from "@/lib/dedup/matchScore";
 import { filterAlreadyImportedStatementRows } from "@/lib/importDuplicateDetection";
 import { tagInternalTransfersAfterImport } from "@/lib/importTransferTagging";
+import { linkImportedSettlements, type SettlementJob } from "@/lib/shared/importSettlements";
 import { buildDuplicateConflictKey, buildDuplicateConflictKeyLegacy, buildImportLineId } from "@/lib/parsers/importKeys";
 import type { ImportedTransaction, ImportPreviewRow, ImportResolution, ImportRowStatus, ImportTransactionsResponse } from "@/lib/parsers/types";
 
@@ -201,6 +202,7 @@ export async function importTransactions(args: {
   const toInsert: PreparedRow[] = [];
   const toSkip: PreparedRow[] = [];
   const mergeTargets = new Set<string>();
+  const settlementJobs: SettlementJob[] = [];
   let merged = 0;
 
   for (const row of prepared.rows) {
@@ -227,6 +229,9 @@ export async function importTransactions(args: {
       if (!error && data?.id) {
         mergeTargets.add(targetId);
         merged++;
+        if (choice?.settlement) {
+          settlementJobs.push({ txId: targetId, type: tx.type, amount: tx.amount, date: tx.date, settlement: choice.settlement });
+        }
         continue;
       }
     }
@@ -278,10 +283,16 @@ export async function importTransactions(args: {
           bank_description: tx.description || null,
         }))
       )
-      .select("id");
+      .select("id, import_line_id");
     if (error) return { error: error.message };
 
     imported = inserted.length;
+    const insertedByLine = new Map(inserted.map((t) => [t.import_line_id as string, t.id as string]));
+    for (const { tx, import_line_id } of toInsert) {
+      const settlement = chosen.get(tx.import_source_fingerprint)?.settlement;
+      const txId = insertedByLine.get(import_line_id);
+      if (settlement && txId) settlementJobs.push({ txId, type: tx.type, amount: tx.amount, date: tx.date, settlement });
+    }
     tagged = await tagInternalTransfersAfterImport({ supabase, userId, insertedIds: inserted.map((t) => t.id) });
   }
 
@@ -289,6 +300,7 @@ export async function importTransactions(args: {
   // (merged manual rows already moved the balance when they were created).
   if (finalBalance != null) await supabase.from("accounts").update({ balance: finalBalance }).eq("id", accountId).eq("user_id", userId);
   else await adjustAccountBalance(supabase, userId, accountId, toInsert.reduce((sum, r) => sum + signedAmount(r.tx), 0));
+  const settlementsLinked = await linkImportedSettlements(supabase, userId, settlementJobs);
   const { data: account } = await supabase.from("accounts").select("balance").eq("id", accountId).eq("user_id", userId).single();
 
   return {
@@ -298,5 +310,6 @@ export async function importTransactions(args: {
     total: transactions.length,
     new_balance: Number(account?.balance ?? 0),
     internal_transfers_tagged: tagged,
+    ...(settlementsLinked > 0 && { settlements_linked: settlementsLinked }),
   };
 }
