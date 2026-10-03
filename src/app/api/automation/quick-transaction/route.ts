@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
     p_type: "expense",
     p_date: new Date().toISOString(),
     p_description: description,
+    p_source: "automation",
   });
   if (error || !data?.id) {
     await notify({ success: false, error_message: "Could not create transaction", account_id: accountId });

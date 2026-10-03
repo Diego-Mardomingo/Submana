@@ -1,10 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PossibleDuplicate } from "@/lib/parsers/types";
-import {
-	buildDuplicateConflictKey,
-	buildDuplicateConflictKeyLegacy,
-} from "@/lib/parsers/importKeys";
-import { calendarDayInAppTimeZone } from "@/lib/date";
 
 /** Margen horario para considerar la misma fila de extracto reexportada con otra zona horaria. */
 const SHIFTED_REIMPORT_WINDOW_MS = 3 * 60 * 60 * 1000;
@@ -17,6 +11,9 @@ interface ReimportComparable {
 	type: string;
 	description: string | null;
 	statement_balance?: number | string | null;
+	/** Bank-side date/description of a row merged with a manual transaction (win over date/description). */
+	booked_at?: string | null;
+	bank_description?: string | null;
 }
 
 export function toCents(value: number | string): number {
@@ -39,8 +36,8 @@ export function isSameStatementRow(
 	if ((incoming.type || "").toLowerCase() !== (existing.type || "").toLowerCase()) return false;
 	if (toCents(incoming.amount) !== toCents(existing.amount)) return false;
 
-	const incomingMs = new Date(incoming.date).getTime();
-	const existingMs = new Date(existing.date).getTime();
+	const incomingMs = new Date(incoming.booked_at ?? incoming.date).getTime();
+	const existingMs = new Date(existing.booked_at ?? existing.date).getTime();
 	if (!Number.isFinite(incomingMs) || !Number.isFinite(existingMs)) return false;
 	if (Math.abs(incomingMs - existingMs) > SHIFTED_REIMPORT_WINDOW_MS) return false;
 
@@ -54,8 +51,8 @@ export function isSameStatementRow(
 	}
 
 	return (
-		normalizeDescriptionForCompare(incoming.description) ===
-		normalizeDescriptionForCompare(existing.description)
+		normalizeDescriptionForCompare(incoming.bank_description ?? incoming.description) ===
+		normalizeDescriptionForCompare(existing.bank_description ?? existing.description)
 	);
 }
 
@@ -115,86 +112,4 @@ export async function filterAlreadyImportedStatementRows<
 		consumedExistingIds.add(match.id);
 		return false;
 	});
-}
-
-/**
- * Tras insertar líneas de extracto, detecta cruces con transacciones manuales
- * (mismo día calendario, mismo importe al céntimo).
- */
-export async function collectPossibleDuplicatesManualVsImport(args: {
-	supabase: SupabaseClient;
-	userId: string;
-	accountId: string;
-	insertedRows: Array<{
-		id: string;
-		import_line_id: string | null;
-		date: string;
-		amount: number | string;
-		type: string;
-		description: string | null;
-		external_hash: string | null;
-	}>;
-	decisionMap: Map<string, string>;
-}): Promise<PossibleDuplicate[]> {
-	const { supabase, userId, accountId, insertedRows, decisionMap } = args;
-	const possibleDuplicates: PossibleDuplicate[] = [];
-	const seenConflictKeys = new Set<string>();
-
-	for (const inserted of insertedRows) {
-		if (!inserted.import_line_id) continue;
-
-		const { data: manualSameAmount } = await supabase
-			.from("transactions")
-			.select("id, date, amount, type, description, import_line_id")
-			.eq("account_id", accountId)
-			.eq("user_id", userId)
-			.is("import_line_id", null)
-			.eq("amount", inserted.amount)
-			.eq("type", inserted.type);
-
-		const insertedDay = calendarDayInAppTimeZone(String(inserted.date));
-		for (const existing of manualSameAmount ?? []) {
-			if (toCents(existing.amount) !== toCents(inserted.amount)) continue;
-			if (calendarDayInAppTimeZone(String(existing.date)) !== insertedDay) continue;
-
-			const conflict_key = await buildDuplicateConflictKey(
-				accountId,
-				String(inserted.date),
-				Number(inserted.amount),
-				String(inserted.type)
-			);
-			const legacy_conflict_key = await buildDuplicateConflictKeyLegacy(
-				accountId,
-				String(inserted.date),
-				Number(inserted.amount)
-			);
-			if (
-				decisionMap.has(conflict_key) ||
-				decisionMap.has(legacy_conflict_key) ||
-				seenConflictKeys.has(conflict_key)
-			) {
-				continue;
-			}
-			seenConflictKeys.add(conflict_key);
-
-			possibleDuplicates.push({
-				conflict_key,
-				incoming: {
-					id: inserted.id,
-					date: inserted.date,
-					amount: Number(inserted.amount),
-					description: inserted.description || "",
-					external_hash: inserted.external_hash || "",
-				},
-				existing: {
-					id: existing.id,
-					description: existing.description || "",
-					date: existing.date as string,
-					amount: Number(existing.amount),
-				},
-			});
-		}
-	}
-
-	return possibleDuplicates;
 }

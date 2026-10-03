@@ -848,3 +848,135 @@ html[data-theme="light"] .add-arc-item--primary .add-arc-bubble {
     animation-delay: 0ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════
+   IMPORT REVIEW (components/import/ImportReview.tsx)
+   Tabs per classification, compact rows, side-by-side cards for doubtful lines.
+   ═══════════════════════════════════════════════ */
+.import-review {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.import-review-intro {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.import-review-tabs {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.import-review-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 999px;
+  border: 1px solid var(--gris);
+  background: transparent;
+  color: var(--gris-claro);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.import-review-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.import-review-tab-count {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.import-review-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.import-review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.import-review-hint {
+  font-size: 0.72rem;
+  color: var(--muted-foreground);
+}
+
+.import-review-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.import-review-more {
+  align-self: center;
+}
+
+.duplicate-btn.active {
+  border-color: var(--accent);
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--foreground);
+}
+
+.import-review-summary {
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+  text-align: center;
+  margin: 0;
+}
+
+.similar-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(249, 115, 22, 0.4);
+  background: rgba(251, 146, 60, 0.1);
+}
+
+.similar-banner-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fb923c;
+}
+
+.similar-banner-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.similar-banner-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--foreground);
+}
+
+.similar-banner-text span:last-child {
+  font-size: 0.7rem;
+  color: var(--muted-foreground);
+}

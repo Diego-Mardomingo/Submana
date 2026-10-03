@@ -1,4 +1,4 @@
-import type { ImportedTransaction } from "@/lib/parsers/types";
+import type { ImportedTransaction, ImportResolution } from "@/lib/parsers/types";
 
 /** Límite por petición: un extracto anual grande cabe de sobra; evita payloads abusivos. */
 export const MAX_IMPORT_ROWS = 5000;
@@ -53,6 +53,22 @@ export function validateImportPayload(
     if (tx.statement_balance != null && !isFiniteNumber(tx.statement_balance)) {
       return "invalid_statement_balance";
     }
+  }
+  return null;
+}
+
+const RESOLUTION_ACTIONS = new Set(["merge", "insert", "skip"]);
+
+/** Valida las resoluciones opcionales del usuario (merge / insert / skip por huella de fila). Devuelve un código de error o null. */
+export function validateResolutions(resolutions: unknown): string | null {
+  if (resolutions === undefined || resolutions === null) return null;
+  if (!Array.isArray(resolutions) || resolutions.length > MAX_IMPORT_ROWS) return "invalid_resolutions";
+  for (const raw of resolutions) {
+    if (!raw || typeof raw !== "object") return "invalid_resolutions";
+    const r = raw as Partial<ImportResolution>;
+    if (typeof r.fingerprint !== "string" || !r.fingerprint || r.fingerprint.length > MAX_FINGERPRINT_LENGTH) return "invalid_resolutions";
+    if (typeof r.action !== "string" || !RESOLUTION_ACTIONS.has(r.action)) return "invalid_resolutions";
+    if (r.target_id != null && (typeof r.target_id !== "string" || r.target_id.length > 64)) return "invalid_resolutions";
   }
   return null;
 }

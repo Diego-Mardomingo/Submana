@@ -27,3 +27,6 @@ export const BANK_PROVIDER_LIST = Object.values(BANK_PROVIDERS);
 export function getBankProvider(id: string | null | undefined): BankProviderConfig | null {
   return (id && BANK_PROVIDERS[id as BankProvider]) || null;
 }
+
+/** Dedicated account the Revolut savings ("remunerada") rows are imported into. */
+export const DEPOSIT_ACCOUNT_NAME = "Revolut Remunerada";

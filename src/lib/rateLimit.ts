@@ -44,4 +44,6 @@ export const RATE_LIMITS = {
   import: { limit: 20, windowSeconds: 600 },
   /** Regeneración de token por usuario. */
   tokenRotation: { limit: 10, windowSeconds: 3600 },
+  /** Clasificación previa a importar (consultas por lote, sin escrituras). */
+  importPreview: { limit: 60, windowSeconds: 600 },
 } as const;

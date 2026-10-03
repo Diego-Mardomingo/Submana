@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         .from("transactions")
         .select(
           minimal
-            ? "id, amount, type, date, account_id, category_id, subcategory_id"
+            ? "id, amount, type, date, account_id, category_id, subcategory_id, source, booked_at"
             : "*, account:accounts(name, color), category:categories!category_id(name), subcategory:categories!subcategory_id(name)"
         )
         .eq("user_id", user.id)
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
     p_description: tx.description,
     p_category_id: tx.category_id,
     p_subcategory_id: tx.subcategory_id,
+    p_source: "manual",
   });
   if (error) return jsonServerError("crud/transactions", error);
   return jsonResponse({ data }, 201);
