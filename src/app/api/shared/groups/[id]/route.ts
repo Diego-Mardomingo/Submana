@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { fetchAllPages, getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { simplifyDebts } from "@/lib/shared/debts";
 import { fetchProfiles, limitSharedWrites, rpcErrorResponse, UUID } from "@/lib/shared/server";
 import type { GroupDetailData, SharedEventItem, SharedExpenseItem } from "@/lib/shared/types";
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     if (error) throw error;
     if (!group) return jsonError("group_not_found", 404);
 
-    const [membersRes, expensesRes, balancesRes, eventsRes] = await Promise.all([
+    const [membersRes, expensesRes, balancesRes, eventsRes, spentRows] = await Promise.all([
       supabase.from("group_members").select("user_id").eq("group_id", id),
       supabase
         .from("shared_expenses")
@@ -48,6 +48,10 @@ export async function GET(request: NextRequest, { params }: Params) {
         .eq("group_id", id)
         .order("created_at", { ascending: false })
         .limit(50),
+      // Every expense (not only this page) for the group's total spent; settlements are not spending.
+      fetchAllPages((from, to) =>
+        supabase.from("shared_expenses").select("total_amount").eq("group_id", id).eq("kind", "expense").is("deleted_at", null).order("id").range(from, to)
+      ),
     ]);
     for (const res of [membersRes, expensesRes, balancesRes, eventsRes]) if (res.error) throw res.error;
 
@@ -77,6 +81,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       extra_profiles: [...profiles.values()].filter((p) => !memberIds.includes(p.user_id)),
       expenses,
       has_more: hasMore,
+      total_spent_cents: spentRows.reduce((sum, row) => sum + Math.round(Number(row.total_amount) * 100), 0),
       nets,
       transfers: simplifyDebts(Object.fromEntries(nets.map((n) => [n.user_id, n.net_cents]))),
       events: (eventsRes.data ?? []) as SharedEventItem[],
