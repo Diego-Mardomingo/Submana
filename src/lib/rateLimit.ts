@@ -46,4 +46,6 @@ export const RATE_LIMITS = {
   tokenRotation: { limit: 10, windowSeconds: 3600 },
   /** Clasificación previa a importar (consultas por lote, sin escrituras). */
   importPreview: { limit: 60, windowSeconds: 600 },
+  /** Solicitudes de amistad por usuario. */
+  friends: { limit: 10, windowSeconds: 60 },
 } as const;

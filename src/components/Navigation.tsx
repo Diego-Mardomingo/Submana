@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Calendar, ChevronRight, CreditCard, House, LayoutDashboard, Menu, Plus, Settings, Tags, Wallet } from "lucide-react";
+import { Bell, Calendar, ChevronRight, CreditCard, House, LayoutDashboard, Menu, Plus, Settings, Tags, Users, Wallet } from "lucide-react";
 import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
 import { LogoMark, TransactionsIcon } from "@/components/icons";
 import { FieldGroup } from "@/components/SheetFields";
@@ -32,6 +32,7 @@ const NAV_GROUPS: Record<"main" | "manage" | "system", NavItem[]> = {
     { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: Tags },
     { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: Calendar },
     { href: "/budgets", shortcut: "e", labelKey: "nav.budgets", icon: Wallet },
+    { href: "/friends", shortcut: "g", labelKey: "nav.friends", icon: Users },
   ],
   system: [
     { href: "/notifications", shortcut: "z", labelKey: "nav.notifications", icon: Bell },
