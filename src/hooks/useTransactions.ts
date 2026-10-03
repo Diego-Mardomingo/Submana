@@ -19,8 +19,8 @@ export interface Transaction {
   date: string;
   description?: string | null;
   account_id?: string | null;
-  /** manual / import / automation: where the row came from. */
-  source?: "manual" | "import" | "automation" | "shared";
+  /** manual / import / shared: where the row came from. */
+  source?: "manual" | "import" | "shared";
   /** Date and text of the bank line backing this row (null while it is only a manual entry). */
   booked_at?: string | null;
   bank_description?: string | null;

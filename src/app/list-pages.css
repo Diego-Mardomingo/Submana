@@ -1124,65 +1124,6 @@ button.lp-row {
   min-width: 0;
 }
 
-.lp-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  min-width: 0;
-}
-
-.lp-field-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.lp-code {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--gris);
-  border-radius: 10px;
-  background: var(--negro);
-  color: var(--gris-muy-claro);
-  font-size: 0.72rem;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.lp-mini-list {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--gris);
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.lp-mini-list > li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-width: 0;
-  padding: 0.3rem 0.3rem 0.3rem 0.75rem;
-  font-size: 0.82rem;
-  color: var(--blanco);
-}
-
-.lp-mini-list > li + li {
-  border-top: 1px solid var(--lp-divider);
-}
-
-.lp-mini-list > li > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* User-owned categories: accent tint + left bar, so they stand apart from system ones */
 .lp-own {
   position: relative;

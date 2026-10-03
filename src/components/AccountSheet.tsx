@@ -77,7 +77,7 @@ function AccountFormBody({ account, onDone, onDeleted }: { account: Account | nu
     }
     const balance = parseCurrencyValue(form.balance);
     const input = { name, color: form.color, icon: form.icon || undefined, bank_provider: form.bank_provider || null };
-    // Only send the balance when it changed: otherwise it would overwrite imports or automations
+    // Only send the balance when it changed: otherwise it would overwrite imports
     // that happened since the form was opened.
     const balanceChanged = !account || Math.round(balance * 100) !== Math.round(Number(account.balance ?? 0) * 100);
     const payload = { ...input, ...(balanceChanged && { balance }) };

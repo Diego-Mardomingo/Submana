@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Copy, EyeOff, KeyRound, Languages, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
+import { ChevronDown, EyeOff, Languages, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { HandleSetup } from "@/components/HandleSetup";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -11,11 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useAccounts } from "@/hooks/useAccounts";
 import { setLang, useLang } from "@/hooks/useLang";
 import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useProfile } from "@/hooks/useProfile";
-import { api } from "@/lib/api";
 import { createClientStore } from "@/lib/clientStore";
 import { useTranslations } from "@/lib/i18n/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -68,22 +66,6 @@ function Segmented<T extends string>({ kind, value, options, onChange, animate =
   );
 }
 
-function CopyButton({ text, label, ghost }: { text: string; label: string; ghost?: boolean }) {
-  const t = useTranslations(useLang());
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    await navigator.clipboard.writeText(text).catch(() => undefined);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <Button type="button" variant={ghost ? "ghost" : "outline"} size="sm" className={ghost ? "shrink-0 h-8" : undefined} onClick={copy}>
-      <Copy className="size-3.5 mr-1" />
-      {copied ? t("settings.automation.copied") : label}
-    </Button>
-  );
-}
-
 const flag = (country: string) => (
   // eslint-disable-next-line @next/next/no-img-element -- tiny remote flag
   <img src={`https://flagcdn.com/w40/${country}.png`} alt="" className="settings-lang-flag" />
@@ -102,17 +84,9 @@ export default function SettingsBody() {
   const queryClient = useQueryClient();
   const theme = themeStore.useValue();
   const privacyMode = usePrivacyMode();
-  const { data: accounts = [] } = useAccounts();
   const { data: profile } = useProfile();
   const { data: user, isLoading } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
-  const { data: token } = useQuery({
-    queryKey: ["automation-token"],
-    queryFn: () => api<{ hasToken: boolean; lastUsedAt: string | null }>("/api/automation/token"),
-    enabled: !!user,
-  });
-  const [newToken, setNewToken] = useState<string | null>(null);
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const [automationOpen, setAutomationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   // Avoid animating the theme slider from its server position on first paint.
   const [sliderReady, setSliderReady] = useState(false);
@@ -120,18 +94,6 @@ export default function SettingsBody() {
     const frame = requestAnimationFrame(() => requestAnimationFrame(() => setSliderReady(true)));
     return () => cancelAnimationFrame(frame);
   }, []);
-
-  const generateToken = async () => {
-    const { token: plain } = await api<{ token: string }>("/api/automation/token", "POST");
-    setNewToken(plain);
-    queryClient.setQueryData(["automation-token"], { hasToken: true, lastUsedAt: null });
-  };
-
-  const revokeToken = async () => {
-    await api("/api/automation/token", "DELETE");
-    setNewToken(null);
-    queryClient.setQueryData(["automation-token"], { hasToken: false, lastUsedAt: null });
-  };
 
   const signOut = async () => {
     await createClient().auth.signOut();
@@ -146,14 +108,7 @@ export default function SettingsBody() {
     window.location.href = "/login";
   };
 
-  const endpointUrl = typeof window !== "undefined" ? `${window.location.origin}/api/automation/quick-transaction` : "";
-  const exampleBody = JSON.stringify({ amount: "10.5", description: "Café", accountId: accounts[0]?.id ?? "YOUR_ACCOUNT_ID" }, null, 2);
   const name = user?.user_metadata?.name as string | undefined;
-  const tokenStatus = newToken || token?.hasToken
-    ? token?.lastUsedAt
-      ? `${t("settings.automation.lastUsed")} ${new Date(token.lastUsedAt).toLocaleString(es ? "es-ES" : "en-US", { dateStyle: "short", timeStyle: "short" })}`
-      : t("settings.automation.tokenConfigured")
-    : es ? "Sin token" : "No token";
 
   return (
     <div className="page-container lp-page fade-in">
@@ -275,91 +230,6 @@ export default function SettingsBody() {
                 <Switch className="lp-pref-control" checked={privacyMode} onCheckedChange={setPrivacyMode} aria-label={t("settings.privacyMode")} />
               </label>
             </div>
-          </section>
-
-          <section className="lp-section">
-            <SectionHead title={es ? "Automatización" : "Automation"} />
-            <Collapsible open={automationOpen} onOpenChange={setAutomationOpen} className="lp-card lp-group">
-              <CollapsibleTrigger className="lp-row">
-                <span className="lp-icon" aria-hidden>
-                  <KeyRound className="size-5" />
-                </span>
-                <span className="lp-main">
-                  <span className="lp-title">
-                    <span>{es ? "Transacciones desde notificaciones" : "Transactions from notifications"}</span>
-                  </span>
-                  <span className="lp-meta">
-                    <span className="lp-truncate">{tokenStatus}</span>
-                  </span>
-                </span>
-                <ChevronDown className="lp-chevron size-4" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="subs-collapsible-content">
-                <div className="subs-collapsible-inner">
-                  <div className="lp-panel">
-                    <p className="lp-desc">{t("settings.automation.desc")}</p>
-
-                    <div className="lp-field">
-                      <span className="lp-label">{t("settings.automation.tokenLabel")}</span>
-                      {newToken ? (
-                        <>
-                          <div className="lp-field-row">
-                            <code className="lp-code">{newToken}</code>
-                            <CopyButton text={newToken} label={t("settings.automation.copyToken")} />
-                          </div>
-                          <p className="lp-desc lp-warn">{t("settings.automation.tokenOnlyOnce")}</p>
-                        </>
-                      ) : (
-                        <div className="lp-field-row">
-                          <Button type="button" variant="outline" size="sm" onClick={generateToken}>
-                            {t(token?.hasToken ? "settings.automation.regenerateToken" : "settings.automation.generateToken")}
-                          </Button>
-                          {token?.hasToken && (
-                            <Button type="button" variant="ghost" size="sm" onClick={revokeToken}>
-                              {t("settings.automation.revokeToken")}
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="lp-field">
-                      <span className="lp-label">{t("settings.automation.endpointUrl")}</span>
-                      <div className="lp-field-row">
-                        <code className="lp-code">{endpointUrl || "..."}</code>
-                        {endpointUrl && <CopyButton text={endpointUrl} label={t("settings.automation.copyUrl")} />}
-                      </div>
-                    </div>
-
-                    <div className="lp-field">
-                      <span className="lp-label">{t("settings.automation.requestBody")}</span>
-                      <pre className="lp-code">
-                        <code>{exampleBody}</code>
-                      </pre>
-                      <div>
-                        <CopyButton text={exampleBody} label={t("settings.automation.copyBody")} />
-                      </div>
-                    </div>
-
-                    <div className="lp-field">
-                      <span className="lp-label">{t("settings.automation.accountsList")}</span>
-                      {accounts.length === 0 ? (
-                        <p className="lp-desc">{t("accounts.noAccounts")}</p>
-                      ) : (
-                        <ul className="lp-mini-list">
-                          {accounts.map((acc) => (
-                            <li key={acc.id}>
-                              <span>{acc.name}</span>
-                              <CopyButton text={acc.id} label={t("settings.automation.copyId")} ghost />
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
           </section>
 
           <section className="lp-section">
