@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, isOwnedAccount, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { validateSubscriptionFields } from "@/lib/subscriptionValidation";
 
 type Params = { params: Promise<{ id: string }> };
@@ -17,7 +17,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (Object.keys(updates).length === 0) return jsonError("No fields to update");
   const invalid = validateSubscriptionFields(updates);
   if (invalid) return jsonError(invalid);
-  if (typeof updates.account_id === "string" && !(await isOwnedAccount(supabase, user.id, updates.account_id))) {
+  if (typeof updates.account_id === "string" && (await getAccountAccess(supabase, user.id, updates.account_id))?.role !== "owner") {
     return jsonError("Account not found", 404);
   }
 

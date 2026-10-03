@@ -10,6 +10,7 @@ import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { signed, TransactionDayList } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
+import { useJointAccountIds } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useLang } from "@/hooks/useLang";
@@ -67,6 +68,7 @@ export default function TransactionsBody() {
   const { data: transactions = [], isLoading, isFetching, isPlaceholderData } = useTransactions(year, month);
   const monthDataReady = !isLoading && !isPlaceholderData;
   const { data: categories } = useCategories();
+  const jointAccountIds = useJointAccountIds();
   const [createOpen, setCreateOpen] = useCreateDialog();
   const [swipeArea, setSwipeArea] = useState<HTMLDivElement | null>(null);
 
@@ -94,7 +96,7 @@ export default function TransactionsBody() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const counted = metricTransactions(transactions, categories);
+  const counted = metricTransactions(transactions, categories, { jointAccountIds });
   const countedIds = new Set(counted.map((tx) => tx.id));
   const { income, expense } = sumMetricsByType(counted);
   const balance = income - expense;

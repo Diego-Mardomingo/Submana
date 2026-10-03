@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
-import { fetchAllPages } from "@/lib/apiHelpers";
+import { fetchAllPages, listAccessibleAccounts } from "@/lib/apiHelpers";
 import { metricAmount } from "@/lib/metricsFilters";
 import { detectTransferIds } from "@/lib/transferDetection";
 
@@ -11,7 +11,7 @@ import { detectTransferIds } from "@/lib/transferDetection";
  */
 export async function loadBudgetSpentCalculator(supabase: SupabaseClient, userId: string, year: number, month: number) {
   const { startIso, endExclusiveIso } = calendarMonthsUtcHalfOpenRange(year, month, year, month);
-  const [{ data: categories }, transactions] = await Promise.all([
+  const [{ data: categories }, rows, { jointIds }] = await Promise.all([
     supabase.from("categories").select("id, parent_id, exclude_from_metrics").or(`user_id.eq.${userId},user_id.is.null`),
     fetchAllPages((from, to) =>
       supabase
@@ -23,12 +23,16 @@ export async function loadBudgetSpentCalculator(supabase: SupabaseClient, userId
         .order("id")
         .range(from, to)
     ),
+    listAccessibleAccounts(supabase, userId),
   ]);
+  // Joint accounts are shared with other people and never count in personal budgets.
+  const joint = new Set(jointIds);
+  const transactions = rows.filter((tx) => !tx.account_id || !joint.has(tx.account_id));
 
   const parentOf = new Map((categories ?? []).filter((c) => c.parent_id).map((c) => [c.id, c.parent_id as string]));
   const excluded = new Set((categories ?? []).filter((c) => c.exclude_from_metrics).map((c) => c.id));
   const txs = transactions.map((tx) => ({ ...tx, amount: Number(tx.amount), spent: metricAmount(tx) }));
-  const transferIds = detectTransferIds(txs);
+  const transferIds = detectTransferIds(txs, 48, { jointAccountIds: joint });
   const expenses = txs.filter((tx) => {
     if (tx.type !== "expense" || tx.spent <= 0 || transferIds.has(tx.id)) return false;
     const sub = tx.subcategory_id;

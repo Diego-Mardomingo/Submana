@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import {
   areAccessibleCategories,
   getAuthedClient,
-  isOwnedAccount,
+  getAccountAccess,
   jsonError,
   jsonResponse,
   jsonServerError,
@@ -11,16 +11,38 @@ import {
   unauthorized,
 } from "@/lib/apiHelpers";
 import { calendarDayInAppTimeZone } from "@/lib/date";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Params = { params: Promise<{ id: string }> };
+
+interface TxRow {
+  user_id: string;
+  account_id: string | null;
+  type: string;
+  date: string;
+  source: string;
+  shared_expense_id: string | null;
+  [column: string]: unknown;
+}
+
+/**
+ * A transaction I can use: my own row, or any row of an account I belong to (joint accounts hold
+ * rows written by other members). Virtual rows (no account) are only visible to their owner.
+ */
+async function readAccessibleTransaction(supabase: SupabaseClient, userId: string, id: string, columns: string) {
+  const { data } = await supabase.from("transactions").select(`${columns}, user_id, account_id`).eq("id", id).maybeSingle();
+  const row = data as unknown as TxRow | null;
+  if (!row) return null;
+  if (!row.account_id) return row.user_id === userId ? row : null;
+  return (await getAccountAccess(supabase, userId, row.account_id)) ? row : null;
+}
 
 export async function GET(_request: NextRequest, { params }: Params) {
   const { id } = await params;
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const { data, error } = await supabase.from("transactions").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
-  if (error) return jsonServerError("crud/transactions/[id]", error);
+  const data = await readAccessibleTransaction(supabase, user.id, id, "*");
   if (!data) return jsonError("transaction_not_found", 404);
   return jsonResponse({ data });
 }
@@ -33,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const body = await parseRequestBody(request);
   const tx = readTransactionInput(body);
 
-  const { data: old } = await supabase.from("transactions").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+  const old = await readAccessibleTransaction(supabase, user.id, id, "*");
   if (!old) return jsonError("transaction_not_found", 404);
 
   // Virtual rows (a friend paid) have no account and are driven by the shared expense: only my own
@@ -57,9 +79,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // A row linked to a shared expense or settlement keeps its direction (the link depends on it).
   if (old.shared_expense_id && tx.type !== old.type) return jsonError("shared_tx_managed", 409);
 
-  const accountId: string = tx.account_id ?? old.account_id;
-  if (!(await isOwnedAccount(supabase, user.id, accountId))) return jsonError("Account not found", 404);
-  if (!(await areAccessibleCategories(supabase, user.id, [tx.category_id, tx.subcategory_id]))) return jsonError("invalid_category");
+  const accountId = tx.account_id ?? old.account_id;
+  if (!accountId) return jsonError("Account not found", 404);
+  const access = await getAccountAccess(supabase, user.id, accountId);
+  if (!access) return jsonError("Account not found", 404);
+  if (!(await areAccessibleCategories(supabase, user.id, [tx.category_id, tx.subcategory_id], { systemOnly: access.isJoint }))) {
+    return jsonError("invalid_category");
+  }
 
   // The form only sends the day; if it matches the stored one, keep the original time.
   if (/^\d{4}-\d{2}-\d{2}$/.test(tx.date) && calendarDayInAppTimeZone(String(old.date)) === tx.date) tx.date = old.date;
@@ -87,7 +113,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const { data: existing } = await supabase.from("transactions").select("source, shared_expense_id").eq("id", id).eq("user_id", user.id).maybeSingle();
+  const existing = await readAccessibleTransaction(supabase, user.id, id, "source, shared_expense_id");
   if (existing?.source === "shared") return jsonError("shared_tx_managed", 409);
   // A bank row tied to a shared expense is unlinked first so the expense keeps its invariants
   // (the payer then gets a virtual row for their share).

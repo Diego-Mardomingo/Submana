@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import IconPicker from "@/components/IconPicker";
+import { JointAccountSection } from "@/components/JointAccountSection";
 import {
   AmountField,
   Chips,
@@ -17,6 +18,7 @@ import {
   Swatches,
 } from "@/components/SheetFields";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
+import { canEditAccount } from "@/lib/accountAccess";
 import { parseCurrencyValue } from "@/lib/currency";
 import { useCreateAccount, useDeleteAccount, useUpdateAccount, type Account } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
@@ -151,7 +153,9 @@ function AccountFormBody({ account, onDone, onDeleted }: { account: Account | nu
           </FieldStack>
         </FieldGroup>
 
-        {account && (
+        {account && <JointAccountSection account={account} onLeft={onDone} />}
+
+        {account && canEditAccount(account.my_role ?? "owner", "delete") && (
           <FieldGroup>
             <DeleteAction
               label={es ? "Eliminar cuenta" : "Delete account"}

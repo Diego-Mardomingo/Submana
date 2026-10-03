@@ -59,8 +59,9 @@ export async function POST(request: NextRequest) {
   if (!Number.isFinite(amount) || amount <= 0) return fail("Missing or invalid amount", 400);
   if (!accountId) return fail("Missing accountId", 400);
 
-  const { data: account } = await admin.from("accounts").select("id").eq("id", accountId).eq("user_id", userId).maybeSingle();
-  if (!account) return fail("Account not found or access denied", 404);
+  // Service role (no RLS): check ownership or accepted membership of a joint account explicitly.
+  const { data: isMember } = await admin.rpc("is_account_member", { p_account: accountId, p_user: userId });
+  if (isMember !== true) return fail("Account not found or access denied", 404);
 
   // Full instant: the UTC day (toISOString().slice(0, 10)) fell on the previous day for
   // expenses made between 00:00 and 02:00 in Madrid. The RPC also updates the balance atomically.

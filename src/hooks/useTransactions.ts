@@ -7,6 +7,7 @@ import { monthKey, shiftMonth, toAppDate } from "@/lib/date";
 import { metricTransactions } from "@/lib/metricsFilters";
 import { queryKeys } from "@/lib/queryKeys";
 import type { TransactionSharedExpense } from "@/lib/shared/types";
+import { useJointAccountIds } from "./useAccounts";
 import { fetchBudgets } from "./useBudgets";
 import { useCategories } from "./useCategories";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
@@ -30,7 +31,11 @@ export interface Transaction {
   shared_expense?: TransactionSharedExpense | null;
   category_id?: string | null;
   subcategory_id?: string | null;
-  account?: { name: string; color?: string | null } | null;
+  /** Who wrote the row (joint accounts hold rows of several members). */
+  user_id?: string;
+  account?: { name: string; color?: string | null; is_joint?: boolean } | null;
+  /** Author profile on joint-account rows written by another member. */
+  author?: { user_id: string; handle: string; display_name: string; avatar_url: string | null } | null;
   category?: { name: string } | null;
   subcategory?: { name: string } | null;
 }
@@ -82,11 +87,16 @@ export function useTransactions(year?: number, month?: number, accountId?: strin
   });
 }
 
-/** Transactions of a month that count for metrics (no transfers or excluded categories). */
+/** Transactions of a month that count for metrics (no joint accounts, transfers or excluded categories). */
 export function useMetricTransactions(year?: number, month?: number) {
   const { data = NO_TRANSACTIONS, isLoading, isFetching } = useTransactions(year, month);
   const { data: categories } = useCategories();
-  return { data: useMemo(() => metricTransactions(data, categories), [data, categories]), isLoading, isFetching };
+  const jointAccountIds = useJointAccountIds();
+  return {
+    data: useMemo(() => metricTransactions(data, categories, { jointAccountIds }), [data, categories, jointAccountIds]),
+    isLoading,
+    isFetching,
+  };
 }
 
 export interface DateRange {
@@ -101,7 +111,13 @@ export interface DateRange {
  * `range` (all months with data when omitted) and `availableRange` spans the months with data.
  */
 export function useTransactionsRange(accountId?: string, range?: DateRange) {
-  const { data = NO_TRANSACTIONS, isLoading } = useTransactions(undefined, undefined, accountId);
+  const { data: allRows = NO_TRANSACTIONS, isLoading } = useTransactions(undefined, undefined, accountId);
+  const jointAccountIds = useJointAccountIds();
+  // Without an account the history is the personal one: rows of joint accounts are shown on their own.
+  const data = useMemo(
+    () => (accountId || jointAccountIds.size === 0 ? allRows : allRows.filter((tx) => !tx.account_id || !jointAccountIds.has(tx.account_id))),
+    [allRows, accountId, jointAccountIds]
+  );
   const grouped = useMemo(() => {
     const byMonth = new Map<string, Transaction[]>();
     for (const tx of data) {

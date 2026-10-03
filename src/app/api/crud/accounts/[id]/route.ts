@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 import { unlinkLinkedTransactions } from "@/lib/shared/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -15,6 +15,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const newBalance = balance ? parseFloat(balance) : undefined;
   if (newBalance !== undefined && !Number.isFinite(newBalance)) return jsonError("invalid_balance");
 
+  // Members of a joint account may edit name, color, icon, bank and balance (see canEditAccount).
+  if (!(await getAccountAccess(supabase, user.id, id))) return jsonError("Account not found", 404);
   const { data, error } = await supabase
     .from("accounts")
     .update({
@@ -25,7 +27,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       ...(bank_provider !== undefined && { bank_provider: bank_provider || null }),
     })
     .eq("id", id)
-    .eq("user_id", user.id)
     .select()
     .maybeSingle();
   if (error) return jsonServerError("crud/accounts/[id]", error);
@@ -38,6 +39,8 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
+  // Only the owner deletes an account (and with it every member's rows).
+  if ((await getAccountAccess(supabase, user.id, id))?.role !== "owner") return jsonError("Account not found", 404);
   await unlinkLinkedTransactions(supabase, user.id, id);
   const { error } = await supabase.from("accounts").delete().eq("id", id).eq("user_id", user.id);
   if (error) return jsonServerError("crud/accounts/[id]", error);

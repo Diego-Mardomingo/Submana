@@ -42,6 +42,15 @@ describe("isSameStatementRow", () => {
 });
 
 describe("detectTransferIds", () => {
+  it("las filas de cuentas conjuntas nunca son contrapartida de un traspaso", () => {
+    const rows = [
+      { id: "out", type: "expense", amount: 50, date: "2026-10-01T10:00:00Z", account_id: "a1" },
+      { id: "in", type: "income", amount: 50, date: "2026-10-01T11:00:00Z", account_id: "joint" },
+    ];
+    expect([...detectTransferIds(rows)].sort()).toEqual(["in", "out"]);
+    expect(detectTransferIds(rows, 48, { jointAccountIds: ["joint"] }).size).toBe(0);
+  });
+
   it("empareja gasto e ingreso del mismo importe en cuentas distintas y fechas cercanas", () => {
     const ids = detectTransferIds([
       { id: "e", amount: 100, type: "expense", date: "2025-03-01T10:00:00Z", account_id: "A" },

@@ -5,6 +5,7 @@ import { Check, UserMinus, UserPlus, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { HandleSetup } from "@/components/HandleSetup";
+import { JointInvites } from "@/components/JointAccountSection";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { FieldGroup, FieldRow, FormError, RowInput, SheetButton } from "@/components/SheetFields";
@@ -144,6 +145,8 @@ export default function FriendsBody() {
           </div>
         ) : (
           <>
+            <JointInvites />
+
             {incoming.length > 0 && (
               <section className="lp-section">
                 <SectionHead title={t("friends.incoming")} count={incoming.length} />

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { listAccessibleAccounts } from "@/lib/apiHelpers";
 import { detectTransferIds, type TransferDetectable } from "@/lib/transferDetection";
 
 const TRANSFER_WINDOW_HOURS = 48;
@@ -86,27 +87,35 @@ async function fetchUncategorizedCounterparts(
  * Tras una importación, empareja traspasos entre cuentas del usuario (gasto e ingreso del
  * mismo importe en cuentas distintas y fechas cercanas) y les asigna la categoría
  * "Excluir de métricas". Solo toca transacciones sin categoría para respetar las del usuario.
+ * Las filas de cuentas conjuntas nunca son contrapartida (mi traspaso a la conjunta sigue siendo
+ * un gasto mío) y al importar dentro de una conjunta no se etiqueta nada.
  * Devuelve el número de transacciones etiquetadas.
  */
 export async function tagInternalTransfersAfterImport(args: {
 	supabase: SupabaseClient;
 	userId: string;
 	insertedIds: string[];
+	/** True when the rows were imported into a joint account: nothing is tagged. */
+	joint?: boolean;
 }): Promise<number> {
-	const { supabase, userId, insertedIds } = args;
-	if (insertedIds.length === 0) return 0;
+	const { supabase, userId, insertedIds, joint } = args;
+	if (insertedIds.length === 0 || joint) return 0;
 
 	const excludeCategoryId = await findExcludeFromMetricsCategoryId(supabase, userId);
 	if (!excludeCategoryId) return 0;
 
-	const inserted = await fetchUncategorizedByIds(supabase, userId, insertedIds);
+	const { jointIds } = await listAccessibleAccounts(supabase, userId);
+	const jointSet = new Set(jointIds);
+	const inserted = (await fetchUncategorizedByIds(supabase, userId, insertedIds)).filter((tx) => !tx.account_id || !jointSet.has(tx.account_id));
 	if (inserted.length === 0) return 0;
 
-	const counterparts = await fetchUncategorizedCounterparts(supabase, userId, inserted);
+	const counterparts = (await fetchUncategorizedCounterparts(supabase, userId, inserted)).filter(
+		(tx) => !tx.account_id || !jointSet.has(tx.account_id)
+	);
 	const byId = new Map<string, UncategorizedTransaction>();
 	for (const tx of [...inserted, ...counterparts]) byId.set(tx.id, tx);
 
-	const transferIds = [...detectTransferIds([...byId.values()], TRANSFER_WINDOW_HOURS)];
+	const transferIds = [...detectTransferIds([...byId.values()], TRANSFER_WINDOW_HOURS, { jointAccountIds: jointSet })];
 	if (transferIds.length === 0) return 0;
 
 	let tagged = 0;

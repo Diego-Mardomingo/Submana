@@ -10,6 +10,7 @@ import { SubscriptionSheet } from "@/components/SubscriptionSheet";
 import { signed, TransactionRow, transactionEmoji } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { useCalendarAccountFilter } from "@/contexts/CalendarFilterContext";
+import { useJointAccountIds } from "@/hooks/useAccounts";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useMounted } from "@/hooks/useMediaQuery";
@@ -75,6 +76,7 @@ export default function CalendarBody() {
   const { data: subscriptions = [] } = useSubscriptions();
   const { data: transactions = [], isLoading, isFetching, isPlaceholderData } = useTransactions(view.year, view.month);
   const { data: categories } = useCategories();
+  const jointAccountIds = useJointAccountIds();
   const categoryLookup = useCategoryLookup();
   const { isAccountHidden } = useCalendarAccountFilter();
 
@@ -117,7 +119,7 @@ export default function CalendarBody() {
     if (isAccountHidden(sub.account_id)) continue;
     for (const entry of days) if (isPaymentDay(sub, view.year, view.month - 1, entry.day)) entry.subs.push(sub);
   }
-  const countedIds = new Set(metricTransactions(transactions, categories).map((tx) => tx.id));
+  const countedIds = new Set(metricTransactions(transactions, categories, { jointAccountIds }).map((tx) => tx.id));
   const isCharged = (day: number) => todayStamp !== null && stamp(view.year, view.month, day) <= todayStamp;
 
   // Subscriptions of the month: what has already been charged and what is still to come.

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { BANK_PROVIDERS, DEPOSIT_ACCOUNT_NAME } from "@/lib/bankProviders";
 import { importTransactions } from "@/lib/importTransactions";
 import { validateImportPayload, validateResolutions } from "@/lib/importValidation";
@@ -28,8 +28,7 @@ export async function POST(request: NextRequest) {
   const resolutionsError = validateResolutions(resolutions);
   if (resolutionsError) return jsonError(resolutionsError);
 
-  const { data: parent } = await supabase.from("accounts").select("id").eq("id", parent_account_id).eq("user_id", user.id).maybeSingle();
-  if (!parent) return jsonError("Parent account not found", 404);
+  if (!(await getAccountAccess(supabase, user.id, parent_account_id))) return jsonError("Parent account not found", 404);
 
   let { data: deposit } = await supabase
     .from("accounts")

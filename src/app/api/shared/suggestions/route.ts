@@ -15,7 +15,9 @@ export async function GET() {
     const since = new Date(Date.now() - SETTLEMENT_WINDOW_DAYS * 86_400_000).toISOString();
     const { data: txs, error } = await supabase
       .from("transactions")
-      .select("id, type, amount, date, description")
+      // Joint accounts are shared with other people: their rows are never suggested as settlements.
+      .select("id, type, amount, date, description, account:accounts!inner(is_joint)")
+      .eq("account.is_joint", false)
       .eq("user_id", user.id)
       .is("shared_expense_id", null)
       .not("account_id", "is", null)
