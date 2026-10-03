@@ -246,6 +246,26 @@ body {
   overflow-x: hidden;
 }
 
+/* iOS 26 Safari blurs the content scrolling under the status bar unless a fixed element
+   touches the top edge; this strip makes it tint the bar with the page background instead. */
+.ios-top-edge {
+  display: none;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .ios-top-edge {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: max(env(safe-area-inset-top, 0px), 6px);
+    background: var(--negro);
+    z-index: 50;
+    pointer-events: none;
+  }
+}
+
 /* Cursor pointer en todos los botones (Shadcn y nativos) */
 button:not(:disabled),
 [data-slot="button"]:not(:disabled),
