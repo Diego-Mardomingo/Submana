@@ -233,7 +233,9 @@ export async function importTransactions(args: {
         p_booked_at: tx.date,
         p_bank_description: tx.description || null,
       });
-      if (!error && data?.id) {
+      // A failed merge must not fall back to an insert: that would create the twin the user rejected.
+      if (error) return { error: error.message };
+      if (data?.id) {
         mergeTargets.add(targetId);
         merged++;
         if (choice?.settlement) {

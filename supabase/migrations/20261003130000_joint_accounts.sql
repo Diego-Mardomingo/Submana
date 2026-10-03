@@ -155,6 +155,8 @@ create policy transactions_insert on public.transactions for insert to authentic
       (account_id is null and source = 'shared' and shared_expense_id is not null)
       or (account_id is not null and public.is_account_member(account_id, (select auth.uid())))
     )
+    -- Las altas vinculadas a un gasto compartido las hacen las RPC; nadie se cuelga de gastos de grupos ajenos.
+    and (shared_expense_id is null or public.is_expense_member(shared_expense_id))
     and (category_id is null or exists (
       select 1 from public.categories c
       where c.id = transactions.category_id and (c.user_id is null or c.user_id = (select auth.uid()))

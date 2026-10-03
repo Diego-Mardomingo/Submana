@@ -645,7 +645,7 @@ begin
 
   select * into t from public.transactions where id = p_tx_id and user_id = me for update;
   if not found or t.source = 'shared' or t.account_id is null then raise exception 'invalid_transaction'; end if;
-  if t.type <> case when me = e.paid_by then 'expense' else 'income' end then raise exception 'invalid_transaction'; end if;
+  if t.type <> (case when me = e.paid_by then 'expense' else 'income' end) then raise exception 'invalid_transaction'; end if;
   if t.shared_expense_id is not null and t.shared_expense_id <> e.id then raise exception 'transaction_already_linked'; end if;
   if exists (
     select 1 from public.transactions o where o.shared_expense_id = e.id and o.user_id = me and o.id <> t.id
