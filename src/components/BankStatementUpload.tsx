@@ -147,6 +147,8 @@ export default function BankStatementUpload({ accountId, bankProvider, autoOpenF
     Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all }),
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.shared.all }),
     ]);
 
   const handleImport = async (resolutions: ReviewResolutions) => {

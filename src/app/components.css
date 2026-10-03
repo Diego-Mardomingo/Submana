@@ -980,3 +980,207 @@ html[data-theme="light"] .add-arc-item--primary .add-arc-bubble {
   font-size: 0.7rem;
   color: var(--muted-foreground);
 }
+
+/* Shared expenses ------------------------------------------------------- */
+.shared-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 0.45rem;
+  border-radius: 99px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+}
+
+.shared-badge--paid {
+  background: var(--gris);
+  color: var(--gris-muy-claro);
+}
+
+.shared-badge--settlement {
+  background: color-mix(in srgb, var(--success, #22c55e) 16%, transparent);
+  color: var(--success, #22c55e);
+}
+
+.shared-badge--warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.shared-mismatch {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+  background: var(--warning-soft);
+  font-size: 0.8rem;
+  color: var(--foreground);
+}
+
+.shared-mismatch > p,
+p.shared-mismatch {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.shared-mismatch svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--warning);
+}
+
+.shared-mismatch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.settle-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0.75rem 0.6rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--foreground);
+  font-size: 0.78rem;
+}
+
+.settle-suggestion svg {
+  color: var(--accent);
+}
+
+.settle-suggestion-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settle-pair {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.25rem 0 0.5rem;
+}
+
+.settle-pair p {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.split-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.split-row {
+  gap: 0.6rem;
+}
+
+.split-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--muted-foreground);
+}
+
+.split-input {
+  width: 4.5rem;
+  text-align: right;
+}
+
+.split-amount {
+  min-width: 4.5rem;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.split-counter {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.split-counter.is-ok {
+  color: var(--success, #22c55e);
+}
+
+.split-counter.is-warn {
+  color: var(--warning);
+}
+
+.group-avatars {
+  display: inline-flex;
+}
+
+.group-avatars > * + * {
+  margin-left: -0.5rem;
+  box-shadow: 0 0 0 2px var(--card, var(--background));
+}
+
+.dash-friends-avatars {
+  margin-top: 0.75rem;
+}
+
+.group-balance-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.group-balance-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.group-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted-foreground);
+}
+
+.group-header {
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.group-header-text {
+  min-width: 0;
+}
+
+.group-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.group-transfer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}

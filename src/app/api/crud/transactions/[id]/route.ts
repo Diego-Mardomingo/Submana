@@ -30,12 +30,32 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const tx = readTransactionInput(await parseRequestBody(request));
+  const body = await parseRequestBody(request);
+  const tx = readTransactionInput(body);
+
+  const { data: old } = await supabase.from("transactions").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
+  if (!old) return jsonError("transaction_not_found", 404);
+
+  // Virtual rows (a friend paid) have no account and are driven by the shared expense: only my own
+  // category and description can change.
+  if (old.source === "shared") {
+    if (!(await areAccessibleCategories(supabase, user.id, [tx.category_id, tx.subcategory_id]))) return jsonError("invalid_category");
+    const { data, error } = await supabase
+      .from("transactions")
+      .update({ category_id: tx.category_id, subcategory_id: tx.subcategory_id, description: tx.description })
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .maybeSingle();
+    if (error) return jsonServerError("crud/transactions/[id]", error);
+    if (!data) return jsonError("transaction_not_found", 404);
+    return jsonResponse({ data });
+  }
+
   if (!Number.isFinite(tx.amount) || tx.amount <= 0 || !tx.date) return jsonError("missing_fields");
   if (tx.type !== "income" && tx.type !== "expense") return jsonError("invalid_type");
-
-  const { data: old } = await supabase.from("transactions").select("*").eq("id", id).eq("user_id", user.id).single();
-  if (!old) return jsonError("transaction_not_found", 404);
+  // A row linked to a shared expense or settlement keeps its direction (the link depends on it).
+  if (old.shared_expense_id && tx.type !== old.type) return jsonError("shared_tx_managed", 409);
 
   const accountId: string = tx.account_id ?? old.account_id;
   if (!(await isOwnedAccount(supabase, user.id, accountId))) return jsonError("Account not found", 404);
@@ -66,6 +86,15 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   const { id } = await params;
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
+
+  const { data: existing } = await supabase.from("transactions").select("source, shared_expense_id").eq("id", id).eq("user_id", user.id).maybeSingle();
+  if (existing?.source === "shared") return jsonError("shared_tx_managed", 409);
+  // A bank row tied to a shared expense is unlinked first so the expense keeps its invariants
+  // (the payer then gets a virtual row for their share).
+  if (existing?.shared_expense_id) {
+    const { error: unlinkError } = await supabase.rpc("unlink_transaction", { p_tx_id: id });
+    if (unlinkError) return jsonServerError("crud/transactions/[id]", unlinkError);
+  }
 
   // skip_balance_adjust: when resolving import duplicates the balance already is the statement's.
   const { data, error } = await supabase.rpc("delete_transaction_with_balance", {

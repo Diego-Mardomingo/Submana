@@ -5,6 +5,7 @@
 export function getParentRoute(pathname: string): string {
   const [section, id] = pathname.split("/").filter(Boolean);
   if (section === "account" && id) return "/accounts";
+  if (section === "groups" && id) return "/groups";
   if (id === "new") return `/${section}`;
   return "/";
 }
