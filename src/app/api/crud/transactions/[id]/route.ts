@@ -44,13 +44,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   // The form only sends the day; if it matches the stored one, keep the original time.
   if (/^\d{4}-\d{2}-\d{2}$/.test(tx.date) && calendarDayInAppTimeZone(String(old.date)) === tx.date) tx.date = old.date;
 
-  // Editing the identifying fields detaches the row from its bank statement line.
-  const identityChanged =
-    tx.description !== (old.description || null) ||
-    tx.amount !== Number(old.amount) ||
-    new Date(tx.date).getTime() !== new Date(old.date).getTime();
-
   // Update plus balance adjustment (old and new account) in a single Postgres transaction.
+  // Editing never detaches a row from its bank line (import_line_id, booked_at...): the user's fields are independent of it.
   const { data, error } = await supabase.rpc("update_transaction_with_balance", {
     p_id: id,
     p_user_id: user.id,
@@ -61,8 +56,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     p_description: tx.description,
     p_category_id: tx.category_id,
     p_subcategory_id: tx.subcategory_id,
-    p_clear_external_hash: identityChanged,
-    p_clear_import_line_id: identityChanged,
   });
   if (error) return jsonServerError("crud/transactions/[id]", error);
   if (!data?.id) return jsonError("transaction_not_found", 404);

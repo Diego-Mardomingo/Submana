@@ -25,6 +25,15 @@ describe("isSameStatementRow", () => {
     ).toBe(false);
   });
 
+  it("una fila fusionada compara con la fecha y descripción del banco, no con las del usuario", () => {
+    const merged = { ...base, date: "2025-03-02T10:00:00Z", description: "Mi café", booked_at: "2025-03-05T08:00:00Z", bank_description: "COMPRA CAFE 1234" };
+    const incoming = { ...base, date: "2025-03-05T08:00:00Z", description: "COMPRA CAFE 1234" };
+    expect(isSameStatementRow(incoming, merged)).toBe(true);
+    // Sin booked_at manda la fecha del usuario (fila anterior a la migración).
+    expect(isSameStatementRow(incoming, { ...merged, booked_at: null, bank_description: null })).toBe(false);
+    expect(isSameStatementRow({ ...incoming, description: "Mi café" }, merged)).toBe(false);
+  });
+
   it("no empareja fuera de la ventana, con otro importe u otro tipo", () => {
     expect(isSameStatementRow({ ...base, date: "2025-03-02T14:00:01Z" }, base)).toBe(false);
     expect(isSameStatementRow({ ...base, amount: 10.01 }, base)).toBe(false);

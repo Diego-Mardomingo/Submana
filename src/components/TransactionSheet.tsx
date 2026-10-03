@@ -21,15 +21,26 @@ import { parseCurrencyValue } from "@/lib/currency";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
-import { useCreateTransaction, useDeleteTransaction, useTransaction, useUpdateTransaction, type Transaction } from "@/hooks/useTransactions";
+import {
+  useCreateTransaction,
+  useDeleteTransaction,
+  useSimilarTransactions,
+  useTransaction,
+  useUpdateTransaction,
+  type Transaction,
+} from "@/hooks/useTransactions";
 import { parseDateString, toDateString } from "@/lib/date";
-import { useTranslations } from "@/lib/i18n/utils";
+import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { formatCurrency, localeOf } from "@/lib/format";
+import { interpolate, useTranslations } from "@/lib/i18n/utils";
 
-function TransactionFormBody({ transaction, defaultAccountId, defaultDate, onDone }: {
+function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, onUseSimilar }: {
   transaction: Transaction | null;
   defaultAccountId?: string;
   defaultDate?: Date;
   onDone: () => void;
+  /** Create mode only: switch to editing a bank-backed transaction that already exists. */
+  onUseSimilar?: (tx: Transaction) => void;
 }) {
   const lang = useLang();
   const es = lang === "es";
@@ -58,6 +69,15 @@ function TransactionFormBody({ transaction, defaultAccountId, defaultDate, onDon
   const subcategories = category?.subcategories ?? [];
   const excludedFromMetrics = category?.exclude_from_metrics || subcategories.find((s) => s.id === subcategoryId)?.exclude_from_metrics;
   const label = (c: { id: string; name: string }) => categoryNames.get(c.id) ?? c.name;
+
+  // While creating, look for a bank movement that is probably this same one (avoids a twin the next import must reconcile).
+  const { data: similar = [] } = useSimilarTransactions({
+    accountId: transaction ? "" : accountId,
+    amount: parseCurrencyValue(amount),
+    type,
+    date: toDateString(date),
+    description: description.trim(),
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,6 +136,39 @@ function TransactionFormBody({ transaction, defaultAccountId, defaultDate, onDon
             }}
           />
         </FormHero>
+
+        {!transaction && onUseSimilar && similar.length > 0 && (
+          <div className="similar-banner">
+            <span className="similar-banner-title">{t("tx.similar.title")}</span>
+            {similar.map((tx) => (
+              <div key={tx.id} className="similar-banner-item">
+                <div className="similar-banner-text">
+                  <span>{tx.bank_description || tx.description || "—"}</span>
+                  <span>
+                    {interpolate(t("tx.similar.booked"), { date: parseDateString(tx.booked_at ?? tx.date).toLocaleDateString(localeOf(lang)) })}
+                    {" · "}
+                    <SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="duplicate-btn duplicate-btn-keep"
+                  onClick={() =>
+                    onUseSimilar({
+                      ...tx,
+                      // Keep what the user already typed: the bank row only gains their category and description.
+                      description: description.trim() || tx.description,
+                      category_id: categoryId || tx.category_id,
+                      subcategory_id: subcategoryId || tx.subcategory_id,
+                    })
+                  }
+                >
+                  {t("tx.similar.use")}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <FieldGroup>
           <FieldRow label={t("common.description")} htmlFor="tx-description">
@@ -212,6 +265,19 @@ function TransactionFormBody({ transaction, defaultAccountId, defaultDate, onDon
         </SheetButton>
       </SheetFooter>
     </SheetForm>
+  );
+}
+
+/** Create/edit form; while creating, "use it" on a similar bank movement swaps to editing that one. */
+function TransactionFormBody(props: { transaction: Transaction | null; defaultAccountId?: string; defaultDate?: Date; onDone: () => void }) {
+  const [adopted, setAdopted] = useState<Transaction | null>(null);
+  return (
+    <TransactionForm
+      key={adopted?.id ?? "form"}
+      {...props}
+      transaction={adopted ?? props.transaction}
+      onUseSimilar={props.transaction ? undefined : setAdopted}
+    />
   );
 }
 

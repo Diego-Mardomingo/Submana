@@ -9,3 +9,7 @@ export function useTranslations(lang: Lang) {
 
 /** Mismo traductor para Server Components (no es un hook). */
 export const getTranslations = useTranslations;
+
+/** Fills `{name}` placeholders of a translated string. */
+export const interpolate = (text: string, values: Record<string, string | number>) =>
+  text.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? ""));

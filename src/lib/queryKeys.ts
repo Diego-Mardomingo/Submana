@@ -5,6 +5,8 @@ export const queryKeys = {
     list: (filters?: { month?: number; year?: number; accountId?: string }) =>
       [...queryKeys.transactions.lists(), filters] as const,
     detail: (id: string) => [...queryKeys.transactions.all, "detail", id] as const,
+    similar: (filters: { accountId: string; amount: number; type: string; date: string; description: string }) =>
+      [...queryKeys.transactions.all, "similar", filters] as const,
   },
   accounts: {
     all: ["accounts"] as const,

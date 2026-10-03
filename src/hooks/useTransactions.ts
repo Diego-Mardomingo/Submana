@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { monthKey, shiftMonth, toAppDate } from "@/lib/date";
@@ -17,6 +17,11 @@ export interface Transaction {
   date: string;
   description?: string | null;
   account_id?: string | null;
+  /** manual / import / automation: where the row came from. */
+  source?: "manual" | "import" | "automation" | "shared";
+  /** Date and text of the bank line backing this row (null while it is only a manual entry). */
+  booked_at?: string | null;
+  bank_description?: string | null;
   category_id?: string | null;
   subcategory_id?: string | null;
   account?: { name: string; color?: string | null } | null;
@@ -127,6 +132,49 @@ export function useTransaction(id: string | null | undefined) {
     queryKey: queryKeys.transactions.detail(id ?? ""),
     queryFn: () => api(`/api/crud/transactions/${id}`),
     enabled: !!id,
+  });
+}
+
+/** A bank-backed transaction that looks like the one being typed (see /api/crud/transactions/similar). */
+export interface SimilarTransaction extends Transaction {
+  score: number;
+  deltaDays: number;
+}
+
+/** Value that follows `value` after it has been stable for `ms`. */
+function useDebounced<T>(value: T, ms: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), ms);
+    return () => window.clearTimeout(timer);
+  }, [value, ms]);
+  return debounced;
+}
+
+/** Bank lines similar to a manual transaction being created (debounced; idle until amount, date and account are set). */
+export function useSimilarTransactions(input: {
+  accountId: string;
+  amount: number;
+  type: "income" | "expense";
+  date: string;
+  description: string;
+}) {
+  const debounced = useDebounced(input, 400);
+  const enabled = !!debounced.accountId && debounced.amount > 0 && !!debounced.date;
+  return useQuery<SimilarTransaction[]>({
+    queryKey: queryKeys.transactions.similar(debounced),
+    queryFn: () => {
+      const params = new URLSearchParams({
+        account_id: debounced.accountId,
+        amount: String(debounced.amount),
+        type: debounced.type,
+        date: debounced.date,
+        description: debounced.description,
+      });
+      return api(`/api/crud/transactions/similar?${params}`);
+    },
+    enabled,
+    staleTime: 30 * 1000,
   });
 }
 
