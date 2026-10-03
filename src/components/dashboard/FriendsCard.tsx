@@ -19,7 +19,7 @@ export default function FriendsCard() {
     <section className="dash-section" aria-label={t("groups.balances")}>
       <div className="lp-card dash-card">
         <CardHead title={t("groups.balances")}>
-          <SeeAll href="/groups" label={t("groups.title")} />
+          <SeeAll href="/subcount" label={t("groups.title")} />
         </CardHead>
         <div className="lp-stats dash-summary-stats">
           <Stat label={t("groups.friendsOweYou")} value={money(fromCents(data.owed_to_me_cents))} className={data.owed_to_me_cents > 0 ? "is-income" : "is-muted"} />

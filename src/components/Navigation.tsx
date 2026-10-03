@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Calendar, ChevronRight, CreditCard, House, LayoutDashboard, Menu, Plus, Receipt, Settings, Tags, Users, Wallet } from "lucide-react";
+import { Bell, Calendar, ChevronRight, CreditCard, House, LayoutDashboard, Menu, Plus, Receipt, Tags, UserRound, Users, Wallet } from "lucide-react";
 import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
 import { LogoMark, TransactionsIcon } from "@/components/icons";
 import { FieldGroup } from "@/components/SheetFields";
@@ -32,12 +32,12 @@ const NAV_GROUPS: Record<"main" | "manage" | "system", NavItem[]> = {
     { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: Tags },
     { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: Calendar },
     { href: "/budgets", shortcut: "e", labelKey: "nav.budgets", icon: Wallet },
-    { href: "/friends", shortcut: "g", labelKey: "nav.friends", icon: Users },
-    { href: "/groups", shortcut: "r", labelKey: "nav.groups", icon: Receipt },
+    { href: "/subcount", shortcut: "r", labelKey: "nav.groups", icon: Receipt },
   ],
   system: [
+    { href: "/friends", shortcut: "g", labelKey: "nav.friends", icon: Users },
     { href: "/notifications", shortcut: "z", labelKey: "nav.notifications", icon: Bell },
-    { href: "/settings", shortcut: "x", labelKey: "nav.settings", icon: Settings },
+    { href: "/profile", shortcut: "x", labelKey: "nav.settings", icon: UserRound },
   ],
 };
 const NAV_ITEMS = Object.values(NAV_GROUPS).flat();
