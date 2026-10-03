@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { queryKeys } from "@/lib/queryKeys";
 import { createClient } from "@/lib/supabase/client";
 
@@ -38,20 +39,29 @@ export function RealtimeSync() {
       timer = setTimeout(flush, DEBOUNCE_MS);
     };
 
-    let channel = supabase.channel("live-sync");
-    for (const { table, keys } of WATCHED) {
-      channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, () => schedule(keys));
-    }
-    let subscribedOnce = false;
-    channel.subscribe((status) => {
-      if (status !== "SUBSCRIBED") return;
-      if (subscribedOnce) schedule(WATCHED.flatMap((w) => w.keys));
-      subscribedOnce = true;
-    });
+    let cancelled = false;
+    let channel: RealtimeChannel | undefined;
+    (async () => {
+      // Realtime filters rows with RLS, so the join must carry the session JWT. Subscribing right
+      // away raced the client's token setup and joined as anon: subscribed, but never an event.
+      await supabase.realtime.setAuth();
+      if (cancelled) return;
+      channel = supabase.channel("live-sync");
+      for (const { table, keys } of WATCHED) {
+        channel = channel.on("postgres_changes", { event: "*", schema: "public", table }, () => schedule(keys));
+      }
+      let subscribedOnce = false;
+      channel.subscribe((status) => {
+        if (status !== "SUBSCRIBED") return;
+        if (subscribedOnce) schedule(WATCHED.flatMap((w) => w.keys));
+        subscribedOnce = true;
+      });
+    })();
 
     return () => {
+      cancelled = true;
       clearTimeout(timer);
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [queryClient]);
 
