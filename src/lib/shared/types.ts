@@ -11,9 +11,7 @@ export interface SharedProfile {
 
 export interface GroupSummary {
   id: string;
-  /** Empty for direct (1:1) groups: the UI shows the other person. */
   name: string;
-  kind: "group" | "direct";
   archived_at: string | null;
   created_at: string;
   members: SharedProfile[];
@@ -40,12 +38,6 @@ export interface SharedExpenseItem {
   updated_by: string | null;
   created_at: string;
   shares: SharedShare[];
-  /** My own row linked to this expense (bank row or virtual), if any. */
-  my_transaction_id: string | null;
-  my_transaction_virtual: boolean;
-  /** I paid and my linked bank row differs from the total: the payer UI offers "Set total to bank amount" / "Keep". */
-  bank_mismatch: boolean;
-  bank_amount: number | null;
 }
 
 export interface SharedEventItem {
@@ -82,28 +74,6 @@ export interface BalancesData {
   friends: FriendBalance[];
 }
 
-/** Summary of the shared expense a transaction belongs to (embedded in the transactions list). */
-export interface TransactionSharedExpense {
-  id: string;
-  group_id: string;
-  kind: "expense" | "settlement";
-  title: string;
-  total_amount: number;
-  paid_by: string;
-  split_mode: SplitMode;
-  paid_by_handle?: string | null;
-}
-
-export interface SettlementSuggestionItem {
-  tx_id: string;
-  group_id: string;
-  friend: SharedProfile;
-  direction: "from_friend" | "to_friend";
-  amount_cents: number;
-  exact: boolean;
-  score: number;
-}
-
 export interface SplitInput {
   group_id: string;
   title: string;
@@ -114,8 +84,4 @@ export interface SplitInput {
   split_mode: SplitMode;
   /** value: exact = euros, percent = %, shares = weight; ignored for equal. */
   participants: { user_id: string; value?: number }[];
-  /** Payer's own bank transaction to link (only when the caller is the payer). */
-  payer_tx_id?: string | null;
-  category_id?: string | null;
-  subcategory_id?: string | null;
 }

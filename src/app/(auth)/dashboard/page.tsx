@@ -37,8 +37,8 @@ export default function DashboardPage() {
 
       <div className="dash-layout">
         <BalanceHero />
-        <FriendsCard />
         <MonthOverview />
+        <FriendsCard />
         <section className="dash-section" aria-label={lang === "es" ? "Tendencias" : "Trends"}>
           <div className="lp-section-head">
             <span className="lp-section-title">{lang === "es" ? "Tendencias" : "Trends"}</span>

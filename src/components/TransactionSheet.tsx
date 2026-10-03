@@ -14,9 +14,6 @@ import {
   Segmented,
   SheetButton,
 } from "@/components/SheetFields";
-import { SettlementSuggestionChip } from "@/components/SettlementSuggestionChip";
-import { LinkedSharedInfo, TransactionSplitSection, useSplitMembers, VirtualRowInfo, type SplitSelection } from "@/components/TransactionSplitSection";
-import { toast } from "sonner";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
@@ -24,9 +21,6 @@ import { parseCurrencyValue } from "@/lib/currency";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
-import { useOpenDirectGroup } from "@/hooks/useGroups";
-import { useProfile } from "@/hooks/useProfile";
-import { useCreateSharedExpense, useSettlementSuggestions } from "@/hooks/useSharedExpenses";
 import {
   useCreateTransaction,
   useDeleteTransaction,
@@ -39,16 +33,9 @@ import { parseDateString, toDateString } from "@/lib/date";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
-import { sharedErrorText } from "@/lib/shared/errorText";
-import { draftParticipants, evaluateDraft, isDraftSubmittable } from "@/lib/shared/splitDraft";
-import { toCents } from "@/lib/shared/splits";
-import { FRIEND_PREFIX } from "@/components/TransactionSplitSection";
 
-function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, onUseSimilar, split, onSplitChange }: {
+function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, onUseSimilar }: {
   transaction: Transaction | null;
-  /** "Split with…" choice; lives in the parent so it survives switching to a similar bank row. */
-  split: SplitSelection | null;
-  onSplitChange: (split: SplitSelection | null) => void;
   defaultAccountId?: string;
   defaultDate?: Date;
   onDone: () => void;
@@ -64,14 +51,6 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const createTx = useCreateTransaction();
   const updateTx = useUpdateTransaction();
   const deleteTx = useDeleteTransaction();
-  const { data: profile } = useProfile();
-  const openDirect = useOpenDirectGroup();
-  const createShared = useCreateSharedExpense();
-  const { data: suggestions = [] } = useSettlementSuggestions(!!transaction && !!profile);
-  const suggestion = transaction ? suggestions.find((s) => s.tx_id === transaction.id) : undefined;
-  // A friend paid: the row is only my share (category and description are the only editable parts).
-  const isVirtual = transaction?.source === "shared";
-  const isLinked = !!transaction?.shared_expense_id && !isVirtual;
 
   const [type, setType] = useState<"income" | "expense">(transaction?.type ?? "expense");
   const [amount, setAmount] = useState(transaction ? Number(transaction.amount).toFixed(2).replace(".", ",") : "");
@@ -102,29 +81,9 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
     description: description.trim(),
   });
 
-  const splitMembers = useSplitMembers(split);
-  const canSplit = type === "expense" && !isVirtual && !isLinked;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (isVirtual && transaction) {
-      try {
-        await updateTx.mutateAsync({
-          id: transaction.id,
-          amount: Number(transaction.amount),
-          type: transaction.type,
-          date: toDateString(parseDateString(transaction.date)),
-          description: description.trim() || undefined,
-          category_id: categoryId || undefined,
-          subcategory_id: subcategoryId || undefined,
-        });
-        onDone();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save");
-      }
-      return;
-    }
     const num = parseCurrencyValue(amount);
     if (num <= 0) {
       setAmountInvalid(true);
@@ -144,54 +103,18 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
       category_id: (jointAccount && !category ? "" : categoryId) || undefined,
       subcategory_id: (jointAccount && !category ? "" : subcategoryId) || undefined,
     };
-    const splitting = canSplit && split;
-    if (splitting) {
-      const evaluation = evaluateDraft(split.draft, toCents(num), profile?.user_id ?? null);
-      if (!split.target || !splitMembers || !isDraftSubmittable(evaluation, split.draft)) {
-        setError(t("split.error.invalid"));
-        return;
-      }
-    }
-    let saved: { id: string } | undefined;
     try {
-      if (transaction) {
-        await updateTx.mutateAsync({ id: transaction.id, ...payload });
-        saved = { id: transaction.id };
-      } else {
-        saved = (await createTx.mutateAsync(payload)) as { id: string };
-      }
+      if (transaction) await updateTx.mutateAsync({ id: transaction.id, ...payload });
+      else await createTx.mutateAsync(payload);
+      onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
-      return;
     }
-    if (splitting && saved && profile) {
-      try {
-        const groupId = split.target.startsWith(FRIEND_PREFIX)
-          ? (await openDirect.mutateAsync(split.target.slice(FRIEND_PREFIX.length))).id
-          : split.target;
-        await createShared.mutateAsync({
-          group_id: groupId,
-          title: split.draft.title.trim() || description.trim() || transaction?.bank_description || t("split.defaultTitle"),
-          total: num,
-          date: payload.date,
-          paid_by: profile.user_id,
-          split_mode: split.draft.mode,
-          participants: draftParticipants(split.draft),
-          payer_tx_id: saved.id,
-        });
-      } catch (err) {
-        // The transaction itself is saved; only the split failed.
-        toast.error(sharedErrorText(t, err instanceof Error ? err.message : undefined));
-      }
-    }
-    onDone();
   };
 
   return (
     <SheetForm onSubmit={handleSubmit}>
       <SheetBody>
-        {isVirtual && transaction && <VirtualRowInfo transaction={transaction} />}
-        {!isVirtual && (
         <Segmented
           label={t("common.type")}
           value={type}
@@ -201,9 +124,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
             { value: "income", label: t("transactions.income"), tone: "income" },
           ]}
         />
-        )}
 
-        {!isVirtual && (
         <FormHero>
           <AmountField
             id="tx-amount"
@@ -217,9 +138,6 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
             }}
           />
         </FormHero>
-        )}
-
-        {suggestion && profile && <SettlementSuggestionChip suggestion={suggestion} meId={profile.user_id} />}
 
         {!transaction && onUseSimilar && similar.length > 0 && (
           <div className="similar-banner">
@@ -264,14 +182,11 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
               enterKeyHint="done"
             />
           </FieldRow>
-          {!isVirtual && (
           <FieldRow label={t("common.date")}>
             <DatePicker value={date} onChange={(d) => d && setDate(d)} placeholder={es ? "Elegir fecha" : "Pick a date"} lang={lang} className="sf-picker" />
           </FieldRow>
-          )}
         </FieldGroup>
 
-        {!isVirtual && (
         <FieldGroup title={t("common.account")}>
           <FieldStack>
             {accounts.length === 0 ? (
@@ -295,18 +210,6 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
             )}
           </FieldStack>
         </FieldGroup>
-        )}
-
-        {canSplit && (
-          <TransactionSplitSection
-            selection={split}
-            onChange={onSplitChange}
-            totalCents={toCents(parseCurrencyValue(amount))}
-            description={description}
-            bankDescription={transaction?.bank_description}
-          />
-        )}
-        {isLinked && transaction && <LinkedSharedInfo transaction={transaction} />}
 
         <FieldGroup title={t("common.category")} hint={jointAccount ? t("joint.categoriesHint") : excludedFromMetrics ? t("categories.excludeFromMetricsInfo") : undefined}>
           <FieldStack>
@@ -340,7 +243,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
           )}
         </FieldGroup>
 
-        {transaction && !isVirtual && (
+        {transaction && (
           <FieldGroup>
             <DeleteAction
               label={es ? "Eliminar transacción" : "Delete transaction"}
@@ -359,7 +262,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
 
       <SheetFooter>
         <FormError>{error}</FormError>
-        <SheetButton type="submit" pending={createTx.isPending || updateTx.isPending || createShared.isPending || openDirect.isPending}>
+        <SheetButton type="submit" pending={createTx.isPending || updateTx.isPending}>
           {transaction ? (es ? "Guardar cambios" : "Save changes") : t("transactions.add")}
         </SheetButton>
       </SheetFooter>
@@ -370,14 +273,10 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
 /** Create/edit form; while creating, "use it" on a similar bank movement swaps to editing that one. */
 function TransactionFormBody(props: { transaction: Transaction | null; defaultAccountId?: string; defaultDate?: Date; onDone: () => void }) {
   const [adopted, setAdopted] = useState<Transaction | null>(null);
-  // Kept here so the split chosen while typing is attached to the adopted bank row after "use it".
-  const [split, setSplit] = useState<SplitSelection | null>(null);
   return (
     <TransactionForm
       key={adopted?.id ?? "form"}
       {...props}
-      split={split}
-      onSplitChange={setSplit}
       transaction={adopted ?? props.transaction}
       onUseSimilar={props.transaction ? undefined : setAdopted}
     />

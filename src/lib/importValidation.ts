@@ -69,12 +69,6 @@ export function validateResolutions(resolutions: unknown): string | null {
     if (typeof r.fingerprint !== "string" || !r.fingerprint || r.fingerprint.length > MAX_FINGERPRINT_LENGTH) return "invalid_resolutions";
     if (typeof r.action !== "string" || !RESOLUTION_ACTIONS.has(r.action)) return "invalid_resolutions";
     if (r.target_id != null && (typeof r.target_id !== "string" || r.target_id.length > 64)) return "invalid_resolutions";
-    if (r.settlement != null) {
-      const s = r.settlement as Partial<NonNullable<ImportResolution["settlement"]>>;
-      if (typeof s !== "object" || typeof s.group_id !== "string" || typeof s.friend_id !== "string" || s.group_id.length > 64 || s.friend_id.length > 64) {
-        return "invalid_resolutions";
-      }
-    }
   }
   return null;
 }

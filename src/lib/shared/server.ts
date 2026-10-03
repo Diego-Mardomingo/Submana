@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { jsonError, jsonServerError } from "@/lib/apiHelpers";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 import { simplifyDebts } from "./debts";
-import type { OwedPair } from "./settlementMatch";
 import type { SharedProfile } from "./types";
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -11,35 +10,24 @@ export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 const RPC_STATUS: Record<string, number> = {
   not_authenticated: 401,
   not_a_member: 403,
-  not_payer: 403,
   group_not_found: 404,
   expense_not_found: 404,
-  transaction_not_found: 404,
   member_not_found: 404,
   profile_required: 409,
   group_archived: 409,
   member_has_balance: 409,
-  transaction_already_linked: 409,
-  settlement_already_linked: 409,
-  shared_tx_managed: 409,
   not_friends: 400,
   account_not_found: 404,
   invite_not_found: 404,
   already_member: 409,
-  account_has_shared_links: 409,
-  joint_account_transaction: 409,
   owner_cannot_leave: 400,
-  direct_group: 400,
   too_many_members: 400,
   invalid_name: 400,
   invalid_title: 400,
   invalid_total: 400,
   invalid_split_mode: 400,
   invalid_shares: 400,
-  invalid_category: 400,
   invalid_settlement: 400,
-  invalid_transaction: 400,
-  invalid_payer_transaction: 400,
   not_an_expense: 400,
   share_user_not_member: 400,
   payer_not_member: 400,
@@ -91,30 +79,5 @@ export async function loadOwedPairs(supabase: SupabaseClient, me: string) {
     }
   }
   const profiles = await fetchProfiles(supabase, raw.map((r) => r.friendId));
-  const pairs: OwedPair[] = raw.flatMap((r) => {
-    const profile = profiles.get(r.friendId);
-    return profile ? [{ ...r, displayName: profile.display_name, handle: profile.handle }] : [];
-  });
-  return { pairs, nets, profiles };
-}
-
-/**
- * Before bulk-deleting bank rows (account or month range), unlink the ones tied to shared expenses
- * so every payer keeps their invariant (a payer whose bank row disappears gets a virtual row).
- */
-export async function unlinkLinkedTransactions(
-  supabase: SupabaseClient,
-  userId: string,
-  accountId: string,
-  range?: { startIso: string; endExclusiveIso: string }
-) {
-  let query = supabase
-    .from("transactions")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("account_id", accountId)
-    .not("shared_expense_id", "is", null);
-  if (range) query = query.gte("date", range.startIso).lt("date", range.endExclusiveIso);
-  const { data } = await query.limit(1000);
-  for (const row of data ?? []) await supabase.rpc("unlink_transaction", { p_tx_id: row.id });
+  return { pairs: raw, profiles };
 }

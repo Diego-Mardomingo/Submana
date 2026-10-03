@@ -5,7 +5,7 @@ import { toCents } from "@/lib/shared/splits";
 
 /**
  * Record a settlement: `from` (debtor) paid `to` (creditor) `amount` euros inside a group. I must be
- * one of the two. Optionally links my bank transaction, which then leaves my metrics.
+ * one of the two.
  */
 export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
@@ -18,8 +18,6 @@ export async function POST(request: NextRequest) {
   const amount = Number(body.amount);
   if (![body.group_id, body.from, body.to].every((v) => typeof v === "string" && UUID.test(v))) return jsonError("invalid_settlement");
   if (!Number.isFinite(amount) || amount <= 0 || amount > 1_000_000) return jsonError("invalid_total");
-  const txId = body.transaction_id ?? null;
-  if (txId !== null && !(typeof txId === "string" && UUID.test(txId))) return jsonError("invalid_transaction");
   const date = body.date ? new Date(body.date) : new Date();
   if (Number.isNaN(date.getTime())) return jsonError("missing_fields");
 
@@ -29,7 +27,6 @@ export async function POST(request: NextRequest) {
     p_to: body.to,
     p_amount: toCents(amount) / 100,
     p_date: date.toISOString(),
-    p_tx_id: txId,
   });
   if (error) return rpcErrorResponse("shared/settlements", error);
   return jsonResponse({ data }, 201);

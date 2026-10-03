@@ -31,20 +31,6 @@ async function withAuthors<T>(supabase: SupabaseClient, userId: string, rows: T[
   return rows;
 }
 
-type WithSharedExpense = { shared_expense?: { paid_by: string; paid_by_handle?: string | null } | null };
-
-/** Adds the payer's @handle to the embedded shared expense when somebody else paid ("Paid by @ana"). */
-async function withPayerHandles<T>(supabase: SupabaseClient, userId: string, rows: T[]): Promise<T[]> {
-  const payers = new Set<string>();
-  for (const row of rows as WithSharedExpense[]) if (row.shared_expense && row.shared_expense.paid_by !== userId) payers.add(row.shared_expense.paid_by);
-  if (payers.size === 0) return rows;
-  const profiles = await fetchProfiles(supabase, [...payers]);
-  for (const row of rows as WithSharedExpense[]) {
-    if (row.shared_expense) row.shared_expense.paid_by_handle = profiles.get(row.shared_expense.paid_by)?.handle ?? null;
-  }
-  return rows;
-}
-
 export async function GET(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
@@ -82,8 +68,8 @@ export async function GET(request: NextRequest) {
         .from("transactions")
         .select(
           minimal
-            ? "id, user_id, amount, type, date, account_id, category_id, subcategory_id, source, booked_at, metric_amount, shared_expense_id"
-            : "*, account:accounts(name, color, is_joint), category:categories!category_id(name), subcategory:categories!subcategory_id(name), shared_expense:shared_expenses!shared_expense_id(id, group_id, kind, title, total_amount, paid_by, split_mode)"
+            ? "id, user_id, amount, type, date, account_id, category_id, subcategory_id, source, booked_at"
+            : "*, account:accounts(name, color, is_joint), category:categories!category_id(name), subcategory:categories!subcategory_id(name)"
         )
         .order("date", { ascending: false })
         .order("id", { ascending: true });
@@ -95,7 +81,7 @@ export async function GET(request: NextRequest) {
       }
       return query.range(from, to);
     });
-    return jsonCachedResponse({ data: minimal ? data : await withAuthors(supabase, user.id, await withPayerHandles(supabase, user.id, data)) });
+    return jsonCachedResponse({ data: minimal ? data : await withAuthors(supabase, user.id, data) });
   } catch (error) {
     return jsonServerError("crud/transactions", error);
   }

@@ -21,7 +21,7 @@ import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/da
 import { formatCurrency, localeOf, monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
-import { metricAmount, metricTransactions } from "@/lib/metricsFilters";
+import { metricTransactions } from "@/lib/metricsFilters";
 import { isPaymentDay } from "@/lib/subscriptions";
 import { cn } from "@/lib/utils";
 
@@ -160,7 +160,7 @@ export default function CalendarBody() {
     const relative = offset === 0 ? (es ? "Hoy" : "Today") : offset === -1 ? (es ? "Ayer" : "Yesterday") : offset === 1 ? (es ? "Mañana" : "Tomorrow") : null;
     return relative ? { title: relative, detail: date } : { title: date };
   })();
-  const dayNet = selectedDay.txs.reduce((sum, tx) => (countedIds.has(tx.id) ? sum + (tx.type === "income" ? 1 : -1) * metricAmount(tx) : sum), 0);
+  const dayNet = selectedDay.txs.reduce((sum, tx) => (countedIds.has(tx.id) ? sum + (tx.type === "income" ? 1 : -1) * Number(tx.amount) : sum), 0);
   const subStatus = (day: number) => {
     const s = stamp(view.year, view.month, day);
     if (todayStamp === null) return null;
@@ -240,7 +240,7 @@ export default function CalendarBody() {
             {days.map((entry) => {
               const counted = entry.txs.filter((tx) => countedIds.has(tx.id));
               const income = counted.some((tx) => tx.type === "income");
-              const net = counted.reduce((sum, tx) => sum + (tx.type === "income" ? 1 : -1) * metricAmount(tx), 0);
+              const net = counted.reduce((sum, tx) => sum + (tx.type === "income" ? 1 : -1) * Number(tx.amount), 0);
               const expense = counted.some((tx) => tx.type === "expense");
               const other = !income && !expense && entry.txs.length > 0;
               const isToday = todayStamp === stamp(view.year, view.month, entry.day);

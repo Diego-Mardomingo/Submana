@@ -3,14 +3,14 @@ import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServe
 import { fetchProfiles, limitSharedWrites, loadGroupNets, rpcErrorResponse, UUID } from "@/lib/shared/server";
 import type { GroupSummary } from "@/lib/shared/types";
 
-/** Groups I belong to (including direct 1:1 groups) with members and my net position in each. */
+/** Groups I belong to with members and my net position in each. */
 export async function GET() {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
   try {
     const [{ data: groups, error }, { data: memberRows, error: membersError }, nets] = await Promise.all([
-      supabase.from("groups").select("id, name, kind, archived_at, created_at").order("created_at", { ascending: false }),
+      supabase.from("groups").select("id, name, archived_at, created_at").order("created_at", { ascending: false }),
       supabase.from("group_members").select("group_id, user_id"),
       loadGroupNets(supabase),
     ]);

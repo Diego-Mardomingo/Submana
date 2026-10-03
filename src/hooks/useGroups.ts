@@ -23,7 +23,7 @@ export function useGroup(id: string | undefined, limit = 30, enabled = true) {
   });
 }
 
-/** What friends owe me / I owe them across groups (dashboard card, groups page). */
+/** What friends owe me / I owe them across groups (dashboard card, Subcount page). */
 export function useSharedBalances(enabled = true) {
   return useQuery({
     queryKey: queryKeys.shared.balances(),
@@ -43,11 +43,6 @@ function useSharedMutation<TVars, TData = unknown>(mutationFn: (vars: TVars) => 
 
 export function useCreateGroup() {
   return useSharedMutation((input: { name: string; member_ids: string[] }) => api<{ id: string }>("/api/shared/groups", "POST", input));
-}
-
-/** Opens (creating it if needed) the implicit 1:1 group with a friend. */
-export function useOpenDirectGroup() {
-  return useSharedMutation((friendId: string) => api<{ id: string }>("/api/shared/direct", "POST", { friend_id: friendId }));
 }
 
 export function useUpdateGroup() {

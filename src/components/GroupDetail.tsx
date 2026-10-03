@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, ChevronLeft, HandCoins, Plus, Settings2, UserMinus } from "lucide-react";
+import { ArrowRight, ChevronLeft, HandCoins, Plus, Settings2, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { NetAmount } from "@/components/GroupsBody";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SettleUpSheet } from "@/components/SettleUpSheet";
 import { Chips, DeleteAction, FieldGroup, FieldRow, FieldStack, FormError, RowInput, Segmented, SheetButton } from "@/components/SheetFields";
-import { isMismatchKept, SharedExpenseSheet } from "@/components/SharedExpenseSheet";
+import { SharedExpenseSheet } from "@/components/SharedExpenseSheet";
 import { useMemberLabel } from "@/components/SplitEditor";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
@@ -23,7 +23,6 @@ import { formatCurrency } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import type { Transfer } from "@/lib/shared/debts";
 import { sharedErrorText } from "@/lib/shared/errorText";
-import { groupTitle } from "@/lib/shared/groupName";
 import { fromCents } from "@/lib/shared/splits";
 import type { GroupDetailData, SharedEventItem, SharedExpenseItem, SharedProfile } from "@/lib/shared/types";
 
@@ -168,7 +167,6 @@ function ExpenseRow({ expense, meId, profiles, onOpen }: {
   const myShare = expense.shares.find((s) => s.user_id === meId)?.amount ?? 0;
   const settlement = expense.kind === "settlement";
   const receiver = settlement ? profiles.get(expense.shares[0]?.user_id ?? "") : undefined;
-  const mismatch = expense.bank_mismatch && !isMismatchKept(expense);
   const date = parseDateString(expense.date).toLocaleDateString(lang, { day: "numeric", month: "short" });
 
   return (
@@ -180,11 +178,6 @@ function ExpenseRow({ expense, meId, profiles, onOpen }: {
         <span className="lp-title">
           <span>{settlement ? `${payerName} → ${receiver?.display_name ?? "?"}` : expense.title}</span>
           {settlement && <span className="lp-badge">{t("shared.settlement")}</span>}
-          {mismatch && (
-            <span className="lp-badge lp-badge--warn" title={t("shared.mismatch.short")}>
-              <AlertTriangle className="size-3" aria-hidden />
-            </span>
-          )}
         </span>
         <span className="lp-meta">
           <span className="lp-truncate">
@@ -234,7 +227,7 @@ function BalancesTab({ data, meId, onSettle }: { data: GroupDetailData; meId: st
                 </span>
                 <span className="lp-amount">{money(fromCents(tr.cents))}</span>
                 {(tr.from === meId || tr.to === meId) && !data.group.archived_at && (
-                  <button type="button" className="duplicate-btn duplicate-btn-keep" onClick={() => onSettle(tr)}>
+                  <button type="button" className="lp-chip group-settle-btn" onClick={() => onSettle(tr)}>
                     {t("settle.button")}
                   </button>
                 )}
@@ -358,17 +351,15 @@ export default function GroupDetail({ id }: { id: string }) {
 
   const meId = profile.user_id;
   const profiles = new Map([...data.members, ...data.extra_profiles].map((m) => [m.user_id, m]));
-  const title = groupTitle(data.group, data.members, meId);
   const myNet = data.nets.find((n) => n.user_id === meId)?.net_cents ?? 0;
   const archived = !!data.group.archived_at;
-  const direct = data.group.kind === "direct";
 
   return (
     <div className="page-container lp-page fade-in">
       {back}
       <header className="lp-header group-header">
         <div className="group-header-text">
-          <h1>{title}</h1>
+          <h1>{data.group.name}</h1>
           <div className="group-header-meta">
             <span className="group-avatars" aria-hidden>
               {data.members.slice(0, 5).map((m) => (
@@ -380,11 +371,9 @@ export default function GroupDetail({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!direct && (
-            <button type="button" className="lp-icon-btn" aria-label={t("groups.settings")} title={t("groups.settings")} onClick={() => setSettingsOpen(true)}>
-              <Settings2 className="size-5" />
-            </button>
-          )}
+          <button type="button" className="lp-icon-btn" aria-label={t("groups.settings")} title={t("groups.settings")} onClick={() => setSettingsOpen(true)}>
+            <Settings2 className="size-5" />
+          </button>
           {!archived && (
             <button type="button" className="add-btn lp-add" onClick={() => setCreating(true)} aria-label={t("shared.add")}>
               <Plus className="size-5" strokeWidth={2.5} aria-hidden />

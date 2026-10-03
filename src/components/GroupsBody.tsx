@@ -3,23 +3,22 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronRight, Plus, Receipt, Users } from "lucide-react";
-import { toast } from "sonner";
+import { ChevronDown, ChevronRight, Plus, Receipt, Users } from "lucide-react";
 import { HandleSetup } from "@/components/HandleSetup";
 import { PageHeader } from "@/components/PageHeader";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Chips, FieldGroup, FieldRow, FieldStack, FormError, RowInput, SheetButton } from "@/components/SheetFields";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useFriends } from "@/hooks/useFriends";
-import { useCreateGroup, useGroups, useOpenDirectGroup, useSharedBalances } from "@/hooks/useGroups";
+import { useCreateGroup, useGroups, useSharedBalances } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
 import { useProfile } from "@/hooks/useProfile";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { sharedErrorText } from "@/lib/shared/errorText";
-import { groupTitle } from "@/lib/shared/groupName";
 import { fromCents } from "@/lib/shared/splits";
 import type { GroupSummary } from "@/lib/shared/types";
 import { cn } from "@/lib/utils";
@@ -105,25 +104,21 @@ function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-function GroupRow({ group, meId, label }: { group: GroupSummary; meId: string; label: string }) {
+function GroupRow({ group }: { group: GroupSummary }) {
   const t = useTranslations(useLang());
-  const others = group.members.filter((m) => m.user_id !== meId);
   return (
     <Link href={`/subcount/${group.id}`} className="lp-row">
       <span className="group-avatars" aria-hidden>
-        {(group.kind === "direct" ? others : group.members).slice(0, 3).map((m) => (
+        {group.members.slice(0, 3).map((m) => (
           <ProfileAvatar key={m.user_id} name={m.display_name} url={m.avatar_url} size={32} />
         ))}
       </span>
       <span className="lp-main">
         <span className="lp-title">
-          <span>{label}</span>
-          {group.archived_at && <span className="lp-badge">{t("groups.archived")}</span>}
+          <span>{group.name}</span>
         </span>
         <span className="lp-meta">
-          <span className="lp-truncate">
-            {group.kind === "direct" ? `@${others[0]?.handle ?? ""}` : `${group.members.length} ${t("groups.membersCount")}`}
-          </span>
+          <span className="lp-truncate">{`${group.members.length} ${t("groups.membersCount")}`}</span>
         </span>
       </span>
       <span className="lp-end">
@@ -135,16 +130,15 @@ function GroupRow({ group, meId, label }: { group: GroupSummary; meId: string; l
   );
 }
 
-/** Groups page: balances with friends, groups and 1:1 splits. Asks for a @handle first when there is no profile. */
+/** Subcount: what friends owe me overall, my groups and, folded away, the archived ones. Asks for a @handle first when there is no profile. */
 export default function GroupsBody() {
   const t = useTranslations(useLang());
-  const router = useRouter();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: groups = [], isLoading: groupsLoading } = useGroups(!!profile);
   const { data: balances } = useSharedBalances(!!profile);
   const { data: friends } = useFriends(!!profile);
-  const openDirect = useOpenDirectGroup();
   const [createOpen, setCreateOpen] = useState(false);
+  const [archivedOpen, setArchivedOpen] = useState(false);
 
   const header = (
     <PageHeader icon={<Receipt className="size-6" />} title={t("groups.title")} subtitle={t("groups.subtitle")}>
@@ -179,15 +173,9 @@ export default function GroupsBody() {
     );
   }
 
-  const withFriend = (friendId: string) =>
-    openDirect.mutate(friendId, {
-      onSuccess: (group) => router.push(`/subcount/${group.id}`),
-      onError: (err) => toast.error(sharedErrorText(t, err.message)),
-    });
-
-  const direct = groups.filter((g) => g.kind === "direct");
-  const multi = groups.filter((g) => g.kind === "group");
-  const friendList = friends?.friends ?? [];
+  const active = groups.filter((g) => !g.archived_at);
+  const archived = groups.filter((g) => g.archived_at);
+  const noFriends = friends && friends.friends.length === 0;
 
   return (
     <div className="page-container lp-page fade-in">
@@ -206,25 +194,6 @@ export default function GroupsBody() {
                 <NetAmount cents={-balances.i_owe_cents} />
               </div>
             </div>
-            <div className="lp-card lp-group">
-              {balances.friends.map((f) => (
-                <button key={f.profile.user_id} type="button" className="lp-row" onClick={() => withFriend(f.profile.user_id)} disabled={openDirect.isPending}>
-                  <ProfileAvatar name={f.profile.display_name} url={f.profile.avatar_url} size={34} />
-                  <span className="lp-main">
-                    <span className="lp-title">
-                      <span>{f.profile.display_name}</span>
-                    </span>
-                    <span className="lp-meta">
-                      <span className="lp-truncate">@{f.profile.handle}</span>
-                    </span>
-                  </span>
-                  <span className="lp-end">
-                    <NetAmount cents={f.cents} />
-                    <span className="lp-sub-amount">{t(f.cents > 0 ? "groups.owesYou" : "groups.youOwe")}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
           </section>
         )}
 
@@ -235,8 +204,8 @@ export default function GroupsBody() {
         ) : (
           <>
             <section className="lp-section">
-              <SectionHead title={t("groups.list")} count={multi.length} />
-              {multi.length === 0 ? (
+              <SectionHead title={t("groups.list")} count={active.length} />
+              {active.length === 0 ? (
                 <div className="lp-card lp-empty">
                   <div className="lp-empty-icon">
                     <Users />
@@ -248,43 +217,37 @@ export default function GroupsBody() {
                 </div>
               ) : (
                 <div className="lp-card lp-group">
-                  {multi.map((g) => (
-                    <GroupRow key={g.id} group={g} meId={profile.user_id} label={groupTitle(g, g.members, profile.user_id)} />
+                  {active.map((g) => (
+                    <GroupRow key={g.id} group={g} />
                   ))}
                 </div>
               )}
-            </section>
-
-            <section className="lp-section">
-              <SectionHead title={t("groups.withFriends")} count={direct.length} />
-              {direct.length > 0 && (
-                <div className="lp-card lp-group">
-                  {direct.map((g) => (
-                    <GroupRow key={g.id} group={g} meId={profile.user_id} label={groupTitle(g, g.members, profile.user_id)} />
-                  ))}
-                </div>
-              )}
-              {friendList.length > 0 ? (
-                <FieldGroup hint={t("groups.startWithFriend")}>
-                  <FieldStack>
-                    <Chips
-                      label={t("groups.withFriends")}
-                      value=""
-                      onChange={withFriend}
-                      options={friendList.map((f) => ({
-                        value: f.profile.user_id,
-                        label: f.profile.display_name,
-                        icon: <ProfileAvatar name={f.profile.display_name} url={f.profile.avatar_url} size={18} />,
-                      }))}
-                    />
-                  </FieldStack>
-                </FieldGroup>
-              ) : (
+              {noFriends && (
                 <p className="lp-note">
                   {t("groups.noFriends")} <Link href="/friends" className="underline">{t("nav.friends")}</Link>
                 </p>
               )}
             </section>
+
+            {archived.length > 0 && (
+              <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen} className="lp-section">
+                <CollapsibleTrigger className="lp-collapse-trigger">
+                  <span>
+                    {t("groups.archived")} · {archived.length}
+                  </span>
+                  <ChevronDown className="size-4" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="subs-collapsible-content">
+                  <div className="subs-collapsible-inner">
+                    <div className="lp-card lp-group">
+                      {archived.map((g) => (
+                        <GroupRow key={g.id} group={g} />
+                      ))}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </>
         )}
       </div>
