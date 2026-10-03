@@ -3,7 +3,7 @@ import { parseCSV } from "./csv";
 import { parseCellNumber, parseEuropeanNumber, parseDate, toImportedTransactions } from "./utils";
 import { findFinalBalance } from "./bbva";
 import { parseExcelDate } from "./revolut";
-import { pickYearForPartialDate } from "./tradeRepublic";
+import { pickYearForPartialDate, splitMergedAmounts } from "./tradeRepublic";
 import { buildDuplicateConflictKey, buildDuplicateConflictKeyLegacy } from "./importKeys";
 
 describe("parseCSV", () => {
@@ -108,5 +108,32 @@ describe("importKeys", () => {
     expect(await buildDuplicateConflictKey("acc", "2025-03-02", 10.5, "EXPENSE")).toBe(base);
     expect(await buildDuplicateConflictKey("acc", "2025-03-02", 10.5, "income")).not.toBe(base);
     expect(await buildDuplicateConflictKeyLegacy("acc", "2025-03-02", 10.5)).not.toBe(base);
+  });
+});
+
+describe("splitMergedAmounts (Trade Republic)", () => {
+  const item = { text: "10.000,00 € 13.136,09 €", x: 400, y: 100, width: 115, height: 8 };
+
+  it("separa dos importes que pdf.js devuelve en un solo texto, cada uno en su columna", () => {
+    const parts = splitMergedAmounts(item);
+    expect(parts.map((p) => p.text)).toEqual(["10.000,00 €", "13.136,09 €"]);
+    expect(parts[0].x).toBe(400);
+    expect(parts[1].x).toBeGreaterThan(450);
+  });
+
+  it("no toca textos con un solo importe ni descripciones", () => {
+    expect(splitMergedAmounts({ ...item, text: "69,05 €" })).toHaveLength(1);
+    expect(splitMergedAmounts({ ...item, text: "Pago 1,00 € y 2,00 €" })).toHaveLength(1);
+  });
+});
+
+describe("toImportedTransactions", () => {
+  it("redondea a céntimos los importes netos (interés - comisión)", async () => {
+    const [tx] = await toImportedTransactions("acc", [{ date: "2025-01-01", signedAmount: 0.1 - 0.01, description: "Interés", fingerprint: "f" }]);
+    expect(tx.amount).toBe(0.09);
+  });
+
+  it("descarta importes que redondean a 0", async () => {
+    expect(await toImportedTransactions("acc", [{ date: "2025-01-01", signedAmount: 0.004, description: "x", fingerprint: "f" }])).toEqual([]);
   });
 });

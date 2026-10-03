@@ -83,13 +83,15 @@ export async function toImportedTransactions(
   accountId: string,
   rows: { date: string; signedAmount: number; description: string; fingerprint: string; statement_balance?: number }[]
 ): Promise<ImportedTransaction[]> {
-  const kept = rows.filter((r) => r.signedAmount !== 0);
+  // Rounded to cents: net amounts such as Revolut interest minus fee (0.1 - 0.01) carry float noise.
+  const toCents = (value: number) => Math.round(Math.abs(value) * 100) / 100;
+  const kept = rows.filter((r) => toCents(r.signedAmount) !== 0);
   const seen = new Map<string, number>();
   return Promise.all(
     kept.map(async ({ date, signedAmount, description, fingerprint, statement_balance }) => {
       const occurrence = seen.get(fingerprint) ?? 0;
       seen.set(fingerprint, occurrence + 1);
-      const amount = Math.abs(signedAmount);
+      const amount = toCents(signedAmount);
       return {
         date,
         amount,
