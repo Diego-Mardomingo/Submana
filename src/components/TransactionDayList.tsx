@@ -5,19 +5,14 @@ import { Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
-import { SettlementSuggestionChip } from "@/components/SettlementSuggestionChip";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
-import { useProfile } from "@/hooks/useProfile";
-import { useSettlementSuggestions } from "@/hooks/useSharedExpenses";
 import { useDeleteTransaction, type Transaction } from "@/hooks/useTransactions";
 import { appNow, calendarDayInAppTimeZone, parseDateString, toDateString } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
-import { metricAmount } from "@/lib/metricsFilters";
-import { sharedBadges } from "@/lib/shared/badges";
 
 export const TrendIcon = ({ income, size = 18 }: { income: boolean; size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
@@ -49,7 +44,6 @@ export const TransactionRow = memo(function TransactionRow(props: {
   const t = useTranslations(useLang());
   const category = tx.subcategory?.name ?? tx.category?.name;
   const account = hideAccount ? null : tx.account;
-  const badges = sharedBadges(tx);
   // Joint account rows written by another member show who added them.
   const author = tx.account?.is_joint ? tx.author : null;
   return (
@@ -61,7 +55,7 @@ export const TransactionRow = memo(function TransactionRow(props: {
         <span className="lp-title">
           <span>{tx.description || tx.category?.name || fallbackLabel}</span>
         </span>
-        {(account || category || badges.length > 0 || author) && (
+        {(account || category || author) && (
           <span className="lp-meta">
             {author && (
               <span className="inline-flex items-center gap-1" title={interpolate(t("joint.addedBy"), { name: author.display_name })}>
@@ -78,11 +72,6 @@ export const TransactionRow = memo(function TransactionRow(props: {
             )}
             {account && category && <span className="lp-meta-sep">·</span>}
             {category && <span className="lp-truncate">{category}</span>}
-            {badges.map((badge) => (
-              <span key={badge.kind} className={`shared-badge shared-badge--${badge.kind}`}>
-                {interpolate(t(badge.key), badge.values)}
-              </span>
-            ))}
           </span>
         )}
       </span>
@@ -111,9 +100,6 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
   const deleteTx = useDeleteTransaction();
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [toDelete, setToDelete] = useState<Transaction | null>(null);
-  const { data: profile } = useProfile();
-  const { data: suggestions = [] } = useSettlementSuggestions(!!profile);
-  const suggestionByTx = new Map(suggestions.map((s) => [s.tx_id, s]));
 
   const byDay = new Map<string, Transaction[]>();
   for (const tx of transactions) {
@@ -131,7 +117,7 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
     return { title: date };
   };
   const dayNet = (txs: Transaction[]) =>
-    txs.reduce((sum, tx) => (countedIds.has(tx.id) ? sum + (tx.type === "income" ? 1 : -1) * metricAmount(tx) : sum), 0);
+    txs.reduce((sum, tx) => (countedIds.has(tx.id) ? sum + (tx.type === "income" ? 1 : -1) * Number(tx.amount) : sum), 0);
 
   return (
     <>
@@ -163,12 +149,9 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
                         <button type="button" onClick={() => setEditing(tx)} className="lp-action lp-action--edit" aria-label={t("common.edit")}>
                           <Pencil className="size-5" />
                         </button>
-                        {/* Virtual rows (a friend paid) disappear with their shared expense */}
-                        {tx.source !== "shared" && (
-                          <button type="button" onClick={() => setToDelete(tx)} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
-                            <Trash2 className="size-5" />
-                          </button>
-                        )}
+                        <button type="button" onClick={() => setToDelete(tx)} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
+                          <Trash2 className="size-5" />
+                        </button>
                       </>
                     }
                   >
@@ -180,7 +163,6 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
                       hideAccount={hideAccount}
                       excluded={!countedIds.has(tx.id)}
                     />
-                    {profile && suggestionByTx.has(tx.id) && <SettlementSuggestionChip suggestion={suggestionByTx.get(tx.id)!} meId={profile.user_id} />}
                   </SwipeToReveal>
                 ))}
               </SwipeToRevealGroup>

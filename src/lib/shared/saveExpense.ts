@@ -1,4 +1,4 @@
-import { areAccessibleCategories, getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
 import { computeShares, SPLIT_MODES, toCents, type SplitMode } from "./splits";
 import { limitSharedWrites, rpcErrorResponse, UUID } from "./server";
 
@@ -30,14 +30,12 @@ export async function saveSharedExpense(request: Request, expenseId: string | nu
   const total = Number(body.total);
   const mode = body.split_mode as SplitMode;
   const participants: unknown[] = Array.isArray(body.participants) ? body.participants : [];
-  const payerTxId = body.payer_tx_id ?? null;
 
   if (title.length < 1 || title.length > 120) return jsonError("invalid_title");
   if (!Number.isFinite(total) || total <= 0 || total > 1_000_000) return jsonError("invalid_total");
   if (!SPLIT_MODES.includes(mode)) return jsonError("invalid_split_mode");
   if (!body.date || Number.isNaN(new Date(body.date).getTime())) return jsonError("missing_fields");
   if (!isUuid(body.paid_by) || (!expenseId && !isUuid(body.group_id))) return jsonError("missing_fields");
-  if (payerTxId !== null && !isUuid(payerTxId)) return jsonError("invalid_payer_transaction");
   if (participants.length === 0 || participants.length > 31) return jsonError("invalid_shares");
 
   const parsed = participants.map((p) => {
@@ -60,10 +58,6 @@ export async function saveSharedExpense(request: Request, expenseId: string | nu
   );
   if (!split.ok) return jsonError(ERRORS_BY_SPLIT[split.error] ?? "invalid_shares");
 
-  const categoryId = typeof body.category_id === "string" && body.category_id ? body.category_id : null;
-  const subcategoryId = typeof body.subcategory_id === "string" && body.subcategory_id ? body.subcategory_id : null;
-  if (!(await areAccessibleCategories(supabase, user.id, [categoryId, subcategoryId]))) return jsonError("invalid_category");
-
   const { data, error } = await supabase.rpc("upsert_shared_expense", {
     p_expense_id: expenseId,
     p_group_id: expenseId ? null : body.group_id,
@@ -73,9 +67,6 @@ export async function saveSharedExpense(request: Request, expenseId: string | nu
     p_paid_by: body.paid_by,
     p_split_mode: mode,
     p_shares: split.shares.map((s) => ({ user_id: s.userId, amount: s.cents / 100, weight: s.weight })),
-    p_payer_tx_id: payerTxId,
-    p_my_category_id: categoryId,
-    p_my_subcategory_id: subcategoryId,
   });
   if (error) return rpcErrorResponse("shared/expenses", error);
   return jsonResponse({ data }, expenseId ? 200 : 201);

@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
-import { unlinkLinkedTransactions } from "@/lib/shared/server";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -41,7 +40,6 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   // Only the owner deletes an account (and with it every member's rows).
   if ((await getAccountAccess(supabase, user.id, id))?.role !== "owner") return jsonError("Account not found", 404);
-  await unlinkLinkedTransactions(supabase, user.id, id);
   const { error } = await supabase.from("accounts").delete().eq("id", id).eq("user_id", user.id);
   if (error) return jsonServerError("crud/accounts/[id]", error);
   return jsonResponse({ data: { success: true } });

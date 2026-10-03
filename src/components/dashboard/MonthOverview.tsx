@@ -16,7 +16,7 @@ import { prefetchMonth, useMetricTransactions, type Transaction } from "@/hooks/
 import { appNow, monthKey, shiftMonth } from "@/lib/date";
 import { monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
-import { metricAmount, sumMetricsByType } from "@/lib/metricsFilters";
+import { sumByType } from "@/lib/metricsFilters";
 import { cn } from "@/lib/utils";
 import { CardHead, money, SeeAll, signClass, signedMoney, Stat } from "./shared";
 
@@ -26,7 +26,7 @@ const currentMonth = (): Month => ({ year: appNow().getFullYear(), month: appNow
 
 function useMonthTotals({ year, month }: Month) {
   const { data, isLoading, isFetching } = useMetricTransactions(year, month);
-  const { income, expense } = sumMetricsByType(data);
+  const { income, expense } = sumByType(data);
   return { data, income, expense, balance: income - expense, isLoading, isFetching };
 }
 
@@ -123,7 +123,7 @@ function TopExpensesCard({ month, es }: { month: Month; es: boolean }) {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const top = data
     .filter((tx) => tx.type === "expense")
-    .sort((a, b) => metricAmount(b) - metricAmount(a))
+    .sort((a, b) => Number(b.amount) - Number(a.amount))
     .slice(0, 5);
 
   return (

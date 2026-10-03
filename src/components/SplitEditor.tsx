@@ -24,16 +24,13 @@ export function useMemberLabel(meId: string) {
  * percentages / shares), per-person values with the resulting amount, a live "left to assign"
  * counter and the title the group will see.
  */
-export function SplitEditor({ members, meId, totalCents, payerId, draft, onChange, bankDescription, showTitle = true }: {
+export function SplitEditor({ members, meId, totalCents, payerId, draft, onChange }: {
   members: SharedProfile[];
   meId: string;
   totalCents: number;
   payerId: string;
   draft: SplitDraft;
   onChange: (draft: SplitDraft) => void;
-  /** Description of the bank transaction, used as the default title (never sent unless the user keeps it). */
-  bankDescription?: string;
-  showTitle?: boolean;
 }) {
   const t = useTranslations(useLang());
   const label = useMemberLabel(meId);
@@ -64,19 +61,17 @@ export function SplitEditor({ members, meId, totalCents, payerId, draft, onChang
 
   return (
     <div className="split-editor">
-      {showTitle && (
-        <FieldGroup hint={t("split.titleHint")}>
-          <FieldRow label={t("split.title")} htmlFor="split-title">
-            <RowInput
-              id="split-title"
-              value={draft.title}
-              onChange={(e) => patch({ title: e.target.value })}
-              placeholder={bankDescription || t("split.titlePlaceholder")}
-              maxLength={120}
-            />
-          </FieldRow>
-        </FieldGroup>
-      )}
+      <FieldGroup>
+        <FieldRow label={t("split.title")} htmlFor="split-title">
+          <RowInput
+            id="split-title"
+            value={draft.title}
+            onChange={(e) => patch({ title: e.target.value })}
+            placeholder={t("split.titlePlaceholder")}
+            maxLength={120}
+          />
+        </FieldRow>
+      </FieldGroup>
 
       <FieldGroup title={t("split.participants")}>
         <FieldStack>

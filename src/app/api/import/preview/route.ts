@@ -5,7 +5,6 @@ import { prepareImport, toPreviewRows } from "@/lib/importTransactions";
 import { validateImportPayload } from "@/lib/importValidation";
 import type { ImportedTransaction, ImportPreviewResponse } from "@/lib/parsers/types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
-import { attachSettlementSuggestions } from "@/lib/shared/importSettlements";
 
 /**
  * Classifies statement rows (new / sure / possible / already imported / skipped) before importing.
@@ -41,9 +40,7 @@ export async function POST(request: NextRequest) {
   try {
     const response: ImportPreviewResponse = { transactions: [], deposit: [] };
     if (transactions.length > 0) {
-      const rows = toPreviewRows((await prepareImport({ supabase, userId: user.id, accountId: account_id, transactions, joint: access.isJoint })).rows);
-      // Settlement suggestions are personal (shared expenses never live in a joint account).
-      response.transactions = access.isJoint ? rows : await attachSettlementSuggestions(supabase, user.id, transactions, rows);
+      response.transactions = toPreviewRows((await prepareImport({ supabase, userId: user.id, accountId: account_id, transactions, joint: access.isJoint })).rows);
     }
     if (deposit.length > 0) {
       const { data: depositAccount } = await supabase

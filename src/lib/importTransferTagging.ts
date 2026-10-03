@@ -38,7 +38,7 @@ async function fetchTaggableByIds(
 	for (let i = 0; i < ids.length; i += QUERY_BATCH_SIZE) {
 		const { data } = await supabase
 			.from("transactions")
-			.select("id, amount, type, date, account_id, shared_expense_id")
+			.select("id, amount, type, date, account_id")
 			.eq("user_id", userId)
 			.or(`category_id.is.null,category_id.eq.${excludeCategoryId}`)
 			.is("subcategory_id", null)
@@ -69,7 +69,7 @@ async function fetchUncategorizedCounterparts(
 		for (let from = 0; ; from += QUERY_PAGE_SIZE) {
 			const { data, error } = await supabase
 				.from("transactions")
-				.select("id, amount, type, date, account_id, shared_expense_id")
+				.select("id, amount, type, date, account_id")
 				.eq("user_id", userId)
 				.is("category_id", null)
 				.is("subcategory_id", null)
@@ -87,8 +87,6 @@ async function fetchUncategorizedCounterparts(
 }
 
 /**
- * Las filas ligadas a un gasto compartido o sin cuenta (virtuales) nunca se emparejan como traspaso
- * (lo garantiza detectTransferIds).
  * Tras una importación, empareja traspasos entre cuentas del usuario (gasto e ingreso del
  * mismo importe en cuentas distintas y fechas cercanas) y les asigna la categoría
  * "Excluir de métricas". Solo toca transacciones sin categoría para respetar las del usuario.

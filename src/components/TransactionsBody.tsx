@@ -19,7 +19,7 @@ import { prefetchMonth, useTransactions } from "@/hooks/useTransactions";
 import { appNow, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
-import { metricTransactions, sumMetricsByType } from "@/lib/metricsFilters";
+import { metricTransactions, sumByType } from "@/lib/metricsFilters";
 
 const SkeletonRows = ({ count }: { count: number }) => (
   <div className="lp-card lp-group">
@@ -98,7 +98,7 @@ export default function TransactionsBody() {
 
   const counted = metricTransactions(transactions, categories, { jointAccountIds });
   const countedIds = new Set(counted.map((tx) => tx.id));
-  const { income, expense } = sumMetricsByType(counted);
+  const { income, expense } = sumByType(counted);
   const balance = income - expense;
   const spentRatio = income > 0 ? expense / income : null;
   const loadingMonth = isFetching || isPlaceholderData;

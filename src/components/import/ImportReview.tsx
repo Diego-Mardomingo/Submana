@@ -7,7 +7,7 @@ import { useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
-import type { ImportedTransaction, ImportPreviewRow, ImportResolution, ImportRowMatch, ImportSettlementSuggestion } from "@/lib/parsers/types";
+import type { ImportedTransaction, ImportPreviewRow, ImportResolution, ImportRowMatch } from "@/lib/parsers/types";
 
 /** One account's worth of statement rows plus the server's classification of each. */
 export interface ReviewGroup {
@@ -30,7 +30,6 @@ interface Item {
   tx: ImportedTransaction;
   status: ImportPreviewRow["status"];
   match?: ImportRowMatch;
-  suggestion?: ImportSettlementSuggestion;
 }
 
 const TABS: { id: Tab; labelKey: "import.review.tab.new" | "import.review.tab.merge" | "import.review.tab.review" | "import.review.tab.imported" | "import.review.tab.skipped" }[] = [
@@ -65,8 +64,6 @@ export default function ImportReview({ groups, onCancel, onImport }: {
   const categoryNames = useCategoryLookup().name;
   const [tab, setTab] = useState<Tab>("new");
   const [choices, setChoices] = useState<Map<string, Choice>>(new Map());
-  // Rows whose repayment suggestion the user accepted (linked as a settlement after importing).
-  const [settlements, setSettlements] = useState<Set<string>>(new Set());
   const [shown, setShown] = useState<Record<Tab, number>>({ new: PAGE, merge: PAGE, review: PAGE, imported: PAGE, skipped: PAGE });
 
   const byTab = useMemo(() => {
@@ -77,7 +74,7 @@ export default function ImportReview({ groups, onCancel, onImport }: {
       for (const row of group.rows) {
         const tx = txByFingerprint.get(row.fingerprint);
         if (!tx) continue;
-        result[TAB_OF_STATUS[row.status]].push({ key: `${group.id}:${row.fingerprint}`, groupId: group.id, groupTitle: group.title, tx, status: row.status, match: row.match, suggestion: row.settlementSuggestion });
+        result[TAB_OF_STATUS[row.status]].push({ key: `${group.id}:${row.fingerprint}`, groupId: group.id, groupTitle: group.title, tx, status: row.status, match: row.match });
       }
     }
     return result;
@@ -107,19 +104,13 @@ export default function ImportReview({ groups, onCancel, onImport }: {
 
   const handleImport = () => {
     const resolutions: ReviewResolutions = { main: [], deposit: [] };
-    const settlementOf = (item: Item) =>
-      settlements.has(item.key) && item.suggestion ? { settlement: { group_id: item.suggestion.group_id, friend_id: item.suggestion.friend_id } } : {};
     for (const item of decidable) {
       const action = choiceOf(item);
       resolutions[item.groupId].push({
         fingerprint: item.tx.import_source_fingerprint,
         action,
         ...(action === "merge" && item.match && { target_id: item.match.id }),
-        ...(action !== "skip" && settlementOf(item)),
       });
-    }
-    for (const item of byTab.new) {
-      if (settlements.has(item.key)) resolutions[item.groupId].push({ fingerprint: item.tx.import_source_fingerprint, action: "insert", ...settlementOf(item) });
     }
     onImport(resolutions);
   };
@@ -144,30 +135,6 @@ export default function ImportReview({ groups, onCancel, onImport }: {
     return [days, desc].filter(Boolean).join(" · ");
   };
 
-  const settlementToggle = (item: Item) => {
-    const s = item.suggestion;
-    if (!s) return null;
-    const on = settlements.has(item.key);
-    return (
-      <button
-        type="button"
-        className={`duplicate-btn ${on ? "duplicate-btn-keep active" : ""}`}
-        style={{ alignSelf: "flex-start" }}
-        onClick={() =>
-          setSettlements((prev) => {
-            const next = new Set(prev);
-            if (on) next.delete(item.key);
-            else next.add(item.key);
-            return next;
-          })
-        }
-      >
-        {interpolate(t(s.direction === "from_friend" ? "settle.import.fromFriend" : "settle.import.toFriend"), { handle: s.friend_handle })}
-        {on ? " ✓" : ""}
-      </button>
-    );
-  };
-
   const compactRow = (item: Item, extra?: React.ReactNode) => (
     <div key={item.key} className={`bank-statement-preview-item ${item.tx.type}`}>
       <div className="bank-statement-preview-item-left">
@@ -177,7 +144,6 @@ export default function ImportReview({ groups, onCancel, onImport }: {
         </span>
         <span className="bank-statement-preview-desc">{item.tx.description}</span>
         {extra}
-        {tab === "new" && settlementToggle(item)}
       </div>
       {amount(item.tx.amount, item.tx.type)}
     </div>
@@ -246,7 +212,6 @@ export default function ImportReview({ groups, onCancel, onImport }: {
             </div>
           </div>
           {choiceButtons(item, ["merge", "insert", "skip"])}
-          {settlementToggle(item)}
         </div>
       );
     }

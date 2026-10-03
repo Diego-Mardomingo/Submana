@@ -12,7 +12,7 @@ const MAX_LIMIT = 300;
 
 /**
  * Group detail: members, the newest `limit` expenses (default 30), balances, the simplified transfers
- * ("who pays whom") and recent activity. `bank_mismatch` only ever looks at MY OWN linked row.
+ * ("who pays whom") and recent activity.
  */
 export async function GET(request: NextRequest, { params }: Params) {
   const { id } = await params;
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { data: group, error } = await supabase
       .from("groups")
-      .select("id, name, kind, archived_at, created_at")
+      .select("id, name, archived_at, created_at")
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
@@ -56,34 +56,18 @@ export async function GET(request: NextRequest, { params }: Params) {
       user_id: b.user_id,
       net_cents: Math.round(Number(b.net) * 100),
     }));
-    const rows = (expensesRes.data ?? []) as unknown as (Omit<SharedExpenseItem, "my_transaction_id" | "my_transaction_virtual" | "bank_mismatch" | "bank_amount" | "shares"> & {
+    const rows = (expensesRes.data ?? []) as unknown as (Omit<SharedExpenseItem, "shares"> & {
       shares: SharedExpenseItem["shares"];
       split_mode: SplitMode;
     })[];
     const hasMore = rows.length > limit;
     const page = rows.slice(0, limit);
 
-    // My own rows linked to these expenses (RLS only returns mine anyway).
-    const { data: mine, error: mineError } = page.length
-      ? await supabase.from("transactions").select("id, shared_expense_id, amount, source").eq("user_id", user.id).in("shared_expense_id", page.map((e) => e.id))
-      : { data: [], error: null };
-    if (mineError) throw mineError;
-    const mineByExpense = new Map((mine ?? []).map((t) => [t.shared_expense_id as string, t]));
-
-    const expenses: SharedExpenseItem[] = page.map((e) => {
-      const tx = mineByExpense.get(e.id);
-      const virtual = tx?.source === "shared";
-      const bankAmount = tx && !virtual ? Number(tx.amount) : null;
-      return {
-        ...e,
-        total_amount: Number(e.total_amount),
-        shares: e.shares.map((s) => ({ ...s, amount: Number(s.amount), weight: s.weight == null ? null : Number(s.weight) })),
-        my_transaction_id: tx ? (tx.id as string) : null,
-        my_transaction_virtual: virtual,
-        bank_mismatch: e.kind === "expense" && e.paid_by === user.id && bankAmount !== null && Math.abs(bankAmount - Number(e.total_amount)) > 0.005,
-        bank_amount: bankAmount,
-      };
-    });
+    const expenses: SharedExpenseItem[] = page.map((e) => ({
+      ...e,
+      total_amount: Number(e.total_amount),
+      shares: e.shares.map((s) => ({ ...s, amount: Number(s.amount), weight: s.weight == null ? null : Number(s.weight) })),
+    }));
 
     const involved = [...memberIds, ...expenses.flatMap((e) => [e.paid_by, ...e.shares.map((s) => s.user_id)]), ...nets.map((n) => n.user_id)];
     const profiles = await fetchProfiles(supabase, involved);
