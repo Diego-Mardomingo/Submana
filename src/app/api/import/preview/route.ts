@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { DEPOSIT_ACCOUNT_NAME } from "@/lib/bankProviders";
 import { prepareImport, toPreviewRows } from "@/lib/importTransactions";
 import { validateImportPayload } from "@/lib/importValidation";
@@ -35,18 +35,15 @@ export async function POST(request: NextRequest) {
     if (payloadError) return jsonError(payloadError);
   }
 
-  const { data: account } = await supabase.from("accounts").select("id").eq("id", account_id).eq("user_id", user.id).maybeSingle();
-  if (!account) return jsonError("Account not found or access denied", 404);
+  const access = await getAccountAccess(supabase, user.id, account_id);
+  if (!access) return jsonError("Account not found or access denied", 404);
 
   try {
     const response: ImportPreviewResponse = { transactions: [], deposit: [] };
     if (transactions.length > 0) {
-      response.transactions = await attachSettlementSuggestions(
-        supabase,
-        user.id,
-        transactions,
-        toPreviewRows((await prepareImport({ supabase, userId: user.id, accountId: account_id, transactions })).rows)
-      );
+      const rows = toPreviewRows((await prepareImport({ supabase, userId: user.id, accountId: account_id, transactions, joint: access.isJoint })).rows);
+      // Settlement suggestions are personal (shared expenses never live in a joint account).
+      response.transactions = access.isJoint ? rows : await attachSettlementSuggestions(supabase, user.id, transactions, rows);
     }
     if (deposit.length > 0) {
       const { data: depositAccount } = await supabase

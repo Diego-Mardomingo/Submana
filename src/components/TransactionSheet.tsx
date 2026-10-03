@@ -85,7 +85,9 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
 
   // New transactions default to the page's account, then to the account marked as default.
   const accountId = pickedAccountId || (transaction ? "" : (defaultAccountId ?? accounts.find((a) => a.is_default)?.id ?? ""));
-  const parents = [...(categoriesData?.userCategories ?? []), ...(categoriesData?.defaultCategories ?? [])].filter((c) => !c.parent_id);
+  // Joint accounts only use system categories: a member's personal categories mean nothing to the others.
+  const jointAccount = !!accounts.find((a) => a.id === accountId)?.is_joint;
+  const parents = [...(jointAccount ? [] : (categoriesData?.userCategories ?? [])), ...(categoriesData?.defaultCategories ?? [])].filter((c) => !c.parent_id);
   const category = parents.find((c) => c.id === categoryId);
   const subcategories = category?.subcategories ?? [];
   const excludedFromMetrics = category?.exclude_from_metrics || subcategories.find((s) => s.id === subcategoryId)?.exclude_from_metrics;
@@ -139,8 +141,8 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
       date: toDateString(date),
       description: description.trim() || undefined,
       account_id: accountId,
-      category_id: categoryId || undefined,
-      subcategory_id: subcategoryId || undefined,
+      category_id: (jointAccount && !category ? "" : categoryId) || undefined,
+      subcategory_id: (jointAccount && !category ? "" : subcategoryId) || undefined,
     };
     const splitting = canSplit && split;
     if (splitting) {
@@ -306,7 +308,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
         )}
         {isLinked && transaction && <LinkedSharedInfo transaction={transaction} />}
 
-        <FieldGroup title={t("common.category")} hint={excludedFromMetrics ? t("categories.excludeFromMetricsInfo") : undefined}>
+        <FieldGroup title={t("common.category")} hint={jointAccount ? t("joint.categoriesHint") : excludedFromMetrics ? t("categories.excludeFromMetricsInfo") : undefined}>
           <FieldStack>
             <Chips
               label={t("common.category")}

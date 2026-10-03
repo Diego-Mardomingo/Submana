@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Bones } from "@/components/Bones";
 import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
+import { JointInvites } from "@/components/JointAccountSection";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -16,6 +17,7 @@ import { useAccounts, useDeleteAccount, type Account } from "@/hooks/useAccounts
 import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useLang } from "@/hooks/useLang";
 import { useReorder } from "@/hooks/useReorder";
+import { canEditAccount } from "@/lib/accountAccess";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -88,6 +90,9 @@ export default function AccountsBody() {
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
   const { data: accounts = [], isLoading } = useAccounts();
+  // Joint accounts are shown on their own: they are shared with other people and not part of my total.
+  const personal = accounts.filter((account) => !account.is_joint);
+  const joint = accounts.filter((account) => account.is_joint);
   const { handleReorder } = useReorder<Account>({ table: "accounts" });
   const deleteAccount = useDeleteAccount();
   const [createOpen, setCreateOpen] = useCreateDialog();
@@ -97,7 +102,7 @@ export default function AccountsBody() {
   /** Marks the default account (moved first) used when creating transactions. */
   const setDefault = async (account: Account) => {
     queryClient.setQueryData<Account[]>(queryKeys.accounts.lists(), (old) => old?.map((a) => ({ ...a, is_default: a.id === account.id })));
-    handleReorder([account, ...accounts.filter((a) => a.id !== account.id)]);
+    handleReorder([account, ...personal.filter((a) => a.id !== account.id)]);
     try {
       await api("/api/accounts/set-default", "POST", { id: account.id });
     } catch {
@@ -159,6 +164,7 @@ export default function AccountsBody() {
     return (
       <div className="page-container lp-page fade-in">
         {header}
+        <JointInvites className="lp-section mb-4" />
         <div className="lp-card lp-empty">
           <div className="lp-empty-icon">
             <CardIcon size={24} strokeWidth={2.5} />
@@ -175,8 +181,8 @@ export default function AccountsBody() {
     );
   }
 
-  const total = accounts.reduce((sum, acc) => sum + Number(acc.balance), 0);
-  const positiveTotal = accounts.reduce((sum, acc) => sum + Math.max(0, Number(acc.balance)), 0);
+  const total = personal.reduce((sum, acc) => sum + Number(acc.balance), 0);
+  const positiveTotal = personal.reduce((sum, acc) => sum + Math.max(0, Number(acc.balance)), 0);
   const shareOf = (account: Account) => {
     const balance = Number(account.balance);
     return balance < 0 ? null : positiveTotal > 0 ? balance / positiveTotal : 0;
@@ -192,6 +198,7 @@ export default function AccountsBody() {
   return (
     <div className="page-container lp-page fade-in">
       {header}
+      <JointInvites className="lp-section mb-4" />
 
       <Bones name="accounts" loading={false}>
         <div className="lp-layout">
@@ -200,7 +207,7 @@ export default function AccountsBody() {
               <div className="lp-summary-top">
                 <span className="lp-label">{es ? "Saldo total" : "Total balance"}</span>
                 <span className="lp-count">
-                  {accounts.length} {es ? (accounts.length === 1 ? "cuenta" : "cuentas") : accounts.length === 1 ? "account" : "accounts"}
+                  {personal.length} {es ? (personal.length === 1 ? "cuenta" : "cuentas") : personal.length === 1 ? "account" : "accounts"}
                 </span>
               </div>
               <span className={cn("lp-hero-value", total < 0 && "is-negative")}>
@@ -208,7 +215,7 @@ export default function AccountsBody() {
               </span>
               {positiveTotal > 0 && (
                 <div className="lp-meter lp-meter--segmented" aria-hidden>
-                  {accounts
+                  {personal
                     .filter((acc) => Number(acc.balance) > 0)
                     .map((acc) => (
                       <span key={acc.id} style={{ width: `${(Number(acc.balance) / positiveTotal) * 100}%`, background: accountColor(acc) }} />
@@ -221,7 +228,7 @@ export default function AccountsBody() {
           <div className="lp-content">
             <SwipeToRevealGroup>
               <SortableContainer
-                items={accounts}
+                items={personal}
                 onReorder={handleReorder}
                 className="lp-card lp-group lp-group--sortable"
                 strategy="vertical"
@@ -295,6 +302,60 @@ export default function AccountsBody() {
                   </SortableItem>
                 )}
               />
+
+              {joint.length > 0 && (
+                <section className="lp-section mt-6">
+                  <div className="lp-section-head">
+                    <span className="lp-section-title">
+                      {t("joint.section")}
+                      <small>{joint.length}</small>
+                    </span>
+                  </div>
+                  <p className="mb-2 text-sm text-muted-foreground">{t("joint.sectionHint")}</p>
+                  <div className="lp-card lp-group">
+                    {joint.map((account) => (
+                      <SwipeToReveal
+                        key={account.id}
+                        id={account.id}
+                        className="lp-swipe"
+                        desktopMinWidth={1024}
+                        actions={
+                          <>
+                            <button type="button" onClick={stop(() => setEditing(account))} className="lp-action lp-action--edit" aria-label={t("accounts.edit")}>
+                              <Pencil className="size-5" />
+                            </button>
+                            {canEditAccount(account.my_role, "delete") && (
+                              <button type="button" onClick={stop(() => setToDelete(account))} className="lp-action lp-action--danger" aria-label={t("accounts.delete")}>
+                                <Trash2 className="size-5" />
+                              </button>
+                            )}
+                          </>
+                        }
+                      >
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          className="lp-row"
+                          onClick={() => open(account)}
+                          onKeyDown={(e) => {
+                            if (e.target !== e.currentTarget || (e.key !== "Enter" && e.key !== " ")) return;
+                            e.preventDefault();
+                            open(account);
+                          }}
+                          aria-label={`${account.name} - ${formatCurrency(Number(account.balance))}`}
+                        >
+                          <AccountRowContent
+                            account={account}
+                            share={null}
+                            savingsLabel={savingsLabel}
+                            star={<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{t("joint.badge")}</span>}
+                          />
+                        </div>
+                      </SwipeToReveal>
+                    ))}
+                  </div>
+                </section>
+              )}
             </SwipeToRevealGroup>
           </div>
         </div>

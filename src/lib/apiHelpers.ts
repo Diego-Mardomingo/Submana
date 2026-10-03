@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AccountRole } from "@/lib/accountAccess";
 import { createClient } from "@/lib/supabase/server";
 
 /** Parses a JSON or form-data body into string values (automation clients may post forms). */
@@ -43,24 +44,40 @@ export async function getAuthedClient() {
   return { supabase, user: data.user };
 }
 
+export type AccountAccess = { role: AccountRole; isJoint: boolean };
+
 /**
- * Whether the account belongs to the user. Don't rely on RLS alone: ids come from the client
- * and are then used to move balances.
+ * The user's access to an account: owner, accepted member of a joint account, or null. Don't rely on
+ * RLS alone: ids come from the client and are then used to move balances (and service-role paths
+ * have no RLS at all).
  */
-export async function isOwnedAccount(supabase: SupabaseClient, userId: string, accountId: string) {
-  const { data } = await supabase.from("accounts").select("id").eq("id", accountId).eq("user_id", userId).maybeSingle();
-  return !!data;
+export async function getAccountAccess(supabase: SupabaseClient, userId: string, accountId: string): Promise<AccountAccess | null> {
+  const { data: account } = await supabase.from("accounts").select("user_id, is_joint").eq("id", accountId).maybeSingle();
+  if (!account) return null;
+  const isJoint = !!account.is_joint;
+  if (account.user_id === userId) return { role: "owner", isJoint };
+  if (!isJoint) return null;
+  const { data: member } = await supabase
+    .from("account_members")
+    .select("user_id")
+    .eq("account_id", accountId)
+    .eq("user_id", userId)
+    .eq("status", "accepted")
+    .maybeSingle();
+  return member ? { role: "member", isJoint } : null;
 }
 
-/** True when every category is a system one (user_id null) or the user's. */
+/** True when every category is a system one (user_id null) or, unless `systemOnly`, the user's. */
 export async function areAccessibleCategories(
   supabase: SupabaseClient,
   userId: string,
-  categoryIds: (string | null | undefined)[]
+  categoryIds: (string | null | undefined)[],
+  options: { systemOnly?: boolean } = {}
 ) {
   const unique = [...new Set(categoryIds.filter((id): id is string => !!id))];
   if (unique.length === 0) return true;
-  const { data } = await supabase.from("categories").select("id").in("id", unique).or(`user_id.is.null,user_id.eq.${userId}`);
+  const query = supabase.from("categories").select("id").in("id", unique);
+  const { data } = await (options.systemOnly ? query.is("user_id", null) : query.or(`user_id.is.null,user_id.eq.${userId}`));
   return (data?.length ?? 0) === unique.length;
 }
 
@@ -112,4 +129,19 @@ export function readTransactionInput(body: Record<string, string>) {
     category_id: body.category_id || null,
     subcategory_id: body.subcategory_id || null,
   };
+}
+
+/** Ids of every account the user can use: the ones they own plus joint accounts they accepted. */
+export async function listAccessibleAccounts(supabase: SupabaseClient, userId: string) {
+  const [{ data: owned }, { data: memberships }] = await Promise.all([
+    supabase.from("accounts").select("id, is_joint").eq("user_id", userId),
+    supabase.from("account_members").select("account_id").eq("user_id", userId).eq("status", "accepted"),
+  ]);
+  const ids = new Set<string>((owned ?? []).map((a) => a.id as string));
+  const jointIds = new Set<string>((owned ?? []).filter((a) => a.is_joint).map((a) => a.id as string));
+  for (const m of memberships ?? []) {
+    ids.add(m.account_id as string);
+    jointIds.add(m.account_id as string);
+  }
+  return { ids: [...ids], jointIds: [...jointIds] };
 }

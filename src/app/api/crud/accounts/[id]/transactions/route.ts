@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
 import { unlinkLinkedTransactions } from "@/lib/shared/server";
 
@@ -9,8 +9,9 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const { data: account } = await supabase.from("accounts").select("id").eq("id", accountId).eq("user_id", user.id).single();
-  if (!account) return jsonError("Account not found", 404);
+  // Bulk deletion wipes every member's rows: owner only on joint accounts.
+  const access = await getAccountAccess(supabase, user.id, accountId);
+  if (access?.role !== "owner") return jsonError("Account not found", 404);
 
   const body = await parseRequestBody(request);
   if (body.mode !== "all" && body.mode !== "range") return jsonError("invalid_mode");

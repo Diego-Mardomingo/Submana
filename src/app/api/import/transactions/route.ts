@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { importTransactions } from "@/lib/importTransactions";
 import { validateImportPayload, validateResolutions } from "@/lib/importValidation";
 import type { ImportedTransaction, ImportResolution } from "@/lib/parsers/types";
@@ -25,8 +25,8 @@ export async function POST(request: NextRequest) {
   const resolutionsError = validateResolutions(resolutions);
   if (resolutionsError) return jsonError(resolutionsError);
 
-  const { data: account } = await supabase.from("accounts").select("id").eq("id", account_id).eq("user_id", user.id).maybeSingle();
-  if (!account) return jsonError("Account not found or access denied", 404);
+  const access = await getAccountAccess(supabase, user.id, account_id);
+  if (!access) return jsonError("Account not found or access denied", 404);
 
   const result = await importTransactions({
     supabase,
@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
     accountId: account_id,
     transactions: transactions!,
     finalBalance: final_balance,
-    inheritCategories: true,
+    // Joint accounts only use system categories, so personal ones are never inherited into them.
+    inheritCategories: !access.isJoint,
+    joint: access.isJoint,
     resolutions,
   });
   return "error" in result ? jsonServerError("import/transactions", result.error) : jsonResponse({ data: result });

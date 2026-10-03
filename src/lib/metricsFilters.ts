@@ -16,13 +16,17 @@ export function metricAmount(tx: { amount?: number | string; metric_amount?: num
 }
 
 /**
- * Transactions that count for metrics (dashboard, summaries, budgets): drops detected transfers
- * between own accounts and categories (or parents of subcategories) flagged exclude_from_metrics.
+ * Transactions that count for metrics (dashboard, summaries, budgets): drops rows of joint accounts
+ * (shared with other people, shown separately), detected transfers between own accounts and
+ * categories (or parents of subcategories) flagged exclude_from_metrics.
  */
 export function metricTransactions<T extends MetricTx>(
   transactions: T[],
-  categories?: { defaultCategories: CategoryWithSubs[]; userCategories: CategoryWithSubs[] }
+  categories?: { defaultCategories: CategoryWithSubs[]; userCategories: CategoryWithSubs[] },
+  options: { jointAccountIds?: Iterable<string> } = {}
 ): T[] {
+  const joint = new Set(options.jointAccountIds ?? []);
+  if (joint.size > 0) transactions = transactions.filter((tx) => !tx.account_id || !joint.has(tx.account_id));
   const excluded = new Set<string>();
   const parentOf = new Map<string, string>();
   for (const cat of [...(categories?.defaultCategories ?? []), ...(categories?.userCategories ?? [])]) {
@@ -32,7 +36,7 @@ export function metricTransactions<T extends MetricTx>(
       if (sub.exclude_from_metrics) excluded.add(sub.id);
     }
   }
-  const transferIds = detectTransferIds(transactions);
+  const transferIds = detectTransferIds(transactions, 48, { jointAccountIds: joint });
   return transactions.filter((tx) => {
     const categoryId = tx.category_id ?? (tx.subcategory_id && (parentOf.get(tx.subcategory_id) ?? tx.subcategory_id));
     return !transferIds.has(tx.id) && metricAmount(tx) > 0 && !(categoryId && excluded.has(categoryId));

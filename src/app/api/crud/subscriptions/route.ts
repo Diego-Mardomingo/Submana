@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, isOwnedAccount, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { validateSubscriptionFields } from "@/lib/subscriptionValidation";
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   };
   const invalid = validateSubscriptionFields(fields);
   if (invalid) return jsonError(invalid);
-  if (fields.account_id && !(await isOwnedAccount(supabase, user.id, fields.account_id))) return jsonError("Account not found", 404);
+  if (fields.account_id && (await getAccountAccess(supabase, user.id, fields.account_id))?.role !== "owner") return jsonError("Account not found", 404);
 
   const { data, error } = await supabase
     .from("subscriptions")

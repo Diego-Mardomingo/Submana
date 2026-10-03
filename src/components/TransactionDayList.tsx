@@ -3,6 +3,7 @@
 import { memo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SettlementSuggestionChip } from "@/components/SettlementSuggestionChip";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
@@ -49,6 +50,8 @@ export const TransactionRow = memo(function TransactionRow(props: {
   const category = tx.subcategory?.name ?? tx.category?.name;
   const account = hideAccount ? null : tx.account;
   const badges = sharedBadges(tx);
+  // Joint account rows written by another member show who added them.
+  const author = tx.account?.is_joint ? tx.author : null;
   return (
     <button type="button" className="lp-row" onClick={() => onOpen(tx)}>
       <span className={`lp-icon ${!emoji && income && !excluded ? "lp-icon--income" : ""}`} aria-hidden>
@@ -58,8 +61,15 @@ export const TransactionRow = memo(function TransactionRow(props: {
         <span className="lp-title">
           <span>{tx.description || tx.category?.name || fallbackLabel}</span>
         </span>
-        {(account || category || badges.length > 0) && (
+        {(account || category || badges.length > 0 || author) && (
           <span className="lp-meta">
+            {author && (
+              <span className="inline-flex items-center gap-1" title={interpolate(t("joint.addedBy"), { name: author.display_name })}>
+                <ProfileAvatar name={author.display_name} url={author.avatar_url} size={16} />
+                <span className="lp-truncate">@{author.handle}</span>
+                {(account || category) && <span className="lp-meta-sep">·</span>}
+              </span>
+            )}
             {account && (
               <>
                 <span className="lp-dot" style={{ backgroundColor: account.color || "var(--gris-claro)" }} />

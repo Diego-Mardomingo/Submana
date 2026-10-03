@@ -17,6 +17,7 @@ import { useAccounts, useDeleteAccount, useDeleteAccountTransactions, type Accou
 import { useLang } from "@/hooks/useLang";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
+import { canEditAccount } from "@/lib/accountAccess";
 import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
 import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
@@ -388,7 +389,8 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
                 <ChevronDown className="lp-chevron size-4" />
               </button>
             )}
-            <button type="button" className="lp-row" onClick={() => setBulkOpen(true)} disabled={txLoading || transactions.length === 0}>
+            {canEditAccount(account.my_role, "bulk_delete") && (
+              <button type="button" className="lp-row" onClick={() => setBulkOpen(true)} disabled={txLoading || transactions.length === 0}>
               <span className="lp-icon ad-action-icon">
                 <ListX className="size-[18px]" />
               </span>
@@ -398,17 +400,20 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
                 </span>
                 <span className="lp-meta">{es ? "Todas o por meses" : "All or by month"}</span>
               </span>
-            </button>
-            <button type="button" className="lp-row lp-row--danger" onClick={() => setDeleteOpen(true)}>
-              <span className="lp-icon">
-                <Trash2 className="size-[18px]" />
-              </span>
-              <span className="lp-main">
-                <span className="lp-title">
-                  <span>{es ? "Eliminar cuenta" : "Delete account"}</span>
+              </button>
+            )}
+            {canEditAccount(account.my_role, "delete") && (
+              <button type="button" className="lp-row lp-row--danger" onClick={() => setDeleteOpen(true)}>
+                <span className="lp-icon">
+                  <Trash2 className="size-[18px]" />
                 </span>
-              </span>
-            </button>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{es ? "Eliminar cuenta" : "Delete account"}</span>
+                  </span>
+                </span>
+              </button>
+            )}
           </div>
         </aside>
 

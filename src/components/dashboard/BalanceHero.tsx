@@ -11,6 +11,7 @@ import { useLang } from "@/hooks/useLang";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactions";
 import { appNow, monthKey } from "@/lib/date";
 import { formatCurrency, monthKeyLabel } from "@/lib/format";
+import { useTranslations } from "@/lib/i18n/utils";
 import { netBalanceChange, runningTotals } from "@/lib/metricsFilters";
 import { cn } from "@/lib/utils";
 import { BalanceLine, signClass, signedMoney } from "./shared";
@@ -24,6 +25,7 @@ const accountColor = (account: Account) => account.color || "var(--accent)";
 export default function BalanceHero() {
   const lang = useLang();
   const es = lang === "es";
+  const t = useTranslations(lang);
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = accounts.find((acc) => acc.id === selectedId) ?? null;
@@ -34,8 +36,11 @@ export default function BalanceHero() {
   const range = customRange ?? all.availableRange ?? undefined;
   const series = useTransactionsRange(selected?.id, range);
 
-  const total = accounts.reduce((sum, acc) => sum + Number(acc.balance ?? 0), 0);
-  const positiveTotal = accounts.reduce((sum, acc) => sum + Math.max(0, Number(acc.balance ?? 0)), 0);
+  // Joint accounts are shared with other people: shown in their own section, never part of the total.
+  const personal = accounts.filter((acc) => !acc.is_joint);
+  const joint = accounts.filter((acc) => acc.is_joint);
+  const total = personal.reduce((sum, acc) => sum + Number(acc.balance ?? 0), 0);
+  const positiveTotal = personal.reduce((sum, acc) => sum + Math.max(0, Number(acc.balance ?? 0)), 0);
   const balance = selected ? Number(selected.balance ?? 0) : total;
 
   const netOf = (key: string) => netBalanceChange(series.byMonth.get(key) ?? []);
@@ -80,6 +85,19 @@ export default function BalanceHero() {
     </button>
   );
 
+  const accountTile = (acc: Account) =>
+    tile(
+      acc.id,
+      acc.name,
+      Number(acc.balance ?? 0),
+      acc.icon ? (
+        // eslint-disable-next-line @next/next/no-img-element -- remote logos from arbitrary hosts
+        <img src={acc.icon} alt="" className="dash-account-logo" />
+      ) : (
+        <span className="dash-account-dot" style={{ background: accountColor(acc) }} aria-hidden />
+      )
+    );
+
   return (
     <Bones name="dashboard-balance" loading={false}>
       <section className="lp-card dash-hero" aria-label={es ? "Saldo" : "Balance"}>
@@ -93,7 +111,7 @@ export default function BalanceHero() {
               </Link>
             ) : (
               <span className="lp-count">
-                {accounts.length} {es ? (accounts.length === 1 ? "cuenta" : "cuentas") : accounts.length === 1 ? "account" : "accounts"}
+                {personal.length} {es ? (personal.length === 1 ? "cuenta" : "cuentas") : personal.length === 1 ? "account" : "accounts"}
               </span>
             )}
           </div>
@@ -109,7 +127,7 @@ export default function BalanceHero() {
           </div>
           {positiveTotal > 0 && (
             <div className="lp-meter lp-meter--segmented dash-hero-meter" aria-hidden>
-              {accounts
+              {personal
                 .filter((acc) => Number(acc.balance ?? 0) > 0)
                 .map((acc) => (
                   <span
@@ -122,20 +140,18 @@ export default function BalanceHero() {
           )}
           <div className="dash-accounts" role="group" aria-label={es ? "Cuentas" : "Accounts"}>
             {tile(null, "Total", total, <span className="dash-account-dot dash-account-dot--all" aria-hidden />)}
-            {accounts.map((acc) =>
-              tile(
-                acc.id,
-                acc.name,
-                Number(acc.balance ?? 0),
-                acc.icon ? (
-                  // eslint-disable-next-line @next/next/no-img-element -- remote logos from arbitrary hosts
-                  <img src={acc.icon} alt="" className="dash-account-logo" />
-                ) : (
-                  <span className="dash-account-dot" style={{ background: accountColor(acc) }} aria-hidden />
-                )
-              )
-            )}
+            {personal.map(accountTile)}
           </div>
+          {joint.length > 0 && (
+            <>
+              <span className="lp-label" title={t("joint.sectionHint")}>
+                {t("joint.section")}
+              </span>
+              <div className="dash-accounts" role="group" aria-label={t("joint.section")}>
+                {joint.map(accountTile)}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="dash-hero-chart">

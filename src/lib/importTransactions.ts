@@ -37,15 +37,22 @@ export interface PreparedImport {
 }
 
 /** Reads every page of unreconciled manual transactions of the account with one of `amounts` in [fromIso, toIso]. */
-async function fetchManualCandidates(supabase: SupabaseClient, userId: string, accountId: string, amounts: number[], fromIso: string, toIso: string) {
+async function fetchManualCandidates(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+  amounts: number[],
+  fromIso: string,
+  toIso: string,
+  joint: boolean
+) {
   const rows: ManualCandidate[] = [];
   for (let i = 0; i < amounts.length; i += BATCH_SIZE) {
     for (let from = 0; ; from += PAGE_SIZE) {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("id, type, amount, date, description, category_id")
-        .eq("user_id", userId)
-        .eq("account_id", accountId)
+      // Joint accounts reconcile against every member's manual rows (dedup is per account).
+      let query = supabase.from("transactions").select("id, type, amount, date, description, category_id").eq("account_id", accountId);
+      if (!joint) query = query.eq("user_id", userId);
+      const { data, error } = await query
         .is("booked_at", null)
         .in("amount", amounts.slice(i, i + BATCH_SIZE))
         .gte("date", fromIso)
@@ -70,14 +77,15 @@ export async function prepareImport(args: {
   userId: string;
   accountId: string;
   transactions: ImportedTransaction[];
+  /** Joint account: decisions and manual twins of every member count, not just mine. */
+  joint?: boolean;
 }): Promise<PreparedImport> {
   const { supabase, userId, accountId, transactions } = args;
+  const joint = !!args.joint;
 
-  const { data: decisionRows } = await supabase
-    .from("import_duplicate_decisions")
-    .select("conflict_key, resolution")
-    .eq("user_id", userId)
-    .eq("account_id", accountId);
+  let decisionsQuery = supabase.from("import_duplicate_decisions").select("conflict_key, resolution").eq("account_id", accountId);
+  if (!joint) decisionsQuery = decisionsQuery.eq("user_id", userId);
+  const { data: decisionRows } = await decisionsQuery;
   const decisions = new Map((decisionRows ?? []).map((r) => [r.conflict_key as string, r.resolution as string]));
 
   // One row per import line id (first occurrence wins); rows without a fingerprint are ignored.
@@ -123,7 +131,7 @@ export async function prepareImport(args: {
     const fromIso = new Date(Math.min(...times) - 6 * DAY_MS).toISOString();
     const toIso = new Date(Math.max(...times) + 3 * DAY_MS).toISOString();
     const amounts = [...new Set(lookup.map((r) => Number(r.tx.amount)))];
-    for (const c of await fetchManualCandidates(supabase, userId, accountId, amounts, fromIso, toIso)) candidates.set(c.id, c);
+    for (const c of await fetchManualCandidates(supabase, userId, accountId, amounts, fromIso, toIso, joint)) candidates.set(c.id, c);
   }
 
   const classified = classifyImportRows(
@@ -154,7 +162,7 @@ export async function prepareImport(args: {
 export const toPreviewRows = (rows: PreparedRow[]): ImportPreviewRow[] =>
   rows.map((r) => ({ fingerprint: r.tx.import_source_fingerprint, status: r.status, ...(r.match && { match: r.match }) }));
 
-/** True when the manual transaction `id` can still absorb `tx`: owned, same account, unreconciled and passing the hard gates. */
+/** True when the manual transaction `id` can still absorb `tx`: mine (or any member's in a joint account), same account, unreconciled and passing the hard gates. */
 async function canMerge(args: {
   supabase: SupabaseClient;
   userId: string;
@@ -162,18 +170,14 @@ async function canMerge(args: {
   tx: ImportedTransaction;
   id: string;
   known: Map<string, ManualCandidate>;
+  joint: boolean;
 }) {
-  const { supabase, userId, accountId, tx, id, known } = args;
+  const { supabase, userId, accountId, tx, id, known, joint } = args;
   let target: Pick<ManualCandidate, "type" | "amount" | "date" | "description"> | null | undefined = known.get(id);
   if (!target) {
-    const { data } = await supabase
-      .from("transactions")
-      .select("type, amount, date, description")
-      .eq("id", id)
-      .eq("user_id", userId)
-      .eq("account_id", accountId)
-      .is("booked_at", null)
-      .maybeSingle();
+    let query = supabase.from("transactions").select("type, amount, date, description").eq("id", id).eq("account_id", accountId);
+    if (!joint) query = query.eq("user_id", userId);
+    const { data } = await query.is("booked_at", null).maybeSingle();
     target = data;
   }
   return !!target && matchScore(tx, target) !== null;
@@ -193,10 +197,13 @@ export async function importTransactions(args: {
   finalBalance?: number | null;
   inheritCategories: boolean;
   resolutions?: ImportResolution[];
+  /** Importing into a joint account: dedup across members, no transfer tagging. */
+  joint?: boolean;
 }): Promise<ImportTransactionsResponse | { error: string }> {
   const { supabase, userId, accountId, transactions, finalBalance, inheritCategories, resolutions } = args;
+  const joint = !!args.joint;
 
-  const prepared = await prepareImport({ supabase, userId, accountId, transactions });
+  const prepared = await prepareImport({ supabase, userId, accountId, transactions, joint });
   const chosen = new Map((resolutions ?? []).map((r) => [r.fingerprint, r]));
 
   const toInsert: PreparedRow[] = [];
@@ -214,7 +221,7 @@ export async function importTransactions(args: {
     }
     const wantsMerge = choice ? choice.action === "merge" : row.status === "sure";
     const targetId = choice?.target_id ?? row.match?.id;
-    if (wantsMerge && targetId && !mergeTargets.has(targetId) && (await canMerge({ supabase, userId, accountId, tx: row.tx, id: targetId, known: prepared.candidates }))) {
+    if (wantsMerge && targetId && !mergeTargets.has(targetId) && (await canMerge({ supabase, userId, accountId, tx: row.tx, id: targetId, known: prepared.candidates, joint }))) {
       const { tx } = row;
       // The manual row already moved the balance: only attach the bank identity.
       const { data, error } = await supabase.rpc("merge_bank_line_into_transaction", {
@@ -293,15 +300,15 @@ export async function importTransactions(args: {
       const txId = insertedByLine.get(import_line_id);
       if (settlement && txId) settlementJobs.push({ txId, type: tx.type, amount: tx.amount, date: tx.date, settlement });
     }
-    tagged = await tagInternalTransfersAfterImport({ supabase, userId, insertedIds: inserted.map((t) => t.id) });
+    tagged = await tagInternalTransfersAfterImport({ supabase, userId, insertedIds: inserted.map((t) => t.id), joint });
   }
 
   // The statement's balance is the source of truth; otherwise apply the net change of the inserted rows
   // (merged manual rows already moved the balance when they were created).
-  if (finalBalance != null) await supabase.from("accounts").update({ balance: finalBalance }).eq("id", accountId).eq("user_id", userId);
+  if (finalBalance != null) await supabase.from("accounts").update({ balance: finalBalance }).eq("id", accountId);
   else await adjustAccountBalance(supabase, userId, accountId, toInsert.reduce((sum, r) => sum + signedAmount(r.tx), 0));
   const settlementsLinked = await linkImportedSettlements(supabase, userId, settlementJobs);
-  const { data: account } = await supabase.from("accounts").select("balance").eq("id", accountId).eq("user_id", userId).single();
+  const { data: account } = await supabase.from("accounts").select("balance").eq("id", accountId).single();
 
   return {
     imported,

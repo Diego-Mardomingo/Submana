@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { getAuthedClient, isOwnedAccount, jsonCachedResponse, jsonError, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { getAccountAccess, getAuthedClient, jsonCachedResponse, jsonError, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { POSSIBLE_THRESHOLD } from "@/lib/dedup/classifyImport";
 import { matchScore } from "@/lib/dedup/matchScore";
 
@@ -24,14 +24,17 @@ export async function GET(request: NextRequest) {
   const dateMs = date ? new Date(date).getTime() : NaN;
   if (!accountId || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(dateMs)) return jsonError("missing_fields");
   if (type !== "income" && type !== "expense") return jsonError("invalid_type");
-  if (!(await isOwnedAccount(supabase, user.id, accountId))) return jsonError("Account not found", 404);
+  const access = await getAccountAccess(supabase, user.id, accountId);
+  if (!access) return jsonError("Account not found", 404);
 
   // One extra day each side absorbs time zone edges; the exact gate runs on calendar days in matchScore.
-  const { data, error } = await supabase
+  // Joint accounts dedupe across every member's rows.
+  let query = supabase
     .from("transactions")
     .select("id, account_id, type, amount, date, booked_at, description, bank_description, category_id, subcategory_id")
-    .eq("user_id", user.id)
-    .eq("account_id", accountId)
+    .eq("account_id", accountId);
+  if (!access.isJoint) query = query.eq("user_id", user.id);
+  const { data, error } = await query
     .eq("type", type)
     .eq("amount", amount)
     .not("booked_at", "is", null)

@@ -11,6 +11,7 @@ export const queryKeys = {
   accounts: {
     all: ["accounts"] as const,
     lists: () => [...queryKeys.accounts.all, "list"] as const,
+    invites: () => [...queryKeys.accounts.all, "invites"] as const,
   },
   subscriptions: {
     all: ["subscriptions"] as const,
