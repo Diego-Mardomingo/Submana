@@ -36,14 +36,8 @@ export async function enforceRateLimit(
 }
 
 export const RATE_LIMITS = {
-  /** Atajos/automatizaciones: uso humano, holgado. */
-  automation: { limit: 30, windowSeconds: 60 },
-  /** Fallos de token por IP: frena fuerza bruta. */
-  automationAuthFailure: { limit: 20, windowSeconds: 600 },
   /** Importaciones de extractos por usuario. */
   import: { limit: 20, windowSeconds: 600 },
-  /** Regeneración de token por usuario. */
-  tokenRotation: { limit: 10, windowSeconds: 3600 },
   /** Clasificación previa a importar (consultas por lote, sin escrituras). */
   importPreview: { limit: 60, windowSeconds: 600 },
   /** Solicitudes de amistad por usuario. */

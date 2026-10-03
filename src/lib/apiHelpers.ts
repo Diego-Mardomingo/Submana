@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AccountRole } from "@/lib/accountAccess";
 import { createClient } from "@/lib/supabase/server";
 
-/** Parses a JSON or form-data body into string values (automation clients may post forms). */
+/** Parses a JSON or form-data body into string values. */
 export async function parseRequestBody(request: Request): Promise<Record<string, string>> {
   const entries = (request.headers.get("content-type") ?? "").includes("application/json")
     ? Object.entries((await request.json()) as Record<string, unknown>)

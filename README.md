@@ -37,8 +37,6 @@ Es una aplicación real, en uso diario, instalable como PWA en móvil y escritor
 
 **Presupuestos y categorías.** Límites mensuales por categoría con progreso y avisos al superarlos. Categorías y subcategorías propias con emoji, archivables.
 
-**Automatización.** Endpoint con token personal para registrar gastos desde fuera de la app, por ejemplo con un Atajo de iOS al pagar con el móvil.
-
 **Detalles.** Modo privacidad que oculta los importes, tema claro/oscuro, español e inglés, atajos de teclado, gestos de swipe y reordenación con drag & drop.
 
 ## Arquitectura
@@ -72,7 +70,7 @@ Requiere Node 20+, pnpm y un proyecto de Supabase. Variables en `.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=   # automatización y rate limiting
+SUPABASE_SERVICE_ROLE_KEY=   # rate limiting
 ```
 
 ```bash
