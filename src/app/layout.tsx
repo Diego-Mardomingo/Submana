@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary", title: "Submana", description: "Manage your subscriptions elegantly." },
   icons: {
     icon: { url: "/favicon.svg", type: "image/svg+xml" },
-    apple: "/icons/apple-touch-icon.png",
+    apple: "/icons/apple-touch-icon.png?v=2",
   },
   manifest: "/manifest",
 };
