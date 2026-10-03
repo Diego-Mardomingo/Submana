@@ -369,7 +369,6 @@ export default function GroupDetail({ id }: { id: string }) {
 
   const meId = profile.user_id;
   const profiles = new Map([...data.members, ...data.extra_profiles].map((m) => [m.user_id, m]));
-  const myNet = data.nets.find((n) => n.user_id === meId)?.net_cents ?? 0;
   const archived = !!data.group.archived_at;
 
   return (
@@ -384,8 +383,8 @@ export default function GroupDetail({ id }: { id: string }) {
                 <ProfileAvatar key={m.user_id} name={m.display_name} url={m.avatar_url} size={22} />
               ))}
             </span>
-            <NetAmount cents={myNet} />
-            <span className="lp-sub-amount">{myNet === 0 ? t("groups.settled") : t(myNet > 0 ? "groups.owedToYou" : "groups.youOwe")}</span>
+            <span className="lp-amount">{money(fromCents(data.total_spent_cents))}</span>
+            <span className="lp-sub-amount">{t("groups.totalSpent")}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">

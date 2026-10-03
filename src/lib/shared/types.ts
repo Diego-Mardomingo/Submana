@@ -56,6 +56,8 @@ export interface GroupDetailData {
   extra_profiles: SharedProfile[];
   expenses: SharedExpenseItem[];
   has_more: boolean;
+  /** Sum of every (non-deleted) expense of the group, settlements excluded. */
+  total_spent_cents: number;
   nets: { user_id: string; net_cents: number }[];
   transfers: Transfer[];
   events: SharedEventItem[];
