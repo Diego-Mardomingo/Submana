@@ -47,6 +47,7 @@ export default function RootLayout({
             __html: `(function(){var c=(document.cookie.match(/submana-theme=([^;]+)/)||[])[1],m=matchMedia('(prefers-color-scheme: dark)');function a(){var t=localStorage.getItem('submana-theme')||c||'system';document.documentElement.setAttribute('data-theme',t==='system'?(m.matches?'dark':'light'):t)}a();m.addEventListener('change',a)})();`,
           }}
         />
+        <div className="ios-top-edge" aria-hidden />
         <Providers>{children}</Providers>
       </body>
     </html>
