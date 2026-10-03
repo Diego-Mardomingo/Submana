@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 
 const icon = (size: number, purpose: "any" | "maskable") => ({
-  src: `/icons/web-app-manifest-${size}x${size}.png`,
+  // maskable keeps the mark inside Android's safe zone; "any" uses a larger mark
+  src: `/icons/${purpose === "maskable" ? "web-app-manifest" : "web-app-icon"}-${size}x${size}.png`,
   sizes: `${size}x${size}`,
   type: "image/png",
   purpose,
