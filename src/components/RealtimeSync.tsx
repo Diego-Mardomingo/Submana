@@ -13,13 +13,17 @@ const WATCHED: { table: string; keys: QueryKey[] }[] = [
   { table: "groups", keys: [queryKeys.shared.all] },
   { table: "group_members", keys: [queryKeys.shared.all] },
   { table: "shared_expenses", keys: [queryKeys.shared.all] },
+  // Joint accounts: the account itself (name, balance), its members/invites and its movements.
+  { table: "accounts", keys: [queryKeys.accounts.all, queryKeys.transactions.all] },
+  { table: "account_members", keys: [queryKeys.accounts.all, queryKeys.transactions.all] },
+  { table: "transactions", keys: [queryKeys.transactions.all, queryKeys.accounts.all, queryKeys.budgets.all] },
 ];
 
 /** One write touches several rows (an expense plus its shares and event): refresh once. */
 const DEBOUNCE_MS = 300;
 
 /**
- * Keeps Friends and Subcount live: Supabase Realtime streams the row changes RLS lets me see and
+ * Keeps Friends, Subcount and joint accounts live: Supabase Realtime streams the row changes RLS lets me see and
  * the matching queries are invalidated. After a reconnect everything is refetched (events may have been missed).
  */
 export function RealtimeSync() {
