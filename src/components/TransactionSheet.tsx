@@ -68,8 +68,10 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const jointAccount = !!accounts.find((a) => a.id === accountId)?.is_joint;
   const parents = [...(jointAccount ? [] : (categoriesData?.userCategories ?? [])), ...(categoriesData?.defaultCategories ?? [])].filter((c) => !c.parent_id);
   const category = parents.find((c) => c.id === categoryId);
-  const subcategories = category?.subcategories ?? [];
-  const excludedFromMetrics = category?.exclude_from_metrics || subcategories.find((s) => s.id === subcategoryId)?.exclude_from_metrics;
+  // System categories also nest the user's own subcategories; those are personal too.
+  const subcategories = (category?.subcategories ?? []).filter((s) => !jointAccount || s.isDefault);
+  const subcategory = subcategories.find((s) => s.id === subcategoryId);
+  const excludedFromMetrics = category?.exclude_from_metrics || subcategory?.exclude_from_metrics;
   const label = (c: { id: string; name: string }) => categoryNames.get(c.id) ?? c.name;
 
   // While creating, look for a bank movement that is probably this same one (avoids a twin the next import must reconcile).
@@ -101,7 +103,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
       description: description.trim() || undefined,
       account_id: accountId,
       category_id: (jointAccount && !category ? "" : categoryId) || undefined,
-      subcategory_id: (jointAccount && !category ? "" : subcategoryId) || undefined,
+      subcategory_id: (jointAccount && !subcategory ? "" : subcategoryId) || undefined,
     };
     try {
       if (transaction) await updateTx.mutateAsync({ id: transaction.id, ...payload });
