@@ -198,7 +198,8 @@ export default function CategoriesBody() {
   const defaultCategories = data?.defaultCategories ?? [];
   const archivedCategories = archivedData?.defaultCategories ?? [];
   const countWithSubs = (cats: CategoryWithSubs[]) => cats.reduce((sum, cat) => sum + 1 + (cat.subcategories?.length ?? 0), 0);
-  const hasExcluded = defaultCategories.some((cat) => cat.exclude_from_metrics || cat.subcategories?.some((sub) => sub.exclude_from_metrics));
+  const hasOwn = userCategories.length > 0 || defaultCategories.some((cat) => cat.subcategories?.some((sub) => !sub.isDefault));
+  const hasExcluded =defaultCategories.some((cat) => cat.exclude_from_metrics || cat.subcategories?.some((sub) => sub.exclude_from_metrics));
   const stat = (label: string, value: number, own = false) => (
     <div className="lp-stat">
       <span className={cn("lp-label", own && "lp-label--own")}>{label}</span>
@@ -255,6 +256,12 @@ export default function CategoriesBody() {
                   {t("categories.add")}
                 </button>
               </div>
+            )}
+            {hasOwn && (
+              <p className="lp-note">
+                <Info className="size-3.5" aria-hidden />
+                {t("categories.jointInfo")}
+              </p>
             )}
 
             <section className="lp-section">
