@@ -3,17 +3,21 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Plus, Receipt, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil, Trash2, Users } from "lucide-react";
+import { toast } from "sonner";
+import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
+import { GroupSettingsSheet, PAGE } from "@/components/GroupDetail";
 import { HandleSetup } from "@/components/HandleSetup";
-import { PageHeader } from "@/components/PageHeader";
+import { CompactPageHeader } from "@/components/PageHeader";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Chips, FieldGroup, FieldRow, FieldStack, FormError, RowInput, SheetButton } from "@/components/SheetFields";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useFriends } from "@/hooks/useFriends";
-import { useCreateGroup, useGroups, useSharedBalances } from "@/hooks/useGroups";
+import { useCreateGroup, useDeleteGroup, useGroup, useGroups, useSharedBalances } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
 import { useProfile } from "@/hooks/useProfile";
 import { formatCurrency } from "@/lib/format";
@@ -104,29 +108,50 @@ function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
-function GroupRow({ group }: { group: GroupSummary }) {
+function GroupRow({ group, onEdit, onDelete }: { group: GroupSummary; onEdit: (id: string) => void; onDelete: (group: GroupSummary) => void }) {
   const t = useTranslations(useLang());
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    fn();
+  };
   return (
-    <Link href={`/subcount/${group.id}`} className="lp-row">
-      <span className="group-avatars" aria-hidden>
-        {group.members.slice(0, 3).map((m) => (
-          <ProfileAvatar key={m.user_id} name={m.display_name} url={m.avatar_url} size={32} />
-        ))}
-      </span>
-      <span className="lp-main">
-        <span className="lp-title">
-          <span>{group.name}</span>
+    <SwipeToReveal
+      id={group.id}
+      className="lp-swipe"
+      desktopMinWidth={1024}
+      actions={
+        <>
+          <button type="button" onClick={stop(() => onEdit(group.id))} className="lp-action lp-action--edit" aria-label={t("groups.settings")}>
+            <Pencil className="size-5" />
+          </button>
+          <button type="button" onClick={stop(() => onDelete(group))} className="lp-action lp-action--danger" aria-label={t("groups.delete")}>
+            <Trash2 className="size-5" />
+          </button>
+        </>
+      }
+    >
+      <Link href={`/subcount/${group.id}`} className="lp-row">
+        <span className="group-avatars" aria-hidden>
+          {group.members.slice(0, 3).map((m) => (
+            <ProfileAvatar key={m.user_id} name={m.display_name} url={m.avatar_url} size={32} />
+          ))}
         </span>
-        <span className="lp-meta">
-          <span className="lp-truncate">{`${group.members.length} ${t("groups.membersCount")}`}</span>
+        <span className="lp-main">
+          <span className="lp-title">
+            <span>{group.name}</span>
+          </span>
+          <span className="lp-meta">
+            <span className="lp-truncate">{`${group.members.length} ${t("groups.membersCount")}`}</span>
+          </span>
         </span>
-      </span>
-      <span className="lp-end">
-        <NetAmount cents={group.my_net_cents} />
-        <span className="lp-sub-amount">{group.my_net_cents === 0 ? t("groups.settled") : t(group.my_net_cents > 0 ? "groups.owedToYou" : "groups.youOwe")}</span>
-      </span>
-      <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
-    </Link>
+        <span className="lp-end">
+          <NetAmount cents={group.my_net_cents} />
+          <span className="lp-sub-amount">{group.my_net_cents === 0 ? t("groups.settled") : t(group.my_net_cents > 0 ? "groups.owedToYou" : "groups.youOwe")}</span>
+        </span>
+        <ChevronRight className="size-4 text-muted-foreground" aria-hidden />
+      </Link>
+    </SwipeToReveal>
   );
 }
 
@@ -139,17 +164,17 @@ export default function GroupsBody() {
   const { data: friends } = useFriends(!!profile);
   const [createOpen, setCreateOpen] = useState(false);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  // The last edited / deleted group stays set while its sheet closes so the content doesn't vanish mid-animation.
+  const [editId, setEditId] = useState<string>();
+  const [editOpen, setEditOpen] = useState(false);
+  const [toDelete, setToDelete] = useState<GroupSummary | null>(null);
+  const [deleteId, setDeleteId] = useState<string>();
+  // Same query as the group page: the settings sheet needs its members and the delete text whether debts remain.
+  const { data: editData } = useGroup(editId, PAGE);
+  const { data: deleteData } = useGroup(deleteId, PAGE);
+  const deleteGroup = useDeleteGroup();
 
-  const header = (
-    <PageHeader icon={<Receipt className="size-6" />} title={t("groups.title")} subtitle={t("groups.subtitle")}>
-      {profile && (
-        <button type="button" className="add-btn lp-add" onClick={() => setCreateOpen(true)} aria-label={t("groups.create")}>
-          <Plus className="size-5" strokeWidth={2.5} aria-hidden />
-          <span className="lp-add-label">{t("groups.create")}</span>
-        </button>
-      )}
-    </PageHeader>
-  );
+  const header = <CompactPageHeader title={t("groups.title")} addLabel={profile ? t("groups.create") : undefined} onAdd={() => setCreateOpen(true)} />;
 
   if (profileLoading) {
     return (
@@ -176,6 +201,14 @@ export default function GroupsBody() {
   const active = groups.filter((g) => !g.archived_at);
   const archived = groups.filter((g) => g.archived_at);
   const noFriends = friends && friends.friends.length === 0;
+  const edit = (id: string) => {
+    setEditId(id);
+    setEditOpen(true);
+  };
+  const askDelete = (group: GroupSummary) => {
+    setDeleteId(group.id);
+    setToDelete(group);
+  };
 
   return (
     <div className="page-container lp-page fade-in">
@@ -216,11 +249,11 @@ export default function GroupsBody() {
                   </button>
                 </div>
               ) : (
-                <div className="lp-card lp-group">
+                <SwipeToRevealGroup className="lp-card lp-group">
                   {active.map((g) => (
-                    <GroupRow key={g.id} group={g} />
+                    <GroupRow key={g.id} group={g} onEdit={edit} onDelete={askDelete} />
                   ))}
-                </div>
+                </SwipeToRevealGroup>
               )}
               {noFriends && (
                 <p className="lp-note">
@@ -239,11 +272,11 @@ export default function GroupsBody() {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="subs-collapsible-content">
                   <div className="subs-collapsible-inner">
-                    <div className="lp-card lp-group">
+                    <SwipeToRevealGroup className="lp-card lp-group">
                       {archived.map((g) => (
-                        <GroupRow key={g.id} group={g} />
+                        <GroupRow key={g.id} group={g} onEdit={edit} onDelete={askDelete} />
                       ))}
-                    </div>
+                    </SwipeToRevealGroup>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -253,6 +286,27 @@ export default function GroupsBody() {
       </div>
 
       <CreateGroupSheet open={createOpen} onOpenChange={setCreateOpen} />
+      {editData && (
+        <GroupSettingsSheet
+          key={`${editData.group.id}-${editData.group.name}`}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          data={editData}
+          meId={profile.user_id}
+        />
+      )}
+      <ConfirmDeleteSheet
+        open={!!toDelete}
+        onOpenChange={(open) => !open && setToDelete(null)}
+        title={t("groups.deleteTitle")}
+        description={t(deleteData && deleteData.transfers.length > 0 ? "groups.deleteDescDebts" : "groups.deleteDesc")}
+        confirmLabel={t("groups.delete")}
+        pending={deleteGroup.isPending}
+        onConfirm={async () => {
+          if (toDelete) await deleteGroup.mutateAsync(toDelete.id).catch((err: Error) => toast.error(sharedErrorText(t, err.message)));
+          setToDelete(null);
+        }}
+      />
     </div>
   );
 }

@@ -1146,7 +1146,7 @@ html:not([data-theme="light"]) .sf-btn--primary { color: #16121f; }
 }
 
 /* Account rows with a logo (import statement) */
-.sf-action--account { min-height: 60px; }
+:is(.sf-action--account, .sf-action--group) { min-height: 60px; }
 
 .sf-action--account img {
   width: 34px;
@@ -1194,7 +1194,7 @@ html:not([data-theme="light"]) .sf-btn--primary { color: #16121f; }
 .sf-textarea::placeholder { color: var(--gris-claro); }
 .sf-group:focus-within:has(.sf-textarea) { border-color: var(--accent); }
 
-.sf-action--account > span:last-child {
+:is(.sf-action--account, .sf-action--group) > span:last-child {
   display: flex;
   align-items: center;
   justify-content: space-between;

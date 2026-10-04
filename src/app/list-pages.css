@@ -884,6 +884,11 @@ button.lp-chip:hover {
   justify-content: flex-end;
 }
 
+.lp-swipe--2.swipe-to-reveal--desktop .swipe-to-reveal__actions {
+  min-width: calc(2 * 40px + 0.125rem + 0.75rem);
+  justify-content: flex-end;
+}
+
 /* Rows without a tap action (settings, system categories) */
 .lp-row.lp-row--static {
   cursor: default;

@@ -3,30 +3,36 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Send, Tags, Wallet, type LucideIcon } from "lucide-react";
+import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Send, Split, Tags, Wallet, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ActionRow, FieldGroup, Segmented, SheetButton } from "@/components/SheetFields";
+import { SharedExpenseSheet } from "@/components/SharedExpenseSheet";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
+import { Spinner } from "@/components/ui/spinner";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useGroup, useGroups } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
+import { useProfile } from "@/hooks/useProfile";
 import { api } from "@/lib/api";
 import { getBankProvider } from "@/lib/bankProviders";
 import type { UIKey } from "@/lib/i18n/ui";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
-type Modal = "import" | "feedback";
+type Modal = "import" | "feedback" | "subcount" | "subcountExpense";
 /** `shortKey`: label under the arc bubble, where the + already says "new" and room is tight. */
 type Shortcut = { icon: LucideIcon; labelKey: UIKey; shortKey?: UIKey; href?: string; modal?: Modal };
 
 const TRANSACTION: Shortcut = { icon: Receipt, labelKey: "addShortcuts.newTransaction", shortKey: "addShortcuts.transaction", href: "/transactions?open=create" };
 const IMPORT: Shortcut = { icon: FileUp, labelKey: "addShortcuts.import", shortKey: "addShortcuts.importShort", modal: "import" };
+const SUBCOUNT: Shortcut = { icon: Split, labelKey: "addShortcuts.subcountExpense", shortKey: "addShortcuts.subcountShort", modal: "subcount" };
 const SUBSCRIPTION: Shortcut = { icon: Calendar, labelKey: "addShortcuts.newSubscription", shortKey: "addShortcuts.subscription", href: "/subscriptions?open=create" };
 const FEEDBACK: Shortcut = { icon: MessageCircle, labelKey: "addShortcuts.feedback", shortKey: "addShortcuts.feedbackShort", modal: "feedback" };
 
-/** Desktop list: the two most used actions (transaction, import) first, feedback last. */
+/** Desktop list: the most used actions (transaction, import, shared expense) first, feedback last. */
 const FLYOUT: Shortcut[][] = [
-  [TRANSACTION, IMPORT],
+  [TRANSACTION, IMPORT, SUBCOUNT],
   [
     SUBSCRIPTION,
     { icon: CreditCard, labelKey: "addShortcuts.newAccount", href: "/accounts?open=create" },
@@ -37,14 +43,14 @@ const FLYOUT: Shortcut[][] = [
 ];
 
 /**
- * Phones: four bubbles fan out above the + (left to right). The two most used (import, transaction)
+ * Phones: five bubbles fan out above the + (left to right). The two most used (import, transaction)
  * sit in the middle in the accent colour; the rest of the create actions live on their pages.
  */
-const ARC_ITEMS = [SUBSCRIPTION, IMPORT, TRANSACTION, FEEDBACK];
+const ARC_ITEMS = [SUBSCRIPTION, IMPORT, TRANSACTION, SUBCOUNT, FEEDBACK];
 const ARC_PRIMARY = [IMPORT, TRANSACTION];
 
 /** Point on the arc (degrees, left to right); the radii live in CSS so they can follow the viewport. */
-const ARC = { from: 160, to: 20 };
+const ARC = { from: 170, to: 10 };
 const arcPoint = (index: number) => {
   const angle = ((ARC.from - ((ARC.from - ARC.to) * index) / (ARC_ITEMS.length - 1)) * Math.PI) / 180;
   return { cos: Math.cos(angle).toFixed(3), sin: Math.sin(angle).toFixed(3) };
@@ -69,6 +75,12 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
   const [feedbackType, setFeedbackType] = useState<"error" | "suggestion">("suggestion");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const [groupId, setGroupId] = useState<string>();
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: groups = [], isLoading: groupsLoading } = useGroups(!!profile && open);
+  // keepPreviousData can still hold the previously picked group while the new one loads.
+  const { data: groupData } = useGroup(groupId);
+  const group = groupData?.group.id === groupId ? groupData : undefined;
 
   if (open && !rendered) setRendered(true);
   useEffect(() => {
@@ -93,6 +105,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
   if (!rendered) return null;
 
   // Revolut savings accounts are filled from the main Revolut statement.
+  const activeGroups = groups.filter((g) => !g.archived_at);
   const importable = accounts.filter(
     (a) => a.bank_provider && IMPORTABLE_PROVIDERS.includes(a.bank_provider) && !(a.bank_provider === "revolut" && /remunerada|savings/i.test(a.name))
   );
@@ -218,6 +231,65 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
           )}
         </SheetBody>
       </Sheet>
+
+      <Sheet
+        // Stays up until the picked group's members arrive, so the expense sheet replaces it directly.
+        open={modal === "subcount" || (modal === "subcountExpense" && !group)}
+        onOpenChange={closeModal}
+        title={t("addShortcuts.subcountTitle")}
+        description={es ? "Elige el grupo del gasto" : "Pick the expense's group"}
+      >
+        <SheetBody>
+          {profileLoading || groupsLoading ? (
+            <div className="flex justify-center py-6">
+              <Spinner className="size-6 text-muted-foreground" />
+            </div>
+          ) : activeGroups.length === 0 ? (
+            <FieldGroup hint={t(profile ? "groups.empty" : "addShortcuts.subcountNoProfile")}>
+              <ActionRow tone="accent" onClick={() => go("/subcount")}>
+                {t("groups.title")}
+              </ActionRow>
+            </FieldGroup>
+          ) : (
+            <FieldGroup>
+              {activeGroups.map((g) => (
+                <ActionRow
+                  key={g.id}
+                  className="sf-action--group"
+                  icon={
+                    <span className="group-avatars" aria-hidden>
+                      {g.members.slice(0, 3).map((m) => (
+                        <ProfileAvatar key={m.user_id} name={m.display_name} url={m.avatar_url} size={28} />
+                      ))}
+                    </span>
+                  }
+                  onClick={() => {
+                    setGroupId(g.id);
+                    setModal("subcountExpense");
+                  }}
+                >
+                  <span className="sf-action-text">
+                    {g.name}
+                    <small>{`${g.members.length} ${t("groups.membersCount")}`}</small>
+                  </span>
+                  <ChevronRight className="sf-action-chevron" aria-hidden />
+                </ActionRow>
+              ))}
+            </FieldGroup>
+          )}
+        </SheetBody>
+      </Sheet>
+
+      {group && profile && (
+        <SharedExpenseSheet
+          key={group.group.id}
+          open={modal === "subcountExpense"}
+          onOpenChange={closeModal}
+          groupId={group.group.id}
+          members={group.members}
+          meId={profile.user_id}
+        />
+      )}
 
       <Sheet open={modal === "feedback"} onOpenChange={closeModal} title={t("feedback.title")}>
         <SheetForm onSubmit={sendFeedback}>

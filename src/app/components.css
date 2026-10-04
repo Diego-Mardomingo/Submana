@@ -626,8 +626,8 @@
 
 /* ── Arc (phones) ── origin: centre of the bar's top edge */
 .add-arc {
-  --rx: min(148px, 50vw - 48px);
-  --ry: 112px;
+  --rx: min(156px, 50vw - 44px);
+  --ry: 150px;
   --lift: 44px;
   position: absolute;
   left: 50%;

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronLeft, HandCoins, Plus, Settings2, UserMinus } from "lucide-react";
+import { ArrowRight, ChevronLeft, HandCoins, Pencil, Plus, Settings2, Trash2, UserMinus } from "lucide-react";
 import { toast } from "sonner";
+import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { NetAmount } from "@/components/GroupsBody";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -12,6 +13,7 @@ import { SettleUpSheet } from "@/components/SettleUpSheet";
 import { Chips, DeleteAction, FieldGroup, FieldRow, FieldStack, FormError, RowInput, Segmented, SheetButton } from "@/components/SheetFields";
 import { SharedExpenseSheet } from "@/components/SharedExpenseSheet";
 import { useMemberLabel } from "@/components/SplitEditor";
+import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useFriends } from "@/hooks/useFriends";
@@ -28,11 +30,11 @@ import { fromCents } from "@/lib/shared/splits";
 import type { GroupDetailData, SharedEventItem, SharedExpenseItem, SharedProfile } from "@/lib/shared/types";
 
 type Tab = "expenses" | "balances" | "activity";
-const PAGE = 30;
+export const PAGE = 30;
 
 const money = (n: number) => <SensitiveAmount>{formatCurrency(n)}</SensitiveAmount>;
 
-function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
+export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data: GroupDetailData;
@@ -172,11 +174,12 @@ function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   );
 }
 
-function ExpenseRow({ expense, meId, profiles, onOpen }: {
+function ExpenseRow({ expense, meId, profiles, onOpen, onDelete }: {
   expense: SharedExpenseItem;
   meId: string;
   profiles: Map<string, SharedProfile>;
   onOpen: (expense: SharedExpenseItem) => void;
+  onDelete: (expense: SharedExpenseItem) => void;
 }) {
   const lang = useLang();
   const t = useTranslations(lang);
@@ -187,31 +190,59 @@ function ExpenseRow({ expense, meId, profiles, onOpen }: {
   const receiver = settlement ? profiles.get(expense.shares[0]?.user_id ?? "") : undefined;
   const date = parseDateString(expense.date).toLocaleDateString(lang, { day: "numeric", month: "short" });
 
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
+
   return (
-    <button type="button" className="lp-row" onClick={() => onOpen(expense)}>
-      <span className={`lp-icon ${settlement ? "lp-icon--income" : ""}`} aria-hidden>
-        {settlement ? <HandCoins size={18} /> : "🧾"}
-      </span>
-      <span className="lp-main">
-        <span className="lp-title">
-          <span>{settlement ? `${payerName} → ${receiver?.display_name ?? "?"}` : expense.title}</span>
-          {settlement && <span className="lp-badge">{t("shared.settlement")}</span>}
+    <SwipeToReveal
+      id={expense.id}
+      className="lp-swipe lp-swipe--2"
+      desktopMinWidth={1024}
+      actions={
+        <>
+          {!settlement && (
+            <button type="button" onClick={stop(() => onOpen(expense))} className="lp-action lp-action--edit" aria-label={t("shared.edit")}>
+              <Pencil className="size-5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={stop(() => onDelete(expense))}
+            className="lp-action lp-action--danger"
+            aria-label={t(settlement ? "shared.settlementUndo" : "shared.delete")}
+          >
+            <Trash2 className="size-5" />
+          </button>
+        </>
+      }
+    >
+      <button type="button" className="lp-row" onClick={() => onOpen(expense)}>
+        <span className={`lp-icon ${settlement ? "lp-icon--income" : ""}`} aria-hidden>
+          {settlement ? <HandCoins size={18} /> : "🧾"}
         </span>
-        <span className="lp-meta">
-          <span className="lp-truncate">
-            {settlement ? date : `${interpolate(t("shared.paidByName"), { name: payerName })} · ${date}`}
+        <span className="lp-main">
+          <span className="lp-title">
+            <span>{settlement ? `${payerName} → ${receiver?.display_name ?? "?"}` : expense.title}</span>
+            {settlement && <span className="lp-badge">{t("shared.settlement")}</span>}
+          </span>
+          <span className="lp-meta">
+            <span className="lp-truncate">
+              {settlement ? date : `${interpolate(t("shared.paidByName"), { name: payerName })} · ${date}`}
+            </span>
           </span>
         </span>
-      </span>
-      <span className="lp-end">
-        <span className="lp-amount">{money(expense.total_amount)}</span>
-        {!settlement && myShare > 0 && (
-          <span className="lp-sub-amount">
-            {t("shared.yourShareLabel")} {money(myShare)}
-          </span>
-        )}
-      </span>
-    </button>
+        <span className="lp-end">
+          <span className="lp-amount">{money(expense.total_amount)}</span>
+          {!settlement && myShare > 0 && (
+            <span className="lp-sub-amount">
+              {t("shared.yourShareLabel")} {money(myShare)}
+            </span>
+          )}
+        </span>
+      </button>
+    </SwipeToReveal>
   );
 }
 
@@ -337,6 +368,8 @@ export default function GroupDetail({ id }: { id: string }) {
   const { data, isLoading, isError } = useGroup(id, limit);
   const [tab, setTab] = useState<Tab>("expenses");
   const [editing, setEditing] = useState<SharedExpenseItem | null>(null);
+  const [toDelete, setToDelete] = useState<SharedExpenseItem | null>(null);
+  const removeExpense = useDeleteSharedExpense();
   const [creating, setCreating] = useState(false);
   const [settle, setSettle] = useState<Transfer | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -387,7 +420,7 @@ export default function GroupDetail({ id }: { id: string }) {
             <span className="lp-sub-amount">{t("groups.totalSpent")}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button type="button" className="lp-icon-btn" aria-label={t("groups.settings")} title={t("groups.settings")} onClick={() => setSettingsOpen(true)}>
             <Settings2 className="size-5" />
           </button>
@@ -424,11 +457,11 @@ export default function GroupDetail({ id }: { id: string }) {
             </div>
           ) : (
             <>
-              <div className="lp-card lp-group">
+              <SwipeToRevealGroup className="lp-card lp-group">
                 {data.expenses.map((expense) => (
-                  <ExpenseRow key={expense.id} expense={expense} meId={meId} profiles={profiles} onOpen={setEditing} />
+                  <ExpenseRow key={expense.id} expense={expense} meId={meId} profiles={profiles} onOpen={setEditing} onDelete={setToDelete} />
                 ))}
-              </div>
+              </SwipeToRevealGroup>
               {data.has_more && (
                 <SheetButton type="button" variant="ghost" onClick={() => setLimit(limit + PAGE)}>
                   {t("shared.loadMore")}
@@ -458,6 +491,19 @@ export default function GroupDetail({ id }: { id: string }) {
         profiles={profiles}
         meId={meId}
         onClose={() => setEditing(null)}
+      />
+      <ConfirmDeleteSheet
+        open={!!toDelete}
+        onOpenChange={(open) => !open && setToDelete(null)}
+        title={t(toDelete?.kind === "settlement" ? "shared.settlementUndoTitle" : "shared.deleteTitle")}
+        description={t(toDelete?.kind === "settlement" ? "shared.settlementUndoHint" : "shared.deleteConfirm")}
+        confirmLabel={toDelete?.kind === "settlement" ? t("shared.settlementUndo") : undefined}
+        icon={toDelete?.kind === "settlement" ? <HandCoins /> : undefined}
+        pending={removeExpense.isPending}
+        onConfirm={async () => {
+          if (toDelete) await removeExpense.mutateAsync(toDelete.id).catch((err: Error) => toast.error(sharedErrorText(t, err.message)));
+          setToDelete(null);
+        }}
       />
       <SettleUpSheet
         open={!!settle}
