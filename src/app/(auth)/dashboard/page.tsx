@@ -38,7 +38,6 @@ export default function DashboardPage() {
       <div className="dash-layout">
         <BalanceHero />
         <MonthOverview />
-        <FriendsCard />
         <section className="dash-section" aria-label={lang === "es" ? "Tendencias" : "Trends"}>
           <div className="lp-section-head">
             <span className="lp-section-title">{lang === "es" ? "Tendencias" : "Trends"}</span>
@@ -48,6 +47,7 @@ export default function DashboardPage() {
             <SavingsProjectionCard lang={lang} />
           </div>
         </section>
+        <FriendsCard />
       </div>
     </div>
   );
