@@ -52,7 +52,6 @@ const nextConfig: NextConfig = {
       { source: "/groups/:path*", destination: "/subcount/:path*", permanent: true },
     ];
   },
-  experimental: { viewTransition: true },
 };
 
 const withSerwist = withSerwistInit({
