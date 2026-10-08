@@ -99,7 +99,7 @@ html[data-theme="light"] .toaster {
 .toast[data-type="error"] { --tone: var(--danger); --tone-soft: var(--danger-soft); }
 .toast[data-type="warning"] { --tone: var(--warning); --tone-soft: var(--warning-soft); }
 .toast[data-type="info"] { --tone: var(--info); --tone-soft: var(--info-soft); }
-.toast[data-type="neutral"] { --tone: var(--gris-muy-claro); --tone-soft: var(--gris); }
+.toast[data-type="neutral"] { --tone: var(--info); --tone-soft: var(--info-soft); }
 
 /* Faint wash of the type colour, left to right. */
 .toast::before {
