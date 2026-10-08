@@ -21,6 +21,6 @@ const dotsOnlyStore = createClientStore(
   false
 );
 
-/** Hides the calendar day numbers, leaving only the marks (setting persisted in this browser). */
+/** Hides the calendar daily net amounts, leaving only the income/expense dots (setting persisted in this browser). */
 export const useCalendarDotsOnly = dotsOnlyStore.useValue;
 export const setCalendarDotsOnly = dotsOnlyStore.set;

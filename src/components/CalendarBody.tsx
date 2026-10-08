@@ -256,7 +256,7 @@ export default function CalendarBody() {
                 <button
                   key={entry.day}
                   type="button"
-                  className={cn("cal-day", isToday && "is-today", isSelected && "is-selected", dotsOnly && "is-dots-only", todayStamp !== null && stamp(view.year, view.month, entry.day) < todayStamp && "is-past")}
+                  className={cn("cal-day", isToday && "is-today", isSelected && "is-selected", todayStamp !== null && stamp(view.year, view.month, entry.day) < todayStamp && "is-past")}
                   style={entry.day === 1 ? { gridColumnStart: firstWeekday } : undefined}
                   aria-pressed={isSelected}
                   aria-current={isToday ? "date" : undefined}
@@ -267,9 +267,9 @@ export default function CalendarBody() {
                   <DayLogos subs={entry.subs} />
                   {(income || expense || other) && (
                     <span className="cal-day-foot" aria-hidden>
-                      {/* With a net amount one mark of its sign is enough (two would crowd a narrow cell). */}
+                      {/* With a net amount one mark of its sign is enough (two would crowd a narrow cell); dots-only shows both. */}
                       <span className="cal-day-dots">
-                        {net !== 0 ? (
+                        {net !== 0 && !dotsOnly ? (
                           <i className={net > 0 ? "is-income" : "is-expense"} />
                         ) : (
                           <>
@@ -279,7 +279,7 @@ export default function CalendarBody() {
                           </>
                         )}
                       </span>
-                      {net !== 0 && (
+                      {net !== 0 && !dotsOnly && (
                         <span className={cn("cal-day-net", net > 0 && "is-income")}>
                           <SensitiveAmount>{compactAmount(net)}</SensitiveAmount>
                         </span>
