@@ -12,6 +12,7 @@ import { TransactionSheet } from "@/components/TransactionSheet";
 import { useCalendarAccountFilter } from "@/contexts/CalendarFilterContext";
 import { useJointAccountIds } from "@/hooks/useAccounts";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
+import { useCalendarDotsOnly } from "@/hooks/useCalendarDots";
 import { useLang } from "@/hooks/useLang";
 import { useMounted } from "@/hooks/useMediaQuery";
 import { useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
@@ -65,6 +66,7 @@ export default function CalendarBody() {
   const t = useTranslations(lang);
   const freqLabel = useFrequencyLabel();
   const mounted = useMounted();
+  const dotsOnly = useCalendarDotsOnly();
   const [view, setView] = useState(currentMonth);
   const [picked, setPicked] = useState<number | null>(null);
   const [swipeArea, setSwipeArea] = useState<HTMLElement | null>(null);
@@ -254,7 +256,7 @@ export default function CalendarBody() {
                 <button
                   key={entry.day}
                   type="button"
-                  className={cn("cal-day", isToday && "is-today", isSelected && "is-selected", todayStamp !== null && stamp(view.year, view.month, entry.day) < todayStamp && "is-past")}
+                  className={cn("cal-day", isToday && "is-today", isSelected && "is-selected", dotsOnly && "is-dots-only", todayStamp !== null && stamp(view.year, view.month, entry.day) < todayStamp && "is-past")}
                   style={entry.day === 1 ? { gridColumnStart: firstWeekday } : undefined}
                   aria-pressed={isSelected}
                   aria-current={isToday ? "date" : undefined}

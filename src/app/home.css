@@ -255,6 +255,15 @@
   color: var(--negro);
 }
 
+/* Dots-only preference: the number keeps its space (stable layout); today is marked by its border. */
+.cal-day.is-dots-only .cal-day-num {
+  visibility: hidden;
+}
+
+.cal-day.is-dots-only.is-today {
+  border-color: var(--accent);
+}
+
 /* Subscription logos, overlapping */
 .cal-day-logos {
   display: flex;

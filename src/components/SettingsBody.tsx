@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, EyeOff, Languages, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
+import { CalendarDays, ChevronDown, EyeOff, Languages, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { HandleSetup } from "@/components/HandleSetup";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { setCalendarDotsOnly, useCalendarDotsOnly } from "@/hooks/useCalendarDots";
 import { setLang, useLang } from "@/hooks/useLang";
 import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useProfile } from "@/hooks/useProfile";
@@ -84,6 +85,7 @@ export default function SettingsBody() {
   const queryClient = useQueryClient();
   const theme = themeStore.useValue();
   const privacyMode = usePrivacyMode();
+  const calendarDotsOnly = useCalendarDotsOnly();
   const { data: profile } = useProfile();
   const { data: user, isLoading } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
   const [signOutOpen, setSignOutOpen] = useState(false);
@@ -228,6 +230,19 @@ export default function SettingsBody() {
                   <span className="lp-desc">{t("settings.privacyModeDesc")}</span>
                 </span>
                 <Switch className="lp-pref-control" checked={privacyMode} onCheckedChange={setPrivacyMode} aria-label={t("settings.privacyMode")} />
+              </label>
+
+              <label className="lp-row lp-pref">
+                <span className="lp-icon" aria-hidden>
+                  <CalendarDays className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{t("settings.calendarDotsOnly")}</span>
+                  </span>
+                  <span className="lp-desc">{t("settings.calendarDotsOnlyDesc")}</span>
+                </span>
+                <Switch className="lp-pref-control" checked={calendarDotsOnly} onCheckedChange={setCalendarDotsOnly} aria-label={t("settings.calendarDotsOnly")} />
               </label>
             </div>
           </section>
