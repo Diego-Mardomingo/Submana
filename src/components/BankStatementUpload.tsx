@@ -16,6 +16,7 @@ import { normalizeRevolutTransactions, parseRevolutCSV, parseRevolutExcel } from
 import { normalizeTradeRepublicTransactions, parseTradeRepublicPDF } from "@/lib/parsers/tradeRepublic";
 import type { ImportedTransaction, ImportPreviewResponse, ImportTransactionsResponse } from "@/lib/parsers/types";
 import { queryKeys } from "@/lib/queryKeys";
+import { toast } from "@/lib/toast";
 
 type UploadState = "idle" | "parsing" | "review" | "importing" | "success" | "error";
 type Callbacks = { onProgress: (current: number, total: number) => void; onStatus: (message: string) => void };
@@ -113,8 +114,10 @@ export default function BankStatementUpload({ accountId, bankProvider, autoOpenF
 
   const fail = (err: unknown) => {
     console.error("Bank statement error:", err);
-    setError(err instanceof Error ? err.message : "Unknown error");
+    const message = err instanceof Error ? err.message : "Unknown error";
+    setError(message);
     setState("error");
+    toast.error(t("import.failedToast"), { description: message });
   };
 
   const handleFile = async (file?: File) => {
@@ -176,6 +179,7 @@ export default function BankStatementUpload({ accountId, bankProvider, autoOpenF
       }
       setImportResult(result);
       setState("success");
+      toast.success(interpolate(t("import.successToast"), { count: (result.actual?.imported ?? 0) + (result.deposit?.imported ?? 0) }));
       await invalidate();
       router.refresh();
     } catch (err) {

@@ -1,21 +1,24 @@
 "use client";
 
-import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryKey, type Register } from "@tanstack/react-query";
 
 /**
  * Mutation that optimistically patches every cached query under `queryKey` with `update`,
  * rolls back on error and invalidates `invalidate` once settled.
  */
-export function useOptimisticMutation<TVars, TData = { id: string }[]>(options: {
-  mutationFn: (vars: TVars) => Promise<unknown>;
+export function useOptimisticMutation<TVars, TData = { id: string }[], TResult = unknown>(options: {
+  mutationFn: (vars: TVars) => Promise<TResult>;
   invalidate: QueryKey[];
   queryKey?: QueryKey;
   update?: (old: TData, vars: TVars) => TData;
+  /** `{ silentError: true }` when the caller shows the error itself (see queryClient). */
+  meta?: Register["mutationMeta"];
 }) {
-  const { mutationFn, invalidate, queryKey, update } = options;
+  const { mutationFn, invalidate, queryKey, update, meta } = options;
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
+    meta,
     onMutate: async (vars: TVars) => {
       if (!queryKey || !update) return;
       await queryClient.cancelQueries({ queryKey });

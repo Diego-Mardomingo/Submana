@@ -17,6 +17,7 @@ import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useProfile } from "@/hooks/useProfile";
 import { createClientStore } from "@/lib/clientStore";
 import { useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +99,11 @@ export default function SettingsBody() {
   }, []);
 
   const signOut = async () => {
-    await createClient().auth.signOut();
+    const { error } = await createClient().auth.signOut();
+    if (error) {
+      toast.error(t("settings.signoutError"));
+      return;
+    }
     // Leave no user data on the device (React Query, pages/RSC cached by the service worker).
     queryClient.clear();
     try {

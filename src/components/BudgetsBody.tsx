@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2, Wallet } from "lucide-react";
 import { Bones } from "@/components/Bones";
-import { BudgetSheet, rootIds } from "@/components/BudgetSheet";
-import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
+import { BudgetSheet } from "@/components/BudgetSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SortableContainer, SortableItem } from "@/components/Sortable";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
-import { useBudgets, useDeleteBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
+import { rootIds, useBudgets, useUndoableDeleteBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
 import { useCategoryLookup } from "@/hooks/useCategories";
 import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useLang } from "@/hooks/useLang";
@@ -70,11 +69,10 @@ export default function BudgetsBody() {
   const t = useTranslations(lang);
   const { data: budgets = [], isLoading } = useBudgets();
   const categories = useCategoryLookup();
-  const deleteBudget = useDeleteBudget();
+  const deleteBudget = useUndoableDeleteBudget();
   const { handleReorder } = useReorder<BudgetWithSpent>({ table: "budgets" });
   const [createOpen, setCreateOpen] = useCreateDialog();
   const [editing, setEditing] = useState<BudgetWithSpent | null>(null);
-  const [toDelete, setToDelete] = useState<string | null>(null);
   const formOpen = createOpen || !!editing;
   const closeForm = () => {
     setCreateOpen(false);
@@ -83,24 +81,7 @@ export default function BudgetsBody() {
 
   const header = <CompactPageHeader title={t("budgets.title")} addLabel={t("budgets.add")} onAdd={() => setCreateOpen(true)} />;
 
-  const dialogs = (
-    <>
-      <BudgetSheet open={formOpen} onOpenChange={(open) => !open && closeForm()} budget={editing} />
-
-      <ConfirmDeleteSheet
-        open={!!toDelete}
-        onOpenChange={(open) => !open && setToDelete(null)}
-        title={t("budgets.deleteTitle")}
-        description={t("budgets.deleteConfirm")}
-        confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
-        pending={deleteBudget.isPending}
-        onConfirm={async () => {
-          if (toDelete) await deleteBudget.mutateAsync(toDelete).catch(() => undefined);
-          setToDelete(null);
-        }}
-      />
-    </>
-  );
+  const dialogs = <BudgetSheet open={formOpen} onOpenChange={(open) => !open && closeForm()} budget={editing} />;
 
   if (isLoading) {
     return (
@@ -233,7 +214,7 @@ export default function BudgetsBody() {
                             <button type="button" onClick={stop(() => setEditing(budget))} className="lp-action lp-action--edit" aria-label={t("common.edit")}>
                               <Pencil className="size-5" />
                             </button>
-                            <button type="button" onClick={stop(() => setToDelete(budget.id))} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
+                            <button type="button" onClick={stop(() => deleteBudget(budget))} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
                               <Trash2 className="size-5" />
                             </button>
                           </>

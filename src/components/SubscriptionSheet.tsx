@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, SquarePen, XCircle } from "lucide-react";
+import { ChevronLeft, SquarePen, Trash2, XCircle } from "lucide-react";
 import IconPicker from "@/components/IconPicker";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
   AmountField,
+  ActionRow,
   Chips,
-  DeleteAction,
   FieldGroup,
   FieldRow,
   FieldStack,
@@ -20,17 +20,18 @@ import {
   SheetButton,
   Stepper,
 } from "@/components/SheetFields";
-import { useFrequencyLabel } from "@/components/SubscriptionDialogs";
+import { useFrequencyLabel, useSubscriptionActions } from "@/components/SubscriptionDialogs";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
 import { parseCurrencyValue } from "@/lib/currency";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
-import { useCreateSubscription, useDeleteSubscription, useUpdateSubscription, type Subscription } from "@/hooks/useSubscriptions";
+import { useCreateSubscription, useUpdateSubscription, type Subscription } from "@/hooks/useSubscriptions";
 import { parseDateString, toDateString } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
+import { toast } from "@/lib/toast";
 import { isSubscriptionActive, monthlyCost, nextPaymentDate, totalSpent } from "@/lib/subscriptions";
 
 type Mode = "view" | "edit";
@@ -53,8 +54,7 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
   const t = useTranslations(lang);
   const freqLabel = useFrequencyLabel();
   const { data: accounts = [] } = useAccounts();
-  const updateSub = useUpdateSubscription();
-  const deleteSub = useDeleteSubscription();
+  const actions = useSubscriptionActions();
   const account = accounts.find((a) => a.id === sub.account_id);
   const active = isSubscriptionActive(sub);
   const next = nextPaymentDate(sub);
@@ -112,28 +112,24 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
 
         <FieldGroup>
           {active && !sub.end_date && (
-            <DeleteAction
-              tone="warn"
-              icon={<XCircle aria-hidden />}
-              label={t("sub.cancel")}
-              confirmTitle={es ? "¿Cancelar suscripción?" : "Cancel subscription?"}
-              confirmText={es ? `La fecha de fin de ${sub.service_name} pasará a ser hoy.` : `${sub.service_name}'s end date will be set to today.`}
-              confirmLabel={es ? "Sí, cancelar" : "Yes, cancel"}
-              pending={updateSub.isPending}
-              onConfirm={() => updateSub.mutateAsync({ id: sub.id, end_date: toDateString(new Date()) }).then(() => undefined)}
-            />
+            <ActionRow tone="warn" icon={<XCircle aria-hidden />} onClick={() => {
+                void actions.cancel(sub);
+                onClose();
+              }}
+            >
+              {t("sub.cancel")}
+            </ActionRow>
           )}
-          <DeleteAction
-            label={es ? "Eliminar suscripción" : "Delete subscription"}
-            confirmTitle={t("sub.deleteTitle")}
-            confirmText={t("sub.deleteConfirm")}
-            confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
-            pending={deleteSub.isPending}
-            onConfirm={async () => {
-              await deleteSub.mutateAsync(sub.id);
+          <ActionRow
+            tone="danger"
+            icon={<Trash2 aria-hidden />}
+            onClick={() => {
+              actions.remove(sub);
               onClose();
             }}
-          />
+          >
+            {es ? "Eliminar suscripción" : "Delete subscription"}
+          </ActionRow>
         </FieldGroup>
       </SheetBody>
       <SheetFooter>
@@ -152,7 +148,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
   const t = useTranslations(lang);
   const { data: accounts = [] } = useAccounts();
   const createSub = useCreateSubscription();
-  const updateSub = useUpdateSubscription();
+  const updateSub = useUpdateSubscription({ silentError: true }); // errors show inline
 
   const [icon, setIcon] = useState(sub?.icon || "");
   const [name, setName] = useState(sub?.service_name ?? "");
@@ -197,6 +193,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
     try {
       if (sub) await updateSub.mutateAsync({ id: sub.id, ...input });
       else await createSub.mutateAsync(input);
+      toast.success(t(sub ? "sub.saved" : "sub.created"));
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");

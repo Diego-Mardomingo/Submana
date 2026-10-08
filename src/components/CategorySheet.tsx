@@ -6,6 +6,7 @@ import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/com
 import { useCategoryLookup, useCreateCategory, useDeleteCategory, useUpdateCategory } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 
 export type CategoryFormState = { mode: "create" | "createSub" | "edit"; id?: string; parentId?: string; name: string; emoji: string };
 
@@ -39,6 +40,7 @@ function CategoryFormBody({ initial, onDone }: { initial: CategoryFormState; onD
     try {
       if (mode === "edit" && initial.id) await updateCategory.mutateAsync({ id: initial.id, name: name.trim(), emoji: emoji || null });
       else await createCategory.mutateAsync({ name: name.trim(), parent_id: mode === "createSub" ? parentId : null, emoji: emoji || null });
+      toast.success(t(mode === "edit" ? "categories.saved" : "categories.created"));
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
@@ -103,7 +105,12 @@ function CategoryFormBody({ initial, onDone }: { initial: CategoryFormState; onD
               confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
               pending={deleteCategory.isPending}
               onConfirm={async () => {
-                await deleteCategory.mutateAsync(initial.id!);
+                try {
+                  await deleteCategory.mutateAsync(initial.id!);
+                } catch {
+                  return; // the error toast is already up; keep the confirmation to retry
+                }
+                toast.success(t("categories.deleted"));
                 onDone();
               }}
             />

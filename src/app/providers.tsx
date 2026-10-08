@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { ConnectionToast } from "@/components/ConnectionToast";
 import { Toaster } from "@/components/Toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useLang } from "@/hooks/useLang";
@@ -18,6 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <TooltipProvider>
         {children}
         <Toaster />
+        <ConnectionToast />
       </TooltipProvider>
     </QueryClientProvider>
   );

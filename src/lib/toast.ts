@@ -25,6 +25,8 @@ export type ToastOptions = {
   cancel?: ToastButton;
   /** Replaces the type icon (neutral toasts mostly: trash, copy…). */
   icon?: ReactNode;
+  /** Called once when the toast starts closing, whatever the cause (timeout, close, swipe, a button, `dismiss`). Not called when it is updated in place. */
+  onClose?: () => void;
 };
 
 export type ToastItem = ToastOptions & {
@@ -98,7 +100,9 @@ function show(type: ToastType, title: ReactNode, options: ToastOptions = {}) {
 }
 
 function dismiss(id?: string | number) {
-  emit(toasts.map((item) => (id === undefined || item.id === id ? { ...item, leaving: true } : item)));
+  const closing = toasts.filter((item) => !item.leaving && (id === undefined || item.id === id));
+  emit(toasts.map((item) => (closing.includes(item) ? { ...item, leaving: true } : item)));
+  closing.forEach((item) => item.onClose?.());
 }
 
 type PromiseMessages<T> = {

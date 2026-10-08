@@ -17,6 +17,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { api } from "@/lib/api";
 import { getBankProvider } from "@/lib/bankProviders";
 import type { UIKey } from "@/lib/i18n/ui";
+import { apiErrorText } from "@/lib/apiErrorText";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
@@ -133,7 +134,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
       setFeedbackMessage("");
       toast.success(t("feedback.success"));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error sending feedback");
+      toast.error(t("feedback.error"), { description: apiErrorText(t, err) });
     } finally {
       setSending(false);
     }

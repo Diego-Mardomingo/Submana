@@ -46,6 +46,17 @@ describe("toast", () => {
     expect(items()).toHaveLength(1);
   });
 
+  it("calls onClose once when the toast closes, not when it is updated", () => {
+    let closed = 0;
+    const id = toast("Deleted", { onClose: () => closed++ });
+    toast("Deleted again", { id, onClose: () => closed++ });
+    expect(closed).toBe(0);
+    toast.dismiss(id);
+    toast.dismiss(id);
+    toast.dismiss();
+    expect(closed).toBe(1);
+  });
+
   it("resolves a promise toast to success or error", async () => {
     await toast.promise(Promise.resolve(124), { loading: "Importing…", success: (n) => `${n} imported`, error: "Failed" });
     expect(items()[0]).toMatchObject({ type: "success", title: "124 imported" });

@@ -8,6 +8,8 @@ export function createClientStore<T>(read: () => T, write: (value: T) => void, s
     return () => listeners.delete(listener);
   };
   return {
+    /** Current value, for code outside React (callbacks, the query cache). */
+    get: read,
     useValue: () => useSyncExternalStore(subscribe, read, () => serverValue),
     set(value: T) {
       write(value);

@@ -22,6 +22,7 @@ import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 type Category = (CategoryWithSubs | CategoryItem) & { isArchived?: boolean };
@@ -50,6 +51,19 @@ export default function CategoriesBody() {
     setCreateOpen(false);
   };
   const edit = (cat: Category) => setForm({ mode: "edit", id: cat.id, name: cat.name, emoji: cat.emoji ?? "" });
+
+  /** Archives a system category; the toast offers Undo (restores it, its subcategories and its parent). */
+  const archive = (cat: Category, isSub: boolean) =>
+    archiveCategory.mutate(
+      { id: cat.id, archiveChildren: !isSub },
+      {
+        onSuccess: () =>
+          toast(t("categories.archived"), {
+            icon: <Archive />,
+            action: { label: t("common.undo"), onClick: () => unarchiveCategory.mutate(cat.id) },
+          }),
+      }
+    );
 
   const renderRow = (cat: Category, isSub: boolean, isArchived: boolean, subCount = 0, peek = false) => {
     const excluded = !!cat.exclude_from_metrics;
@@ -90,7 +104,7 @@ export default function CategoriesBody() {
             action(
               "lp-action--warn",
               es ? "Archivar" : "Archive",
-              () => archiveCategory.mutate({ id: cat.id, archiveChildren: !isSub }),
+              () => archive(cat, isSub),
               archiving ? <Spinner className="size-5" /> : <Archive className="size-5" />,
               archiving
             ),
@@ -302,7 +316,13 @@ export default function CategoriesBody() {
         confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
         pending={deleteCategory.isPending}
         onConfirm={async () => {
-          if (toDelete) await deleteCategory.mutateAsync(toDelete.id);
+          if (!toDelete) return;
+          try {
+            await deleteCategory.mutateAsync(toDelete.id);
+          } catch {
+            return; // the error toast is already up; keep the confirmation to retry
+          }
+          toast.success(t("categories.deleted"));
           setToDelete(null);
         }}
       />

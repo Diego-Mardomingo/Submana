@@ -28,6 +28,7 @@ export function useSaveProfile() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { handle: string; display_name: string }) => api<Profile>("/api/profile", "PUT", input),
+    meta: { silentError: true }, // the form shows the error inline
     onSuccess: (profile) => queryClient.setQueryData(queryKeys.profile.me(), profile),
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.friends.all }),
   });

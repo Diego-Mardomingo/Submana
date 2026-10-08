@@ -10,6 +10,7 @@ import { useJointAccountIds } from "./useAccounts";
 import { fetchBudgets } from "./useBudgets";
 import { useCategories } from "./useCategories";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
+import { useUndoableDelete } from "./useUndoableDelete";
 
 export interface Transaction {
   id: string;
@@ -210,6 +211,7 @@ export function useCreateTransaction() {
   return useOptimisticMutation({
     mutationFn: (tx: TransactionInput) => api("/api/crud/transactions", "POST", tx),
     invalidate,
+    meta: { silentError: true }, // the sheet shows the error inline
   });
 }
 
@@ -219,14 +221,18 @@ export function useUpdateTransaction() {
     queryKey: queryKeys.transactions.lists(),
     update: replaceById,
     invalidate,
+    meta: { silentError: true },
   });
 }
 
-export function useDeleteTransaction() {
-  return useOptimisticMutation({
-    mutationFn: (id: string) => api(`/api/crud/transactions/${id}`, "DELETE"),
-    queryKey: queryKeys.transactions.lists(),
-    update: removeById,
-    invalidate,
-  });
+/** Deletes a transaction with an Undo toast: the row is hidden now and the DELETE is sent when the toast closes. */
+export function useUndoableDeleteTransaction() {
+  const undoableDelete = useUndoableDelete();
+  return (tx: Pick<Transaction, "id">) =>
+    undoableDelete({
+      title: "transactions.deleted",
+      edits: [{ queryKey: queryKeys.transactions.lists(), remove: (list: Transaction[]) => removeById(list, tx.id) }],
+      commit: (init) => api(`/api/crud/transactions/${tx.id}`, "DELETE", undefined, init),
+      invalidate,
+    });
 }

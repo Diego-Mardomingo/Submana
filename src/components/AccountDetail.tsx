@@ -21,8 +21,9 @@ import { canEditAccount } from "@/lib/accountAccess";
 import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
 import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
-import { useTranslations } from "@/lib/i18n/utils";
+import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const IMPORTABLE_PROVIDERS = ["trade_republic", "revolut", "bbva", "imagin"];
@@ -134,10 +135,11 @@ function BulkDeleteSheet({ open, onOpenChange, accountId, transactions }: {
     const [startYear, startMonth] = range.start.split("-").map(Number);
     const [endYear, endMonth] = range.end.split("-").map(Number);
     try {
-      await deleteTransactions.mutateAsync({
+      const { deleted_count } = await deleteTransactions.mutateAsync({
         accountId,
         payload: mode === "all" ? { mode } : { mode, startYear, startMonth, endYear, endMonth },
       });
+      toast.success(interpolate(t("accounts.transactionsDeleted"), { count: deleted_count }));
       router.refresh();
       onOpenChange(false);
     } catch {
@@ -486,7 +488,12 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
         confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
         pending={deleteAccount.isPending}
         onConfirm={async () => {
-          await deleteAccount.mutateAsync(account.id);
+          try {
+            await deleteAccount.mutateAsync(account.id);
+          } catch {
+            return; // the error toast is already up; keep the confirmation to retry
+          }
+          toast.success(t("accounts.deleted"));
           router.push("/accounts");
         }}
       />

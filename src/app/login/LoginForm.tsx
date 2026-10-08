@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 
 export function LoginForm() {
   const supabase = createClient();
@@ -25,6 +26,7 @@ export function LoginForm() {
       window.location.href = data.url;
       return;
     }
+    toast.error(t("login.oauthError"));
     setIsLoading(false);
   }
 

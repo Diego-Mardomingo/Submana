@@ -1,13 +1,11 @@
 "use client";
 
 import { XCircle } from "lucide-react";
-import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { useLang } from "@/hooks/useLang";
-import { useDeleteSubscription, useUpdateSubscription, type Subscription } from "@/hooks/useSubscriptions";
+import { useUndoableDeleteSubscription, useUpdateSubscription, type Subscription } from "@/hooks/useSubscriptions";
 import { toDateString } from "@/lib/date";
 import { useTranslations } from "@/lib/i18n/utils";
-
-export type SubscriptionAction = { type: "cancel" | "delete"; sub: Subscription } | null;
+import { toast } from "@/lib/toast";
 
 /** "Every 2 months" style label. */
 export function useFrequencyLabel() {
@@ -19,46 +17,27 @@ export function useFrequencyLabel() {
   };
 }
 
-/** Confirmation sheets to cancel (end today) or delete a subscription. */
-export function SubscriptionDialogs({ action, onClose, onDone }: {
-  action: SubscriptionAction;
-  onClose: () => void;
-  onDone?: (type: "cancel" | "delete") => void;
-}) {
-  const lang = useLang();
-  const t = useTranslations(lang);
-  const es = lang === "es";
+/**
+ * Cancel (end today) and delete a subscription. Neither asks first: both show a toast with Undo
+ * (cancel restores the previous end date; delete is only sent when the toast closes).
+ */
+export function useSubscriptionActions() {
+  const t = useTranslations(useLang());
   const updateSub = useUpdateSubscription();
-  const deleteSub = useDeleteSubscription();
-  const isCancel = action?.type === "cancel";
-  const pending = isCancel ? updateSub.isPending : deleteSub.isPending;
+  const deleteSub = useUndoableDeleteSubscription();
 
-  const confirm = async () => {
-    if (!action) return;
-    if (isCancel) await updateSub.mutateAsync({ id: action.sub.id, end_date: toDateString(new Date()) });
-    else await deleteSub.mutateAsync(action.sub.id);
-    onClose();
-    onDone?.(action.type);
+  const cancel = async (sub: Pick<Subscription, "id" | "end_date">) => {
+    const previous = sub.end_date ?? null;
+    try {
+      await updateSub.mutateAsync({ id: sub.id, end_date: toDateString(new Date()) });
+    } catch {
+      return; // the error toast is already up
+    }
+    toast(t("sub.cancelled"), {
+      icon: <XCircle />,
+      action: { label: t("common.undo"), onClick: () => updateSub.mutate({ id: sub.id, end_date: previous }) },
+    });
   };
 
-  return (
-    <ConfirmSheet
-      open={!!action}
-      onOpenChange={(open) => !open && onClose()}
-      tone={isCancel ? "warn" : "danger"}
-      icon={isCancel ? <XCircle /> : undefined}
-      title={isCancel ? (es ? "¿Cancelar suscripción?" : "Cancel subscription?") : t("sub.deleteTitle")}
-      description={
-        action &&
-        (isCancel
-          ? es
-            ? `La fecha de fin de ${action.sub.service_name} pasará a ser hoy.`
-            : `${action.sub.service_name}'s end date will be set to today.`
-          : t("sub.deleteConfirm"))
-      }
-      confirmLabel={isCancel ? (es ? "Sí, cancelar" : "Yes, cancel") : es ? "Sí, eliminar" : "Yes, delete"}
-      pending={pending}
-      onConfirm={confirm}
-    />
-  );
+  return { cancel, remove: deleteSub };
 }

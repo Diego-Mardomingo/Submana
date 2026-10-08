@@ -15,3 +15,4 @@ const langStore = createClientStore<Lang>(
 
 export const useLang = langStore.useValue;
 export const setLang = langStore.set;
+export const getLang = langStore.get;

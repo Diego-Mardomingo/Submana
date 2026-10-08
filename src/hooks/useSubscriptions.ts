@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
+import { useUndoableDelete } from "./useUndoableDelete";
 
 export interface Subscription {
   id: string;
@@ -42,23 +43,29 @@ export function useCreateSubscription() {
   return useOptimisticMutation({
     mutationFn: (input: SubscriptionInput & { service_name: string }) => api("/api/crud/subscriptions", "POST", input),
     invalidate,
+    meta: { silentError: true }, // the sheet shows the error inline
   });
 }
 
-export function useUpdateSubscription() {
+/** `silentError`: the caller shows the error itself (the edit sheet, inline). */
+export function useUpdateSubscription({ silentError = false } = {}) {
   return useOptimisticMutation({
     mutationFn: ({ id, ...input }: SubscriptionInput & { id: string }) => api(`/api/crud/subscriptions/${id}`, "PATCH", input),
     queryKey: queryKeys.subscriptions.lists(),
     update: replaceById,
     invalidate,
+    meta: { silentError },
   });
 }
 
-export function useDeleteSubscription() {
-  return useOptimisticMutation({
-    mutationFn: (id: string) => api(`/api/crud/subscriptions/${id}`, "DELETE"),
-    queryKey: queryKeys.subscriptions.lists(),
-    update: removeById,
-    invalidate,
-  });
+/** Deletes a subscription with an Undo toast: it is hidden now and the DELETE is sent when the toast closes. */
+export function useUndoableDeleteSubscription() {
+  const undoableDelete = useUndoableDelete();
+  return (sub: Pick<Subscription, "id">) =>
+    undoableDelete({
+      title: "sub.deleted",
+      edits: [{ queryKey: queryKeys.subscriptions.lists(), remove: (list: Subscription[]) => removeById(list, sub.id) }],
+      commit: (init) => api(`/api/crud/subscriptions/${sub.id}`, "DELETE", undefined, init),
+      invalidate,
+    });
 }
