@@ -1,0 +1,333 @@
+/* ── Toasts (src/components/Toaster.tsx · src/lib/toast.ts) ──
+   Approved design: docs/design/toasts.html. Keep both in sync. */
+
+/* Popover in the top layer: reset the UA popover box. */
+.toaster {
+  --toast-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --toast-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.25);
+  position: fixed;
+  inset: auto 20px 20px auto;
+  width: 360px;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: none;
+  background: transparent;
+  color: var(--blanco);
+  /* A modal sheet sets pointer-events: none on <body>. */
+  pointer-events: auto;
+  transition: height 0.38s var(--toast-ease);
+}
+
+html[data-theme="light"] .toaster {
+  --toast-shadow: 0 18px 48px rgba(17, 19, 24, 0.12), 0 2px 6px rgba(17, 19, 24, 0.06);
+}
+
+/* Phones: full width, above the bottom navigation when there is one. */
+@media (max-width: 767px) {
+  .toaster {
+    inset: auto 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px;
+    width: auto;
+  }
+
+  body:has(.auth-content-shell) .toaster {
+    bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px) + 10px);
+  }
+}
+
+.toaster ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.toaster-item {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transform: translateY(var(--y)) scale(var(--scale));
+  transform-origin: top center;
+  transition: transform 0.38s var(--toast-ease);
+}
+
+/* Collapsed deck: the cards behind the front one take its height and only peek out. */
+.toaster-item[data-front="false"] .toast {
+  transition: opacity 0.2s ease;
+}
+
+.toaster[data-expanded="false"] .toaster-item[data-front="false"] .toast {
+  height: var(--deck-h);
+  opacity: 0.8;
+}
+
+.toaster[data-expanded="false"] .toaster-item[data-front="false"] .toast > * {
+  visibility: hidden;
+}
+
+/* ── Card ── */
+.toast {
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft);
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--gris);
+  border-radius: 16px;
+  background: var(--gris-oscuro);
+  box-shadow: var(--toast-shadow);
+  touch-action: pan-y;
+  user-select: none;
+  translate: var(--swipe-x, 0) 0;
+  animation: toast-in 0.38s var(--toast-ease);
+  transition: translate 0.25s var(--toast-ease), opacity 0.2s ease;
+}
+
+.toast[data-swiping="true"] {
+  opacity: 0.6;
+  transition: none;
+}
+
+.toast[data-leaving="true"] {
+  animation: toast-out 0.2s ease-in forwards;
+}
+
+.toast[data-type="success"] { --tone: var(--success); --tone-soft: var(--success-soft); }
+.toast[data-type="error"] { --tone: var(--danger); --tone-soft: var(--danger-soft); }
+.toast[data-type="warning"] { --tone: var(--warning); --tone-soft: var(--warning-soft); }
+.toast[data-type="info"] { --tone: var(--info); --tone-soft: var(--info-soft); }
+.toast[data-type="neutral"] { --tone: var(--gris-muy-claro); --tone-soft: var(--gris); }
+
+/* Faint wash of the type colour, left to right. */
+.toast::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--tone-soft), transparent 55%);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.toast > * {
+  position: relative;
+}
+
+.toast-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+
+.toast-icon svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 2.2;
+}
+
+.toast[data-type="loading"] .toast-icon svg {
+  animation: toast-spin 0.9s linear infinite;
+}
+
+.toast-body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.toast-title {
+  margin-top: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.toast-body:has(.toast-desc) .toast-title {
+  margin-top: 0;
+}
+
+.toast-desc {
+  display: -webkit-box;
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--gris-muy-claro);
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.toast-desc b,
+.toast-desc strong {
+  color: var(--blanco);
+  font-weight: 600;
+}
+
+.toast-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.toast-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--gris);
+  border-radius: 9px;
+  background: var(--negro);
+  color: var(--blanco);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toast-btn.is-primary {
+  border-color: transparent;
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+
+.toast-inline-action {
+  align-self: center;
+  flex-shrink: 0;
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toast-close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  margin: 3px -2px 0 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gris-claro);
+  cursor: pointer;
+}
+
+.toast-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+@media (hover: hover) {
+  .toast-close:hover {
+    background: var(--gris);
+    color: var(--blanco);
+  }
+}
+
+.toast button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Time left. Its animation is the timer, so pausing it pauses the toast. */
+.toast-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--tone);
+  opacity: 0.7;
+  transform-origin: left;
+  animation: toast-countdown linear forwards;
+}
+
+.toaster[data-paused="true"] .toast-progress,
+.toaster[data-expanded="false"] .toaster-item[data-front="false"] .toast-progress,
+.toast[data-swiping="true"] .toast-progress {
+  animation-play-state: paused;
+}
+
+/* Compact on phones when there is only a title. */
+@media (max-width: 767px) {
+  .toast[data-compact="true"] {
+    align-items: center;
+    padding: 8px 8px 8px 10px;
+    border-radius: 14px;
+  }
+
+  .toast[data-compact="true"] .toast-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+  }
+
+  .toast[data-compact="true"] .toast-icon svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .toast[data-compact="true"] .toast-title,
+  .toast[data-compact="true"] .toast-close {
+    margin: 0;
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+  }
+}
+
+@keyframes toast-countdown {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes toast-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toaster,
+  .toaster-item,
+  .toast {
+    transition: opacity 0.2s ease;
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes toast-out {
+    to {
+      opacity: 0;
+    }
+  }
+}
