@@ -16,17 +16,7 @@ import { useFriends } from "@/hooks/useFriends";
 import { useLang } from "@/hooks/useLang";
 import { useProfile } from "@/hooks/useProfile";
 import { canEditAccount } from "@/lib/accountAccess";
-import type { UIKey } from "@/lib/i18n/ui";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
-
-function useJointErrorText() {
-  const t = useTranslations(useLang());
-  return (code: string) => {
-    const key = `joint.error.${code}` as UIKey;
-    const text = t(key);
-    return text === key ? t("joint.error.generic") : text;
-  };
-}
 
 function MemberRow({ name, handle, avatarUrl, detail, action }: { name: string; handle?: string; avatarUrl?: string | null; detail: string; action?: React.ReactNode }) {
   return (
@@ -53,7 +43,6 @@ const iconButton = "lp-icon-btn";
  */
 export function JointAccountSection({ account, onLeft }: { account: Account; onLeft?: () => void }) {
   const t = useTranslations(useLang());
-  const errorText = useJointErrorText();
   const { data: me } = useProfile();
   const { data: friendsData } = useFriends();
   const invite = useInviteAccountMember();
@@ -63,7 +52,6 @@ export function JointAccountSection({ account, onLeft }: { account: Account; onL
   const members = account.members ?? [];
   const taken = new Set(members.map((m) => m.user_id));
   const candidates = (friendsData?.friends ?? []).filter((f) => !taken.has(f.profile.user_id));
-  const failure = (err: Error) => toast.error(errorText(err.message));
 
   return (
     <FieldGroup title={t("joint.title")} hint={account.is_joint ? t("joint.excluded") : t("joint.inviteHint")}>
@@ -89,7 +77,7 @@ export function JointAccountSection({ account, onLeft }: { account: Account; onL
                   aria-label={member.status === "pending" ? t("joint.cancelInvite") : t("joint.remove")}
                   title={member.status === "pending" ? t("joint.cancelInvite") : t("joint.remove")}
                   disabled={remove.isPending}
-                  onClick={() => remove.mutate({ accountId: account.id, userId: member.user_id }, { onError: failure })}
+                  onClick={() => remove.mutate({ accountId: account.id, userId: member.user_id })}
                 >
                   <X className="size-4" />
                 </button>
@@ -122,7 +110,7 @@ export function JointAccountSection({ account, onLeft }: { account: Account; onL
                     onClick={() =>
                       invite.mutate(
                         { accountId: account.id, friendId: friend.profile.user_id },
-                        { onSuccess: () => toast.success(t("joint.inviteSent")), onError: failure }
+                        { onSuccess: () => toast.success(t("joint.inviteSent")) }
                       )
                     }
                   >
@@ -145,10 +133,11 @@ export function JointAccountSection({ account, onLeft }: { account: Account; onL
           onConfirm={async () => {
             try {
               await remove.mutateAsync({ accountId: account.id, userId: me.user_id });
-              onLeft?.();
-            } catch (err) {
-              failure(err as Error);
+            } catch {
+              return; // the error toast is already up; stay to retry
             }
+            toast.info(t("joint.left"));
+            onLeft?.();
           }}
         />
       )}
@@ -160,13 +149,12 @@ export function JointAccountSection({ account, onLeft }: { account: Account; onL
 export function JointInvites({ className }: { className?: string }) {
   const lang = useLang();
   const t = useTranslations(lang);
-  const errorText = useJointErrorText();
   const { data: invites = [] } = useAccountInvites();
   const respond = useRespondAccountInvite();
   if (invites.length === 0) return null;
 
-  const failure = (err: Error) => toast.error(errorText(err.message));
-  const answer = (invite: AccountInvite, accept: boolean) => respond.mutate({ accountId: invite.account_id, accept }, { onError: failure });
+  const answer = (invite: AccountInvite, accept: boolean) =>
+    respond.mutate({ accountId: invite.account_id, accept }, { onSuccess: () => accept && toast.success(t("joint.accepted")) });
 
   return (
     <section className={className ?? "lp-section"}>

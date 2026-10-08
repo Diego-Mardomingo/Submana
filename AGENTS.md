@@ -20,7 +20,7 @@ Pick the type by meaning:
 | `toast(title, { icon })` | Plain confirmation with a custom icon (copied, deleted) |
 | `toast.promise(task, { loading, success, error })` | Anything slow (imports, uploads); one toast goes loading → result |
 
-Options: `description`, `action` / `cancel` (`{ label, onClick }`), `icon`, `duration`, `id` (reuse it to update a toast in place). `toast.dismiss(id?)` closes one or all.
+Options: `description`, `action` / `cancel` (`{ label, onClick }`), `icon`, `duration`, `id` (reuse it to update a toast in place), `onClose` (runs once when it closes, whatever the cause). `toast.dismiss(id?)` closes one or all.
 
 Rules:
 - Text goes through i18n (`t(...)`), never hard-coded. Short title (≤ ~40 chars); details go in `description` (clamped to 3 lines).

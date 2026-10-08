@@ -1,9 +1,28 @@
 "use client";
 
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient } from "@tanstack/react-query";
+import { apiErrorText } from "@/lib/apiErrorText";
+import { currentT } from "@/lib/i18n/client";
+import { toast } from "@/lib/toast";
+
+declare module "@tanstack/react-query" {
+  interface Register {
+    mutationMeta: {
+      /** The caller already shows the error (inline in a form, or with its own toast): skip the global error toast. */
+      silentError?: boolean;
+    };
+  }
+}
 
 function makeQueryClient() {
   return new QueryClient({
+    // No mutation fails silently: the error toast is the default; forms with inline errors opt out with `meta: { silentError: true }`.
+    mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) => {
+        if (mutation.meta?.silentError) return;
+        toast.error(apiErrorText(currentT(), error));
+      },
+    }),
     defaultOptions: {
       queries: {
         staleTime: 5 * 60 * 1000, // 5 minutos - datos frescos más tiempo

@@ -1,20 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Wallet } from "lucide-react";
-import { AmountField, Chips, DeleteAction, FieldGroup, FieldStack, FormError, FormHero, HeroTile, SheetButton, Swatches } from "@/components/SheetFields";
+import { Trash2, Wallet } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { ActionRow, AmountField, Chips, FieldGroup, FieldStack, FormError, FormHero, HeroTile, SheetButton, Swatches } from "@/components/SheetFields";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
 import { parseCurrencyValue } from "@/lib/currency";
-import { useCreateBudget, useDeleteBudget, useUpdateBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
+import { rootIds, useCreateBudget, useUpdateBudget, useUndoableDeleteBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
 import { PALETTE } from "@/lib/palette";
-
-type Lookup = ReturnType<typeof useCategoryLookup>;
-
-/** Top-level categories linked to a budget. */
-export const rootIds = (budget: BudgetWithSpent, categories: Lookup) => [...new Set(budget.categoryIds.map((id) => categories.parent.get(id) ?? id))];
 
 function BudgetFormBody({ budget, onDone }: { budget: BudgetWithSpent | null; onDone: () => void }) {
   const lang = useLang();
@@ -24,7 +20,7 @@ function BudgetFormBody({ budget, onDone }: { budget: BudgetWithSpent | null; on
   const { data: categoriesData } = useCategories();
   const createBudget = useCreateBudget();
   const updateBudget = useUpdateBudget();
-  const deleteBudget = useDeleteBudget();
+  const deleteBudget = useUndoableDeleteBudget();
   const [amount, setAmount] = useState(budget ? Number(budget.amount).toFixed(2).replace(".", ",") : "");
   const [color, setColor] = useState<string>(budget?.color && PALETTE.some((c) => c === budget.color) ? budget.color : PALETTE[0]);
   const [categoryIds, setCategoryIds] = useState(budget ? rootIds(budget, categories) : []);
@@ -42,6 +38,7 @@ function BudgetFormBody({ budget, onDone }: { budget: BudgetWithSpent | null; on
     try {
       if (budget) await updateBudget.mutateAsync({ id: budget.id, amount: value, color, category_ids: categoryIds });
       else await createBudget.mutateAsync({ amount: value, color, category_ids: categoryIds.length > 0 ? categoryIds : undefined });
+      toast.success(t(budget ? "budgets.saved" : "budgets.created"));
       onDone();
     } catch (err) {
       // The mutation rolls back its optimistic update.
@@ -101,17 +98,16 @@ function BudgetFormBody({ budget, onDone }: { budget: BudgetWithSpent | null; on
 
         {budget && (
           <FieldGroup>
-            <DeleteAction
-              label={es ? "Eliminar presupuesto" : "Delete budget"}
-              confirmTitle={t("budgets.deleteTitle")}
-              confirmText={t("budgets.deleteConfirm")}
-              confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
-              pending={deleteBudget.isPending}
-              onConfirm={async () => {
-                await deleteBudget.mutateAsync(budget.id);
+            <ActionRow
+              tone="danger"
+              icon={<Trash2 aria-hidden />}
+              onClick={() => {
+                deleteBudget(budget);
                 onDone();
               }}
-            />
+            >
+              {es ? "Eliminar presupuesto" : "Delete budget"}
+            </ActionRow>
           </FieldGroup>
         )}
       </SheetBody>

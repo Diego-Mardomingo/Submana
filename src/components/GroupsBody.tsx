@@ -65,6 +65,7 @@ function CreateGroupSheet({ open, onOpenChange }: { open: boolean; onOpenChange:
     }
     try {
       const group = await create.mutateAsync({ name: name.trim(), member_ids: memberIds });
+      toast.success(t("groups.created"));
       onOpenChange(false);
       setName("");
       setMemberIds([]);
@@ -303,7 +304,12 @@ export default function GroupsBody() {
         confirmLabel={t("groups.delete")}
         pending={deleteGroup.isPending}
         onConfirm={async () => {
-          if (toDelete) await deleteGroup.mutateAsync(toDelete.id).catch((err: Error) => toast.error(sharedErrorText(t, err.message)));
+          if (!toDelete) return;
+          try {
+            await deleteGroup.mutateAsync(toDelete.id);
+          } catch {
+            return; // the error toast is already up; keep the confirmation to retry
+          }
           setToDelete(null);
         }}
       />

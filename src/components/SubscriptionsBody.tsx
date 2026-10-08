@@ -5,7 +5,7 @@ import { ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import { Bones } from "@/components/Bones";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
-import { SubscriptionDialogs, useFrequencyLabel, type SubscriptionAction } from "@/components/SubscriptionDialogs";
+import { useFrequencyLabel, useSubscriptionActions } from "@/components/SubscriptionDialogs";
 import { SubscriptionSheet } from "@/components/SubscriptionSheet";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -94,7 +94,7 @@ export default function SubscriptionsBody() {
   const dates = useDateLabels();
   const { data: subscriptions = [], isLoading } = useSubscriptions();
   const [inactiveOpen, setInactiveOpen] = useState(false);
-  const [action, setAction] = useState<SubscriptionAction>(null);
+  const actions = useSubscriptionActions();
   const [createOpen, setCreateOpen] = useCreateDialog();
   const [sheet, setSheet] = useState<{ sub: Subscription; mode: "view" | "edit" } | null>(null);
   const openSub = useCallback((sub: Subscription) => setSheet({ sub, mode: "view" }), []);
@@ -158,7 +158,7 @@ export default function SubscriptionsBody() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setAction({ type, sub });
+              void actions[type === "delete" ? "remove" : "cancel"](sub);
             }}
             className={`lp-action ${className}`}
             aria-label={label}
@@ -326,7 +326,6 @@ export default function SubscriptionsBody() {
         </Bones>
       )}
 
-      <SubscriptionDialogs action={action} onClose={() => setAction(null)} />
       {sheets}
     </div>
   );

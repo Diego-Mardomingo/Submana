@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { SplitEditor, useMemberLabel } from "@/components/SplitEditor";
-import { AmountField, Chips, DeleteAction, FieldGroup, FieldRow, FieldStack, FormError, FormHero, SheetButton } from "@/components/SheetFields";
+import { Trash2 } from "lucide-react";
+import { ActionRow, AmountField, Chips, FieldGroup, FieldRow, FieldStack, FormError, FormHero, SheetButton } from "@/components/SheetFields";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
-import { useCreateSharedExpense, useDeleteSharedExpense, useUpdateSharedExpense } from "@/hooks/useSharedExpenses";
+import { useCreateSharedExpense, useUndoableDeleteSharedExpense, useUpdateSharedExpense } from "@/hooks/useSharedExpenses";
 import { useLang } from "@/hooks/useLang";
 import { parseCurrencyValue } from "@/lib/currency";
 import { parseDateString, toDateString } from "@/lib/date";
 import { useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 import { draftParticipants, evaluateDraft, initialDraft, isDraftSubmittable, type SplitDraft } from "@/lib/shared/splitDraft";
 import { sharedErrorText } from "@/lib/shared/errorText";
 import { toCents } from "@/lib/shared/splits";
@@ -41,7 +43,7 @@ function ExpenseForm({ groupId, members, meId, expense, onDone }: {
   const label = useMemberLabel(meId);
   const create = useCreateSharedExpense();
   const update = useUpdateSharedExpense();
-  const remove = useDeleteSharedExpense();
+  const remove = useUndoableDeleteSharedExpense();
 
   const [amount, setAmount] = useState(expense ? expense.total_amount.toFixed(2).replace(".", ",") : "");
   const [date, setDate] = useState(() => (expense ? parseDateString(expense.date) : new Date()));
@@ -79,6 +81,7 @@ function ExpenseForm({ groupId, members, meId, expense, onDone }: {
     try {
       if (expense) await update.mutateAsync({ id: expense.id, ...input });
       else await create.mutateAsync(input);
+      toast.success(t(expense ? "shared.expenseSaved" : "shared.expenseCreated"));
       onDone();
     } catch (err) {
       setError(sharedErrorText(t, err instanceof Error ? err.message : undefined));
@@ -123,16 +126,16 @@ function ExpenseForm({ groupId, members, meId, expense, onDone }: {
 
         {expense && (
           <FieldGroup>
-            <DeleteAction
-              label={t("shared.delete")}
-              confirmTitle={t("shared.deleteTitle")}
-              confirmText={t("shared.deleteConfirm")}
-              pending={remove.isPending}
-              onConfirm={async () => {
-                await remove.mutateAsync(expense.id);
+            <ActionRow
+              tone="danger"
+              icon={<Trash2 aria-hidden />}
+              onClick={() => {
+                remove(expense);
                 onDone();
               }}
-            />
+            >
+              {t("shared.delete")}
+            </ActionRow>
           </FieldGroup>
         )}
       </SheetBody>

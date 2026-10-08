@@ -33,21 +33,25 @@ export function useSharedBalances(enabled = true) {
   });
 }
 
-function useSharedMutation<TVars, TData = unknown>(mutationFn: (vars: TVars) => Promise<TData>) {
+function useSharedMutation<TVars, TData = unknown>(mutationFn: (vars: TVars) => Promise<TData>, silentError = false) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn,
+    meta: { silentError },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.shared.all }),
   });
 }
 
 export function useCreateGroup() {
-  return useSharedMutation((input: { name: string; member_ids: string[] }) => api<{ id: string }>("/api/shared/groups", "POST", input));
+  // The form shows the error inline.
+  return useSharedMutation((input: { name: string; member_ids: string[] }) => api<{ id: string }>("/api/shared/groups", "POST", input), true);
 }
 
-export function useUpdateGroup() {
-  return useSharedMutation(({ id, ...patch }: { id: string; name?: string; archived?: boolean }) =>
-    api(`/api/shared/groups/${id}`, "PATCH", patch)
+/** `silentError`: the caller shows the error itself (renaming shows it inline). */
+export function useUpdateGroup({ silentError = false } = {}) {
+  return useSharedMutation(
+    ({ id, ...patch }: { id: string; name?: string; archived?: boolean }) => api(`/api/shared/groups/${id}`, "PATCH", patch),
+    silentError
   );
 }
 

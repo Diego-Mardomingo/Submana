@@ -2,14 +2,13 @@
 
 import { memo, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
-import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
-import { useDeleteTransaction, type Transaction } from "@/hooks/useTransactions";
+import { useUndoableDeleteTransaction, type Transaction } from "@/hooks/useTransactions";
 import { appNow, calendarDayInAppTimeZone, parseDateString, toDateString } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -97,9 +96,8 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
   const es = lang === "es";
   const t = useTranslations(lang);
   const categoryLookup = useCategoryLookup();
-  const deleteTx = useDeleteTransaction();
+  const deleteTx = useUndoableDeleteTransaction();
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [toDelete, setToDelete] = useState<Transaction | null>(null);
 
   const byDay = new Map<string, Transaction[]>();
   for (const tx of transactions) {
@@ -149,7 +147,7 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
                         <button type="button" onClick={() => setEditing(tx)} className="lp-action lp-action--edit" aria-label={t("common.edit")}>
                           <Pencil className="size-5" />
                         </button>
-                        <button type="button" onClick={() => setToDelete(tx)} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
+                        <button type="button" onClick={() => deleteTx(tx)} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
                           <Trash2 className="size-5" />
                         </button>
                       </>
@@ -172,31 +170,6 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
       </div>
 
       <TransactionSheet open={!!editing} onOpenChange={(open) => !open && setEditing(null)} transaction={editing} />
-
-      <ConfirmDeleteSheet
-        open={!!toDelete}
-        onOpenChange={(open) => !open && setToDelete(null)}
-        title={es ? "¿Eliminar esta transacción?" : "Delete this transaction?"}
-        description={
-          toDelete && (
-            <>
-              <strong>
-                {toDelete.description || t(toDelete.type === "income" ? "transactions.income" : "transactions.expense")} ·{" "}
-                <SensitiveAmount>{formatCurrency(Number(toDelete.amount))}</SensitiveAmount>
-              </strong>
-              <br />
-              {t("transactions.deleteConfirm")}
-            </>
-          )
-        }
-        confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
-        pending={deleteTx.isPending}
-        onConfirm={async () => {
-          if (!toDelete) return;
-          await deleteTx.mutateAsync(toDelete.id).catch(() => undefined);
-          setToDelete(null);
-        }}
-      />
     </>
   );
 }

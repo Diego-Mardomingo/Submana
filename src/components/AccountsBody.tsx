@@ -19,9 +19,11 @@ import { useLang } from "@/hooks/useLang";
 import { useReorder } from "@/hooks/useReorder";
 import { canEditAccount } from "@/lib/accountAccess";
 import { api } from "@/lib/api";
+import { apiErrorText } from "@/lib/apiErrorText";
 import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { queryKeys } from "@/lib/queryKeys";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const StarIcon = ({ filled }: { filled?: boolean }) => (
@@ -105,7 +107,8 @@ export default function AccountsBody() {
     handleReorder([account, ...personal.filter((a) => a.id !== account.id)]);
     try {
       await api("/api/accounts/set-default", "POST", { id: account.id });
-    } catch {
+    } catch (err) {
+      toast.error(apiErrorText(t, err));
       await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all });
     }
   };
@@ -131,7 +134,13 @@ export default function AccountsBody() {
         confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
         pending={deleteAccount.isPending}
         onConfirm={async () => {
-          if (toDelete) await deleteAccount.mutateAsync(toDelete.id).catch(() => undefined);
+          if (!toDelete) return;
+          try {
+            await deleteAccount.mutateAsync(toDelete.id);
+          } catch {
+            return; // the error toast is already up; keep the confirmation to retry
+          }
+          toast.success(t("accounts.deleted"));
           setToDelete(null);
         }}
       />

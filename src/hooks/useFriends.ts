@@ -33,6 +33,7 @@ export function useSendFriendRequest() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (handle: string) => api("/api/friends", "POST", { handle }),
+    meta: { silentError: true }, // the form shows the error inline
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.friends.all }),
   });
 }

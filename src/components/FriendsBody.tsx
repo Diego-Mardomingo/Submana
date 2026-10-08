@@ -14,7 +14,7 @@ import { useDeleteFriendship, useFriends, useRespondFriendRequest, useSendFriend
 import { useLang } from "@/hooks/useLang";
 import { useProfile } from "@/hooks/useProfile";
 import { normalizeHandle } from "@/lib/handles";
-import type { UIKey } from "@/lib/i18n/ui";
+import { apiErrorText } from "@/lib/apiErrorText";
 import { useTranslations } from "@/lib/i18n/utils";
 
 function FriendRow({ item, children }: { item: FriendItem; children: React.ReactNode }) {
@@ -63,13 +63,6 @@ export default function FriendsBody() {
   const [error, setError] = useState<string | null>(null);
   const [toRemove, setToRemove] = useState<FriendItem | null>(null);
 
-  const errorText = (code: string) => {
-    const key = `friends.error.${code}` as UIKey;
-    const text = t(key);
-    return text === key ? t("friends.error.generic") : text;
-  };
-  const failure = (err: Error) => toast.error(errorText(err.message));
-
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const handle = normalizeHandle(handleInput);
@@ -78,9 +71,10 @@ export default function FriendsBody() {
     send.mutate(handle, {
       onSuccess: (friendship: { status?: string }) => {
         setHandleInput("");
-        toast.success(t(friendship?.status === "accepted" ? "friends.add.accepted" : "friends.add.sent"));
+        if (friendship?.status === "accepted") toast.success(t("friends.add.accepted"));
+        else toast.info(t("friends.add.sent"));
       },
-      onError: (err) => setError(errorText(err.message)),
+      onError: (err) => setError(apiErrorText(t, err)),
     });
   };
 
@@ -153,10 +147,10 @@ export default function FriendsBody() {
                 <div className="lp-card lp-group">
                   {incoming.map((item) => (
                     <FriendRow key={item.id} item={item}>
-                      <IconAction label={t("friends.accept")} tone="accent" onClick={() => respond.mutate({ id: item.id, accept: true }, { onError: failure })}>
+                      <IconAction label={t("friends.accept")} tone="accent" onClick={() => respond.mutate({ id: item.id, accept: true }, { onSuccess: () => toast.success(t("friends.accepted")) })}>
                         <Check className="size-4" />
                       </IconAction>
-                      <IconAction label={t("friends.decline")} onClick={() => respond.mutate({ id: item.id, accept: false }, { onError: failure })}>
+                      <IconAction label={t("friends.decline")} onClick={() => respond.mutate({ id: item.id, accept: false })}>
                         <X className="size-4" />
                       </IconAction>
                     </FriendRow>
@@ -171,7 +165,7 @@ export default function FriendsBody() {
                 <div className="lp-card lp-group">
                   {outgoing.map((item) => (
                     <FriendRow key={item.id} item={item}>
-                      <IconAction label={t("friends.cancel")} onClick={() => remove.mutate(item.id, { onError: failure })}>
+                      <IconAction label={t("friends.cancel")} onClick={() => remove.mutate(item.id)}>
                         <X className="size-4" />
                       </IconAction>
                     </FriendRow>
@@ -215,7 +209,7 @@ export default function FriendsBody() {
         pending={remove.isPending}
         onConfirm={() => {
           if (!toRemove) return;
-          remove.mutate(toRemove.id, { onError: failure });
+          remove.mutate(toRemove.id);
           setToRemove(null);
         }}
       />

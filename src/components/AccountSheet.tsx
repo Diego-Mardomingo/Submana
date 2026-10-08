@@ -25,6 +25,7 @@ import { useLang } from "@/hooks/useLang";
 import { useTransactions } from "@/hooks/useTransactions";
 import { BANK_PROVIDER_LIST, getBankProvider } from "@/lib/bankProviders";
 import { useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 import { PALETTE } from "@/lib/palette";
 
 export const CardIcon = ({ size = 20, strokeWidth = 2 }: { size?: number; strokeWidth?: number }) => (
@@ -84,6 +85,7 @@ function AccountFormBody({ account, onDone, onDeleted }: { account: Account | nu
     try {
       if (account) await updateAccount.mutateAsync({ id: account.id, ...payload });
       else await createAccount.mutateAsync(payload);
+      toast.success(t(account ? "accounts.saved" : "accounts.created"));
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error");
@@ -164,7 +166,12 @@ function AccountFormBody({ account, onDone, onDeleted }: { account: Account | nu
               confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
               pending={deleteAccount.isPending}
               onConfirm={async () => {
-                await deleteAccount.mutateAsync(account.id);
+                try {
+                  await deleteAccount.mutateAsync(account.id);
+                } catch {
+                  return; // the error toast is already up; keep the confirmation to retry
+                }
+                toast.success(t("accounts.deleted"));
                 onDone();
                 onDeleted?.();
               }}

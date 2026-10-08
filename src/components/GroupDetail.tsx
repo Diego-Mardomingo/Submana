@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ChevronLeft, HandCoins, Pencil, Plus, Settings2, Trash2, UserMinus } from "lucide-react";
+import { Archive, ArrowRight, ChevronLeft, HandCoins, Pencil, Plus, Settings2, Trash2, UserMinus } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { NetAmount } from "@/components/GroupsBody";
@@ -19,7 +19,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useFriends } from "@/hooks/useFriends";
 import { useAddGroupMember, useDeleteGroup, useGroup, useRemoveGroupMember, useUpdateGroup } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
-import { useDeleteSharedExpense } from "@/hooks/useSharedExpenses";
+import { useDeleteSharedExpense, useUndoableDeleteSharedExpense } from "@/hooks/useSharedExpenses";
 import { useProfile } from "@/hooks/useProfile";
 import { parseDateString } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
@@ -43,6 +43,7 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   const t = useTranslations(useLang());
   const label = useMemberLabel(meId);
   const { data: friends } = useFriends(open);
+  const rename = useUpdateGroup({ silentError: true }); // the form shows the error inline
   const update = useUpdateGroup();
   const add = useAddGroupMember();
   const remove = useRemoveGroupMember();
@@ -53,14 +54,13 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   const archived = !!data.group.archived_at;
   const memberIds = new Set(data.members.map((m) => m.user_id));
   const addable = (friends?.friends ?? []).filter((f) => !memberIds.has(f.profile.user_id));
-  const fail = (err: Error) => toast.error(sharedErrorText(t, err.message));
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     if (!name.trim()) return setError(t("groups.error.invalid_name"));
     try {
-      await update.mutateAsync({ id: data.group.id, name: name.trim() });
+      await rename.mutateAsync({ id: data.group.id, name: name.trim() });
       toast.success(t("groups.saved"));
       onOpenChange(false);
     } catch (err) {
@@ -100,7 +100,13 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
                     onClick={() =>
                       remove.mutate(
                         { groupId: data.group.id, userId: m.user_id },
-                        { onError: fail, onSuccess: () => m.user_id === meId && onOpenChange(false) }
+                        {
+                          onSuccess: () => {
+                            if (m.user_id !== meId) return;
+                            toast.info(t("groups.left"));
+                            onOpenChange(false);
+                          },
+                        }
                       )
                     }
                   >
@@ -117,7 +123,7 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
                 <Chips
                   label={t("groups.addMember")}
                   value=""
-                  onChange={(userId) => add.mutate({ groupId: data.group.id, userId }, { onError: fail })}
+                  onChange={(userId) => add.mutate({ groupId: data.group.id, userId })}
                   options={addable.map((f) => ({
                     value: f.profile.user_id,
                     label: f.profile.display_name,
@@ -130,7 +136,7 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
 
           <FieldGroup>
             {archived ? (
-              <SheetButton type="button" variant="ghost" onClick={() => update.mutate({ id: data.group.id, archived: false }, { onError: fail })}>
+              <SheetButton type="button" variant="ghost" onClick={() => update.mutate({ id: data.group.id, archived: false })}>
                 {t("groups.unarchive")}
               </SheetButton>
             ) : (
@@ -141,7 +147,15 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
                 confirmText={t("groups.archiveDesc")}
                 pending={update.isPending}
                 onConfirm={async () => {
-                  await update.mutateAsync({ id: data.group.id, archived: true }).catch(fail);
+                  try {
+                    await update.mutateAsync({ id: data.group.id, archived: true });
+                  } catch {
+                    return; // the error toast is already up; keep the confirmation to retry
+                  }
+                  toast(t("groups.archivedToast"), {
+                    icon: <Archive />,
+                    action: { label: t("common.undo"), onClick: () => update.mutate({ id: data.group.id, archived: false }) },
+                  });
                   onOpenChange(false);
                 }}
               />
@@ -154,11 +168,11 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
               onConfirm={async () => {
                 try {
                   await deleteGroup.mutateAsync(data.group.id);
-                  onOpenChange(false);
-                  router.replace("/subcount");
-                } catch (err) {
-                  fail(err as Error);
+                } catch {
+                  return; // the error toast is already up
                 }
+                onOpenChange(false);
+                router.replace("/subcount");
               }}
             />
           </FieldGroup>
@@ -369,7 +383,8 @@ export default function GroupDetail({ id }: { id: string }) {
   const [tab, setTab] = useState<Tab>("expenses");
   const [editing, setEditing] = useState<SharedExpenseItem | null>(null);
   const [toDelete, setToDelete] = useState<SharedExpenseItem | null>(null);
-  const removeExpense = useDeleteSharedExpense();
+  const deleteExpense = useUndoableDeleteSharedExpense();
+  const removeSettlement = useDeleteSharedExpense();
   const [creating, setCreating] = useState(false);
   const [settle, setSettle] = useState<Transfer | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -459,7 +474,14 @@ export default function GroupDetail({ id }: { id: string }) {
             <>
               <SwipeToRevealGroup className="lp-card lp-group">
                 {data.expenses.map((expense) => (
-                  <ExpenseRow key={expense.id} expense={expense} meId={meId} profiles={profiles} onOpen={setEditing} onDelete={setToDelete} />
+                  <ExpenseRow
+                    key={expense.id}
+                    expense={expense}
+                    meId={meId}
+                    profiles={profiles}
+                    onOpen={setEditing}
+                    onDelete={(item) => (item.kind === "settlement" ? setToDelete(item) : deleteExpense(item))}
+                  />
                 ))}
               </SwipeToRevealGroup>
               {data.has_more && (
@@ -499,9 +521,14 @@ export default function GroupDetail({ id }: { id: string }) {
         description={t(toDelete?.kind === "settlement" ? "shared.settlementUndoHint" : "shared.deleteConfirm")}
         confirmLabel={toDelete?.kind === "settlement" ? t("shared.settlementUndo") : undefined}
         icon={toDelete?.kind === "settlement" ? <HandCoins /> : undefined}
-        pending={removeExpense.isPending}
+        pending={removeSettlement.isPending}
         onConfirm={async () => {
-          if (toDelete) await removeExpense.mutateAsync(toDelete.id).catch((err: Error) => toast.error(sharedErrorText(t, err.message)));
+          if (!toDelete) return;
+          try {
+            await removeSettlement.mutateAsync(toDelete.id);
+          } catch {
+            return; // the error toast is already up; keep the confirmation to retry
+          }
           setToDelete(null);
         }}
       />
@@ -560,7 +587,11 @@ function DeleteSettlement({ expense, onDone }: { expense: SharedExpenseItem; onD
       confirmText={t("shared.settlementUndoHint")}
       pending={remove.isPending}
       onConfirm={async () => {
-        await remove.mutateAsync(expense.id).catch((err: Error) => toast.error(sharedErrorText(t, err.message)));
+        try {
+          await remove.mutateAsync(expense.id);
+        } catch {
+          return; // the error toast is already up; keep the confirmation to retry
+        }
         onDone();
       }}
     />

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Trash2 } from "lucide-react";
 import {
+  ActionRow,
   AmountField,
   Chips,
-  DeleteAction,
   FieldGroup,
   FieldRow,
   FieldStack,
@@ -20,10 +21,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { parseCurrencyValue } from "@/lib/currency";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
+import { useBudgetWarning } from "@/hooks/useBudgets";
 import { useLang } from "@/hooks/useLang";
 import {
   useCreateTransaction,
-  useDeleteTransaction,
+  useUndoableDeleteTransaction,
   useSimilarTransactions,
   useTransaction,
   useUpdateTransaction,
@@ -33,6 +35,7 @@ import { parseDateString, toDateString } from "@/lib/date";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 
 function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, onUseSimilar }: {
   transaction: Transaction | null;
@@ -50,7 +53,8 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const categoryNames = useCategoryLookup().name;
   const createTx = useCreateTransaction();
   const updateTx = useUpdateTransaction();
-  const deleteTx = useDeleteTransaction();
+  const deleteTx = useUndoableDeleteTransaction();
+  const watchBudgets = useBudgetWarning();
 
   const [type, setType] = useState<"income" | "expense">(transaction?.type ?? "expense");
   const [amount, setAmount] = useState(transaction ? Number(transaction.amount).toFixed(2).replace(".", ",") : "");
@@ -106,8 +110,11 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
       subcategory_id: (jointAccount && !subcategory ? "" : subcategoryId) || undefined,
     };
     try {
+      const checkBudgets = await watchBudgets(payload);
       if (transaction) await updateTx.mutateAsync({ id: transaction.id, ...payload });
       else await createTx.mutateAsync(payload);
+      toast.success(t(transaction ? "transactions.saved" : "transactions.created"));
+      void checkBudgets();
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -247,17 +254,16 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
 
         {transaction && (
           <FieldGroup>
-            <DeleteAction
-              label={es ? "Eliminar transacción" : "Delete transaction"}
-              confirmTitle={es ? "¿Eliminar esta transacción?" : "Delete this transaction?"}
-              confirmText={t("transactions.deleteConfirm")}
-              confirmLabel={es ? "Sí, eliminar" : "Yes, delete"}
-              pending={deleteTx.isPending}
-              onConfirm={async () => {
-                await deleteTx.mutateAsync(transaction.id);
+            <ActionRow
+              tone="danger"
+              icon={<Trash2 aria-hidden />}
+              onClick={() => {
+                deleteTx(transaction);
                 onDone();
               }}
-            />
+            >
+              {es ? "Eliminar transacción" : "Delete transaction"}
+            </ActionRow>
           </FieldGroup>
         )}
       </SheetBody>

@@ -68,13 +68,14 @@ export function useCategoryLookup() {
 function useCategoryMutation<TVars>(
   mutationFn: (vars: TVars) => Promise<unknown>,
   update: (list: CategoryWithSubs[], vars: TVars) => CategoryWithSubs[],
-  archived = false
+  { archived = false, silentError = false } = {}
 ) {
   return useOptimisticMutation<TVars, CategoriesData>({
     mutationFn,
     queryKey: queryKeys.categories.list({ archived }),
     update: (old, vars) => ({ ...old, userCategories: update(old.userCategories, vars) }),
     invalidate: [queryKeys.categories.all],
+    meta: { silentError },
   });
 }
 
@@ -94,7 +95,8 @@ export function useCreateCategory() {
       return list.map((cat) =>
         cat.id === input.parent_id ? { ...cat, subcategories: [...(cat.subcategories ?? []), created] } : cat
       );
-    }
+    },
+    { silentError: true } // the sheet shows the error inline
   );
 }
 
@@ -106,7 +108,8 @@ export function useUpdateCategory() {
         cat.id === id
           ? { ...cat, ...patch }
           : { ...cat, subcategories: cat.subcategories?.map((sub) => (sub.id === id ? { ...sub, ...patch } : sub)) }
-      )
+      ),
+    { silentError: true }
   );
 }
 
@@ -123,5 +126,5 @@ export function useArchiveCategory() {
 }
 
 export function useUnarchiveCategory() {
-  return useCategoryMutation((id: string) => api(`/api/crud/categories/${id}/unarchive`, "POST"), removeCategory, true);
+  return useCategoryMutation((id: string) => api(`/api/crud/categories/${id}/unarchive`, "POST"), removeCategory, { archived: true });
 }

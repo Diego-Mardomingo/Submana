@@ -63,6 +63,7 @@ export function useCreateAccount() {
     queryKey: queryKeys.accounts.lists(),
     update: (old, account) => [...old, { ...account, id: `temp-${Date.now()}`, balance: account.balance ?? 0, _optimistic: true }],
     invalidate: [queryKeys.accounts.all],
+    meta: { silentError: true }, // the sheet shows the error inline
   });
 }
 
@@ -72,6 +73,7 @@ export function useUpdateAccount() {
     queryKey: queryKeys.accounts.lists(),
     update: replaceById,
     invalidate: [queryKeys.accounts.all],
+    meta: { silentError: true },
   });
 }
 
@@ -92,6 +94,7 @@ export function useDeleteAccountTransactions() {
     mutationFn: ({ accountId, payload }: { accountId: string; payload: DeleteRange }) =>
       api<{ deleted_count: number }>(`/api/crud/accounts/${accountId}/transactions`, "DELETE", payload),
     invalidate: [queryKeys.transactions.all, queryKeys.accounts.all],
+    meta: { silentError: true }, // the sheet shows the error inline
   });
 }
 

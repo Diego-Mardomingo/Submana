@@ -11,7 +11,9 @@ import { useLang } from "@/hooks/useLang";
 import { useRecordSettlement } from "@/hooks/useSharedExpenses";
 import { parseCurrencyValue } from "@/lib/currency";
 import { toDateString } from "@/lib/date";
-import { useTranslations } from "@/lib/i18n/utils";
+import { formatCurrency } from "@/lib/format";
+import { interpolate, useTranslations } from "@/lib/i18n/utils";
+import { toast } from "@/lib/toast";
 import type { Transfer } from "@/lib/shared/debts";
 import { sharedErrorText } from "@/lib/shared/errorText";
 import { fromCents, toCents } from "@/lib/shared/splits";
@@ -54,6 +56,7 @@ function SettleForm({ groupId, members, meId, transfer, onDone }: {
         amount: cents / 100,
         date: toDateString(date),
       });
+      toast.success(interpolate(t("settle.done"), { amount: formatCurrency(cents / 100) }));
       onDone();
     } catch (err) {
       setError(sharedErrorText(t, err instanceof Error ? err.message : undefined));
