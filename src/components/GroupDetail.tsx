@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ChevronLeft, HandCoins, Pencil, Plus, Settings2, Trash2, UserMinus } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { NetAmount } from "@/components/GroupsBody";
 import { ProfileAvatar } from "@/components/ProfileAvatar";

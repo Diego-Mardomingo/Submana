@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, UserPlus, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { DeleteAction, FieldGroup } from "@/components/SheetFields";
 import {

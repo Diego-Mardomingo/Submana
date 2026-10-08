@@ -4,7 +4,7 @@
 
 ### Toasts
 
-Use the app's own toasts. Do **not** use `sonner` (ESLint blocks it outside the legacy files listed in `eslint.config.mjs`).
+Use the app's own toasts. Do **not** use `sonner` (ESLint blocks it).
 
 - API: `import { toast } from "@/lib/toast"`. `<Toaster />` is already mounted in `src/app/providers.tsx`; never mount another.
 - Design reference: open `docs/design/toasts.html` in a browser. Styles live in `src/app/toast.css` and use only the theme tokens from `globals.css` (`--success`, `--danger`, `--warning`, `--info`, `--accent` and their `-soft` variants). Don't restyle toasts per screen. Change the design in `toast.css` and `toasts.html` together.
@@ -28,4 +28,3 @@ Rules:
 - Don't toast what the screen already shows (a row appearing in a list), and don't fire several toasts for one action.
 - Durations are set by type (4s, errors 6s, with buttons 8s, loading until resolved); only override `duration` for a reason.
 
-Migrating the remaining `sonner` calls: switch the import to `@/lib/toast` (same `toast.success/error` API), remove the file from `legacySonner` in `eslint.config.mjs`; when the list is empty, remove `SonnerToaster`, `src/components/ui/sonner.tsx` and the `sonner` dependency.

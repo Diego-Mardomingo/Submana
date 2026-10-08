@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Check, UserMinus, UserPlus, Users, X } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { HandleSetup } from "@/components/HandleSetup";
 import { JointInvites } from "@/components/JointAccountSection";
