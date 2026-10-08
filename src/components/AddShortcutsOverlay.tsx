@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Send, Split, Tags, Wallet, type LucideIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ActionRow, FieldGroup, Segmented, SheetButton } from "@/components/SheetFields";
 import { SharedExpenseSheet } from "@/components/SharedExpenseSheet";

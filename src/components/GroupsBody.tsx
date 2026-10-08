@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, Pencil, Trash2, Users } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { GroupSettingsSheet, PAGE } from "@/components/GroupDetail";
 import { HandleSetup } from "@/components/HandleSetup";

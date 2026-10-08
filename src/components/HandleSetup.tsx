@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AtSign } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { FieldGroup, FieldRow, FormError, RowInput, SheetButton } from "@/components/SheetFields";
 import { useHandleAvailability, useSaveProfile, type Profile } from "@/hooks/useProfile";
