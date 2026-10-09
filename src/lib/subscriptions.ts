@@ -1,15 +1,24 @@
 import type { Subscription } from "@/hooks/useSubscriptions";
-import { parseDateString, shiftMonth } from "@/lib/date";
+import { appNow, parseDateString, shiftMonth, toDateString } from "@/lib/date";
+import { RENEWAL_OFFSETS, type RenewalOffset } from "@/lib/notifications/catalog";
 
 type Schedule = Pick<Subscription, "start_date" | "end_date" | "frequency" | "frequency_value">;
 
 const noon = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+/** The day in Madrid (APP_TIME_ZONE) at local noon, whatever the zone of the process: the browser, or a UTC server. */
+const madridToday = () => noon(appNow());
+const addDays = (d: Date, days: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, 12);
 /** Date-only strings are local days (new Date("YYYY-MM-DD") would be UTC midnight). */
 const localDay = (date: string) => noon(parseDateString(date));
 
+/**
+ * "Today" in all the functions below is the Madrid day (see `madridToday`); pass `today` to compute
+ * another day (tests, the cron). Only the date matters, not the time.
+ */
+
 /** Started and not ended as of today. */
-export function isSubscriptionActive(sub: Schedule) {
-  const today = noon(new Date());
+export function isSubscriptionActive(sub: Schedule, todayDate?: Date) {
+  const today = noon(todayDate ?? madridToday());
   return localDay(sub.start_date) <= today && !(sub.end_date && localDay(sub.end_date) < today);
 }
 
@@ -38,8 +47,8 @@ function* chargeDates(sub: Schedule) {
 }
 
 /** Next charge after today, or null when the subscription has ended. */
-export function nextPaymentDate(sub: Schedule) {
-  const today = noon(new Date());
+export function nextPaymentDate(sub: Schedule, todayDate?: Date) {
+  const today = noon(todayDate ?? madridToday());
   const end = sub.end_date ? localDay(sub.end_date) : null;
   for (const date of chargeDates(sub)) {
     if (end && date > end) return null;
@@ -49,8 +58,8 @@ export function nextPaymentDate(sub: Schedule) {
 }
 
 /** Amount charged so far (until today or the end date). */
-export function totalSpent(sub: Schedule & { cost: number | string }) {
-  const today = noon(new Date());
+export function totalSpent(sub: Schedule & { cost: number | string }, todayDate?: Date) {
+  const today = noon(todayDate ?? madridToday());
   const end = sub.end_date && localDay(sub.end_date) < today ? localDay(sub.end_date) : today;
   let payments = 0;
   for (const date of chargeDates(sub)) {
@@ -77,4 +86,61 @@ export function isPaymentDay(sub: Schedule, year: number, month: number, day: nu
     default:
       return false;
   }
+}
+
+/** Charge dates (local noon) from `from` to `to`, both included, never past the end date. */
+export function chargeDatesBetween(sub: Schedule, from: Date, to: Date) {
+  const start = noon(from);
+  const stop = noon(to);
+  const end = sub.end_date ? localDay(sub.end_date) : null;
+  const dates: Date[] = [];
+  for (const date of chargeDates(sub)) {
+    if (date > stop || (end && date > end)) break;
+    if (date >= start) dates.push(date);
+  }
+  return dates;
+}
+
+/** A subscription as the reminders see it: its schedule plus the days before a charge to warn on. */
+export type ReminderSchedule = Schedule & { reminder_offsets?: readonly number[] | null };
+
+const isRenewalOffset = (value: number): value is RenewalOffset => (RENEWAL_OFFSETS as readonly number[]).includes(value);
+
+export interface RenewalReminder {
+  /** Days between today and the charge. */
+  offset: RenewalOffset;
+  /** YYYY-MM-DD of the charge. */
+  chargeDate: string;
+}
+
+/**
+ * Reminders to send today: for each offset N of the subscription (0, 1, 3 or 7), the charge that happens
+ * exactly N days from today, if there is one. No offsets means no reminders.
+ */
+export function renewalReminders(sub: ReminderSchedule, todayDate?: Date): RenewalReminder[] {
+  const today = noon(todayDate ?? madridToday());
+  const offsets = [...new Set(sub.reminder_offsets ?? [])].filter(isRenewalOffset).sort((a, b) => a - b);
+  return offsets.flatMap((offset) => {
+    const target = addDays(today, offset);
+    return chargeDatesBetween(sub, target, target).length > 0 ? [{ offset, chargeDate: toDateString(target) }] : [];
+  });
+}
+
+/** Days before the end date on which the "ending" notice goes out. */
+export const ENDING_NOTICE_DAYS = 3;
+
+export interface EndingNotice {
+  /** YYYY-MM-DD of the end date. */
+  endDate: string;
+  /** A charge falls on the end date itself (otherwise the subscription just ends). */
+  lastCharge: boolean;
+}
+
+/** The "ending" notice due today: the end date is exactly `ENDING_NOTICE_DAYS` days away. */
+export function endingNotice(sub: Schedule, todayDate?: Date): EndingNotice | null {
+  if (!sub.end_date) return null;
+  const today = noon(todayDate ?? madridToday());
+  const end = localDay(sub.end_date);
+  if (toDateString(end) !== toDateString(addDays(today, ENDING_NOTICE_DAYS))) return null;
+  return { endDate: toDateString(end), lastCharge: chargeDatesBetween(sub, end, end).length > 0 };
 }

@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useLang } from "@/hooks/useLang";
 import { api } from "@/lib/api";
 import { BANK_PROVIDERS, type BankProvider } from "@/lib/bankProviders";
+import { mergeCrossedBudgets } from "@/lib/budgetThresholds";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { normalizeBBVATransactions, parseBBVAExcel } from "@/lib/parsers/bbva";
 import { normalizeImaginTransactions, parseImaginCSV } from "@/lib/parsers/imagin";
@@ -180,6 +181,13 @@ export default function BankStatementUpload({ accountId, bankProvider, autoOpenF
       setImportResult(result);
       setState("success");
       toast.success(interpolate(t("import.successToast"), { count: (result.actual?.imported ?? 0) + (result.deposit?.imported ?? 0) }));
+      // A budget that reached 80 % / 100 % because of the import: one warning, as when saving a transaction by hand.
+      const crossed = mergeCrossedBudgets(result.actual?.crossedBudgets, result.deposit?.crossedBudgets);
+      if (crossed.length === 1) {
+        toast.warning(interpolate(t("budgets.thresholdToast"), { name: crossed[0].name || t("budgets.generalBudget"), pct: crossed[0].pct }));
+      } else if (crossed.length > 1) {
+        toast.warning(interpolate(t("budgets.thresholdToastMany"), { count: crossed.length, pct: Math.min(...crossed.map((b) => b.threshold)) }));
+      }
       await invalidate();
       router.refresh();
     } catch (err) {

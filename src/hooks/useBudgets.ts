@@ -3,6 +3,7 @@
 import { useCallback, useEffect } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { budgetRatio, crossedThresholds } from "@/lib/budgetThresholds";
 import { monthKey, shiftMonth } from "@/lib/date";
 import { queryKeys } from "@/lib/queryKeys";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -95,17 +96,17 @@ export const rootIds = (budget: BudgetWithSpent, categories: ReturnType<typeof u
   ...new Set(budget.categoryIds.map((id) => categories.parent.get(id) ?? id)),
 ];
 
-/** A budget is worth a warning from this share of its limit. */
-export const BUDGET_WARNING_RATIO = 0.9;
-
-/** Budgets that went from under the warning ratio to over it. Paired by id; a budget missing from `before` is new, so it counts from zero. */
+/**
+ * Budgets that went from under a threshold (80 % or 100 % of the limit) to at or over it: one entry per
+ * budget even if it crossed both. Paired by id; a budget missing from `before` is new, so it counts from zero.
+ */
 export function budgetsCrossingWarning(before: BudgetWithSpent[], after: BudgetWithSpent[]) {
-  const ratio = (budget?: BudgetWithSpent) => (budget && Number(budget.amount) > 0 ? Number(budget.spent ?? 0) / Number(budget.amount) : 0);
-  return after.filter((budget) => ratio(budget) >= BUDGET_WARNING_RATIO && ratio(before.find((b) => b.id === budget.id)) < BUDGET_WARNING_RATIO);
+  const ratio = (budget?: BudgetWithSpent) => (budget ? budgetRatio(budget.spent, budget.amount) : 0);
+  return after.filter((budget) => crossedThresholds(ratio(before.find((b) => b.id === budget.id)), ratio(budget)).length > 0);
 }
 
 /**
- * Warns when saving an expense takes a budget to 90 % of its limit (once: only on the crossing).
+ * Warns when saving an expense takes a budget to 80 % or 100 % of its limit (once per crossing).
  * Call it before saving and run the returned function after the save went through.
  */
 export function useBudgetWarning() {

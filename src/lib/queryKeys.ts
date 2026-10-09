@@ -35,6 +35,14 @@ export const queryKeys = {
     all: ["friends"] as const,
     list: () => [...queryKeys.friends.all, "list"] as const,
   },
+  notifications: {
+    all: ["notifications"] as const,
+    lists: () => [...queryKeys.notifications.all, "list"] as const,
+    list: (filter: "unread" | "all") => [...queryKeys.notifications.lists(), filter] as const,
+    counts: () => [...queryKeys.notifications.all, "counts"] as const,
+    settings: () => [...queryKeys.notifications.all, "settings"] as const,
+    mutes: () => [...queryKeys.notifications.all, "mutes"] as const,
+  },
   shared: {
     all: ["shared"] as const,
     groups: () => [...queryKeys.shared.all, "groups"] as const,

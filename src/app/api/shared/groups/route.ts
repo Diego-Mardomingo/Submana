@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { memberAddedEvents } from "@/lib/notifications/events/subcount";
+import { notifyAfter } from "@/lib/notifications/server";
 import { fetchProfiles, limitSharedWrites, loadGroupNets, rpcErrorResponse, UUID } from "@/lib/shared/server";
 import type { GroupSummary } from "@/lib/shared/types";
 
@@ -48,5 +50,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase.rpc("create_group", { p_name: name, p_member_ids: memberIds });
   if (error) return rpcErrorResponse("shared/groups", error);
+  const group = data as { id: string };
+  notifyAfter(() => memberAddedEvents(group.id, memberIds as string[], user.id));
   return jsonResponse({ data }, 201);
 }

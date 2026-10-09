@@ -40,6 +40,7 @@
 }
 
 .tabIcon {
+  position: relative;
   display: grid;
   place-items: center;
   width: 48px;
@@ -69,6 +70,24 @@
   transform: translateY(4px);
   transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
   pointer-events: none;
+}
+
+/* Something new to look at (unseen notifications): an accent dot on the Menu tab's icon. */
+.tabDot {
+  position: absolute;
+  top: 3px;
+  right: 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--negro);
+  animation: tabDotIn 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+@keyframes tabDotIn {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
 }
 
 .tab:active .tabIcon {
@@ -196,6 +215,37 @@ html[data-theme="light"] .notchIcon {
 
 .menuChevron {
   color: var(--gris-claro);
+}
+
+/* Unread number next to "Notifications" (sidebar and menu sheet). */
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--negro);
+  font-size: 0.64rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  animation: tabDotIn 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+html[data-theme="light"] .count {
+  color: #ffffff;
+}
+
+.count + .kbd {
+  margin-left: 0.5rem;
+}
+
+.menuRow > .menuCount {
+  flex: none;
+  margin-left: 0;
 }
 
 /* ── Desktop sidebar ── */
@@ -403,5 +453,10 @@ html[data-theme="light"] .addBtn {
   .notchShape,
   .addIcon {
     transition: none;
+  }
+
+  .tabDot,
+  .count {
+    animation: none;
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import { Bones } from "@/components/Bones";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -10,9 +10,11 @@ import { SubscriptionSheet } from "@/components/SubscriptionSheet";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCreateDialog } from "@/hooks/useCreateDialog";
+import { useUrlParam } from "@/hooks/useUrlParam";
 import { useLang } from "@/hooks/useLang";
 import { useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import { parseDateString } from "@/lib/date";
+import { parseIdParam } from "@/lib/deepLinks";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
@@ -98,13 +100,20 @@ export default function SubscriptionsBody() {
   const [createOpen, setCreateOpen] = useCreateDialog();
   const [sheet, setSheet] = useState<{ sub: Subscription; mode: "view" | "edit" } | null>(null);
   const openSub = useCallback((sub: Subscription) => setSheet({ sub, mode: "view" }), []);
+  // Deep link (a notification): /subscriptions?sub={id} opens that subscription, also while the page is already open.
+  const [subParam, clearSubParam] = useUrlParam("sub", parseIdParam);
+  const linkedSub = subParam ? subscriptions.find((s) => s.id === subParam) : undefined;
+  const linkGone = !!subParam && !isLoading && !linkedSub;
+  useEffect(() => {
+    if (linkGone) clearSubParam(); // the subscription no longer exists: just show the list
+  }, [linkGone, clearSubParam]);
   // Live data for the open subscription (falls back to the snapshot once deleted).
-  const sheetSub = sheet ? (subscriptions.find((s) => s.id === sheet.sub.id) ?? sheet.sub) : null;
+  const sheetSub = linkedSub ?? (sheet ? (subscriptions.find((s) => s.id === sheet.sub.id) ?? sheet.sub) : null);
 
   const next = new Map(subscriptions.map((sub) => [sub.id, nextPaymentDate(sub)]));
   const nextTime = (sub: Subscription) => next.get(sub.id)?.getTime() ?? Infinity;
   const activeSubs = subscriptions
-    .filter(isSubscriptionActive)
+    .filter((sub) => isSubscriptionActive(sub))
     .sort((a, b) => nextTime(a) - nextTime(b) || Number(b.cost) - Number(a.cost));
   const inactiveSubs = subscriptions.filter((s) => !isSubscriptionActive(s)).sort((a, b) => Number(b.cost) - Number(a.cost));
   const totalMonthly = activeSubs.reduce((sum, sub) => sum + monthlyCost(sub), 0);
@@ -200,11 +209,12 @@ export default function SubscriptionsBody() {
   const header = <CompactPageHeader title={t("nav.subscriptions")} addLabel={t("sub.new")} onAdd={() => setCreateOpen(true)} />;
   const sheets = (
     <SubscriptionSheet
-      open={createOpen || !!sheet}
+      open={createOpen || !!sheet || !!linkedSub}
       onOpenChange={(open) => {
         if (open) return;
         setCreateOpen(false);
         setSheet(null);
+        if (subParam) clearSubParam();
       }}
       subscription={sheetSub}
       mode={sheet?.mode}

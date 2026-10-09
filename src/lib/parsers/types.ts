@@ -1,3 +1,5 @@
+import type { CrossedBudget } from "@/lib/budgetThresholds";
+
 /**
  * import_source_fingerprint: stable per bank row (no account id); the server derives import_line_id.
  * external_hash: semantic fingerprint (date + amount + description).
@@ -60,4 +62,6 @@ export interface ImportTransactionsResponse {
   new_balance: number;
   /** Rows tagged as internal transfers ("exclude from metrics" category). */
   internal_transfers_tagged?: number;
+  /** Budgets that crossed 80 % / 100 % because of this import (the client shows one toast). */
+  crossedBudgets?: CrossedBudget[];
 }

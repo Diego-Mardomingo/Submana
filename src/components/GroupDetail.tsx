@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, ArrowRight, ChevronLeft, HandCoins, Pencil, Plus, Settings2, Trash2, UserMinus } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
+import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { NetAmount } from "@/components/GroupsBody";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -16,11 +17,15 @@ import { useMemberLabel } from "@/components/SplitEditor";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import { useFriends } from "@/hooks/useFriends";
 import { useAddGroupMember, useDeleteGroup, useGroup, useRemoveGroupMember, useUpdateGroup } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
+import { isMuted, useNotificationMutes, useToggleMute } from "@/hooks/useNotifications";
+import { useUrlParam } from "@/hooks/useUrlParam";
 import { useDeleteSharedExpense, useUndoableDeleteSharedExpense } from "@/hooks/useSharedExpenses";
 import { useProfile } from "@/hooks/useProfile";
+import { parseIdParam } from "@/lib/deepLinks";
 import { parseDateString } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -48,12 +53,20 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   const add = useAddGroupMember();
   const remove = useRemoveGroupMember();
   const deleteGroup = useDeleteGroup();
+  const { data: mutes } = useNotificationMutes(open);
+  const toggleMute = useToggleMute();
   const router = useRouter();
   const [name, setName] = useState(data.group.name);
   const [error, setError] = useState("");
   const archived = !!data.group.archived_at;
   const memberIds = new Set(data.members.map((m) => m.user_id));
   const addable = (friends?.friends ?? []).filter((f) => !memberIds.has(f.profile.user_id));
+  const muted = isMuted(mutes, "group", data.group.id);
+  const setMuted = (next: boolean) =>
+    toggleMute.mutate(
+      { target_type: "group", target_id: data.group.id, muted: next },
+      { onSuccess: () => toast.info(t(next ? "mute.groupMuted" : "mute.groupUnmuted")) }
+    );
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +88,12 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
           <FieldGroup>
             <FieldRow label={t("groups.name")} htmlFor="group-rename">
               <RowInput id="group-rename" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+            </FieldRow>
+          </FieldGroup>
+
+          <FieldGroup hint={t("mute.hint")}>
+            <FieldRow label={t("mute.group")} htmlFor="group-mute">
+              <Switch id="group-mute" checked={muted} onCheckedChange={setMuted} disabled={!mutes} />
             </FieldRow>
           </FieldGroup>
 
@@ -379,9 +398,20 @@ export default function GroupDetail({ id }: { id: string }) {
   const t = useTranslations(useLang());
   const { data: profile } = useProfile();
   const [limit, setLimit] = useState(PAGE);
-  const { data, isLoading, isError } = useGroup(id, limit);
+  const { data, isLoading, isError, isPlaceholderData } = useGroup(id, limit);
   const [tab, setTab] = useState<Tab>("expenses");
   const [editing, setEditing] = useState<SharedExpenseItem | null>(null);
+  // Deep link (a notification): /subcount/{group}?expense={id} opens that expense, also while the page is already open.
+  const [expenseParam, clearExpenseParam] = useUrlParam("expense", parseIdParam);
+  const linkedExpense = expenseParam ? data?.expenses.find((expense) => expense.id === expenseParam) : undefined;
+  const linkSettled = !!expenseParam && !!data && !isPlaceholderData && !linkedExpense;
+  const linkGone = linkSettled && !data.has_more;
+  // An older expense, not in the page loaded so far: load more until it shows up.
+  if (linkSettled && data.has_more) setLimit(limit + PAGE);
+  useEffect(() => {
+    if (linkGone) clearExpenseParam(); // deleted since: just show the group
+  }, [linkGone, clearExpenseParam]);
+  const active = linkedExpense ?? editing;
   const [toDelete, setToDelete] = useState<SharedExpenseItem | null>(null);
   const deleteExpense = useUndoableDeleteSharedExpense();
   const removeSettlement = useDeleteSharedExpense();
@@ -436,6 +466,7 @@ export default function GroupDetail({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <HeaderBell />
           <button type="button" className="lp-icon-btn" aria-label={t("groups.settings")} title={t("groups.settings")} onClick={() => setSettingsOpen(true)}>
             <Settings2 className="size-5" />
           </button>
@@ -496,23 +527,27 @@ export default function GroupDetail({ id }: { id: string }) {
       </div>
 
       <SharedExpenseSheet
-        open={creating || (!!editing && editing.kind === "expense")}
+        open={creating || (!!active && active.kind === "expense")}
         onOpenChange={(open) => {
           if (!open) {
             setCreating(false);
             setEditing(null);
+            if (expenseParam) clearExpenseParam();
           }
         }}
         groupId={data.group.id}
         members={data.members}
         meId={meId}
-        expense={editing}
+        expense={active}
       />
       <SettlementDeleteSheet
-        expense={editing?.kind === "settlement" ? editing : null}
+        expense={active?.kind === "settlement" ? active : null}
         profiles={profiles}
         meId={meId}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null);
+          if (expenseParam) clearExpenseParam();
+        }}
       />
       <ConfirmDeleteSheet
         open={!!toDelete}

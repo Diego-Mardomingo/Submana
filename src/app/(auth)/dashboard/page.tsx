@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import BalanceHero from "@/components/dashboard/BalanceHero";
 import FriendsCard from "@/components/dashboard/FriendsCard";
+import { HeaderBell } from "@/components/notifications/NotificationBell";
 import MonthOverview from "@/components/dashboard/MonthOverview";
 import { IncomeExpenseCard, SavingsProjectionCard } from "@/components/dashboard/Trends";
 import { useLang } from "@/hooks/useLang";
@@ -33,6 +34,9 @@ export default function DashboardPage() {
       <header className="lp-header dash-header">
         <h1>{t("nav.dashboard")}</h1>
         <span className="dash-date">{today}</span>
+        <div className="ml-auto self-center">
+          <HeaderBell />
+        </div>
       </header>
 
       <div className="dash-layout">

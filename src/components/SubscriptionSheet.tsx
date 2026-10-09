@@ -26,9 +26,12 @@ import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/com
 import { parseCurrencyValue } from "@/lib/currency";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
+import { useNotificationSettings } from "@/hooks/useNotifications";
 import { useCreateSubscription, useUpdateSubscription, type Subscription } from "@/hooks/useSubscriptions";
 import { parseDateString, toDateString } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
+import type { UIKey } from "@/lib/i18n/ui";
+import { RENEWAL_OFFSETS } from "@/lib/notifications/catalog";
 import { useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { toast } from "@/lib/toast";
@@ -37,6 +40,8 @@ import { isSubscriptionActive, monthlyCost, nextPaymentDate, totalSpent } from "
 type Mode = "view" | "edit";
 
 const FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
+
+const offsetLabelKey = (offset: number) => `notifSettings.offset.${offset}` as UIKey;
 
 function SubscriptionTile({ sub }: { sub: Pick<Subscription, "icon" | "service_name"> }) {
   return (
@@ -84,6 +89,9 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
 
         <FieldGroup>
           <InfoRow label={t("sub.nextPayment")}>{next ? <span className="lp-soon">{day(next)}</span> : muted}</InfoRow>
+          <InfoRow label={t("subscriptions.reminders")}>
+            {sub.reminder_offsets?.length ? [...sub.reminder_offsets].sort((a, b) => a - b).map((offset) => t(offsetLabelKey(offset))).join(", ") : muted}
+          </InfoRow>
           {!isMonthly && (
             <InfoRow label={es ? "Equivale a" : "Works out at"}>
               <SensitiveAmount>{formatCurrency(monthlyCost(sub))}</SensitiveAmount>
@@ -158,6 +166,10 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
   const [frequency, setFrequency] = useState<Subscription["frequency"]>(sub?.frequency ?? "monthly");
   const [every, setEvery] = useState(sub?.frequency_value || 1);
   const [accountId, setAccountId] = useState(sub?.account_id ?? "");
+  // Reminders: a new subscription starts with the default of the profile (still loading? the default of the app).
+  const { data: notificationSettings } = useNotificationSettings();
+  const [pickedOffsets, setPickedOffsets] = useState<number[] | null>(null);
+  const offsets = pickedOffsets ?? (sub ? sub.reminder_offsets : notificationSettings?.default_renewal_offsets) ?? [1];
   const [error, setError] = useState("");
   const [costInvalid, setCostInvalid] = useState(false);
   const units = { weekly: ["semana", "semanas", "week", "weeks"], monthly: ["mes", "meses", "month", "months"], yearly: ["año", "años", "year", "years"] }[frequency];
@@ -189,6 +201,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
       frequency,
       frequency_value: every,
       account_id: accountId || null,
+      reminder_offsets: offsets,
     };
     try {
       if (sub) await updateSub.mutateAsync({ id: sub.id, ...input });
@@ -254,6 +267,19 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
           <FieldRow label={es ? "Fin" : "End"}>
             <DatePicker value={endDate} onChange={setEndDate} placeholder={es ? "Sin fecha de fin" : "No end date"} lang={lang} clearable className="sf-picker" />
           </FieldRow>
+        </FieldGroup>
+
+        <FieldGroup title={t("subscriptions.reminders")} hint={t("subscriptions.remindersHint")}>
+          <FieldStack>
+            <Chips
+              multiple
+              scroll
+              label={t("subscriptions.reminders")}
+              value={offsets.map(String)}
+              onChange={(values) => setPickedOffsets(values.map(Number).sort((a, b) => a - b))}
+              options={RENEWAL_OFFSETS.map((offset) => ({ value: String(offset), label: t(offsetLabelKey(offset)) }))}
+            />
+          </FieldStack>
         </FieldGroup>
 
         <FieldGroup title={t("sub.account")} hint={es ? "Opcional: la cuenta desde la que se paga" : "Optional: the account it's paid from"}>

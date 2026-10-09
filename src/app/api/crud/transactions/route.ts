@@ -14,6 +14,9 @@ import {
   unauthorized,
 } from "@/lib/apiHelpers";
 import { calendarMonthsUtcHalfOpenRange } from "@/lib/date";
+import { notifyBudgetThresholds, requestLang } from "@/lib/notifications/budgets";
+import { jointTransactionEvents } from "@/lib/notifications/events/joint";
+import { notifyAfter } from "@/lib/notifications/server";
 import { fetchProfiles } from "@/lib/shared/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -114,5 +117,9 @@ export async function POST(request: NextRequest) {
     p_source: "manual",
   });
   if (error) return jsonServerError("crud/transactions", error);
+
+  // Joint account: the other members are told. Personal expense: check whether a budget reached 80 % / 100 %.
+  if (access.isJoint) notifyAfter(() => jointTransactionEvents([{ accountId: data.account_id, kind: "added", tx: data }], user.id));
+  else if (tx.type === "expense") notifyBudgetThresholds(user.id, [data.date ?? tx.date], await requestLang());
   return jsonResponse({ data }, 201);
 }

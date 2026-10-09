@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { importTransactions } from "@/lib/importTransactions";
+import { watchImportBudgets } from "@/lib/notifications/budgets";
+import { notifyImport } from "@/lib/notifications/events/imports";
 import { validateImportPayload, validateResolutions } from "@/lib/importValidation";
 import type { ImportedTransaction, ImportResolution } from "@/lib/parsers/types";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
@@ -28,6 +30,8 @@ export async function POST(request: NextRequest) {
   const access = await getAccountAccess(supabase, user.id, account_id);
   if (!access) return jsonError("Account not found or access denied", 404);
 
+  // Joint accounts never count in personal budgets.
+  const budgets = access.isJoint ? null : await watchImportBudgets(supabase, user.id, transactions!);
   const result = await importTransactions({
     supabase,
     userId: user.id,
@@ -39,5 +43,9 @@ export async function POST(request: NextRequest) {
     joint: access.isJoint,
     resolutions,
   });
-  return "error" in result ? jsonServerError("import/transactions", result.error) : jsonResponse({ data: result });
+  if ("error" in result) return jsonServerError("import/transactions", result.error);
+
+  notifyImport({ accountId: account_id, imported: result.imported, joint: access.isJoint, actorId: user.id });
+  const crossedBudgets = (await budgets?.finish()) ?? [];
+  return jsonResponse({ data: { ...result, crossedBudgets } });
 }

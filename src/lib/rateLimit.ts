@@ -44,4 +44,6 @@ export const RATE_LIMITS = {
   friends: { limit: 10, windowSeconds: 60 },
   /** Escrituras de grupos, gastos compartidos y liquidaciones por usuario. */
   shared: { limit: 60, windowSeconds: 60 },
+  /** Notificaciones push de prueba por usuario. */
+  pushTest: { limit: 5, windowSeconds: 60 },
 } as const;

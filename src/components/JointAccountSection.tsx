@@ -3,7 +3,8 @@
 import { Check, UserPlus, X } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { DeleteAction, FieldGroup } from "@/components/SheetFields";
+import { DeleteAction, FieldGroup, FieldRow } from "@/components/SheetFields";
+import { Switch } from "@/components/ui/switch";
 import {
   useAccountInvites,
   useInviteAccountMember,
@@ -14,6 +15,7 @@ import {
 } from "@/hooks/useAccounts";
 import { useFriends } from "@/hooks/useFriends";
 import { useLang } from "@/hooks/useLang";
+import { isMuted, useNotificationMutes, useToggleMute } from "@/hooks/useNotifications";
 import { useProfile } from "@/hooks/useProfile";
 import { canEditAccount } from "@/lib/accountAccess";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -47,6 +49,8 @@ export function JointAccountSection({ account, onLeft }: { account: Account; onL
   const { data: friendsData } = useFriends();
   const invite = useInviteAccountMember();
   const remove = useRemoveAccountMember();
+  const { data: mutes } = useNotificationMutes(!!account.is_joint);
+  const toggleMute = useToggleMute();
 
   const isOwner = canEditAccount(account.my_role ?? "owner", "members");
   const members = account.members ?? [];
@@ -121,6 +125,22 @@ export function JointAccountSection({ account, onLeft }: { account: Account; onL
             ))
           )}
         </>
+      )}
+
+      {account.is_joint && (
+        <FieldRow label={t("mute.account")} htmlFor={`account-mute-${account.id}`}>
+          <Switch
+            id={`account-mute-${account.id}`}
+            checked={isMuted(mutes, "account", account.id)}
+            disabled={!mutes}
+            onCheckedChange={(muted) =>
+              toggleMute.mutate(
+                { target_type: "account", target_id: account.id, muted },
+                { onSuccess: () => toast.info(t(muted ? "mute.accountMuted" : "mute.accountUnmuted")) }
+              )
+            }
+          />
+        </FieldRow>
       )}
 
       {!isOwner && me && (

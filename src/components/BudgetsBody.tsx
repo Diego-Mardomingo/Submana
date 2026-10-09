@@ -13,7 +13,9 @@ import { useCategoryLookup } from "@/hooks/useCategories";
 import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useLang } from "@/hooks/useLang";
 import { useReorder } from "@/hooks/useReorder";
-import { appNow } from "@/lib/date";
+import { useUrlParam } from "@/hooks/useUrlParam";
+import { parseMonthParam } from "@/lib/deepLinks";
+import { appNow, monthKey } from "@/lib/date";
 import { formatCurrency, monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
@@ -67,7 +69,9 @@ export default function BudgetsBody() {
   const lang = useLang();
   const es = lang === "es";
   const t = useTranslations(lang);
-  const { data: budgets = [], isLoading } = useBudgets();
+  // Deep link (a notification): /budgets?month=YYYY-MM shows the budgets of that month, also while the page is open.
+  const [monthParam, clearMonthParam] = useUrlParam("month", parseMonthParam);
+  const { data: budgets = [], isLoading } = useBudgets(monthParam ? monthKey(monthParam.year, monthParam.month) : undefined);
   const categories = useCategoryLookup();
   const deleteBudget = useUndoableDeleteBudget();
   const { handleReorder } = useReorder<BudgetWithSpent>({ table: "budgets" });
@@ -134,6 +138,8 @@ export default function BudgetsBody() {
   const pct = limit > 0 ? (spent / limit) * 100 : 0;
   const overCount = budgets.filter((b) => Number(b.spent ?? 0) > Number(b.amount)).length;
   const now = appNow();
+  const view = monthParam ?? { year: now.getFullYear(), month: now.getMonth() + 1 };
+  const otherMonth = view.year !== now.getFullYear() || view.month !== now.getMonth() + 1;
   const daysLeft = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate() - now.getDate() + 1;
 
   const stop = (action: () => void) => (e: React.MouseEvent) => {
@@ -158,12 +164,20 @@ export default function BudgetsBody() {
             <div className="lp-card lp-summary">
               <div className="lp-summary-top">
                 <span className="lp-label">
-                  {es ? "Disponible" : "Left to spend"} · {monthName(now.getMonth() + 1, lang, "long")}
+                  {es ? "Disponible" : "Left to spend"} · {monthName(view.month, lang, "long")}
+                  {view.year !== now.getFullYear() && ` ${view.year}`}
                 </span>
                 <span className="lp-count">
                   {budgets.length} {es ? (budgets.length === 1 ? "presupuesto" : "presupuestos") : budgets.length === 1 ? "budget" : "budgets"}
                 </span>
               </div>
+              {otherMonth && (
+                <div>
+                  <button type="button" className="lp-chip" onClick={clearMonthParam}>
+                    {t("common.today")}
+                  </button>
+                </div>
+              )}
               <span className={cn("lp-hero-value", remaining < 0 && "is-negative")}>{money(remaining)}</span>
               <div className="lp-meter-row">
                 <div className="lp-meter" aria-hidden>
@@ -175,8 +189,8 @@ export default function BudgetsBody() {
               </div>
               <div className="lp-summary-divider" />
               <div className="lp-stats">
-                {stat(es ? "Al día" : "Per day", money(Math.max(0, remaining) / daysLeft))}
-                {stat(es ? "Quedan" : "Days left", `${daysLeft} ${es ? (daysLeft === 1 ? "día" : "días") : daysLeft === 1 ? "day" : "days"}`)}
+                {!otherMonth && stat(es ? "Al día" : "Per day", money(Math.max(0, remaining) / daysLeft))}
+                {!otherMonth && stat(es ? "Quedan" : "Days left", `${daysLeft} ${es ? (daysLeft === 1 ? "día" : "días") : daysLeft === 1 ? "day" : "days"}`)}
                 {stat(es ? "Superados" : "Exceeded", overCount, overCount > 0 ? "is-negative" : "is-muted")}
               </div>
             </div>

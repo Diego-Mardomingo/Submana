@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, TrendingDown, TrendingUp } from "lucide-react";
@@ -12,8 +12,10 @@ import { useBudgets } from "@/hooks/useBudgets";
 import { useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useSwipe } from "@/hooks/useSwipe";
+import { useUrlParam } from "@/hooks/useUrlParam";
 import { prefetchMonth, useMetricTransactions, type Transaction } from "@/hooks/useTransactions";
 import { appNow, monthKey, shiftMonth } from "@/lib/date";
+import { parseMonthParam } from "@/lib/deepLinks";
 import { monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
@@ -159,6 +161,18 @@ export default function MonthOverview() {
   const es = lang === "es";
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth);
+  // Deep link (a notification): /dashboard?month=YYYY-MM jumps to that month, also while the page is open.
+  // The param is consumed (removed) once applied, so the same link works again after moving to another month.
+  const [monthParam, clearMonthParam] = useUrlParam("month", parseMonthParam);
+  const linkedKey = monthParam ? monthKey(monthParam.year, monthParam.month) : null;
+  const [appliedKey, setAppliedKey] = useState<string | null>(null);
+  if (linkedKey !== appliedKey) {
+    setAppliedKey(linkedKey);
+    if (monthParam) setMonth(monthParam);
+  }
+  useEffect(() => {
+    if (linkedKey) clearMonthParam();
+  }, [linkedKey, clearMonthParam]);
   const [swipeArea, setSwipeArea] = useState<HTMLElement | null>(null);
   const { isFetching } = useMetricTransactions(month.year, month.month);
   const now = currentMonth();

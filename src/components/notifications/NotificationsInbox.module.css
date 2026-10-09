@@ -1,0 +1,213 @@
+/* Inbox: filter bar and rows. Built on the shared list-page classes (lp-*) and the theme tokens. */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.filter {
+  flex: 1 1 200px;
+  max-width: 280px;
+}
+
+.toolbarEnd {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.markAll {
+  padding: 0.4rem 0.35rem;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.markAll:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.markAll:disabled {
+  color: var(--gris-claro);
+  cursor: default;
+}
+
+.markAll:focus-visible {
+  outline: 2px solid var(--accent);
+  border-radius: 6px;
+}
+
+/* ── Row ── */
+.row {
+  align-items: flex-start;
+  min-height: 62px;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+}
+
+.row.unread {
+  background: linear-gradient(90deg, var(--accent-soft), transparent 70%);
+}
+
+.row.unread:hover,
+.row.unread:active {
+  background: linear-gradient(90deg, var(--accent-muted), var(--lp-row-hover) 70%);
+}
+
+.tile,
+.avatar {
+  position: relative;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--tone-soft);
+  color: var(--tone);
+}
+
+.tile svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Actor photo with the family icon as a small badge. */
+.avatarBadge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--gris-oscuro);
+  background: color-mix(in srgb, var(--tone) 22%, var(--gris-oscuro));
+  color: var(--tone);
+}
+
+.avatarBadge svg {
+  width: 10px;
+  height: 10px;
+}
+
+.toneAccent { --tone: var(--accent); --tone-soft: var(--accent-soft); }
+.toneWarning { --tone: var(--warning); --tone-soft: var(--warning-soft); }
+.toneInfo { --tone: var(--info); --tone-soft: var(--info-soft); }
+.toneSuccess { --tone: var(--success); --tone-soft: var(--success-soft); }
+.toneDanger { --tone: var(--danger); --tone-soft: var(--danger-soft); }
+
+.title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--blanco);
+  overflow-wrap: anywhere;
+}
+
+.body {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--gris-muy-claro);
+  overflow-wrap: anywhere;
+}
+
+.end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  padding-top: 0.1rem;
+}
+
+.time {
+  font-size: 0.68rem;
+  color: var(--gris-claro);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ── Inline answers (friend request, joint account invite) ── */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.btn {
+  height: 30px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--gris);
+  border-radius: 9px;
+  background: var(--negro);
+  color: var(--blanco);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--gris-claro);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btnPrimary {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.btnPrimary:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--accent-muted);
+}
+
+.answered {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+.answered svg {
+  width: 14px;
+  height: 14px;
+}
+
+.answeredOk {
+  color: var(--success);
+}

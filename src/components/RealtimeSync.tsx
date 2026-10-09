@@ -17,6 +17,8 @@ const WATCHED: { table: string; keys: QueryKey[] }[] = [
   { table: "accounts", keys: [queryKeys.accounts.all, queryKeys.transactions.all] },
   { table: "account_members", keys: [queryKeys.accounts.all, queryKeys.transactions.all] },
   { table: "transactions", keys: [queryKeys.transactions.all, queryKeys.accounts.all, queryKeys.budgets.all] },
+  // New notifications ring the bell and refresh the inbox and the counters.
+  { table: "notifications", keys: [queryKeys.notifications.all] },
 ];
 
 /** One write touches several rows (an expense plus its shares and event): refresh once. */

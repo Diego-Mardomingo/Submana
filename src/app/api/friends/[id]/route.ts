@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
+import { friendRequestAcceptedEvents, type FriendshipRow } from "@/lib/notifications/events/friends";
+import { notifyAfter } from "@/lib/notifications/server";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -21,6 +23,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (error.message === "request_not_pending") return jsonError(error.message, 409);
     return jsonServerError("friends/[id]", error);
   }
+  // Declining notifies nobody (the RPC returns the deleted row, still pending).
+  if (body.accept) notifyAfter(() => friendRequestAcceptedEvents(data as FriendshipRow, user.id));
   return jsonResponse({ data });
 }
 

@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
+import { accountDeletedEvents, loadAccountInfo } from "@/lib/notifications/events/joint";
+import { notifyAfter } from "@/lib/notifications/server";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -39,8 +41,12 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   if (!user) return unauthorized();
 
   // Only the owner deletes an account (and with it every member's rows).
-  if ((await getAccountAccess(supabase, user.id, id))?.role !== "owner") return jsonError("Account not found", 404);
+  const access = await getAccountAccess(supabase, user.id, id);
+  if (access?.role !== "owner") return jsonError("Account not found", 404);
+  // A joint account's members are told it is gone: read them before the delete cascades over them.
+  const info = access.isJoint ? await loadAccountInfo(id) : null;
   const { error } = await supabase.from("accounts").delete().eq("id", id).eq("user_id", user.id);
   if (error) return jsonServerError("crud/accounts/[id]", error);
+  if (info) notifyAfter(() => accountDeletedEvents(info, user.id));
   return jsonResponse({ data: { success: true } });
 }

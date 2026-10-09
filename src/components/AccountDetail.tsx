@@ -8,6 +8,7 @@ import { Bones } from "@/components/Bones";
 import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
 import BankStatementUpload from "@/components/BankStatementUpload";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
+import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { FieldGroup, FieldStack, FormError, Segmented, SheetButton } from "@/components/SheetFields";
 import { signed, TransactionDayList } from "@/components/TransactionDayList";
@@ -15,10 +16,12 @@ import { TransactionSheet } from "@/components/TransactionSheet";
 import { Sheet, SheetBody, SheetFooter } from "@/components/ui/sheet";
 import { useAccounts, useDeleteAccount, useDeleteAccountTransactions, type Account } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
+import { useUrlParam } from "@/hooks/useUrlParam";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { canEditAccount } from "@/lib/accountAccess";
 import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
+import { parseIdParam } from "@/lib/deepLinks";
 import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -203,6 +206,8 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
   const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deleteAccount = useDeleteAccount();
+  // Deep link (a notification): /account/{id}?tx={id} opens that movement, also while the page is already open.
+  const [txParam, clearTxParam] = useUrlParam("tx", parseIdParam);
 
   const { data: allTransactions = [], isLoading: txLoading } = useTransactions();
   const { data: accountsList } = useAccounts();
@@ -272,10 +277,13 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
           <ChevronLeft className="size-5" strokeWidth={2.25} />
           <span>{t("accounts.title")}</span>
         </Link>
-        <button type="button" className="add-btn lp-add" onClick={() => setEditOpen(true)} aria-label={t("common.edit")}>
-          <SquarePen className="size-[18px]" strokeWidth={2.25} aria-hidden />
-          <span className="lp-add-label">{t("common.edit")}</span>
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <HeaderBell />
+          <button type="button" className="add-btn lp-add" onClick={() => setEditOpen(true)} aria-label={t("common.edit")}>
+            <SquarePen className="size-[18px]" strokeWidth={2.25} aria-hidden />
+            <span className="lp-add-label">{t("common.edit")}</span>
+          </button>
+        </div>
       </header>
 
       <div className="lp-layout">
@@ -479,6 +487,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
 
       <AccountSheet open={editOpen} onOpenChange={setEditOpen} account={account} onDeleted={() => router.push("/accounts")} />
       <TransactionSheet open={createOpen} onOpenChange={setCreateOpen} defaultAccountId={account.id} />
+      <TransactionSheet open={!!txParam} onOpenChange={(open) => !open && clearTxParam()} transactionId={txParam} />
       <BulkDeleteSheet open={bulkOpen} onOpenChange={setBulkOpen} accountId={account.id} transactions={transactions} />
       <ConfirmDeleteSheet
         open={deleteOpen}
