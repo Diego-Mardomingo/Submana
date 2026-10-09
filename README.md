@@ -1,30 +1,35 @@
 <div align="center">
-  <img width="88" src="public/favicon.svg" alt="Submana">
-  <h1>Submana</h1>
-  <p>Finanzas personales sin hojas de cálculo.<br>Gastos, cuentas, suscripciones y presupuestos en una sola PWA.</p>
-  <p><a href="https://submana.vercel.app"><strong>submana.vercel.app</strong></a></p>
+  <img src="docs/readme/hero.png" alt="Submana: tu dinero, claro y sin hojas de cálculo" width="100%">
+  <p>
+    <a href="https://submana.vercel.app"><strong>Abrir Submana →</strong></a>
+  </p>
+  <p>
+    <img alt="PWA" src="https://img.shields.io/badge/PWA-instalable-5A0FC8?style=flat-square">
+    <img alt="Idiomas" src="https://img.shields.io/badge/idiomas-ES%20%C2%B7%20EN-informational?style=flat-square">
+    <img alt="Tema" src="https://img.shields.io/badge/tema-claro%20%C2%B7%20oscuro-111827?style=flat-square">
+  </p>
 </div>
-
-<!--
-  Capturas pendientes (con datos de demo): calendario, dashboard,
-  importación de extractos y vista móvil.
--->
 
 ---
 
-## Qué es
+## Por qué Submana
 
-Submana nació para sustituir la hoja de cálculo con la que llevaba mis finanzas. Importa los extractos de mis bancos, detecta lo que ya estaba registrado y me deja ver de un vistazo en qué se va el dinero, qué suscripciones se cobran este mes y si voy a cumplir los presupuestos.
+Llevar las finanzas en una hoja de cálculo funciona… hasta que dejas de actualizarla. Submana ocupa su lugar: **subes el extracto del banco, él hace el resto** y te enseña de un vistazo en qué se va el dinero, qué se cobra este mes y si vas a llegar a fin de mes.
 
-Es una aplicación real, en uso diario, instalable como PWA en móvil y escritorio.
+Es un producto de uso personal, pensado y pulido para el día a día.
 
-## Funcionalidades
+## Qué puedes hacer
 
-**Calendario.** Vista mensual con las transacciones de cada día y los próximos cobros de suscripciones, filtrable por cuenta.
+<img src="docs/readme/screens.png" alt="Calendario, panel, presupuestos y gastos compartidos en el móvil" width="100%">
 
-**Dashboard.** Evolución del balance total y por cuenta, comparativa de ingresos y gastos entre meses, gasto diario, categorías y transacciones con más peso, previsión de gasto a fin de mes y proyección de ahorro anual.
+### 📅 Ver tu mes de un vistazo
+Un calendario con las transacciones de cada día y los próximos cobros de tus suscripciones. Filtra por cuenta y entiende cómo se reparte el mes sin abrir ninguna tabla.
 
-**Importación de extractos.** Sube el extracto del banco y Submana crea las transacciones, ajusta el saldo y te pide confirmación ante posibles duplicados.
+### 📊 Entender a dónde va tu dinero
+Un dashboard con la evolución de tu balance, ingresos frente a gastos mes a mes, gasto diario, categorías y movimientos que más pesan. Incluye **previsión de gasto a fin de mes** y **proyección de ahorro anual**.
+
+### 🏦 Importar tus extractos en segundos
+Sube el archivo de tu banco y Submana crea los movimientos, ajusta el saldo y te pregunta solo cuando algo parece duplicado. Si vuelves a subir el mismo extracto, no se repite nada.
 
 | Banco | Formato |
 |---|---|
@@ -33,57 +38,31 @@ Es una aplicación real, en uso diario, instalable como PWA en móvil y escritor
 | BBVA | Excel |
 | Imagin | CSV |
 
-**Suscripciones.** Servicios recurrentes con frecuencia semanal, mensual o anual (cada N periodos), coste mensual y anual agregado y fechas de cobro en el calendario.
+Las transferencias entre tus propias cuentas se reconocen solas para que no inflen tus ingresos ni tus gastos.
 
-**Presupuestos y categorías.** Límites mensuales por categoría con progreso y avisos al superarlos. Categorías y subcategorías propias con emoji, archivables.
+### 🔁 Controlar tus suscripciones
+Todos tus pagos recurrentes —semanales, mensuales, anuales o cada *N* periodos— con su coste mensual y anual total y la fecha del próximo cobro en el calendario. Sin sorpresas.
 
-**Detalles.** Modo privacidad que oculta los importes, tema claro/oscuro, español e inglés, atajos de teclado, gestos de swipe y reordenación con drag & drop.
+### 🎯 Cumplir tus presupuestos
+Pon un límite mensual por categoría, mira tu progreso y recibe un aviso al acercarte o pasarte. Crea tus propias categorías y subcategorías con emoji.
 
-## Arquitectura
+### 👥 Compartir gastos con amigos
+Añade amigos, crea grupos, reparte un gasto como quieras y consulta quién debe a quién. Salda cuentas con un toque. También hay **cuentas conjuntas** y notificaciones de lo que pasa en ellas.
 
-```
-Next.js (App Router)  ──►  Route Handlers /api  ──►  Supabase (Postgres + Auth)
-        │                         │                        │
- TanStack Query            validación, rate limit     RLS + funciones RPC
- (caché + optimistic)      e importación               atómicas de saldo
-```
+### ✨ Y los detalles que se agradecen
+- **Modo privacidad** para ocultar los importes cuando alguien mira la pantalla.
+- **Sincronización en tiempo real** entre dispositivos.
+- **Tema claro y oscuro**, en **español e inglés**.
+- **Deshacer** en lugar de confirmar cada borrado.
+- Atajos de teclado, gestos de deslizar y reordenación con arrastrar y soltar.
 
-Algunas decisiones que merece la pena contar:
+## Instalación como app
 
-- **La base de datos es la última línea de defensa.** Todas las tablas tienen Row Level Security con `WITH CHECK` en las escrituras: una fila solo puede referenciar cuentas y categorías del propio usuario, aunque alguien llame a PostgREST directamente con su sesión y se salte la API.
-- **Saldos atómicos.** Crear, editar o borrar una transacción y ajustar el saldo de la cuenta ocurre en una única función de Postgres. Antes era leer-modificar-escribir desde la API, y una importación concurrente con una automatización podía perder actualizaciones o dejar saldos descuadrados.
-- **Importación idempotente.** Cada parser normaliza el extracto a un formato común y cada fila genera una clave estable. Volver a subir el mismo extracto, aunque el banco lo exporte con otra zona horaria, no duplica movimientos; los casos dudosos se resuelven a mano y la decisión se recuerda.
-- **Transferencias entre cuentas propias.** Un gasto y un ingreso del mismo importe en cuentas distintas y en una ventana de 48 h se emparejan (1:1, por cercanía temporal) y se excluyen de las métricas para no inflar ingresos ni gastos.
-- **Una sola zona horaria de referencia.** Las transacciones se guardan como `timestamptz` y los límites de cada mes se calculan como rangos semiabiertos en `Europe/Madrid`, para que el día 1 a medianoche no caiga en el mes anterior.
-- **UI optimista.** Las mutaciones actualizan la caché de TanStack Query al instante y hacen rollback si el servidor falla.
-- **Rate limiting en Postgres.** Ventana fija sobre una tabla, sin servicios externos. La automatización y la importación están limitadas por usuario, y los intentos con token inválido por IP.
-- **Tokens de automatización hasheados.** Solo se guarda el hash; el token en claro se muestra una vez.
+Submana es una PWA: ábrela en el navegador y elige **«Instalar»** (escritorio y Android) o **«Añadir a pantalla de inicio»** (iOS). Se comporta como una app nativa y muestra una pantalla propia si te quedas sin conexión.
 
-## Stack
+## Hecho con
 
-Next.js 16 · React 19 · TypeScript · Tailwind CSS v4 · shadcn/ui · Supabase · TanStack Query · Chart.js · Framer Motion · dnd-kit · pdfjs · SheetJS · Serwist · Vitest · Vercel
-
-## Desarrollo
-
-Requiere Node 20+, pnpm y un proyecto de Supabase. Variables en `.env.local`:
-
-```
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=   # rate limiting
-```
-
-```bash
-pnpm install
-pnpm dev          # servidor de desarrollo
-pnpm test         # tests (parsers y lógica de dominio)
-pnpm lint
-pnpm typecheck
-pnpm bones -- --cookie "sb-<ref>-auth-token.0=…" --cookie "sb-<ref>-auth-token.1=…"
-                  # regenera los esqueletos de carga (boneyard) con `pnpm dev` en marcha
-```
-
-Los esqueletos de carga se capturan del layout real con [boneyard](https://github.com/0xGF/boneyard): cada estado de carga va envuelto en `<Bones name="…">` y `src/bones/` guarda las posiciones generadas. Tras cambiar el layout de una página, vuelve a ejecutar `pnpm bones`: recorre las rutas de la app y conserva los esqueletos que no encuentre (p. ej. una lista vacía este mes). Sin captura se muestra el esqueleto manual de `fallback`.
+Next.js · React · TypeScript · Tailwind CSS · Supabase · Vercel
 
 ---
 
