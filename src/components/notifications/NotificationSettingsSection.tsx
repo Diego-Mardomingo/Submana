@@ -1,8 +1,10 @@
 "use client";
 
 import { Fragment, useEffect, useEffectEvent, useState } from "react";
-import { Chips, Stepper } from "@/components/SheetFields";
+import { ChevronRight, SlidersHorizontal } from "lucide-react";
+import { Chips, FieldGroup, Stepper } from "@/components/SheetFields";
 import { PushDeviceSection } from "@/components/notifications/PushDeviceSection";
+import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { useLang } from "@/hooks/useLang";
 import { useNotificationSettings, useSaveNotificationSettings } from "@/hooks/useNotifications";
@@ -72,11 +74,10 @@ function SummaryDayRow({ saved, onSave }: { saved: number; onSave: (day: number)
 }
 
 /**
- * Profile section "Notifications": this device's push state, hide amounts in push, then a switch per
- * type of notification grouped by family, with the settings that belong to some of them (default
- * renewal reminders, day of the monthly summary). Everything saves right away (optimistic).
+ * A switch per type of notification grouped by family, with the settings that belong to some of
+ * them (default renewal reminders, day of the monthly summary). Everything saves right away (optimistic).
  */
-export function NotificationSettingsSection() {
+function NotificationTypesSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useTranslations(useLang());
   const { data: settings } = useNotificationSettings();
   const save = useSaveNotificationSettings();
@@ -114,41 +115,67 @@ export function NotificationSettingsSection() {
   };
 
   return (
-    <>
-      <section className="lp-section scroll-mt-4" id="notifications">
-        <SectionHead title={t("notifSettings.title")} />
-        <div className="lp-card lp-group">
-          <PushDeviceSection />
-          <SwitchRow
-            label={t("notifSettings.hideAmounts")}
-            description={t("notifSettings.hideAmountsDesc")}
-            checked={settings?.push_hide_amounts ?? false}
-            disabled={loading}
-            onChange={(hide) => save.mutate({ push_hide_amounts: hide })}
-          />
-        </div>
-        <p className="lp-desc px-1">{t("notifSettings.desc")}</p>
-      </section>
+    <Sheet open={open} onOpenChange={onOpenChange} title={t("notifSettings.types")} description={t("notifSettings.desc")}>
+      <SheetBody>
+        {NOTIFICATION_FAMILIES.map((family) => (
+          <FieldGroup key={family} title={t(familyLabelKey(family))}>
+            <div className="lp-group">
+              {NOTIFICATION_TOGGLES.filter((item) => item.family === family).map((item) => (
+                <Fragment key={item.id}>
+                  <SwitchRow
+                    label={t(item.labelKey)}
+                    description={t(item.descKey)}
+                    checked={isToggleEnabled(item, disabledTypes)}
+                    disabled={loading}
+                    onChange={(enabled) => toggle(item, enabled)}
+                  />
+                  {extras(item)}
+                </Fragment>
+              ))}
+            </div>
+          </FieldGroup>
+        ))}
+      </SheetBody>
+    </Sheet>
+  );
+}
 
-      {NOTIFICATION_FAMILIES.map((family) => (
-        <section key={family} className="lp-section">
-          <SectionHead title={t(familyLabelKey(family))} />
-          <div className="lp-card lp-group">
-            {NOTIFICATION_TOGGLES.filter((item) => item.family === family).map((item) => (
-              <Fragment key={item.id}>
-                <SwitchRow
-                  label={t(item.labelKey)}
-                  description={t(item.descKey)}
-                  checked={isToggleEnabled(item, disabledTypes)}
-                  disabled={loading}
-                  onChange={(enabled) => toggle(item, enabled)}
-                />
-                {extras(item)}
-              </Fragment>
-            ))}
-          </div>
-        </section>
-      ))}
-    </>
+/**
+ * Profile section "Notifications": this device's push state, hide amounts in push, and a row that
+ * opens the sheet to pick which types of notification to get.
+ */
+export function NotificationSettingsSection() {
+  const t = useTranslations(useLang());
+  const { data: settings } = useNotificationSettings();
+  const save = useSaveNotificationSettings();
+  const [typesOpen, setTypesOpen] = useState(false);
+
+  return (
+    <section className="lp-section scroll-mt-4" id="notifications">
+      <SectionHead title={t("notifSettings.title")} />
+      <div className="lp-card lp-group">
+        <PushDeviceSection />
+        <SwitchRow
+          label={t("notifSettings.hideAmounts")}
+          description={t("notifSettings.hideAmountsDesc")}
+          checked={settings?.push_hide_amounts ?? false}
+          disabled={!settings}
+          onChange={(hide) => save.mutate({ push_hide_amounts: hide })}
+        />
+        <button type="button" className="lp-row" onClick={() => setTypesOpen(true)} aria-haspopup="dialog">
+          <span className="lp-icon" aria-hidden>
+            <SlidersHorizontal className="size-5" />
+          </span>
+          <span className="lp-main">
+            <span className="lp-title">
+              <span>{t("notifSettings.types")}</span>
+            </span>
+            <span className="lp-desc">{t("notifSettings.desc")}</span>
+          </span>
+          <ChevronRight className="lp-chevron size-4" />
+        </button>
+      </div>
+      <NotificationTypesSheet open={typesOpen} onOpenChange={setTypesOpen} />
+    </section>
   );
 }
