@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ConnectionToast } from "@/components/ConnectionToast";
+import { AppBadgeSync } from "@/components/notifications/AppBadgeSync";
 import { PushNavigationListener } from "@/components/notifications/PushNavigationListener";
 import { Toaster } from "@/components/Toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <Toaster />
         <ConnectionToast />
         <PushNavigationListener />
+        <AppBadgeSync />
       </TooltipProvider>
     </QueryClientProvider>
   );
