@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Submana · Campanita de notificaciones</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ── Tokens copiados de src/app/globals.css ── */
+:root, [data-theme="dark"] {
+  --negro: #0f1012; --gris-oscuro: #16171a; --gris: #23252a;
+  --gris-claro: #6b7280; --gris-muy-claro: #9ca3af; --blanco: #e8eaed;
+  --accent: #a78bfa; --accent-soft: rgba(167,139,250,.10); --accent-muted: rgba(167,139,250,.18);
+  --success: #6ee7b7; --success-soft: rgba(110,231,183,.10);
+  --danger: #ef4444; --danger-soft: rgba(239,68,68,.12);
+  --warning: #fcd34d; --warning-soft: rgba(252,211,77,.10);
+  --info: #93c5fd; --info-soft: rgba(147,197,253,.10);
+  --shadow: 0 10px 28px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25);
+}
+[data-theme="light"] {
+  --negro: #f8f9fb; --gris-oscuro: #eef0f4; --gris: #dde1e8;
+  --gris-claro: #6b7280; --gris-muy-claro: #4b5563; --blanco: #111318;
+  --accent: #7c5ccc; --accent-soft: rgba(124,92,204,.08); --accent-muted: rgba(124,92,204,.15);
+  --success: #10b981; --success-soft: rgba(16,185,129,.08);
+  --danger: #ef4444; --danger-soft: rgba(239,68,68,.12);
+  --warning: #f59e0b; --warning-soft: rgba(245,158,11,.08);
+  --info: #3b82f6; --info-soft: rgba(59,130,246,.08);
+  --shadow: 0 10px 28px rgba(17,19,24,.12), 0 2px 6px rgba(17,19,24,.06);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 40px 48px 80px;
+  background: var(--negro); color: var(--blanco);
+  font-family: Sora, system-ui, sans-serif;
+  transition: background .2s, color .2s;
+}
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+h1 { font-size: 1.4rem; margin: 0; letter-spacing: -.01em; }
+.lead { color: var(--gris-muy-claro); font-size: .86rem; margin: 0 0 36px; max-width: 760px; line-height: 1.55; }
+h2 { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--gris-claro); margin: 48px 0 14px; font-weight: 600; }
+.note { color: var(--gris-claro); font-size: .76rem; margin: -6px 0 16px; line-height: 1.5; max-width: 780px; }
+.note b { color: var(--gris-muy-claro); }
+code { font-family: ui-monospace, monospace; font-size: .92em; color: var(--accent); }
+
+.btn, .seg button {
+  font: inherit; font-size: .76rem; font-weight: 600; color: var(--blanco);
+  background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 999px;
+  padding: 7px 13px; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { border-color: var(--gris-claro); }
+.btn.primary { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.check { display: inline-flex; align-items: center; gap: 7px; font-size: .76rem; color: var(--gris-muy-claro); cursor: pointer; }
+.check input { accent-color: var(--accent); }
+.seg { display: inline-flex; background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button { border: none; background: transparent; padding: 5px 11px; color: var(--gris-muy-claro); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.ctl { display: grid; gap: 6px; }
+.ctl > span { font-size: .68rem; color: var(--gris-claro); font-family: ui-monospace, monospace; }
+
+/* ════════════════ CAMPANITA ════════════════ */
+.bell {
+  --size: 44px;
+  position: relative; display: grid; place-items: center;
+  width: var(--size); height: var(--size); padding: 0; border-radius: 50%;
+  background: var(--gris-oscuro); border: 1px solid var(--gris);
+  color: var(--blanco); cursor: pointer;
+  box-shadow: var(--shadow);
+  -webkit-tap-highlight-color: transparent;
+}
+.bell:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.bell[hidden] { display: none; }
+.bell.flat { box-shadow: none; }           /* dentro de una cabecera */
+.bell.sm { --size: 36px; }
+.bell-halo {
+  position: absolute; inset: -1px; border-radius: 50%; pointer-events: none;
+  background: var(--accent-muted); opacity: 0;
+}
+/* Variante A en reposo: halo suave fijo mientras haya pendientes */
+.bell[data-variant="a"].pending .bell-glow { opacity: 1; }
+.bell-glow {
+  position: absolute; inset: -5px; border-radius: 50%; pointer-events: none; opacity: 0;
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 0 18px 2px var(--accent-soft);
+  transition: opacity .4s;
+}
+.bell svg { width: 22px; height: 22px; overflow: visible; position: relative; }
+.bell.sm svg { width: 19px; height: 19px; }
+.bell svg * { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.bell .b-body, .bell .b-clapper { transform-box: view-box; transform-origin: 12px 2.6px; }
+.bell .b-wave { opacity: 0; color: var(--accent); transform-box: view-box; transform-origin: 12px 8px; }
+.bell.pending { color: var(--blanco); }
+
+.badge {
+  position: absolute; top: -3px; right: -4px;
+  min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px;
+  display: grid; place-items: center; overflow: hidden;
+  background: var(--badge, var(--danger)); color: #fff;
+  font-size: .64rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--negro);
+}
+.badge[hidden] { display: none; }
+.badge-num { display: block; }
+body.badge-accent { --badge: var(--accent); }
+
+/* ════════════════ 1 · VARIANTES ════════════════ */
+.variants { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+.vcard { background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 18px; overflow: hidden; }
+.vcard .stage {
+  height: 190px; display: grid; place-items: center; background: var(--negro);
+  border-bottom: 1px solid var(--gris);
+  background-image: radial-gradient(var(--gris) 1px, transparent 1px); background-size: 16px 16px;
+}
+.vcard .stage .zoom { transform: scale(1.7); }
+.vcard .meta { padding: 14px 16px 16px; }
+.vcard h3 { margin: 0 0 4px; font-size: .92rem; }
+.vcard p { margin: 0 0 12px; font-size: .74rem; color: var(--gris-muy-claro); line-height: 1.5; }
+
+/* ════════════════ 2 · BADGE ════════════════ */
+.badges { display: flex; gap: 28px; flex-wrap: wrap; align-items: center; }
+.badges figure { margin: 0; display: grid; justify-items: center; gap: 10px; }
+.badges figcaption { font-size: .68rem; color: var(--gris-claro); font-family: ui-monospace, monospace; }
+
+/* ════════════════ 3 · EN CONTEXTO ════════════════ */
+.context { display: grid; grid-template-columns: auto 1fr; gap: 36px; align-items: start; }
+@media (max-width: 900px) { .context { grid-template-columns: 1fr; } }
+.controls { display: grid; gap: 18px; max-width: 460px; }
+.log {
+  font-family: ui-monospace, monospace; font-size: .7rem; color: var(--gris-muy-claro);
+  background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 12px;
+  padding: 10px 12px; min-height: 120px; max-height: 180px; overflow: auto; line-height: 1.6;
+}
+.log div:first-child { color: var(--blanco); }
+
+.phone {
+  position: relative; width: 375px; height: 760px; flex-shrink: 0;
+  border-radius: 46px; border: 10px solid #000; background: var(--negro);
+  box-shadow: 0 0 0 1px var(--gris), var(--shadow); overflow: hidden;
+}
+.phone .notch-cam { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 110px; height: 30px; border-radius: 20px; background: #000; z-index: 30; }
+.phone .status { height: 50px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 28px 6px; font-size: .74rem; font-weight: 600; }
+.screen { position: absolute; inset: 50px 0 0; overflow: hidden; }
+.view { position: absolute; inset: 0 0 74px; overflow: auto; padding: 4px 16px 20px; scrollbar-width: none; }
+.view[hidden] { display: none; }
+
+.m-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; margin-bottom: 12px; transition: padding-right .3s cubic-bezier(.2,.8,.2,1); }
+.m-header h1 { font-size: 1.5rem; font-weight: 800; letter-spacing: -.025em; margin: 0; }
+.m-header .actions { display: flex; align-items: center; gap: 8px; }
+.phone.place-top.has-bell .m-header.cal { padding-right: 50px; }
+.chip { font-size: .72rem; font-weight: 600; padding: 7px 11px; border-radius: 999px; background: var(--gris-oscuro); border: 1px solid var(--gris); color: var(--gris-muy-claro); white-space: nowrap; }
+
+.cal-card { background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 18px; padding: 12px; }
+.cal-month { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: .9rem; margin-bottom: 10px; }
+.cal-month span { color: var(--gris-claro); font-weight: 500; margin-left: 4px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.cal-grid .wd { font-size: .6rem; color: var(--gris-claro); padding-bottom: 4px; }
+.cal-grid .d { height: 40px; border-radius: 10px; font-size: .72rem; display: grid; align-content: start; justify-items: center; padding-top: 6px; gap: 4px; }
+.cal-grid .d.today { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.cal-grid .d i { width: 5px; height: 5px; border-radius: 50%; background: var(--danger); display: block; }
+.cal-grid .d i.inc { background: var(--success); }
+.cal-grid .d i.sub { background: var(--warning); }
+.cal-grid .d.mute { color: var(--gris-claro); opacity: .5; }
+.agenda { margin-top: 14px; display: grid; gap: 8px; }
+.agenda h4 { margin: 4px 0 2px; font-size: .72rem; color: var(--gris-claro); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.row { display: flex; align-items: center; gap: 10px; background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 14px; padding: 10px 12px; font-size: .78rem; }
+.row .ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: var(--gris); font-size: .9rem; }
+.row .grow { flex: 1; min-width: 0; }
+.row small { display: block; color: var(--gris-claro); font-size: .68rem; margin-top: 2px; }
+.row .amt { font-weight: 700; }
+
+/* Barra inferior */
+.bar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 74px; z-index: 10;
+  display: grid; grid-template-columns: repeat(5, 1fr); align-items: start; padding-top: 10px;
+  background: color-mix(in srgb, var(--gris-oscuro) 88%, transparent);
+  backdrop-filter: blur(14px); border-top: 1px solid var(--gris);
+}
+.tab { position: relative; display: grid; justify-items: center; gap: 3px; font-size: .58rem; color: var(--gris-claro); background: none; border: none; font-family: inherit; cursor: pointer; }
+.tab svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.tab.active { color: var(--accent); }
+.tab .dot { position: absolute; top: -1px; right: calc(50% - 15px); width: 9px; height: 9px; border-radius: 50%; background: var(--badge, var(--danger)); box-shadow: 0 0 0 2px var(--gris-oscuro); transform: scale(0); transition: transform .3s cubic-bezier(.3,1.6,.5,1); }
+.tab .dot.on { transform: scale(1); }
+.plus { width: 50px; height: 50px; margin-top: -18px; justify-self: center; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #fff; font-size: 1.6rem; font-weight: 400; box-shadow: var(--shadow); }
+
+/* Ubicaciones de la campana en el móvil */
+.float-top { position: absolute; top: 4px; right: 16px; z-index: 12; }
+.float-bottom { position: absolute; bottom: 88px; right: 16px; z-index: 12; }
+
+/* Bandeja */
+.m-back { display: flex; align-items: center; gap: 4px; }
+.m-back button { background: none; border: none; color: var(--blanco); padding: 4px 4px 4px 0; cursor: pointer; display: grid; }
+.m-back svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.inbox-tools { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.inbox-tools .seg button { font-size: .7rem; }
+.linkbtn { background: none; border: none; color: var(--accent); font: inherit; font-size: .72rem; font-weight: 600; cursor: pointer; padding: 4px 0; }
+.linkbtn:disabled { color: var(--gris-claro); cursor: default; }
+.group-title { font-size: .66rem; color: var(--gris-claro); font-weight: 600; text-transform: uppercase; letter-spacing: .07em; margin: 16px 2px 8px; }
+.group-title:first-child { margin-top: 2px; }
+.notif {
+  position: relative; display: flex; gap: 11px; padding: 11px 12px; border-radius: 14px; cursor: pointer;
+  background: var(--gris-oscuro); border: 1px solid var(--gris); margin-bottom: 8px;
+  transition: background .35s, border-color .35s;
+}
+.notif.unread { background: linear-gradient(90deg, var(--accent-soft), var(--gris-oscuro) 70%); border-color: var(--accent-muted); }
+.notif .n-ic { width: 34px; height: 34px; flex-shrink: 0; border-radius: 11px; display: grid; place-items: center; background: var(--tone-soft); color: var(--tone); }
+.notif .n-ic svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.notif .n-main { flex: 1; min-width: 0; }
+.notif .n-title { font-size: .78rem; font-weight: 600; line-height: 1.35; }
+.notif .n-body { font-size: .7rem; color: var(--gris-muy-claro); line-height: 1.45; margin-top: 2px; }
+.notif .n-time { font-size: .62rem; color: var(--gris-claro); white-space: nowrap; margin-top: 2px; }
+.notif .n-dot { position: absolute; top: 14px; right: 12px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); transition: transform .3s, opacity .3s; }
+.notif:not(.unread) .n-dot { transform: scale(0); opacity: 0; }
+.notif .n-head { display: flex; justify-content: space-between; gap: 8px; padding-right: 14px; }
+.notif .n-actions { display: flex; gap: 6px; margin-top: 9px; }
+.notif .n-actions button { font: inherit; font-size: .7rem; font-weight: 600; height: 28px; padding: 0 12px; border-radius: 9px; cursor: pointer; border: 1px solid var(--gris); background: var(--negro); color: var(--blanco); }
+.notif .n-actions button.ok { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.notif.fresh { animation: fresh 1.4s ease-out; }
+@keyframes fresh { 0% { box-shadow: 0 0 0 2px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.empty { text-align: center; color: var(--gris-claro); font-size: .78rem; padding: 40px 0; }
+.empty b { display: block; color: var(--blanco); font-size: .86rem; margin-bottom: 4px; }
+
+[data-fam="subcount"]     { --tone: var(--accent);  --tone-soft: var(--accent-soft); }
+[data-fam="subscriptions"]{ --tone: var(--warning); --tone-soft: var(--warning-soft); }
+[data-fam="friends"]      { --tone: var(--info);    --tone-soft: var(--info-soft); }
+[data-fam="joint"]        { --tone: var(--info);    --tone-soft: var(--info-soft); }
+[data-fam="summary"]      { --tone: var(--success); --tone-soft: var(--success-soft); }
+[data-fam="budget"]       { --tone: var(--danger);  --tone-soft: var(--danger-soft); }
+
+/* Pista de navegación (qué URL abriría la app) */
+.navhint {
+  position: absolute; left: 12px; right: 12px; bottom: 86px; z-index: 20;
+  background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 12px; box-shadow: var(--shadow);
+  padding: 9px 12px; font-size: .68rem; color: var(--gris-muy-claro); line-height: 1.45;
+  opacity: 0; transform: translateY(8px); transition: opacity .2s, transform .2s; pointer-events: none;
+}
+.navhint.on { opacity: 1; transform: none; }
+.navhint code { font-size: .7rem; }
+
+/* Escritorio */
+.desk {
+  margin-top: 28px; display: grid; grid-template-columns: 210px 1fr; height: 300px; max-width: 900px;
+  border: 1px solid var(--gris); border-radius: 16px; overflow: hidden; background: var(--negro); box-shadow: var(--shadow);
+}
+.desk aside { background: var(--gris-oscuro); border-right: 1px solid var(--gris); padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; }
+.desk .brand { font-weight: 800; font-size: .95rem; padding: 0 8px 14px; }
+.desk .item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: .76rem; color: var(--gris-muy-claro); }
+.desk .item.active { background: var(--accent-soft); color: var(--accent); }
+.desk .item .cnt { margin-left: auto; min-width: 19px; height: 19px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; background: var(--badge, var(--danger)); color: #fff; font-size: .62rem; font-weight: 700; transform: scale(0); transition: transform .3s cubic-bezier(.3,1.6,.5,1); }
+.desk .item .cnt.on { transform: scale(1); }
+.desk .spacer { flex: 1; }
+.desk main { padding: 22px 28px; }
+.desk .m-header h1 { font-size: 1.75rem; }
+
+/* ════════════════ 4 · ESPECIFICACIÓN ════════════════ */
+table { border-collapse: collapse; font-size: .76rem; width: 100%; max-width: 980px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--gris); vertical-align: top; line-height: 1.5; }
+th { color: var(--gris-claro); font-weight: 600; font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; }
+td:first-child { white-space: nowrap; font-weight: 600; }
+ul.rules { font-size: .78rem; color: var(--gris-muy-claro); line-height: 1.7; max-width: 820px; padding-left: 18px; }
+ul.rules b { color: var(--blanco); }
+</style>
+</head>
+<body class="badge-accent">
+
+<header class="top">
+  <h1>Campanita de notificaciones</h1>
+  <div class="toolbar">
+    <label class="check"><input type="checkbox" id="reduced" /> Reducir movimiento</label>
+    <label class="check"><input type="checkbox" id="fastIdle" /> Reposo rápido (4 s, para la demo)</label>
+    <div class="seg" id="badgeColor">
+      <button aria-pressed="false" data-v="danger">Badge rojo</button>
+      <button aria-pressed="true" data-v="accent">Badge acento</button>
+    </div>
+    <button class="btn" id="themeBtn">Tema claro</button>
+  </div>
+</header>
+<p class="lead">
+  Prototipo para el issue #62. Cuando hay avisos pendientes aparece una campanita animada. Al tocarla se abre la bandeja con las no leídas (<code>/notifications?filter=unread</code>), navegando en el cliente, sin recargar.
+  En reposo da un toque leve cada ~15 s mientras la pestaña está visible.<br><b>Decidido:</b> variante A · Campanada, en móvil flotante abajo a la derecha, badge de acento y modelo «visto». Las demás opciones se mantienen como referencia.<br>La campana avisa de lo que pasa <b>sin que tú lo hagas</b> (p. ej. otro miembro añade un gasto). Lo que haces tú lo cuenta el toast, y su notificación se crea ya leída.
+</p>
+
+<!-- ════════════════ 1 ════════════════ -->
+<h2>1 · Variantes de animación</h2>
+<p class="note">Cada tarjeta tiene su propia campana. <b>Entrada</b> es lo que se ve al abrir la app con avisos pendientes. <b>Nueva</b> es un aviso que llega en tiempo real. <b>Toque</b> es el gesto de reposo cada ~15 s. <b>Leer todas</b> es la salida.</p>
+<div class="variants" id="variants"></div>
+
+<!-- ════════════════ 2 ════════════════ -->
+<h2>2 · Badge</h2>
+<p class="note">El número se ve hasta 9 y a partir de ahí «9+». El borde del color del fondo separa el badge de la campana. En la barra de móvil, la pestaña Menú lleva un punto, sin número.</p>
+<div class="badges" id="badges"></div>
+
+<!-- ════════════════ 3 ════════════════ -->
+<h2>3 · En contexto</h2>
+<p class="note">
+  Cabeceras reales: el calendario tiene el filtro de cuentas a la derecha, el panel la fecha y las listas el botón «+». Por eso una campana flotante arriba tiene que <b>hacerse hueco</b>, o ir dentro de la cabecera, o abajo sobre la barra.
+  Toca la campana para abrir la bandeja. Toca un aviso para marcarlo como leído; la pista muestra a qué URL navegaría.
+</p>
+<div class="context">
+  <div class="phone" id="phone">
+    <div class="notch-cam"></div>
+    <div class="status"><span>17:02</span><span>●●● 5G ▮</span></div>
+    <div class="screen">
+      <!-- Vista: calendario -->
+      <section class="view" id="vCal">
+        <div class="m-header cal">
+          <h1>Calendario</h1>
+          <div class="actions" id="headerSlot"><span class="chip">Todas las cuentas ▾</span></div>
+        </div>
+        <div class="cal-card">
+          <div class="cal-month"><span style="margin:0">‹</span><div>octubre<span>2026</span></div><span style="margin:0">›</span></div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+        <div class="agenda">
+          <h4>Hoy · viernes 9</h4>
+          <div class="row"><div class="ic">🛒</div><div class="grow">Mercadona<small>Cuenta BBVA</small></div><span class="amt">−42,18 €</span></div>
+          <div class="row"><div class="ic">🎬</div><div class="grow">Netflix<small>Se cobra mañana</small></div><span class="amt">12,99 €</span></div>
+          <div class="row"><div class="ic">☕</div><div class="grow">Café con Ana<small>Cuenta común</small></div><span class="amt">−3,40 €</span></div>
+        </div>
+      </section>
+
+      <!-- Vista: bandeja -->
+      <section class="view" id="vInbox" hidden>
+        <div class="m-header">
+          <div class="m-back"><button id="backBtn" aria-label="Volver"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button><h1>Notificaciones</h1></div>
+        </div>
+        <div class="inbox-tools">
+          <div class="seg" id="filterSeg">
+            <button aria-pressed="true" data-v="unread">Sin leer</button>
+            <button aria-pressed="false" data-v="all">Todas</button>
+          </div>
+          <button class="linkbtn" id="markAll">Marcar todo como leído</button>
+        </div>
+        <div id="list"></div>
+      </section>
+
+      <div id="floatSlot"></div>
+      <div class="navhint" id="navhint"></div>
+
+      <nav class="bar">
+        <button class="tab active" id="tabHome"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Inicio</button>
+        <button class="tab"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>Panel</button>
+        <div class="plus">+</div>
+        <button class="tab"><svg viewBox="0 0 24 24"><path d="M7 7h10M7 12h10M7 17h6"/></svg>Movim.</button>
+        <button class="tab" id="tabMenu"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>Menú<span class="dot" id="menuDot"></span></button>
+      </nav>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctl"><span>variante</span>
+      <div class="seg" id="ctxVariant">
+        <button aria-pressed="true" data-v="a">A · Campanada</button>
+        <button aria-pressed="false" data-v="b">B · Timbre</button>
+        <button aria-pressed="false" data-v="c">C · Destello</button>
+      </div>
+    </div>
+    <div class="ctl"><span>ubicación en móvil</span>
+      <div class="seg" id="ctxPlace">
+        <button aria-pressed="false" data-v="top">Flotante arriba</button>
+        <button aria-pressed="false" data-v="header">En la cabecera</button>
+        <button aria-pressed="true" data-v="bottom">Flotante abajo</button>
+      </div>
+    </div>
+    <div class="ctl"><span>modelo del contador</span>
+      <div class="seg" id="ctxModel">
+        <button aria-pressed="true" data-v="seen">Visto</button>
+        <button aria-pressed="false" data-v="read">Leído</button>
+      </div>
+      <p class="note" style="margin:4px 0 0">
+        <b>Visto</b>: abrir la bandeja apaga la campana, pero los avisos siguen marcados como no leídos hasta tocarlos. Así la campana no insiste sobre lo que ya has visto (GitHub, LinkedIn).
+        <b>Leído</b>: la campana sigue mientras quede algo sin leer, aunque ya hayas entrado en la bandeja.
+      </p>
+    </div>
+    <div class="toolbar">
+      <button class="btn primary" id="simNew">Simular aviso nuevo</button>
+      <button class="btn" id="reopen">Reabrir la app</button>
+    </div>
+    <div class="ctl"><span>registro</span><div class="log" id="log"></div></div>
+  </div>
+</div>
+
+<div class="desk" id="desk">
+  <aside>
+    <div class="brand">◆ Submana</div>
+    <div class="item active">Calendario</div>
+    <div class="item">Panel</div>
+    <div class="item">Movimientos</div>
+    <div class="item">Cuentas</div>
+    <div class="item">Suscripciones</div>
+    <div class="spacer"></div>
+    <div class="item">Amigos</div>
+    <div class="item" id="deskNotif">Notificaciones<span class="cnt" id="deskCnt">0</span></div>
+    <div class="item">Mi perfil</div>
+  </aside>
+  <main>
+    <div class="m-header">
+      <h1>Calendario</h1>
+      <div class="actions" id="deskSlot"><span class="chip">Todas las cuentas ▾</span></div>
+    </div>
+    <p class="note" style="margin:0">En escritorio la campana va dentro de la cabecera, a la izquierda de las acciones de la página, y la barra lateral muestra el número junto a «Notificaciones». Comparte el estado con el móvil.</p>
+  </main>
+</div>
+
+<!-- ════════════════ 4 ════════════════ -->
+<h2>4 · Especificación</h2>
+<table>
+  <thead><tr><th></th><th>Entrada</th><th>Aviso nuevo</th><th>Toque de reposo (~15 s)</th><th>Salida</th></tr></thead>
+  <tbody>
+    <tr><td>A · Campanada</td><td>Cae 24 px con un pequeño rebote (spring, 520 ms). Luego da la campanada y el badge hace «pop».</td><td>Oscilación amortiguada 16° → −12° → 8° → −4° → 0 (900 ms), con el badajo desfasado 70 ms y ondas de sonido. El número sube rodando.</td><td>Oscilación corta 9° → −7° → 4° → 0 (650 ms), sin ondas.</td><td>Se encoge girando −12° y se desvanece (260 ms).</td></tr>
+    <tr><td>B · Timbre</td><td>Escala 0,7 → 1 (280 ms) y timbrazo.</td><td>Vibración rápida de ±10° que se apaga (480 ms) y el badge late dos veces.</td><td>Tres vibraciones de ±7° (260 ms).</td><td>Escala a 0,7 y se desvanece (200 ms).</td></tr>
+    <tr><td>C · Destello</td><td>Fundido y escala 0,9 → 1 (360 ms) y destello.</td><td>Dos ondas de halo en el color de acento (1,1 s) y un balanceo suave de ±7°.</td><td>Una onda de halo, sin movimiento de la campana.</td><td>Fundido (220 ms).</td></tr>
+    <tr><td>Reducir movimiento</td><td>Fundido de 200 ms</td><td>Solo cambia el número (fundido)</td><td>Nada</td><td>Fundido</td></tr>
+  </tbody>
+</table>
+<ul class="rules">
+  <li><b>Cuándo se ve:</b> si hay avisos pendientes (según el modelo) y no estás en <code>/notifications</code>. La entrada se reproduce una vez al abrir la app, después de la animación de entrada de la página.</li>
+  <li><b>Reposo:</b> un toque cada ~15 s, solo con la pestaña visible (<code>visibilitychange</code>), y el contador se reinicia tras cualquier otra animación. Nunca hay un bucle continuo.</li>
+  <li><b>Tiempo real:</b> el insert en <code>notifications</code> llega por <code>RealtimeSync</code> y la campana da la animación de «aviso nuevo». No se muestra además un toast, para no duplicar.</li>
+  <li><b>Toque:</b> <code>router.push("/notifications?filter=unread")</code>. Con el modelo «visto», entrar guarda <code>last_seen_at</code> y la campana se apaga.</li>
+  <li><b>Accesibilidad:</b> <code>aria-label</code> «3 notificaciones sin leer», región <code>aria-live="polite"</code> que anuncia los avisos nuevos, y foco visible.</li>
+  <li><b>Implementación:</b> un componente <code>NotificationBell</code> con framer-motion (<code>useAnimate</code>) y el SVG de lucide <code>Bell</code> partido en dos trazos (cuerpo y badajo) para animarlos por separado. Respeta <code>useReducedMotion()</code>.</li>
+</ul>
+
+<script>
+/* ════════════════ Campana ════════════════ */
+const SVG = `
+<svg viewBox="0 0 24 24" aria-hidden="true">
+  <path class="b-wave l" d="M4 2C2.8 3.7 2 5.7 2 8"/>
+  <path class="b-wave r" d="M22 8c0-2.3-.8-4.3-2-6"/>
+  <g class="b-body"><path d="M6 8a6 6 0 0 1 12 0c0 4.499 1.411 5.956 2.738 7.326A1 1 0 0 1 20 17H4a1 1 0 0 1-.738-1.674C4.589 13.956 6 12.499 6 8"/></g>
+  <g class="b-clapper"><path d="M10.268 21a2 2 0 0 0 3.464 0"/></g>
+</svg>`;
+
+const reduced = () => document.getElementById("reduced").checked;
+const fmt = (n) => (n > 9 ? "9+" : String(n));
+const rot = (...deg) => deg.map((d) => ({ transform: `rotate(${d}deg)` }));
+
+class Bell {
+  constructor({ variant = "a", size = "", flat = false, onClick } = {}) {
+    this.el = document.createElement("button");
+    this.el.className = `bell ${size} ${flat ? "flat" : ""}`;
+    this.el.type = "button";
+    this.el.innerHTML = `<span class="bell-glow"></span><span class="bell-halo"></span>${SVG}<span class="badge" hidden><span class="badge-num">0</span></span>`;
+    this.body = this.el.querySelector(".b-body");
+    this.clapper = this.el.querySelector(".b-clapper");
+    this.waves = this.el.querySelectorAll(".b-wave");
+    this.halo = this.el.querySelector(".bell-halo");
+    this.badge = this.el.querySelector(".badge");
+    this.num = this.el.querySelector(".badge-num");
+    this.count = 0;
+    this.shown = false;
+    this.lastAnim = performance.now();
+    this.variant = variant;
+    if (onClick) this.el.addEventListener("click", onClick);
+    this.el.hidden = true;
+    Bell.all.add(this);
+  }
+  set variant(v) { this._v = v; this.el.dataset.variant = v; }
+  get variant() { return this._v; }
+  mark() { this.lastAnim = performance.now(); }
+  label() { this.el.setAttribute("aria-label", `${this.count} ${this.count === 1 ? "notificación sin leer" : "notificaciones sin leer"}`); }
+
+  /** Set the count; animates entry, bump or exit as needed. `animate=false` just syncs. */
+  setCount(n, { animate = true } = {}) {
+    const prev = this.count;
+    this.count = n;
+    this.num.textContent = fmt(n);
+    this.badge.hidden = n === 0;
+    this.el.classList.toggle("pending", n > 0);
+    this.label();
+    if (!animate) { this.el.hidden = n === 0; this.shown = n > 0; return; }
+    if (n > 0 && !this.shown) this.enter();
+    else if (n === 0 && this.shown) this.exit();
+    else if (n > prev) this.ring(true);
+  }
+
+  enter() {
+    this.shown = true; this.el.hidden = false; this.mark();
+    const el = this.el;
+    if (reduced()) { el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200 }); return; }
+    if (this.variant === "a") {
+      el.animate([
+        { transform: "translateY(-24px) scale(.6)", opacity: 0 },
+        { transform: "translateY(3px) scale(1.04)", opacity: 1, offset: .6 },
+        { transform: "translateY(-1px) scale(.99)", offset: .8 },
+        { transform: "none", opacity: 1 },
+      ], { duration: 520, easing: "cubic-bezier(.3,.7,.4,1)" });
+      setTimeout(() => this.ring(false), 380);
+      this.pop(530);
+    } else if (this.variant === "b") {
+      el.animate([{ transform: "scale(.7)", opacity: 0 }, { transform: "scale(1.06)", opacity: 1, offset: .7 }, { transform: "scale(1)" }], { duration: 280, easing: "ease-out" });
+      setTimeout(() => this.ring(false), 240);
+      this.pop(260);
+    } else {
+      el.animate([{ transform: "scale(.9)", opacity: 0 }, { transform: "scale(1)", opacity: 1 }], { duration: 360, easing: "cubic-bezier(.2,.8,.2,1)" });
+      setTimeout(() => this.ring(false), 300);
+      this.pop(320);
+    }
+  }
+
+  pop(delay) {
+    this.badge.animate([
+      { transform: "scale(0)" }, { transform: "scale(1.35)", offset: .45 }, { transform: "scale(.9)", offset: .7 },
+      { transform: "scale(1.05)", offset: .85 }, { transform: "scale(1)" },
+    ], { duration: 520, delay, fill: "backwards", easing: "ease-out" });
+  }
+
+  /** Main ring. `bump` = a new notification arrived (animate the number too). */
+  ring(bump) {
+    this.mark();
+    if (bump) this.rollNumber();
+    if (reduced()) return;
+    const ease = { easing: "ease-in-out" };
+    if (this.variant === "a") {
+      const offs = [0, .12, .3, .48, .66, .82, 1];
+      const body = rot(0, 16, -12, 8, -4, 1.5, 0).map((k, i) => ({ ...k, ...ease, offset: offs[i] }));
+      const clap = rot(0, -6, 20, -15, 9, -3, 0).map((k, i) => ({ ...k, ...ease, offset: offs[i] }));
+      this.body.animate(body, { duration: 900 });
+      this.clapper.animate(clap, { duration: 900, delay: 70 });
+      this.waves.forEach((w, i) => w.animate([
+        { opacity: 0, transform: "scale(.8)" }, { opacity: 1, transform: "scale(1)", offset: .35 }, { opacity: 0, transform: `scale(1.15) translateX(${i ? 1.5 : -1.5}px)` },
+      ], { duration: 650, delay: 90 + i * 60, easing: "ease-out" }));
+      this.el.animate([{ transform: "scale(1)" }, { transform: "scale(1.07)" }, { transform: "scale(1)" }], { duration: 320, easing: "ease-out" });
+    } else if (this.variant === "b") {
+      const seq = [0, 10, -10, 10, -9, 9, -8, 8, -6, 6, -3, 0];
+      this.body.animate(rot(...seq), { duration: 480, easing: "linear" });
+      this.clapper.animate(rot(...seq.map((d) => -d * 1.4)), { duration: 480, delay: 30, easing: "linear" });
+      this.badge.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: 700, delay: 120 });
+    } else {
+      [0, 380].forEach((delay) => this.halo.animate([{ transform: "scale(1)", opacity: .75 }, { transform: "scale(1.9)", opacity: 0 }], { duration: 1100, delay, easing: "cubic-bezier(.2,.6,.3,1)" }));
+      this.body.animate(rot(0, 7, -7, 4, 0), { duration: 1200, easing: "ease-in-out" });
+      this.clapper.animate(rot(0, -4, 9, -6, 0), { duration: 1200, delay: 60, easing: "ease-in-out" });
+    }
+  }
+
+  idle() {
+    this.mark();
+    if (reduced()) return;
+    if (this.variant === "a") {
+      this.body.animate(rot(0, 9, -7, 4, 0), { duration: 650, easing: "ease-in-out" });
+      this.clapper.animate(rot(0, -4, 11, -6, 0), { duration: 650, delay: 60, easing: "ease-in-out" });
+    } else if (this.variant === "b") {
+      this.body.animate(rot(0, 7, -7, 7, -5, 0), { duration: 260, easing: "linear" });
+      this.clapper.animate(rot(0, -9, 9, -9, 6, 0), { duration: 260, delay: 25, easing: "linear" });
+    } else {
+      this.halo.animate([{ transform: "scale(1)", opacity: .6 }, { transform: "scale(1.8)", opacity: 0 }], { duration: 1200, easing: "cubic-bezier(.2,.6,.3,1)" });
+    }
+  }
+
+  rollNumber() {
+    if (reduced()) { this.num.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 180 }); return; }
+    this.num.animate([{ transform: "translateY(90%)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 280, easing: "cubic-bezier(.2,.8,.2,1)" });
+    if (this.variant !== "b") this.badge.animate([{ transform: "scale(1)" }, { transform: "scale(1.3)" }, { transform: "scale(1)" }], { duration: 320, easing: "ease-out" });
+  }
+
+  exit() {
+    this.shown = false;
+    const frames = reduced() ? [{ opacity: 1 }, { opacity: 0 }]
+      : this.variant === "a" ? [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.6) rotate(-12deg)" }]
+      : this.variant === "b" ? [{ opacity: 1, transform: "none" }, { opacity: 0, transform: "scale(.7)" }]
+      : [{ opacity: 1 }, { opacity: 0 }];
+    const a = this.el.animate(frames, { duration: this.variant === "b" ? 200 : 240, easing: "ease-in" });
+    a.onfinish = () => { if (!this.shown) this.el.hidden = true; };
+  }
+}
+Bell.all = new Set();
+
+/* Reposo: un toque cada ~15 s si la campana se ve y la pestaña está visible. */
+setInterval(() => {
+  if (document.visibilityState !== "visible") return;
+  const every = document.getElementById("fastIdle").checked ? 4000 : 15000;
+  const now = performance.now();
+  for (const b of Bell.all) {
+    if (b.shown && b.count > 0 && b.el.isConnected && b.el.offsetParent !== null && now - b.lastAnim >= every) b.idle();
+  }
+}, 500);
+
+/* ════════════════ 1 · Variantes ════════════════ */
+const VARIANTS = [
+  { v: "a", name: "A · Campanada (elegida)", desc: "Cae con un pequeño rebote y suena de verdad: el cuerpo oscila desde el asa, el badajo va con retraso y salen ondas de sonido. Es la más expresiva." },
+  { v: "b", name: "B · Timbre", desc: "Aparece sin caída y vibra rápido, como un timbre de bici. El badge late. Es corta y enérgica." },
+  { v: "c", name: "C · Destello", desc: "Ondas de luz en el color de acento y un balanceo lento. La más sobria." },
+];
+const vwrap = document.getElementById("variants");
+for (const { v, name, desc } of VARIANTS) {
+  const card = document.createElement("article");
+  card.className = "vcard";
+  card.innerHTML = `<div class="stage"><div class="zoom"></div></div><div class="meta"><h3>${name}</h3><p>${desc}</p><div class="toolbar"></div></div>`;
+  const bell = new Bell({ variant: v, onClick: () => bell.ring(false) });
+  card.querySelector(".zoom").append(bell.el);
+  const tb = card.querySelector(".toolbar");
+  const add = (label, fn, primary) => { const b = document.createElement("button"); b.className = `btn ${primary ? "primary" : ""}`; b.textContent = label; b.onclick = fn; tb.append(b); };
+  add("Entrada", () => { bell.setCount(0, { animate: false }); setTimeout(() => bell.setCount(3), 50); }, true);
+  add("Nueva", () => bell.setCount(bell.count + 1));
+  add("Toque", () => bell.idle());
+  add("Leer todas", () => bell.setCount(0));
+  vwrap.append(card);
+  setTimeout(() => bell.setCount(3), 400 + "abc".indexOf(v) * 250);
+}
+
+/* ════════════════ 2 · Badge ════════════════ */
+const bwrap = document.getElementById("badges");
+[[1, ""], [3, ""], [9, ""], [12, "12 → 9+"], [2, "en cabecera (36 px)", true]].forEach(([n, cap, sm]) => {
+  const f = document.createElement("figure");
+  const b = new Bell({ size: sm ? "sm" : "", flat: !!sm });
+  b.setCount(n, { animate: false });
+  Bell.all.delete(b); // estáticas: sin toque de reposo
+  f.append(b.el);
+  f.insertAdjacentHTML("beforeend", `<figcaption>${cap || n}</figcaption>`);
+  bwrap.append(f);
+});
+
+/* ════════════════ 3 · En contexto ════════════════ */
+const ICONS = {
+  subcount: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  subscriptions: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+  friends: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+  joint: '<path d="M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4z"/>',
+  summary: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',
+  budget: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+};
+const SEED = () => [
+  { id: 1, fam: "subcount", title: "Ana añadió «Cena en Casa Pepe»", body: "Viaje a Asturias · 60,00 € · te toca 15,00 €", time: "hace 5 min", day: "Hoy", url: "/subcount/7f3a?expense=e81", read: false, seen: false },
+  { id: 2, fam: "friends", title: "Marta quiere ser tu amiga", body: "@marta.gl", time: "hace 1 h", day: "Hoy", url: "/friends", actions: true, read: false, seen: false },
+  { id: 3, fam: "subscriptions", title: "Netflix se renueva mañana", body: "12,99 € · Cuenta BBVA", time: "17:00", day: "Hoy", url: "/subscriptions?sub=9c21", read: false, seen: false },
+  { id: 4, fam: "joint", title: "Luis añadió 4 movimientos", body: "Cuenta común · Mercadona, Gasolina y 2 más", time: "20:14", day: "Ayer", url: "/account/c0de", read: true, seen: true },
+  { id: 5, fam: "summary", title: "Tu resumen de septiembre", body: "Gastaste 1.240 € y ahorraste 310 €", time: "17:00", day: "Ayer", url: "/dashboard?month=2026-09", read: true, seen: true },
+  { id: 6, fam: "budget", title: "Ocio llega al 80 %", body: "160 € de 200 €", time: "lun", day: "Esta semana", url: "/budgets?month=2026-10", read: true, seen: true },
+];
+const POOL = [
+  { fam: "subcount", title: "Pablo saldó contigo", body: "Piso Lavapiés · 25,00 €", url: "/subcount/aa10" },
+  { fam: "subcount", title: "Ana editó «Gasolina»", body: "Viaje a Asturias · tu parte pasa de 15,00 € a 20,00 €", url: "/subcount/7f3a?expense=e90" },
+  { fam: "subscriptions", title: "Spotify se renueva en 3 días", body: "10,99 € · Cuenta Revolut", url: "/subscriptions?sub=1b77" },
+  { fam: "joint", title: "Te invitan a la cuenta «Casa»", body: "Luis quiere compartir una cuenta contigo", url: "/accounts", actions: true },
+  { fam: "subcount", title: "Te añadieron a «Cumple de Irene»", body: "Marta te ha añadido al grupo", url: "/subcount/b5e2" },
+];
+
+const state = { items: SEED(), view: "cal", filter: "unread", model: "seen", place: "bottom", variant: "a", nextId: 100, poolIdx: 0 };
+const phone = document.getElementById("phone");
+const log = (msg) => { const l = document.getElementById("log"); l.insertAdjacentHTML("afterbegin", `<div>${new Date().toLocaleTimeString("es-ES")} · ${msg}</div>`); };
+
+const pending = () => state.items.filter((i) => (state.model === "seen" ? !i.seen : !i.read)).length;
+const unreadCount = () => state.items.filter((i) => !i.read).length;
+
+const openInbox = () => {
+  state.view = "inbox"; state.filter = "unread";
+  if (state.model === "seen") state.items.forEach((i) => (i.seen = true));
+  log('router.push("/notifications?filter=unread")' + (state.model === "seen" ? " · guarda last_seen_at" : ""));
+  render();
+};
+const phoneBell = new Bell({ onClick: openInbox });
+const deskBell = new Bell({ size: "sm", flat: true, onClick: () => { if (state.model === "seen") state.items.forEach((i) => (i.seen = true)); log('escritorio · router.push("/notifications?filter=unread")'); render(); } });
+document.getElementById("deskSlot").prepend(deskBell.el);
+
+function placeBell() {
+  phone.classList.remove("place-top", "place-header", "place-bottom");
+  phone.classList.add(`place-${state.place}`);
+  phoneBell.el.className = phoneBell.el.className.replace(/\b(sm|flat)\b/g, "").trim();
+  if (state.place === "header") {
+    phoneBell.el.classList.add("sm", "flat");
+    document.getElementById("headerSlot").prepend(phoneBell.el);
+  } else {
+    const slot = document.getElementById("floatSlot");
+    slot.className = state.place === "top" ? "float-top" : "float-bottom";
+    slot.append(phoneBell.el);
+  }
+}
+
+let hintTimer;
+function navHint(url) {
+  const h = document.getElementById("navhint");
+  h.innerHTML = `Navegaría a <code>${url}</code> con <code>router.push</code>: la página abre el sheet del elemento sin recargar.`;
+  h.classList.add("on");
+  clearTimeout(hintTimer); hintTimer = setTimeout(() => h.classList.remove("on"), 2600);
+}
+
+function renderList() {
+  const list = document.getElementById("list");
+  const items = state.items.filter((i) => state.filter === "all" || !i.read);
+  document.getElementById("markAll").disabled = unreadCount() === 0;
+  document.querySelector('#filterSeg [data-v="unread"]').textContent = `Sin leer · ${unreadCount()}`;
+  if (!items.length) { list.innerHTML = `<div class="empty"><b>Estás al día</b>No tienes avisos sin leer.</div>`; return; }
+  let html = "", day = null;
+  for (const i of items) {
+    if (i.day !== day) { day = i.day; html += `<div class="group-title">${day}</div>`; }
+    html += `<div class="notif ${i.read ? "" : "unread"} ${i.fresh ? "fresh" : ""}" data-id="${i.id}" data-fam="${i.fam}">
+      <div class="n-ic"><svg viewBox="0 0 24 24">${ICONS[i.fam]}</svg></div>
+      <div class="n-main">
+        <div class="n-head"><div class="n-title">${i.title}</div><div class="n-time">${i.time}</div></div>
+        <div class="n-body">${i.body}</div>
+        ${i.actions ? `<div class="n-actions"><button class="ok" data-act="ok">Aceptar</button><button data-act="no">Rechazar</button></div>` : ""}
+      </div>
+      <span class="n-dot"></span>
+    </div>`;
+    i.fresh = false;
+  }
+  list.innerHTML = html;
+}
+
+function render({ animate = true } = {}) {
+  const inInbox = state.view === "inbox";
+  document.getElementById("vCal").hidden = inInbox;
+  document.getElementById("vInbox").hidden = !inInbox;
+  document.getElementById("tabHome").classList.toggle("active", !inInbox);
+  document.getElementById("tabMenu").classList.toggle("active", inInbox);
+  const n = inInbox ? 0 : pending();
+  phoneBell.setCount(n, { animate });
+  phone.classList.toggle("has-bell", n > 0);
+  deskBell.setCount(pending(), { animate });
+  const deskCnt = document.getElementById("deskCnt");
+  deskCnt.textContent = fmt(unreadCount());
+  deskCnt.classList.toggle("on", unreadCount() > 0);
+  document.getElementById("menuDot").classList.toggle("on", pending() > 0 && !inInbox);
+  if (inInbox) renderList();
+}
+
+document.getElementById("list").addEventListener("click", (e) => {
+  const card = e.target.closest(".notif"); if (!card) return;
+  const item = state.items.find((i) => i.id === Number(card.dataset.id));
+  const act = e.target.closest("[data-act]")?.dataset.act;
+  if (act) {
+    item.actions = false; item.read = true; item.seen = true;
+    item.body = act === "ok" ? (item.fam === "friends" ? "Ahora sois amigos" : "Ya formas parte de la cuenta") : "Rechazada";
+    log(`${act === "ok" ? "aceptar" : "rechazar"} desde la bandeja (sin salir)`);
+    renderList(); render({ animate: false }); return;
+  }
+  item.read = true; item.seen = true;
+  card.classList.remove("unread");
+  log(`marcar leída #${item.id} → ${item.url}`);
+  navHint(item.url);
+  setTimeout(() => { renderList(); render(); }, 350);
+});
+document.getElementById("markAll").onclick = () => { state.items.forEach((i) => { i.read = true; i.seen = true; }); log("marcar todo como leído"); render(); };
+document.getElementById("backBtn").onclick = () => { state.view = "cal"; log("volver (router.back)"); render(); };
+document.getElementById("tabHome").onclick = () => { state.view = "cal"; render(); };
+
+document.getElementById("simNew").onclick = () => {
+  const t = POOL[state.poolIdx++ % POOL.length];
+  state.items.unshift({ ...t, id: state.nextId++, time: "ahora", day: "Hoy", read: false, seen: state.view === "inbox", fresh: true });
+  log(`realtime INSERT notifications · ${t.title}`);
+  render();
+};
+document.getElementById("reopen").onclick = () => {
+  state.items = SEED(); state.view = "cal";
+  phoneBell.setCount(0, { animate: false }); deskBell.setCount(0, { animate: false });
+  log("abrir la app con 3 pendientes");
+  render({ animate: false });
+  phoneBell.setCount(0, { animate: false }); deskBell.setCount(0, { animate: false });
+  setTimeout(() => render(), 450);
+};
+
+function seg(id, key, after) {
+  const el = document.getElementById(id);
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    el.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    after(b.dataset.v);
+  });
+}
+seg("ctxVariant", "variant", (v) => { state.variant = v; phoneBell.variant = v; deskBell.variant = v; document.getElementById("reopen").click(); });
+seg("ctxPlace", "place", (v) => { state.place = v; placeBell(); document.getElementById("reopen").click(); });
+seg("ctxModel", "model", (v) => { state.model = v; log(`modelo: ${v === "seen" ? "visto" : "leído"}`); document.getElementById("reopen").click(); });
+seg("filterSeg", "filter", (v) => { state.filter = v; renderList(); });
+seg("badgeColor", "badge", (v) => document.body.classList.toggle("badge-accent", v === "accent"));
+
+/* Calendario de relleno */
+(function cal() {
+  const g = document.getElementById("calGrid");
+  let html = ["L", "M", "X", "J", "V", "S", "D"].map((d) => `<div class="wd">${d}</div>`).join("");
+  html += [28, 29, 30].map((d) => `<div class="d mute">${d}</div>`).join("");
+  const dots = { 1: "inc", 3: "", 5: "sub", 7: "", 9: "", 10: "sub", 14: "", 18: "sub", 21: "", 24: "inc", 28: "" };
+  for (let d = 1; d <= 31; d++) html += `<div class="d ${d === 9 ? "today" : ""}">${d}${d in dots ? `<i class="${dots[d]}"></i>` : ""}</div>`;
+  html += [1].map((d) => `<div class="d mute">${d}</div>`).join("");
+  g.innerHTML = html;
+})();
+
+/* Tema y movimiento reducido */
+document.getElementById("themeBtn").onclick = (e) => {
+  const light = document.documentElement.dataset.theme === "dark";
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  e.target.textContent = light ? "Tema oscuro" : "Tema claro";
+};
+document.getElementById("reduced").checked = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+placeBell();
+document.getElementById("reopen").click();
+</script>
+</body>
+</html>
