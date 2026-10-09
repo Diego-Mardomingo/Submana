@@ -11,6 +11,9 @@ import {
   unauthorized,
 } from "@/lib/apiHelpers";
 import { calendarDayInAppTimeZone } from "@/lib/date";
+import { notifyBudgetThresholds, requestLang } from "@/lib/notifications/budgets";
+import { jointTransactionEvents, transactionEditChanges } from "@/lib/notifications/events/joint";
+import { notifyAfter } from "@/lib/notifications/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Params = { params: Promise<{ id: string }> };
@@ -81,6 +84,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
   if (error) return jsonServerError("crud/transactions/[id]", error);
   if (!data?.id) return jsonError("transaction_not_found", 404);
+
+  // Joint account(s) involved: the other members are told. Personal expense: check the budgets' thresholds.
+  const movedAccount = accountId !== old.account_id;
+  const oldWasJoint = movedAccount ? !!(await getAccountAccess(supabase, user.id, old.account_id))?.isJoint : access.isJoint;
+  if (access.isJoint || oldWasJoint) {
+    const before = { id, account_id: old.account_id, description: old.description as string | null, amount: old.amount as number };
+    notifyAfter(() => jointTransactionEvents(transactionEditChanges(before, { account_id: accountId, description: data.description, amount: data.amount }), user.id));
+  }
+  if (!access.isJoint && data.type === "expense") notifyBudgetThresholds(user.id, [data.date ?? tx.date], await requestLang());
   return jsonResponse({ data });
 }
 
@@ -97,5 +109,9 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
   if (error) return jsonServerError("crud/transactions/[id]", error);
   if (!data?.id) return jsonError("transaction_not_found", 404);
+  // The RPC returns the deleted row. Deleting import duplicates (skip_balance_adjust) is housekeeping, not news for the other members.
+  if (data.account_id && request.nextUrl.searchParams.get("skip_balance_adjust") !== "1") {
+    notifyAfter(() => jointTransactionEvents([{ accountId: data.account_id, kind: "deleted", tx: data }], user.id));
+  }
   return jsonResponse({ data: { success: true } });
 }

@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { BANK_PROVIDERS, DEPOSIT_ACCOUNT_NAME } from "@/lib/bankProviders";
 import { importTransactions } from "@/lib/importTransactions";
+import { watchImportBudgets } from "@/lib/notifications/budgets";
+import { notifyImport } from "@/lib/notifications/events/imports";
 import { validateImportPayload, validateResolutions } from "@/lib/importValidation";
 import type { ImportedTransaction, ImportResolution } from "@/lib/parsers/types";
 import { generateTransactionHash } from "@/lib/parsers/utils";
@@ -58,21 +60,26 @@ export async function POST(request: NextRequest) {
   }
 
   const accountId = deposit.id as string;
+  // The client hashed with a provisional id: the account might not exist yet.
+  const rows = await Promise.all(
+    transactions!.map(async (tx) => ({
+      ...tx,
+      external_hash: await generateTransactionHash(accountId, tx.date, tx.amount, tx.description),
+    }))
+  );
+  const budgets = await watchImportBudgets(supabase, user.id, rows);
   const result = await importTransactions({
     supabase,
     userId: user.id,
     accountId,
-    // The client hashed with a provisional id: the account might not exist yet.
-    transactions: await Promise.all(
-      transactions!.map(async (tx) => ({
-        ...tx,
-        external_hash: await generateTransactionHash(accountId, tx.date, tx.amount, tx.description),
-      }))
-    ),
+    transactions: rows,
     finalBalance: final_balance,
     inheritCategories: false,
     resolutions,
   });
   if ("error" in result) return jsonServerError("import/revolut-deposit", result.error);
-  return jsonResponse({ data: { importResult: result, accountCreated, accountId } });
+
+  notifyImport({ accountId, imported: result.imported, joint: false, actorId: user.id });
+  const crossedBudgets = await budgets.finish();
+  return jsonResponse({ data: { importResult: { ...result, crossedBudgets }, accountCreated, accountId } });
 }

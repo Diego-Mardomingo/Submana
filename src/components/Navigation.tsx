@@ -10,8 +10,9 @@ import { FieldGroup } from "@/components/SheetFields";
 import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useNotificationCounts } from "@/hooks/useNotifications";
 import type { UIKey } from "@/lib/i18n/ui";
-import { useTranslations } from "@/lib/i18n/utils";
+import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { getParentRoute } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import styles from "./Navigation.module.css";
@@ -44,6 +45,9 @@ const NAV_ITEMS = Object.values(NAV_GROUPS).flat();
 const MENU_ITEMS = [...NAV_GROUPS.manage, ...NAV_GROUPS.system];
 const ADD_SHORTCUT = "w";
 
+/** Up to 9 the number, beyond that "9+". */
+const countLabel = (count: number) => (count > 9 ? "9+" : String(count));
+
 /** Section a route belongs to (an account page lights up "Accounts"). */
 function sectionOf(pathname: string) {
   const path = pathname.replace(/\/$/, "") || "/";
@@ -55,6 +59,10 @@ export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations(useLang());
+  const { data: counts } = useNotificationCounts();
+  // Unread: the number next to "Notifications". Unseen: what the Menu tab's dot is for (the same as the bell).
+  const unread = counts?.unread ?? 0;
+  const unseen = counts?.unseen ?? 0;
   const isMobile = useMediaQuery("(max-width: 767px)");
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -100,6 +108,11 @@ export default function Navigation() {
     >
       <Icon {...iconProps} />
       <span>{t(labelKey)}</span>
+      {href === "/notifications" && unread > 0 && (
+        <span className={styles.count} aria-label={interpolate(t(unread === 1 ? "bell.label.one" : "bell.label.other"), { count: unread })}>
+          {countLabel(unread)}
+        </span>
+      )}
       <kbd className={styles.kbd}>{shortcut.toUpperCase()}</kbd>
     </Link>
   );
@@ -128,6 +141,7 @@ export default function Navigation() {
             icon={Menu}
             label={t("nav.menu")}
             active={menuOpen || (inMenuSection && !showAdd)}
+            dot={unseen > 0}
             onClick={() => {
               setShowAdd(false);
               setMenuOpen(true);
@@ -179,6 +193,11 @@ export default function Navigation() {
                       <Icon {...iconProps} />
                     </span>
                     <span>{t(labelKey)}</span>
+                    {href === "/notifications" && unread > 0 && (
+                      <span className={cn(styles.count, styles.menuCount)} aria-label={interpolate(t(unread === 1 ? "bell.label.one" : "bell.label.other"), { count: unread })}>
+                        {countLabel(unread)}
+                      </span>
+                    )}
                     <ChevronRight className={styles.menuChevron} aria-hidden />
                   </Link>
                 ))}
@@ -194,12 +213,13 @@ export default function Navigation() {
 }
 
 /** Mobile bar tab: icon only, with its label shown while active. A link, or a button without `href`. */
-function BarTab({ href, icon: Icon, label, active, onClick }: { href?: string; icon: NavItem["icon"]; label: string; active: boolean; onClick: () => void }) {
+function BarTab({ href, icon: Icon, label, active, dot, onClick }: { href?: string; icon: NavItem["icon"]; label: string; active: boolean; /** Something new to look at (an accent dot on the icon). */ dot?: boolean; onClick: () => void }) {
   const className = cn(styles.tab, active && styles.active);
   const content = (
     <>
       <span className={styles.tabIcon}>
         <Icon {...iconProps} />
+        {dot && <span className={styles.tabDot} aria-hidden />}
       </span>
       <span className={styles.tabLabel}>{label}</span>
     </>

@@ -1,3 +1,5 @@
+import { RENEWAL_OFFSETS } from "@/lib/notifications/catalog";
+
 export const SUBSCRIPTION_FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
@@ -27,5 +29,23 @@ export function validateSubscriptionFields(fields: Record<string, unknown>): str
   if ("end_date" in fields && fields.end_date != null && fields.end_date !== "") {
     if (typeof fields.end_date !== "string" || !ISO_DAY.test(fields.end_date)) return "invalid_end_date";
   }
+  if ("reminder_offsets" in fields && !isReminderOffsets(fields.reminder_offsets)) return "invalid_reminder_offsets";
   return null;
+}
+
+const ALLOWED_OFFSETS: readonly unknown[] = RENEWAL_OFFSETS;
+
+/** Days before a charge on which a reminder is sent: an array (empty = no reminders) of 0, 1, 3 and 7. */
+export const isReminderOffsets = (value: unknown): value is number[] => Array.isArray(value) && value.every((n) => ALLOWED_OFFSETS.includes(n));
+
+/** Reminder offsets without duplicates, ascending. Call it after `isReminderOffsets`. */
+export const normalizeReminderOffsets = (offsets: readonly number[]): number[] => [...new Set(offsets)].sort((a, b) => a - b);
+
+/**
+ * `reminder_offsets` as the create route receives it: `parseRequestBody` turns every value into a string
+ * ("1,3", or "" for none), so it is split back into numbers. Arrays pass through; `undefined` stays `undefined`.
+ */
+export function parseReminderOffsetsInput(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw;
+  return raw.trim() === "" ? [] : raw.split(",").map((part) => (part.trim() === "" ? NaN : Number(part)));
 }

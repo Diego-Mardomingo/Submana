@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { expenseDeletedEvents, loadExpense } from "@/lib/notifications/events/subcount";
+import { notifyAfter } from "@/lib/notifications/server";
 import { saveSharedExpense } from "@/lib/shared/saveExpense";
 import { limitSharedWrites, rpcErrorResponse, UUID } from "@/lib/shared/server";
 
@@ -20,7 +22,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const limited = await limitSharedWrites(user.id);
   if (limited) return limited;
 
+  // The soft delete keeps the shares, but read who took part before the RPC anyway.
+  const before = await loadExpense(id);
   const { error } = await supabase.rpc("delete_shared_expense", { p_expense_id: id });
   if (error) return rpcErrorResponse("shared/expenses/[id]", error);
+  notifyAfter(() => expenseDeletedEvents(before, user.id));
   return jsonResponse({ data: { success: true } });
 }

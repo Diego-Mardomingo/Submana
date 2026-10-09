@@ -1075,6 +1075,11 @@ button.lp-chip:hover {
   flex-shrink: 0;
 }
 
+/* Preference titles wrap instead of being cut ("Ocultar importes en las notificaciones push") */
+.lp-pref .lp-title > span:first-child {
+  white-space: normal;
+}
+
 .lp-pref--stack .lp-pref-control {
   width: 100%;
 }

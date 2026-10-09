@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { memberAddedEvents } from "@/lib/notifications/events/subcount";
+import { notifyAfter } from "@/lib/notifications/server";
 import { limitSharedWrites, rpcErrorResponse, UUID } from "@/lib/shared/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -18,5 +20,6 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const { data, error } = await supabase.rpc("add_group_member", { p_group_id: id, p_user_id: body.user_id });
   if (error) return rpcErrorResponse("shared/groups/members", error);
+  notifyAfter(() => memberAddedEvents(id, [body.user_id], user.id));
   return jsonResponse({ data }, 201);
 }

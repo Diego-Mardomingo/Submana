@@ -1,4 +1,6 @@
 import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { expenseSavedEvents, loadExpense } from "@/lib/notifications/events/subcount";
+import { notifyAfter } from "@/lib/notifications/server";
 import { computeShares, SPLIT_MODES, toCents, type SplitMode } from "./splits";
 import { limitSharedWrites, rpcErrorResponse, UUID } from "./server";
 
@@ -58,6 +60,9 @@ export async function saveSharedExpense(request: Request, expenseId: string | nu
   );
   if (!split.ok) return jsonError(ERRORS_BY_SPLIT[split.error] ?? "invalid_shares");
 
+  // For an edit, what the expense looked like before decides who is told (read before the RPC overwrites it).
+  const before = expenseId ? await loadExpense(expenseId) : null;
+
   const { data, error } = await supabase.rpc("upsert_shared_expense", {
     p_expense_id: expenseId,
     p_group_id: expenseId ? null : body.group_id,
@@ -69,5 +74,16 @@ export async function saveSharedExpense(request: Request, expenseId: string | nu
     p_shares: split.shares.map((s) => ({ user_id: s.userId, amount: s.cents / 100, weight: s.weight })),
   });
   if (error) return rpcErrorResponse("shared/expenses", error);
+
+  const saved = data as { id: string; group_id: string; title: string; total_amount: number | string; paid_by: string };
+  notifyAfter(() =>
+    expenseSavedEvents({
+      before,
+      isUpdate: !!expenseId,
+      saved: { id: saved.id, groupId: saved.group_id, title: saved.title, total: Number(saved.total_amount), paidBy: saved.paid_by },
+      shares: split.shares,
+      actorId: user.id,
+    })
+  );
   return jsonResponse({ data }, expenseId ? 200 : 201);
 }

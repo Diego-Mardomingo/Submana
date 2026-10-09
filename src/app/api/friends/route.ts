@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { normalizeHandle, validateHandle } from "@/lib/handles";
+import { friendRequestSentEvents, type FriendshipRow as RpcFriendship } from "@/lib/notifications/events/friends";
+import { notifyAfter } from "@/lib/notifications/server";
 import { enforceRateLimit, RATE_LIMITS } from "@/lib/rateLimit";
 
 type FriendshipRow = { id: string; requester_id: string; addressee_id: string; status: "pending" | "accepted"; created_at: string };
@@ -64,5 +66,6 @@ export async function POST(request: NextRequest) {
     if (status) return jsonError(error.message, status);
     return jsonServerError("friends", error);
   }
+  notifyAfter(() => friendRequestSentEvents(data as RpcFriendship, user.id));
   return jsonResponse({ data });
 }

@@ -3,6 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Plus, Repeat } from "lucide-react";
 import CalendarAccountFilter from "@/components/CalendarAccountFilter";
+import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useFrequencyLabel } from "@/components/SubscriptionDialogs";
 import { SubscriptionIcon } from "@/components/SubscriptionsBody";
@@ -177,7 +178,10 @@ export default function CalendarBody() {
     <div className="page-container lp-page cal-page fade-in">
       <header className="lp-header">
         <h1>{es ? "Calendario" : "Calendar"}</h1>
-        <CalendarAccountFilter />
+        <div className="flex shrink-0 items-center gap-2">
+          <HeaderBell />
+          <CalendarAccountFilter />
+        </div>
       </header>
 
       <div className="cal-layout">

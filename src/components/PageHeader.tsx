@@ -1,6 +1,18 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { HeaderBell } from "@/components/notifications/NotificationBell";
+
+/** Right-hand side of a header: the notification bell (desktop) to the left of the page's own action, if any. */
+function HeaderActions({ children }: { children?: ReactNode }) {
+  if (!children) return <HeaderBell />;
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <HeaderBell />
+      {children}
+    </div>
+  );
+}
 
 /** Title block shown at the top of every main page. */
 export function PageHeader({ icon, title, subtitle, children }: {
@@ -19,7 +31,7 @@ export function PageHeader({ icon, title, subtitle, children }: {
           {subtitle && <p>{subtitle}</p>}
         </div>
       </div>
-      {children}
+      <HeaderActions>{children}</HeaderActions>
     </header>
   );
 }
@@ -43,16 +55,18 @@ export function CompactPageHeader({ title, addLabel, addHref, onAdd }: {
   return (
     <header className="lp-header">
       <h1>{title}</h1>
-      {addLabel &&
-        (addHref ? (
-          <Link href={addHref} className="add-btn lp-add" aria-label={addLabel}>
-            {content}
-          </Link>
-        ) : (
-          <button type="button" className="add-btn lp-add" onClick={onAdd} aria-label={addLabel}>
-            {content}
-          </button>
-        ))}
+      <HeaderActions>
+        {addLabel &&
+          (addHref ? (
+            <Link href={addHref} className="add-btn lp-add" aria-label={addLabel}>
+              {content}
+            </Link>
+          ) : (
+            <button type="button" className="add-btn lp-add" onClick={onAdd} aria-label={addLabel}>
+              {content}
+            </button>
+          ))}
+      </HeaderActions>
     </header>
   );
 }

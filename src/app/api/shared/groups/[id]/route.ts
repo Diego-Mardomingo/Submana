@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { fetchAllPages, getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { simplifyDebts } from "@/lib/shared/debts";
+import { groupDeletedEvents, loadGroup } from "@/lib/notifications/events/subcount";
+import { notifyAfter } from "@/lib/notifications/server";
 import { fetchProfiles, limitSharedWrites, rpcErrorResponse, UUID } from "@/lib/shared/server";
 import type { GroupDetailData, SharedEventItem, SharedExpenseItem } from "@/lib/shared/types";
 import type { SplitMode } from "@/lib/shared/splits";
@@ -129,7 +131,10 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
   const limited = await limitSharedWrites(user.id);
   if (limited) return limited;
 
+  // The cascade removes the members: read them (and the name) before the RPC.
+  const group = await loadGroup(id);
   const { error } = await supabase.rpc("delete_group", { p_group_id: id });
   if (error) return rpcErrorResponse("shared/groups/[id]", error);
+  notifyAfter(() => groupDeletedEvents(group, id, user.id));
   return jsonResponse({ data: { success: true } });
 }

@@ -16,6 +16,8 @@ export interface Subscription {
   frequency: "weekly" | "monthly" | "yearly";
   frequency_value: number;
   account_id?: string | null;
+  /** Days before a charge on which a reminder is sent (0, 1, 3, 7); empty = no reminders. */
+  reminder_offsets: number[];
 }
 
 export function useSubscriptions() {
@@ -35,6 +37,7 @@ interface SubscriptionInput {
   frequency?: string;
   frequency_value?: number;
   account_id?: string | null;
+  reminder_offsets?: number[];
 }
 
 const invalidate = [queryKeys.subscriptions.all];

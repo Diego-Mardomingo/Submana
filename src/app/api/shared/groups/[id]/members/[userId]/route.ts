@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { memberRemovedEvents } from "@/lib/notifications/events/subcount";
+import { notifyAfter } from "@/lib/notifications/server";
 import { limitSharedWrites, rpcErrorResponse, UUID } from "@/lib/shared/server";
 
 type Params = { params: Promise<{ id: string; userId: string }> };
@@ -15,5 +17,7 @@ export async function DELETE(_request: NextRequest, { params }: Params) {
 
   const { error } = await supabase.rpc("remove_group_member", { p_group_id: id, p_user_id: userId });
   if (error) return rpcErrorResponse("shared/groups/members", error);
+  // Leaving on your own tells nobody; being removed by someone else does.
+  if (userId !== user.id) notifyAfter(() => memberRemovedEvents(id, userId, user.id));
   return jsonResponse({ data: { success: true } });
 }

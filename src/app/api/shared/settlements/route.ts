@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { settlementSavedEvents } from "@/lib/notifications/events/subcount";
+import { notifyAfter } from "@/lib/notifications/server";
 import { limitSharedWrites, rpcErrorResponse, UUID } from "@/lib/shared/server";
 import { toCents } from "@/lib/shared/splits";
 
@@ -29,5 +31,7 @@ export async function POST(request: NextRequest) {
     p_date: date.toISOString(),
   });
   if (error) return rpcErrorResponse("shared/settlements", error);
+  const settled = data as { id: string; group_id: string };
+  notifyAfter(() => settlementSavedEvents({ expenseId: settled.id, groupId: settled.group_id, from: body.from, to: body.to, amount: toCents(amount) / 100, actorId: user.id }));
   return jsonResponse({ data }, 201);
 }

@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
-import { validateSubscriptionFields } from "@/lib/subscriptionValidation";
+import { normalizeReminderOffsets, validateSubscriptionFields } from "@/lib/subscriptionValidation";
 
 type Params = { params: Promise<{ id: string }> };
 
-const EDITABLE = ["service_name", "icon", "cost", "start_date", "end_date", "frequency", "frequency_value", "account_id"];
+const EDITABLE = ["service_name", "icon", "cost", "start_date", "end_date", "frequency", "frequency_value", "account_id", "reminder_offsets"];
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
@@ -17,6 +17,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   if (Object.keys(updates).length === 0) return jsonError("No fields to update");
   const invalid = validateSubscriptionFields(updates);
   if (invalid) return jsonError(invalid);
+  if (Array.isArray(updates.reminder_offsets)) updates.reminder_offsets = normalizeReminderOffsets(updates.reminder_offsets);
   if (typeof updates.account_id === "string" && (await getAccountAccess(supabase, user.id, updates.account_id))?.role !== "owner") {
     return jsonError("Account not found", 404);
   }

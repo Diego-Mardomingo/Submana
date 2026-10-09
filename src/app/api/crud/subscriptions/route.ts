@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
-import { validateSubscriptionFields } from "@/lib/subscriptionValidation";
+import { normalizeReminderOffsets, parseReminderOffsetsInput, validateSubscriptionFields } from "@/lib/subscriptionValidation";
 
 export async function GET() {
   const { supabase, user } = await getAuthedClient();
@@ -26,9 +26,12 @@ export async function POST(request: NextRequest) {
     frequency: body.frequency || "monthly",
     frequency_value: body.frequency_value ? Number(body.frequency_value) : 1,
     account_id: body.account_id || null,
+    // Left out when absent: the column default applies.
+    ...(body.reminder_offsets !== undefined && { reminder_offsets: parseReminderOffsetsInput(body.reminder_offsets) }),
   };
   const invalid = validateSubscriptionFields(fields);
   if (invalid) return jsonError(invalid);
+  if (Array.isArray(fields.reminder_offsets)) fields.reminder_offsets = normalizeReminderOffsets(fields.reminder_offsets);
   if (fields.account_id && (await getAccountAccess(supabase, user.id, fields.account_id))?.role !== "owner") return jsonError("Account not found", 404);
 
   const { data, error } = await supabase

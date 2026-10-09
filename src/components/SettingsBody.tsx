@@ -9,6 +9,7 @@ import { CompactPageHeader } from "@/components/PageHeader";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { NotificationSettingsSection } from "@/components/notifications/NotificationSettingsSection";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { setCalendarDotsOnly, useCalendarDotsOnly } from "@/hooks/useCalendarDots";
@@ -17,6 +18,7 @@ import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useProfile } from "@/hooks/useProfile";
 import { createClientStore } from "@/lib/clientStore";
 import { useTranslations } from "@/lib/i18n/utils";
+import { disablePushOnThisDevice } from "@/lib/push/client";
 import { toast } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -99,6 +101,8 @@ export default function SettingsBody() {
   }, []);
 
   const signOut = async () => {
+    // While still signed in: this device must stop getting this account's push.
+    await disablePushOnThisDevice();
     const { error } = await createClient().auth.signOut();
     if (error) {
       toast.error(t("settings.signoutError"));
@@ -251,6 +255,8 @@ export default function SettingsBody() {
               </label>
             </div>
           </section>
+
+          <NotificationSettingsSection />
 
           <section className="lp-section">
             <SectionHead title={es ? "Sesión" : "Session"} />

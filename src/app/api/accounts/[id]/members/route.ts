@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, unauthorized } from "@/lib/apiHelpers";
+import { inviteAnsweredEvents, inviteReceivedEvents } from "@/lib/notifications/events/joint";
+import { notifyAfter } from "@/lib/notifications/server";
 import { limitSharedWrites, rpcErrorResponse, UUID } from "@/lib/shared/server";
 
 type Params = { params: Promise<{ id: string }> };
@@ -18,6 +20,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
   const { data, error } = await supabase.rpc("invite_account_member", { p_account: id, p_friend: body.friend_id });
   if (error) return rpcErrorResponse("accounts/members", error);
+  notifyAfter(() => inviteReceivedEvents(data as { account_id: string; user_id: string; status: string; added_at: string }, user.id));
   return jsonResponse({ data }, 201);
 }
 
@@ -35,5 +38,6 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
   const { data, error } = await supabase.rpc("respond_account_invite", { p_account: id, p_accept: body.accept });
   if (error) return rpcErrorResponse("accounts/members", error);
+  notifyAfter(() => inviteAnsweredEvents(id, body.accept, user.id));
   return jsonResponse({ data });
 }
