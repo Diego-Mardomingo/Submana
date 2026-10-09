@@ -39,7 +39,9 @@ import { isSubscriptionActive, monthlyCost, nextPaymentDate, totalSpent } from "
 
 type Mode = "view" | "edit";
 
-const FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
+const FREQUENCIES = ["daily", "weekly", "monthly", "yearly"] as const;
+/** Days need room for "every 90 / 365 days"; the other units stay under 100. */
+const maxEvery = (frequency: Subscription["frequency"]) => (frequency === "daily" ? 999 : 99);
 
 const offsetLabelKey = (offset: number) => `notifSettings.offset.${offset}` as UIKey;
 
@@ -172,7 +174,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
   const offsets = pickedOffsets ?? (sub ? sub.reminder_offsets : notificationSettings?.default_renewal_offsets) ?? [1];
   const [error, setError] = useState("");
   const [costInvalid, setCostInvalid] = useState(false);
-  const units = { weekly: ["semana", "semanas", "week", "weeks"], monthly: ["mes", "meses", "month", "months"], yearly: ["año", "años", "year", "years"] }[frequency];
+  const units = { daily: ["día", "días", "day", "days"], weekly: ["semana", "semanas", "week", "weeks"], monthly: ["mes", "meses", "month", "months"], yearly: ["año", "años", "year", "years"] }[frequency];
   const unit = units[(es ? 0 : 2) + (every === 1 ? 0 : 1)];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -251,12 +253,15 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
             <Segmented
               label={t("sub.frequency")}
               value={frequency}
-              onChange={setFrequency}
+              onChange={(next) => {
+                setFrequency(next);
+                setEvery((n) => Math.min(n, maxEvery(next)));
+              }}
               options={FREQUENCIES.map((f) => ({ value: f, label: t(`sub.${f}`) }))}
             />
           </FieldStack>
           <FieldRow label={es ? `Cada ${every} ${unit}` : `Every ${every} ${unit}`}>
-            <Stepper value={every} onChange={setEvery} label={t("sub.every")} />
+            <Stepper value={every} onChange={setEvery} max={maxEvery(frequency)} label={t("sub.every")} />
           </FieldRow>
         </FieldGroup>
 

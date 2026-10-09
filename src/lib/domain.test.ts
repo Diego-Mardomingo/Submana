@@ -102,7 +102,7 @@ describe("validateSubscriptionFields", () => {
   it("rechaza frecuencias que colgarían el cálculo de fechas", () => {
     expect(validateSubscriptionFields({ frequency_value: 0 })).toBe("invalid_frequency_value");
     expect(validateSubscriptionFields({ frequency_value: -2 })).toBe("invalid_frequency_value");
-    expect(validateSubscriptionFields({ frequency: "daily" })).toBe("invalid_frequency");
+    expect(validateSubscriptionFields({ frequency: "hourly" })).toBe("invalid_frequency");
     expect(validateSubscriptionFields({ cost: -5 })).toBe("invalid_cost");
   });
 

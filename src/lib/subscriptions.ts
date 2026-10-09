@@ -22,9 +22,9 @@ export function isSubscriptionActive(sub: Schedule, todayDate?: Date) {
   return localDay(sub.start_date) <= today && !(sub.end_date && localDay(sub.end_date) < today);
 }
 
-/** Average monthly cost (weekly = 52/12 weeks per month, divided by the "every N" interval). */
+/** Average monthly cost (daily = 365/12 days and weekly = 52/12 weeks per month, divided by the "every N" interval). */
 export function monthlyCost(sub: Schedule & { cost: number | string }) {
-  const perMonth = { weekly: 52 / 12, monthly: 1, yearly: 1 / 12 }[sub.frequency] ?? 1;
+  const perMonth = { daily: 365 / 12, weekly: 52 / 12, monthly: 1, yearly: 1 / 12 }[sub.frequency] ?? 1;
   return (Number(sub.cost) * perMonth) / Math.max(1, sub.frequency_value || 1);
 }
 
@@ -37,8 +37,8 @@ function* chargeDates(sub: Schedule) {
   const every = Math.max(1, sub.frequency_value || 1);
   const start = localDay(sub.start_date);
   for (let n = 0; ; n++) {
-    if (sub.frequency === "weekly") {
-      yield new Date(start.getFullYear(), start.getMonth(), start.getDate() + 7 * every * n, 12);
+    if (sub.frequency === "daily" || sub.frequency === "weekly") {
+      yield addDays(start, (sub.frequency === "weekly" ? 7 : 1) * every * n);
       continue;
     }
     const { year, month } = shiftMonth(start.getFullYear(), start.getMonth() + 1, (sub.frequency === "yearly" ? 12 : 1) * every * n);
@@ -76,9 +76,12 @@ export function isPaymentDay(sub: Schedule, year: number, month: number, day: nu
   if (start > current || (sub.end_date && localDay(sub.end_date) < current)) return false;
   const every = Math.max(1, sub.frequency_value || 1);
   const sameDayOfMonth = day === Math.min(start.getDate(), new Date(year, month + 1, 0).getDate());
+  const daysSinceStart = Math.round((current.getTime() - start.getTime()) / 86400000);
   switch (sub.frequency) {
+    case "daily":
+      return daysSinceStart % every === 0;
     case "weekly":
-      return Math.round((current.getTime() - start.getTime()) / 86400000) % (7 * every) === 0;
+      return daysSinceStart % (7 * every) === 0;
     case "monthly":
       return ((year - start.getFullYear()) * 12 + month - start.getMonth()) % every === 0 && sameDayOfMonth;
     case "yearly":

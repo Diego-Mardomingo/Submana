@@ -10,7 +10,7 @@ import { toast } from "@/lib/toast";
 /** "Every 2 months" style label. */
 export function useFrequencyLabel() {
   const t = useTranslations(useLang());
-  const plural = { weekly: "sub.weeks", monthly: "sub.months", yearly: "sub.years" } as const;
+  const plural = { daily: "sub.days", weekly: "sub.weeks", monthly: "sub.months", yearly: "sub.years" } as const;
   return (sub: Pick<Subscription, "frequency" | "frequency_value">) => {
     const every = sub.frequency_value || 1;
     return every === 1 ? t(`sub.${sub.frequency}`) : `${t("sub.every")} ${every} ${t(plural[sub.frequency])}`;
