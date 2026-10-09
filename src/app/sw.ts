@@ -109,11 +109,19 @@ interface PushData {
   id?: string;
 }
 
-/** Number on the app icon: the notifications still shown (best effort, not every platform has it). */
-async function syncAppBadge() {
+/** Whether two Notification objects are the same notification (`getNotifications()` returns new objects). */
+const sameNotification = (a: Notification, b: Notification) =>
+  a.tag === b.tag && a.title === b.title && a.body === b.body && (a.data as PushData | null)?.id === (b.data as PushData | null)?.id;
+
+/**
+ * Number on the app icon: the notifications still shown (best effort, not every platform has it).
+ * `closing` is left out: while its close/click event runs, some browsers still list it.
+ * The app also calls this logic when it opens (AppBadgeSync), for platforms without `notificationclose`.
+ */
+async function syncAppBadge(closing?: Notification) {
   try {
     const nav = self.navigator as Navigator & { setAppBadge?: (count?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
-    const shown = (await self.registration.getNotifications()).length;
+    const shown = (await self.registration.getNotifications()).filter((n) => !closing || !sameNotification(n, closing)).length;
     if (shown > 0) await nav.setAppBadge?.(shown);
     else await nav.clearAppBadge?.();
   } catch {
@@ -164,9 +172,14 @@ self.addEventListener("notificationclick", (event) => {
       } else {
         await self.clients.openWindow(url);
       }
-      await syncAppBadge();
+      await syncAppBadge(event.notification);
     })()
   );
+});
+
+// Dismissed without tapping it (swiped away or cleared): the number on the icon must go down too.
+self.addEventListener("notificationclose", (event) => {
+  event.waitUntil(syncAppBadge(event.notification));
 });
 
 function urlBase64ToUint8Array(base64: string) {
