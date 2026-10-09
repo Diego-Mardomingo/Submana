@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { toDateString } from "@/lib/date";
-import { chargeDatesBetween, endingNotice, isSubscriptionActive, nextPaymentDate, renewalReminders, totalSpent } from "./subscriptions";
+import { chargeDatesBetween, endingNotice, isPaymentDay, isSubscriptionActive, monthlyCost, nextPaymentDate, renewalReminders, totalSpent } from "./subscriptions";
 
 // The Vitest process runs in America/New_York (vitest.config.ts): the app must still think in Madrid.
 
@@ -69,6 +69,17 @@ describe("renewalReminders", () => {
     // the off week has no charge
     expect(reminders(s, "2026-10-19")).toEqual([]);
     expect(reminders(s, "2026-10-26")).toEqual(["3:2026-10-29"]);
+  });
+
+  it("handles subscriptions every N days without drifting like 3 months would", () => {
+    const s = sub({ start_date: "2026-01-01", frequency: "daily", frequency_value: 90, reminder_offsets: [1] });
+    const charges = chargeDatesBetween(s, day("2026-01-01"), day("2026-12-31")).map(toDateString);
+    expect(charges).toEqual(["2026-01-01", "2026-04-01", "2026-06-30", "2026-09-28", "2026-12-27"]);
+    expect(reminders(s, "2026-06-29")).toEqual(["1:2026-06-30"]);
+    expect(reminders(s, "2026-06-30")).toEqual([]);
+    expect(isPaymentDay(s, 2026, 8, 28)).toBe(true);
+    expect(isPaymentDay(s, 2026, 9, 1)).toBe(false);
+    expect(monthlyCost({ ...s, cost: 30 })).toBeCloseTo((30 * 365) / 12 / 90);
   });
 
   it("handles every N months and yearly subscriptions", () => {

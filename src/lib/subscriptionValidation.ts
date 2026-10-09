@@ -1,6 +1,6 @@
 import { RENEWAL_OFFSETS } from "@/lib/notifications/catalog";
 
-export const SUBSCRIPTION_FREQUENCIES = ["weekly", "monthly", "yearly"] as const;
+export const SUBSCRIPTION_FREQUENCIES = ["daily", "weekly", "monthly", "yearly"] as const;
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}/;
 

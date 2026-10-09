@@ -13,7 +13,7 @@ export interface Subscription {
   cost: number;
   start_date: string;
   end_date?: string | null;
-  frequency: "weekly" | "monthly" | "yearly";
+  frequency: "daily" | "weekly" | "monthly" | "yearly";
   frequency_value: number;
   account_id?: string | null;
   /** Days before a charge on which a reminder is sent (0, 1, 3, 7); empty = no reminders. */

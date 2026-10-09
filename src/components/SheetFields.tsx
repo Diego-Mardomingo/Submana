@@ -196,14 +196,36 @@ export function Swatches({ value, onChange, label }: { value: string; onChange: 
   );
 }
 
-/** − n + counter. */
+/** − n + counter. The number can also be typed (e.g. "every 90 days"); it's clamped to min–max on blur. */
 export function Stepper({ value, onChange, min = 1, max = 99, label }: { value: number; onChange: (value: number) => void; min?: number; max?: number; label?: string }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    const typed = Number.parseInt(draft, 10);
+    if (Number.isFinite(typed)) onChange(Math.min(max, Math.max(min, typed)));
+    setDraft(null);
+  };
   return (
     <div className="sf-stepper" role="group" aria-label={label}>
       <button type="button" onClick={() => onChange(Math.max(min, value - 1))} disabled={value <= min} aria-label="−1">
         <Minus strokeWidth={2.5} />
       </button>
-      <output aria-live="polite">{value}</output>
+      <input
+        type="text"
+        inputMode="numeric"
+        aria-label={label}
+        value={draft ?? String(value)}
+        size={String(max).length}
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setDraft(e.target.value.replace(/\D/g, "").slice(0, String(max).length))}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+      />
       <button type="button" onClick={() => onChange(Math.min(max, value + 1))} disabled={value >= max} aria-label="+1">
         <Plus strokeWidth={2.5} />
       </button>
