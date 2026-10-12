@@ -116,7 +116,8 @@ const sameNotification = (a: Notification, b: Notification) =>
 /**
  * Number on the app icon: the notifications still shown (best effort, not every platform has it).
  * `closing` is left out: while its close/click event runs, some browsers still list it.
- * The app also calls this logic when it opens (AppBadgeSync), for platforms without `notificationclose`.
+ * The app recounts too, capped at the unread notifications (AppBadgeSync), for platforms without `notificationclose`
+ * and for notifications read in the inbox.
  */
 async function syncAppBadge(closing?: Notification) {
   try {

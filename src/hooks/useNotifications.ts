@@ -12,6 +12,7 @@ import type {
   NotificationsPage,
 } from "@/lib/notifications/types";
 import type { SettingsPatch } from "@/lib/notifications/validation";
+import { closeShownPushes } from "@/lib/push/badge";
 import { queryKeys } from "@/lib/queryKeys";
 import { useOptimisticMutation } from "./useOptimisticMutation";
 
@@ -96,7 +97,11 @@ function useInboxMutation<TVars>(options: {
 /** Mark one notification read or unread (`{ id, read }`). */
 export function useMarkRead() {
   return useInboxMutation<{ id: string; read: boolean }>({
-    mutationFn: ({ id, read }) => api(`/api/notifications/${id}`, "PATCH", { read }),
+    mutationFn: async ({ id, read }) => {
+      await api(`/api/notifications/${id}`, "PATCH", { read });
+      // Read in the inbox: its push has nothing left to say (AppBadgeSync recounts the icon).
+      if (read) await closeShownPushes([id]);
+    },
     apply: (queryClient, { id, read }) => {
       const item = findItem(queryClient, id);
       const readAt = read ? new Date().toISOString() : null;
@@ -116,7 +121,10 @@ export function useMarkRead() {
 
 export function useMarkAllRead() {
   return useInboxMutation<void>({
-    mutationFn: () => api("/api/notifications/read-all", "POST"),
+    mutationFn: async () => {
+      await api("/api/notifications/read-all", "POST");
+      await closeShownPushes();
+    },
     apply: (queryClient) => {
       const now = new Date().toISOString();
       editLists(queryClient, (items, filter) => (filter === "unread" ? [] : items.map((item) => (item.read_at ? item : { ...item, read_at: now }))));
@@ -141,7 +149,10 @@ export function useMarkSeen() {
 export function useDeleteNotification() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api(`/api/notifications/${id}`, "DELETE"),
+    mutationFn: async (id: string) => {
+      await api(`/api/notifications/${id}`, "DELETE");
+      await closeShownPushes([id]);
+    },
     onSettled: () => Promise.all([queryClient.invalidateQueries({ queryKey: keys.lists() }), queryClient.invalidateQueries({ queryKey: keys.counts() })]),
   });
 }
