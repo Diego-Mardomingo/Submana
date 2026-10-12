@@ -55,6 +55,15 @@ function sectionOf(pathname: string) {
   return parent === "/" ? path : parent;
 }
 
+/** Already on exactly that page (same path, no query): opening it again just scrolls back to the top. */
+function scrollToTopIfCurrent(href: string) {
+  const { pathname, search } = window.location;
+  if ((pathname.replace(/\/$/, "") || "/") !== href || search) return false;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+  return true;
+}
+
 export default function Navigation() {
   const pathname = usePathname();
   const router = useRouter();
@@ -85,8 +94,8 @@ export default function Navigation() {
     const item = NAV_ITEMS.find((n) => n.shortcut === key);
     if (key !== ADD_SHORTCUT && !item) return;
     e.preventDefault();
-    if (item) router.push(item.href);
-    else openAdd();
+    if (!item) openAdd();
+    else if (!scrollToTopIfCurrent(item.href)) router.push(item.href);
   });
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown);
@@ -98,13 +107,20 @@ export default function Navigation() {
     setShowAdd(false);
   };
 
+  /** Click on a nav link: closes the overlays, and on the page it points to scrolls to the top instead of navigating. */
+  const onLinkClick = (href: string) => (e: React.MouseEvent) => {
+    closeAll();
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (scrollToTopIfCurrent(href)) e.preventDefault();
+  };
+
   const sidebarLink = ({ href, shortcut, labelKey, icon: Icon }: NavItem) => (
     <Link
       key={href}
       href={href}
       className={cn(styles.sideItem, section === href && styles.active)}
       aria-current={section === href ? "page" : undefined}
-      onClick={closeAll}
+      onClick={onLinkClick(href)}
     >
       <Icon {...iconProps} />
       <span>{t(labelKey)}</span>
@@ -122,7 +138,7 @@ export default function Navigation() {
       {isMobile ? (
         <nav className={styles.bar} id="main-nav" aria-label={t("nav.menu")}>
           {NAV_GROUPS.main.slice(0, 2).map(({ href, icon, labelKey }) => (
-            <BarTab key={href} href={href} icon={icon} label={t(labelKey)} active={section === href} onClick={closeAll} />
+            <BarTab key={href} href={href} icon={icon} label={t(labelKey)} active={section === href} onClick={onLinkClick(href)} />
           ))}
           <button
             type="button"
@@ -136,7 +152,7 @@ export default function Navigation() {
             </svg>
             <Plus className={styles.notchIcon} strokeWidth={2.5} aria-hidden />
           </button>
-          <BarTab href="/transactions" icon={TransactionsIcon} label={t("nav.transactions")} active={section === "/transactions"} onClick={closeAll} />
+          <BarTab href="/transactions" icon={TransactionsIcon} label={t("nav.transactions")} active={section === "/transactions"} onClick={onLinkClick("/transactions")} />
           <BarTab
             icon={Menu}
             label={t("nav.menu")}
@@ -150,7 +166,7 @@ export default function Navigation() {
         </nav>
       ) : (
         <nav className={styles.sidebar} id="main-nav">
-          <Link href="/" className={styles.brand} onClick={closeAll}>
+          <Link href="/" className={styles.brand} onClick={onLinkClick("/")}>
             <span className={styles.brandMark}>
               <LogoMark />
             </span>
@@ -187,7 +203,7 @@ export default function Navigation() {
                     href={href}
                     className={cn("sf-row sf-action", styles.menuRow, section === href && styles.active)}
                     aria-current={section === href ? "page" : undefined}
-                    onClick={closeAll}
+                    onClick={onLinkClick(href)}
                   >
                     <span className={styles.menuIcon}>
                       <Icon {...iconProps} />
@@ -213,7 +229,7 @@ export default function Navigation() {
 }
 
 /** Mobile bar tab: icon only, with its label shown while active. A link, or a button without `href`. */
-function BarTab({ href, icon: Icon, label, active, dot, onClick }: { href?: string; icon: NavItem["icon"]; label: string; active: boolean; /** Something new to look at (an accent dot on the icon). */ dot?: boolean; onClick: () => void }) {
+function BarTab({ href, icon: Icon, label, active, dot, onClick }: { href?: string; icon: NavItem["icon"]; label: string; active: boolean; /** Something new to look at (an accent dot on the icon). */ dot?: boolean; onClick: (e: React.MouseEvent) => void }) {
   const className = cn(styles.tab, active && styles.active);
   const content = (
     <>
