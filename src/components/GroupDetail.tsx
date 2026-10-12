@@ -207,9 +207,11 @@ export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   );
 }
 
-function ExpenseRow({ expense, meId, profiles, onOpen, onDelete }: {
+function ExpenseRow({ expense, meId, profiles, highlighted, onOpen, onDelete }: {
   expense: SharedExpenseItem;
   meId: string;
+  /** Picked out for a moment: the expense a notification points to. */
+  highlighted?: boolean;
   profiles: Map<string, SharedProfile>;
   onOpen: (expense: SharedExpenseItem) => void;
   onDelete: (expense: SharedExpenseItem) => void;
@@ -251,7 +253,7 @@ function ExpenseRow({ expense, meId, profiles, onOpen, onDelete }: {
         </>
       }
     >
-      <button type="button" className="lp-row" onClick={() => onOpen(expense)}>
+      <button type="button" className={`lp-row ${highlighted ? "lp-row--highlight" : ""}`} onClick={() => onOpen(expense)}>
         <span className={`lp-icon ${settlement ? "lp-icon--income" : ""}`} aria-hidden>
           {settlement ? <HandCoins size={18} /> : "🧾"}
         </span>
@@ -401,17 +403,29 @@ export default function GroupDetail({ id }: { id: string }) {
   const { data, isLoading, isError, isPlaceholderData } = useGroup(id, limit);
   const [tab, setTab] = useState<Tab>("expenses");
   const [editing, setEditing] = useState<SharedExpenseItem | null>(null);
-  // Deep link (a notification): /subcount/{group}?expense={id} opens that expense, also while the page is already open.
+  // Deep link (a notification): /subcount/{group}?expense={id} shows the group with that expense picked out
+  // (not its edit form), also while the page is already open.
   const [expenseParam, clearExpenseParam] = useUrlParam("expense", parseIdParam);
+  const [highlighted, setHighlighted] = useState<string | null>(null);
   const linkedExpense = expenseParam ? data?.expenses.find((expense) => expense.id === expenseParam) : undefined;
   const linkSettled = !!expenseParam && !!data && !isPlaceholderData && !linkedExpense;
   const linkGone = linkSettled && !data.has_more;
   // An older expense, not in the page loaded so far: load more until it shows up.
   if (linkSettled && data.has_more) setLimit(limit + PAGE);
+  if (linkedExpense && highlighted !== linkedExpense.id) {
+    setHighlighted(linkedExpense.id);
+    setTab("expenses");
+  }
   useEffect(() => {
-    if (linkGone) clearExpenseParam(); // deleted since: just show the group
-  }, [linkGone, clearExpenseParam]);
-  const active = linkedExpense ?? editing;
+    if (linkGone || linkedExpense) clearExpenseParam(); // picked out, or deleted since (then just the group)
+  }, [linkGone, linkedExpense, clearExpenseParam]);
+  useEffect(() => {
+    if (!highlighted) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.querySelector(`[data-swipe-id="${highlighted}"]`)?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "center" });
+    const timer = setTimeout(() => setHighlighted(null), 2400);
+    return () => clearTimeout(timer);
+  }, [highlighted]);
   const [toDelete, setToDelete] = useState<SharedExpenseItem | null>(null);
   const deleteExpense = useUndoableDeleteSharedExpense();
   const removeSettlement = useDeleteSharedExpense();
@@ -510,6 +524,7 @@ export default function GroupDetail({ id }: { id: string }) {
                     expense={expense}
                     meId={meId}
                     profiles={profiles}
+                    highlighted={expense.id === highlighted}
                     onOpen={setEditing}
                     onDelete={(item) => (item.kind === "settlement" ? setToDelete(item) : deleteExpense(item))}
                   />
@@ -527,27 +542,23 @@ export default function GroupDetail({ id }: { id: string }) {
       </div>
 
       <SharedExpenseSheet
-        open={creating || (!!active && active.kind === "expense")}
+        open={creating || (!!editing && editing.kind === "expense")}
         onOpenChange={(open) => {
           if (!open) {
             setCreating(false);
             setEditing(null);
-            if (expenseParam) clearExpenseParam();
           }
         }}
         groupId={data.group.id}
         members={data.members}
         meId={meId}
-        expense={active}
+        expense={editing}
       />
       <SettlementDeleteSheet
-        expense={active?.kind === "settlement" ? active : null}
+        expense={editing?.kind === "settlement" ? editing : null}
         profiles={profiles}
         meId={meId}
-        onClose={() => {
-          setEditing(null);
-          if (expenseParam) clearExpenseParam();
-        }}
+        onClose={() => setEditing(null)}
       />
       <ConfirmDeleteSheet
         open={!!toDelete}
