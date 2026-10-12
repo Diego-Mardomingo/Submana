@@ -1,32 +1,37 @@
 "use client";
 
 import { useEffect } from "react";
-
-type BadgeNavigator = Navigator & { setAppBadge?: (count?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+import { useQueryClient } from "@tanstack/react-query";
+import { useNotificationCounts } from "@/hooks/useNotifications";
+import { closeShownPushes, syncAppBadge } from "@/lib/push/badge";
+import { queryKeys } from "@/lib/queryKeys";
 
 /**
- * Keeps the number on the app icon equal to the pushes still shown, like the service worker does (src/app/sw.ts).
- * Runs whenever the app opens or comes back to the foreground: dismissing a push does not always reach the
- * service worker (iOS has no `notificationclose`), and the number stayed on the icon.
+ * Keeps the number on the app icon in line with the inbox: the pushes still shown, never more than the unread
+ * notifications. With nothing unread the leftover pushes are closed too. Recounts whenever the counts change
+ * and when the app comes back to the foreground (iOS has no `notificationclose`, and reading a notification
+ * in the app, here or on another device, never reaches the service worker).
  */
 export function AppBadgeSync() {
+  const queryClient = useQueryClient();
+  const { data, dataUpdatedAt } = useNotificationCounts();
+  const unread = data?.unread;
+
   useEffect(() => {
-    const nav = navigator as BadgeNavigator;
-    if (!("serviceWorker" in nav) || !nav.setAppBadge) return;
-    const sync = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const registration = await nav.serviceWorker.getRegistration();
-        const shown = registration ? (await registration.getNotifications()).length : 0;
-        if (shown > 0) await nav.setAppBadge?.(shown);
-        else await nav.clearAppBadge?.();
-      } catch {
-        // Not allowed on this platform.
-      }
+    if (unread === undefined) return;
+    void (async () => {
+      if (unread === 0) await closeShownPushes();
+      await syncAppBadge(unread);
+    })();
+  }, [unread, dataUpdatedAt]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.counts() });
     };
-    void sync();
-    document.addEventListener("visibilitychange", sync);
-    return () => document.removeEventListener("visibilitychange", sync);
-  }, []);
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
+  }, [queryClient]);
+
   return null;
 }
