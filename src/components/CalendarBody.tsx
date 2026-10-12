@@ -209,31 +209,6 @@ export default function CalendarBody() {
             </button>
           </div>
 
-          {subsTotal > 0 && (
-            <div className="cal-subs lp-fade" key={`subs-${key}`}>
-              <div className="cal-subs-head">
-                <span className="lp-label">{es ? "Suscripciones del mes" : "Subscriptions this month"}</span>
-                <span className="cal-subs-total">
-                  <SensitiveAmount>{formatCurrency(subsTotal)}</SensitiveAmount>
-                </span>
-              </div>
-              <div className="lp-meter cal-subs-meter" aria-hidden>
-                <span style={{ width: `${(charged / subsTotal) * 100}%`, background: "var(--accent)" }} />
-              </div>
-              <div className="cal-subs-legend">
-                <span>
-                  <i className="cal-legend-dot" style={{ background: "var(--accent)" }} aria-hidden />
-                  {es ? "Cobrado" : "Charged"} <SensitiveAmount>{formatCurrency(charged)}</SensitiveAmount>
-                </span>
-                <span>
-                  <i className="cal-legend-dot" aria-hidden />
-                  {es ? "Pendiente" : "Upcoming"} <SensitiveAmount>{formatCurrency(pending)}</SensitiveAmount>
-                  {pendingCount > 0 && <span className="cal-subs-count"> · {pendingCount}</span>}
-                </span>
-              </div>
-            </div>
-          )}
-
           <div className="cal-weekdays" aria-hidden>
             {WEEK.map((date) => (
               <span key={date.getDay()}>
@@ -294,6 +269,31 @@ export default function CalendarBody() {
               );
             })}
           </div>
+          {/* Below the grid, so months without subscriptions don't shift the calendar. */}
+          {subsTotal > 0 && (
+            <div className="cal-subs lp-fade" key={`subs-${key}`}>
+              <div className="cal-subs-head">
+                <span className="lp-label">{es ? "Suscripciones del mes" : "Subscriptions this month"}</span>
+                <span className="cal-subs-total">
+                  <SensitiveAmount>{formatCurrency(subsTotal)}</SensitiveAmount>
+                </span>
+              </div>
+              <div className="lp-meter cal-subs-meter" aria-hidden>
+                <span style={{ width: `${(charged / subsTotal) * 100}%`, background: "var(--accent)" }} />
+              </div>
+              <div className="cal-subs-legend">
+                <span>
+                  <i className="cal-legend-dot" style={{ background: "var(--accent)" }} aria-hidden />
+                  {es ? "Cobrado" : "Charged"} <SensitiveAmount>{formatCurrency(charged)}</SensitiveAmount>
+                </span>
+                <span>
+                  <i className="cal-legend-dot" aria-hidden />
+                  {es ? "Pendiente" : "Upcoming"} <SensitiveAmount>{formatCurrency(pending)}</SensitiveAmount>
+                  {pendingCount > 0 && <span className="cal-subs-count"> · {pendingCount}</span>}
+                </span>
+              </div>
+            </div>
+          )}
         </section>
 
         <section ref={agendaRef} className="lp-section cal-agenda" aria-label={es ? "Agenda del día" : "Day agenda"}>
