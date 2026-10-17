@@ -198,14 +198,22 @@ export async function importTransactions(args: {
   resolutions?: ImportResolution[];
   /** Importing into a joint account: dedup across members, no transfer tagging. */
   joint?: boolean;
+  /** Where the rows come from: a statement file (default) or the daily bank sync. */
+  source?: "import" | "bank";
+  /**
+   * Nobody reviews the lines first (bank sync): `possible` matches are inserted as new and point at their
+   * manual twin (`review_match_id`) so the user can merge them later.
+   */
+  flagPossibleDuplicates?: boolean;
 }): Promise<ImportTransactionsResponse | { error: string }> {
   const { supabase, userId, accountId, transactions, finalBalance, inheritCategories, resolutions } = args;
   const joint = !!args.joint;
+  const source = args.source ?? "import";
 
   const prepared = await prepareImport({ supabase, userId, accountId, transactions, joint });
   const chosen = new Map((resolutions ?? []).map((r) => [r.fingerprint, r]));
 
-  const toInsert: PreparedRow[] = [];
+  const toInsert: (PreparedRow & { reviewMatchId?: string })[] = [];
   const toSkip: PreparedRow[] = [];
   const mergeTargets = new Set<string>();
   let merged = 0;
@@ -239,7 +247,8 @@ export async function importTransactions(args: {
         continue;
       }
     }
-    toInsert.push(row);
+    const reviewMatchId = !choice && args.flagPossibleDuplicates && row.status === "possible" ? row.match?.id : undefined;
+    toInsert.push({ ...row, reviewMatchId });
   }
 
   if (toSkip.length > 0) {
@@ -270,7 +279,7 @@ export async function importTransactions(args: {
     const { data: inserted, error } = await supabase
       .from("transactions")
       .insert(
-        toInsert.map(({ tx, import_line_id }) => ({
+        toInsert.map(({ tx, import_line_id, reviewMatchId }) => ({
           user_id: userId,
           account_id: accountId,
           amount: tx.amount,
@@ -282,9 +291,10 @@ export async function importTransactions(args: {
           category_id: categories.get(tx.description)?.category_id ?? null,
           subcategory_id: categories.get(tx.description)?.subcategory_id ?? null,
           statement_balance: tx.statement_balance ?? null,
-          source: "import",
+          source,
           booked_at: tx.date,
           bank_description: tx.description || null,
+          ...(reviewMatchId && { review_match_id: reviewMatchId }),
         }))
       )
       .select("id");
@@ -307,5 +317,6 @@ export async function importTransactions(args: {
     total: transactions.length,
     new_balance: Number(account?.balance ?? 0),
     internal_transfers_tagged: tagged,
+    review: toInsert.filter((r) => r.reviewMatchId).length,
   };
 }

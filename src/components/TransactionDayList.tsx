@@ -53,6 +53,7 @@ export const TransactionRow = memo(function TransactionRow(props: {
       <span className="lp-main">
         <span className="lp-title">
           <span>{tx.description || tx.category?.name || fallbackLabel}</span>
+          {tx.review_match_id && <span className="sf-badge sf-badge--warn shrink-0">{t("bank.review.badge")}</span>}
         </span>
         {(account || category || author) && (
           <span className="lp-meta">

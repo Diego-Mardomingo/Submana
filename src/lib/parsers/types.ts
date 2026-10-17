@@ -62,6 +62,8 @@ export interface ImportTransactionsResponse {
   new_balance: number;
   /** Rows tagged as internal transfers ("exclude from metrics" category). */
   internal_transfers_tagged?: number;
+  /** New rows flagged as possible duplicates of a manual transaction (bank sync only). */
+  review?: number;
   /** Budgets that crossed 80 % / 100 % because of this import (the client shows one toast). */
   crossedBudgets?: CrossedBudget[];
 }

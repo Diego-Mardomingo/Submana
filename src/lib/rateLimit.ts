@@ -46,4 +46,6 @@ export const RATE_LIMITS = {
   shared: { limit: 60, windowSeconds: 60 },
   /** Notificaciones push de prueba por usuario. */
   pushTest: { limit: 5, windowSeconds: 60 },
+  /** Conexiones y sincronizaciones bancarias manuales por usuario (cada una llama al banco). */
+  banking: { limit: 10, windowSeconds: 600 },
 } as const;

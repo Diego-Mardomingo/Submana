@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronLeft, ChevronRight, FileUp, ListX, Plus, SquarePen, Star, Trash2 } from "lucide-react";
 import { Bones } from "@/components/Bones";
 import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
+import { BankConnectionRow, BankLinkSheet, BankSheet, useBankReturn } from "@/components/BankConnection";
 import BankStatementUpload from "@/components/BankStatementUpload";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
@@ -20,6 +21,7 @@ import { useUrlParam } from "@/hooks/useUrlParam";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
 import { canEditAccount } from "@/lib/accountAccess";
+import { isConnectableProvider } from "@/lib/banking/types";
 import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
 import { parseIdParam } from "@/lib/deepLinks";
 import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
@@ -205,7 +207,10 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
   const [createOpen, setCreateOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [bankOpen, setBankOpen] = useState(false);
+  const [linkConnectionId, setLinkConnectionId] = useState<string | null>(null);
   const deleteAccount = useDeleteAccount();
+  useBankReturn(initialAccount.id, setLinkConnectionId);
   // Deep link (a notification): /account/{id}?tx={id} opens that movement, also while the page is already open.
   const [txParam, clearTxParam] = useUrlParam("tx", parseIdParam);
 
@@ -216,6 +221,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
   const accent = account.color || "var(--accent)";
   const bank = getBankProvider(account.bank_provider);
   const importable = !!account.bank_provider && IMPORTABLE_PROVIDERS.includes(account.bank_provider);
+  const connectable = isConnectableProvider(account.bank_provider);
 
   const transactions = useMemo(() => allTransactions.filter((tx) => tx.account_id === account.id), [allTransactions, account.id]);
   // Unlike global metrics, every movement counts here: transfers and excluded categories
@@ -383,6 +389,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
           </div>
 
           <div className="lp-card lp-group">
+            {connectable && <BankConnectionRow account={account} onOpen={() => setBankOpen(true)} />}
             {importable && bank && (
               <button type="button" className="lp-row" onClick={toggleImport} aria-expanded={importOpen} data-state={importOpen ? "open" : "closed"}>
                 <span className="lp-icon ad-action-icon">
@@ -489,6 +496,8 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
       <TransactionSheet open={createOpen} onOpenChange={setCreateOpen} defaultAccountId={account.id} />
       <TransactionSheet open={!!txParam} onOpenChange={(open) => !open && clearTxParam()} transactionId={txParam} />
       <BulkDeleteSheet open={bulkOpen} onOpenChange={setBulkOpen} accountId={account.id} transactions={transactions} />
+      {connectable && <BankSheet open={bankOpen} onOpenChange={setBankOpen} account={account} onLink={setLinkConnectionId} />}
+      <BankLinkSheet open={!!linkConnectionId} onOpenChange={(open) => !open && setLinkConnectionId(null)} connectionId={linkConnectionId} originAccountId={account.id} />
       <ConfirmDeleteSheet
         open={deleteOpen}
         onOpenChange={setDeleteOpen}

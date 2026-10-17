@@ -19,8 +19,10 @@ export interface Transaction {
   date: string;
   description?: string | null;
   account_id?: string | null;
-  /** manual / import: where the row came from. */
-  source?: "manual" | "import";
+  /** manual / import / bank (daily bank sync): where the row came from. */
+  source?: "manual" | "import" | "bank";
+  /** Bank-synced row that may repeat this manual transaction: the user merges them or keeps both. */
+  review_match_id?: string | null;
   /** Date and text of the bank line backing this row (null while it is only a manual entry). */
   booked_at?: string | null;
   bank_description?: string | null;

@@ -13,6 +13,10 @@ export const queryKeys = {
     lists: () => [...queryKeys.accounts.all, "list"] as const,
     invites: () => [...queryKeys.accounts.all, "invites"] as const,
   },
+  banking: {
+    all: ["banking"] as const,
+    connections: () => [...queryKeys.banking.all, "connections"] as const,
+  },
   subscriptions: {
     all: ["subscriptions"] as const,
     lists: () => [...queryKeys.subscriptions.all, "list"] as const,
