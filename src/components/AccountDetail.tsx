@@ -210,7 +210,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
   const [bankOpen, setBankOpen] = useState(false);
   const [linkConnectionId, setLinkConnectionId] = useState<string | null>(null);
   const deleteAccount = useDeleteAccount();
-  useBankReturn(initialAccount.id, setLinkConnectionId);
+  useBankReturn(initialAccount.id, setLinkConnectionId, () => setBankOpen(true));
   // Deep link (a notification): /account/{id}?tx={id} opens that movement, also while the page is already open.
   const [txParam, clearTxParam] = useUrlParam("tx", parseIdParam);
 

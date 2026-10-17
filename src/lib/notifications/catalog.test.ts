@@ -29,6 +29,7 @@ const SAMPLES: { [T in NotificationType]: NotificationParams[T] } = {
   "import.reminder": { month: "2026-09" },
   "bank.review": { accountId: ID, accountName: "Revolut", count: 2 },
   "bank.error": { accountId: ID, accountName: "Revolut", bankName: "Revolut", reason: "expired" },
+  "bank.details": { accountId: ID, accountName: "Trade Republic", bankName: "Trade Republic" },
   "bank.expiring": { accountId: ID, accountName: "Revolut", bankName: "Revolut", date: "2026-10-25", days: 7 },
   "shared.expense_added": shared,
   "shared.expense_updated": shared,
@@ -52,7 +53,7 @@ const LANGS: Lang[] = ["en", "es"];
 
 describe("catalog", () => {
   it("lists every type from the plan and none for debt reminders", () => {
-    expect(NOTIFICATION_TYPES).toHaveLength(24);
+    expect(NOTIFICATION_TYPES).toHaveLength(25);
     expect(NOTIFICATION_TYPES.some((type) => type.includes("debt"))).toBe(false);
     expect(Object.keys(SAMPLES).sort()).toEqual([...NOTIFICATION_TYPES].sort());
   });

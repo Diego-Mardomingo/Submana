@@ -8,9 +8,9 @@ import { importTransactions } from "@/lib/importTransactions";
 import { watchImportBudgets } from "@/lib/notifications/budgets";
 import { notifyImport } from "@/lib/notifications/events/imports";
 import type { NotifyEvent } from "@/lib/notifications/server";
-import { daysBetween, syncWindowStart } from "./dates";
+import { addDays, daysBetween, syncWindowStart } from "./dates";
 import { EnableBankingError, getBalances, getTransactions, type PsuHeaders } from "./enableBanking";
-import { pickBalance, toStatementRows } from "./mapping";
+import { hasTransactionDetails, pickBalance, toStatementRows } from "./mapping";
 import type { BankSyncResult, SyncMode } from "./types";
 
 /** A sync that started this long ago and never finished (crashed function) no longer holds the lock. */
@@ -38,6 +38,19 @@ interface LinkRow {
   sync_from: string | null;
   last_synced_at: string | null;
   account: { name: string } | null;
+}
+
+/**
+ * Balance-only links: reads (without importing) the recent movements to see whether the bank started
+ * sending ids or descriptions. Never fails the sync: this is only a probe.
+ */
+async function detailsArrived(accountUid: string, opts: { today: string; psu?: PsuHeaders }) {
+  try {
+    return hasTransactionDetails(await getTransactions(accountUid, addDays(opts.today, -30), opts.psu));
+  } catch (error) {
+    console.error("[banking] details probe", errorText(error));
+    return false;
+  }
 }
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 300);
@@ -137,10 +150,23 @@ export async function syncConnection(admin: SupabaseClient, connectionId: string
             dedupeKey: `bank.review:${link.account_id}:${opts.today}`,
           });
         }
-      } else if (balance != null) {
-        const { error } = await admin.from("accounts").update({ balance }).eq("id", link.account_id);
-        if (error) throw error;
-        result.balanceUpdated = true;
+      } else {
+        if (balance != null) {
+          const { error } = await admin.from("accounts").update({ balance }).eq("id", link.account_id);
+          if (error) throw error;
+          result.balanceUpdated = true;
+        }
+        if (link.sync_mode === "balance" && (await detailsArrived(link.bank_account_uid, opts))) {
+          // Once per account: the bank now sends what a full sync needs.
+          events.push({
+            userId: connection.user_id,
+            type: "bank.details",
+            entityType: "account",
+            entityId: link.account_id,
+            params: { accountId: link.account_id, accountName, bankName: connection.aspsp_name },
+            dedupeKey: `bank.details:${link.account_id}`,
+          });
+        }
       }
 
       await admin.from("bank_account_links").update({ last_synced_at: new Date().toISOString() }).eq("id", link.id);
