@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addDays, suggestSyncFrom, syncWindowStart } from "./dates";
-import { accountLast4, bankDescription, pickBalance, toStatementRows } from "./mapping";
+import { accountLast4, bankDescription, hasTransactionDetails, pickBalance, toStatementRows } from "./mapping";
 import type { EbTransaction } from "./types";
 
 const ACCOUNT = "11111111-1111-4111-8111-111111111111";
@@ -47,6 +47,16 @@ describe("bankDescription", () => {
   it("falls back to the remittance texts, then to an empty string", () => {
     expect(bankDescription(tx({ creditor: { name: " " }, remittance_information: ["Pago  a", "", "Juan"] }))).toBe("Pago a · Juan");
     expect(bankDescription(tx())).toBe("");
+  });
+});
+
+describe("hasTransactionDetails", () => {
+  it("is false for Trade Republic's amount-and-date-only rows, true once an id or a description shows up", () => {
+    expect(hasTransactionDetails([tx(), tx({ booking_date: "2026-10-09" })])).toBe(false);
+    expect(hasTransactionDetails([])).toBe(false);
+    expect(hasTransactionDetails([tx(), tx({ creditor: { name: "Mercadona" } })])).toBe(true);
+    expect(hasTransactionDetails([tx({ remittance_information: ["Bizum"] })])).toBe(true);
+    expect(hasTransactionDetails([tx({ transaction_id: "abc" })])).toBe(true);
   });
 });
 

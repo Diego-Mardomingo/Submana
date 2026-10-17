@@ -46,6 +46,8 @@ export interface NotificationParams {
   "bank.review": { accountId: string; accountName: string; count: number };
   /** The bank sync failed (`failed`) or the bank permission ended (`expired`). */
   "bank.error": { accountId: string; accountName: string; bankName: string; reason: "failed" | "expired" };
+  /** A balance-only bank (Trade Republic) started sending descriptions or ids: movements can be synced. */
+  "bank.details": { accountId: string; accountName: string; bankName: string };
   /** The bank permission ends on `date` (YYYY-MM-DD), in `days` days. */
   "bank.expiring": { accountId: string; accountName: string; bankName: string; date: string; days: number };
   "shared.expense_added": SharedExpenseParams;
@@ -308,6 +310,18 @@ export const NOTIFICATIONS: { [T in NotificationType]: NotificationDef<T> } = {
       };
     },
   },
+  "bank.details": {
+    family: "bank",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    // Opens the connection settings, where the mode is switched.
+    url: (p) => `/account/${p.accountId}?bank=settings`,
+    plan: (p) => {
+      const vars = { account: text(p.accountName), bank: text(p.bankName) };
+      return { title: { key: "notif.bank.details.title", vars }, body: [{ key: "notif.bank.details.body", vars }] };
+    },
+  },
   "bank.expiring": {
     family: "bank",
     push: true,
@@ -554,7 +568,7 @@ export const NOTIFICATION_TOGGLES: NotificationToggle[] = [
   { id: "budget.threshold", family: "budgets", types: ["budget.threshold"], labelKey: "notifSettings.budget.threshold.label", descKey: "notifSettings.budget.threshold.desc" },
   { id: "summary.monthly", family: "budgets", types: ["summary.monthly"], labelKey: "notifSettings.summary.monthly.label", descKey: "notifSettings.summary.monthly.desc" },
   { id: "import.reminder", family: "budgets", types: ["import.reminder"], labelKey: "notifSettings.import.reminder.label", descKey: "notifSettings.import.reminder.desc" },
-  { id: "bank.sync", family: "bank", types: ["bank.review", "bank.error", "bank.expiring"], labelKey: "notifSettings.bank.sync.label", descKey: "notifSettings.bank.sync.desc" },
+  { id: "bank.sync", family: "bank", types: ["bank.review", "bank.error", "bank.details", "bank.expiring"], labelKey: "notifSettings.bank.sync.label", descKey: "notifSettings.bank.sync.desc" },
   {
     id: "shared.expenses",
     family: "subcount",

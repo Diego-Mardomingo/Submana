@@ -445,9 +445,10 @@ function LinkAccountsForm({ connection, originAccountId, onDone }: { connection:
 
 /**
  * Back from the bank (`?bank=…` on the account page): toasts the outcome, opens the link sheet when
- * accounts must be chosen, syncs a reconnection right away, and cleans the URL.
+ * accounts must be chosen, syncs a reconnection right away, and cleans the URL. `?bank=settings` (a
+ * notification's link) opens the connection settings.
  */
-export function useBankReturn(accountId: string, openLinkSheet: (connectionId: string) => void) {
+export function useBankReturn(accountId: string, openLinkSheet: (connectionId: string) => void, openSettings: () => void) {
   const t = useTranslations(useLang());
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -459,10 +460,11 @@ export function useBankReturn(accountId: string, openLinkSheet: (connectionId: s
   useEffect(() => {
     if (!outcome || handled.current === `${outcome}:${connectionId}`) return;
     handled.current = `${outcome}:${connectionId}`;
-    if (outcome === "link" && connectionId) openLinkSheet(connectionId);
+    if (outcome === "settings") openSettings();
+    else if (outcome === "link" && connectionId) openLinkSheet(connectionId);
     else if (outcome === "connected" && connectionId) void runSync(connectionId, { accountId, title: t("bank.connected") });
     else if (outcome === "cancelled") toast.info(t("bank.connect.cancelled"));
     else if (outcome === "error") toast.error(t("bank.connect.error"), { description: t("bank.connect.errorDesc") });
     router.replace(`/account/${accountId}`, { scroll: false });
-  }, [outcome, connectionId, accountId, openLinkSheet, runSync, router, t]);
+  }, [outcome, connectionId, accountId, openLinkSheet, openSettings, runSync, router, t]);
 }

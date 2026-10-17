@@ -36,6 +36,13 @@ export function bankDescription(tx: EbTransaction): string {
   return (tx.remittance_information ?? []).map(clean).filter(Boolean).join(" · ");
 }
 
+/**
+ * Whether the bank sends enough to import its movements: an id or a description on some transaction.
+ * Trade Republic sends neither today; when it starts, balance-only links can switch to full sync.
+ */
+export const hasTransactionDetails = (transactions: readonly EbTransaction[]) =>
+  transactions.some((tx) => !!(tx.entry_reference || tx.transaction_id || bankDescription(tx)));
+
 export const bookingDate = (tx: EbTransaction) => tx.booking_date || tx.value_date || tx.transaction_date || null;
 
 /**
