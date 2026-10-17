@@ -109,6 +109,13 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   });
   if (error) return jsonServerError("crud/transactions/[id]", error);
   if (!data?.id) return jsonError("transaction_not_found", 404);
+  // A bank-synced row the user deleted must not come back with the next sync (it re-reads recent days).
+  if (data.source === "bank" && data.import_line_id && data.account_id) {
+    const { error: decisionError } = await supabase
+      .from("import_duplicate_decisions")
+      .upsert({ user_id: user.id, account_id: data.account_id, conflict_key: data.import_line_id, resolution: "skip_bank_line" }, { onConflict: "user_id,account_id,conflict_key" });
+    if (decisionError) console.error("[crud/transactions/[id]] skip decision", decisionError);
+  }
   // The RPC returns the deleted row. Deleting import duplicates (skip_balance_adjust) is housekeeping, not news for the other members.
   if (data.account_id && request.nextUrl.searchParams.get("skip_balance_adjust") !== "1") {
     notifyAfter(() => jointTransactionEvents([{ accountId: data.account_id, kind: "deleted", tx: data }], user.id));

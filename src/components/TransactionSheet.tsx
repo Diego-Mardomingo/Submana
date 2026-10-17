@@ -22,6 +22,7 @@ import { parseCurrencyValue } from "@/lib/currency";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useBudgetWarning } from "@/hooks/useBudgets";
+import { useResolveBankReview } from "@/hooks/useBanking";
 import { useLang } from "@/hooks/useLang";
 import {
   useCreateTransaction,
@@ -147,6 +148,8 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
             }}
           />
         </FormHero>
+
+        {transaction?.review_match_id && <BankReviewBanner transaction={transaction} onDone={onDone} />}
 
         {!transaction && onUseSimilar && similar.length > 0 && (
           <div className="similar-banner">
@@ -275,6 +278,53 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
         </SheetButton>
       </SheetFooter>
     </SheetForm>
+  );
+}
+
+/** A bank-synced movement that may repeat a manual one: merge them (the manual one stays) or keep both. */
+function BankReviewBanner({ transaction, onDone }: { transaction: Transaction; onDone: () => void }) {
+  const lang = useLang();
+  const t = useTranslations(lang);
+  const { data: twin, isError } = useTransaction(transaction.review_match_id);
+  const resolve = useResolveBankReview();
+
+  const run = async (action: "merge" | "dismiss") => {
+    try {
+      await resolve.mutateAsync({ transactionId: transaction.id, action });
+      toast.success(t(action === "merge" ? "bank.review.merged" : "bank.review.dismissed"));
+      onDone();
+    } catch (error) {
+      if (error instanceof Error && error.message === "match_gone") toast.error(t("bank.review.gone"));
+      else toast.error(t("bank.sync.error"), { description: t("bank.sync.errorDesc") });
+    }
+  };
+
+  return (
+    <div className="similar-banner" role="status">
+      <span className="similar-banner-title">{t("bank.review.title")}</span>
+      <span className="similar-banner-text">{t("bank.review.text")}</span>
+      {twin && (
+        <div className="similar-banner-text">
+          <span>{twin.description || "—"}</span>
+          <span>
+            {parseDateString(twin.date).toLocaleDateString(localeOf(lang))}
+            {" · "}
+            <SensitiveAmount>{formatCurrency(Number(twin.amount))}</SensitiveAmount>
+          </span>
+        </div>
+      )}
+      {isError && <span className="similar-banner-text">{t("bank.review.gone")}</span>}
+      <div className="flex flex-wrap gap-2">
+        {twin && (
+          <button type="button" className="duplicate-btn duplicate-btn-keep" disabled={resolve.isPending} onClick={() => run("merge")}>
+            {t("bank.review.merge")}
+          </button>
+        )}
+        <button type="button" className="duplicate-btn" disabled={resolve.isPending} onClick={() => run("dismiss")}>
+          {t("bank.review.dismiss")}
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -12,10 +12,10 @@ import type { Lang, UIKey } from "@/lib/i18n/ui";
 export const RENEWAL_OFFSETS = [0, 1, 3, 7] as const;
 export type RenewalOffset = (typeof RENEWAL_OFFSETS)[number];
 
-export type NotificationFamily = "subscriptions" | "budgets" | "subcount" | "friends" | "joint" | "system";
+export type NotificationFamily = "subscriptions" | "budgets" | "bank" | "subcount" | "friends" | "joint" | "system";
 
 /** Families in the order the profile shows them (system has no toggles). */
-export const NOTIFICATION_FAMILIES: Exclude<NotificationFamily, "system">[] = ["subscriptions", "budgets", "subcount", "friends", "joint"];
+export const NOTIFICATION_FAMILIES: Exclude<NotificationFamily, "system">[] = ["subscriptions", "budgets", "bank", "subcount", "friends", "joint"];
 
 /** What each type stores in `notifications.params`: a copy of names, amounts and dates (the item may be gone later). Amounts are plain numbers in euros. */
 export interface NotificationParams {
@@ -42,6 +42,12 @@ export interface NotificationParams {
   };
   /** `month` is the month whose statement is missing (YYYY-MM). */
   "import.reminder": { month: string };
+  /** The daily bank sync inserted movements that may be the same as manual ones: `count` to review. */
+  "bank.review": { accountId: string; accountName: string; count: number };
+  /** The bank sync failed (`failed`) or the bank permission ended (`expired`). */
+  "bank.error": { accountId: string; accountName: string; bankName: string; reason: "failed" | "expired" };
+  /** The bank permission ends on `date` (YYYY-MM-DD), in `days` days. */
+  "bank.expiring": { accountId: string; accountName: string; bankName: string; date: string; days: number };
   "shared.expense_added": SharedExpenseParams;
   "shared.expense_updated": SharedExpenseParams;
   "shared.expense_deleted": SharedExpenseParams;
@@ -274,6 +280,45 @@ export const NOTIFICATIONS: { [T in NotificationType]: NotificationDef<T> } = {
     defaultEnabled: true,
     url: () => "/accounts",
     plan: (p, { lang }) => ({ title: { key: "notif.import.reminder.title", vars: { month: monthWord(p.month, lang) } }, body: [{ key: "notif.import.reminder.body" }] }),
+  },
+  "bank.review": {
+    family: "bank",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    url: (p) => `/account/${p.accountId}`,
+    plan: (p) => {
+      const count = Math.max(1, Number(p.count) || 1);
+      const vars = { account: text(p.accountName), count };
+      return { title: { key: count === 1 ? "notif.bank.review.titleOne" : "notif.bank.review.title", vars }, body: [{ key: "notif.bank.review.body", vars }] };
+    },
+  },
+  "bank.error": {
+    family: "bank",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    url: (p) => `/account/${p.accountId}`,
+    plan: (p) => {
+      const vars = { account: text(p.accountName), bank: text(p.bankName) };
+      const expired = p.reason === "expired";
+      return {
+        title: { key: expired ? "notif.bank.error.titleExpired" : "notif.bank.error.title", vars },
+        body: [{ key: expired ? "notif.bank.error.bodyExpired" : "notif.bank.error.body", vars }],
+      };
+    },
+  },
+  "bank.expiring": {
+    family: "bank",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    url: (p) => `/account/${p.accountId}`,
+    plan: (p, { lang }) => {
+      const days = Math.max(0, Number(p.days) || 0);
+      const vars = { account: text(p.accountName), bank: text(p.bankName), days, date: dayLabel(p.date, lang) };
+      return { title: { key: days <= 1 ? "notif.bank.expiring.titleTomorrow" : "notif.bank.expiring.title", vars }, body: [{ key: "notif.bank.expiring.body", vars }] };
+    },
   },
   "shared.expense_added": {
     family: "subcount",
@@ -509,6 +554,7 @@ export const NOTIFICATION_TOGGLES: NotificationToggle[] = [
   { id: "budget.threshold", family: "budgets", types: ["budget.threshold"], labelKey: "notifSettings.budget.threshold.label", descKey: "notifSettings.budget.threshold.desc" },
   { id: "summary.monthly", family: "budgets", types: ["summary.monthly"], labelKey: "notifSettings.summary.monthly.label", descKey: "notifSettings.summary.monthly.desc" },
   { id: "import.reminder", family: "budgets", types: ["import.reminder"], labelKey: "notifSettings.import.reminder.label", descKey: "notifSettings.import.reminder.desc" },
+  { id: "bank.sync", family: "bank", types: ["bank.review", "bank.error", "bank.expiring"], labelKey: "notifSettings.bank.sync.label", descKey: "notifSettings.bank.sync.desc" },
   {
     id: "shared.expenses",
     family: "subcount",
