@@ -22,4 +22,5 @@ public/swe-worker*
 *.pem
 .vercel
 .cursor/
-.claude/
+.claude/*
+!.claude/skills/
