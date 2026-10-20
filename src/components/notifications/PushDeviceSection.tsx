@@ -104,8 +104,8 @@ export function PushDeviceSection() {
   const title = status === "ios" ? t("push.ios.title") : status === "denied" ? t("push.denied.title") : t("push.title");
 
   return (
-    <div className={`lp-row lp-row--static lp-pref${status === "off" || status === "on" ? " lp-pref--stack" : ""}`}>
-      <span className="lp-icon" aria-hidden>
+    <div className="lp-row lp-row--static lp-pref">
+      <span className={`lp-icon${status === "on" || status === "off" ? " lp-icon--accent" : ""}`} aria-hidden>
         <Smartphone className="size-5" />
       </span>
       <span className="lp-main">
@@ -122,7 +122,7 @@ export function PushDeviceSection() {
         </div>
       )}
       {status === "on" && (
-        <div className="lp-pref-control flex flex-wrap gap-2">
+        <div className="lp-pref-control flex gap-1.5">
           <Button type="button" size="sm" variant="outline" onClick={sendTest} disabled={busy !== null}>
             {t("push.sendTest")}
           </Button>

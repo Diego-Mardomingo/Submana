@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronDown, EyeOff, Languages, LogOut, Monitor, Moon, Palette, Sun, UserRound } from "lucide-react";
+import { AtSign, CalendarDays, Copy, EyeOff, Languages, LogOut, Mail, Monitor, Moon, Palette, Pencil, Sun } from "lucide-react";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { HandleSetup } from "@/components/HandleSetup";
 import { CompactPageHeader } from "@/components/PageHeader";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { NotificationSettingsSection } from "@/components/notifications/NotificationSettingsSection";
+import { FeedbackSheet } from "@/components/FeedbackSheet";
+import { NotificationSettingsSection, PushHideAmountsRow } from "@/components/notifications/NotificationSettingsSection";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { setCalendarDotsOnly, useCalendarDotsOnly } from "@/hooks/useCalendarDots";
@@ -17,6 +18,7 @@ import { setLang, useLang } from "@/hooks/useLang";
 import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useProfile } from "@/hooks/useProfile";
 import { createClientStore } from "@/lib/clientStore";
+import { localeOf } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { disablePushOnThisDevice } from "@/lib/push/client";
 import { toast } from "@/lib/toast";
@@ -42,7 +44,7 @@ const themeStore = createClientStore<Theme>(
 function Segmented<T extends string>({ kind, value, options, onChange, animate = true }: {
   kind: "theme" | "lang";
   value: T;
-  options: { value: T; label: string; icon: React.ReactNode; className?: string }[];
+  options: { value: T; label: string; icon?: React.ReactNode; className?: string }[];
   onChange: (value: T) => void;
   animate?: boolean;
 }) {
@@ -70,29 +72,99 @@ function Segmented<T extends string>({ kind, value, options, onChange, animate =
   );
 }
 
-const flag = (country: string) => (
-  // eslint-disable-next-line @next/next/no-img-element -- tiny remote flag
-  <img src={`https://flagcdn.com/w40/${country}.png`} alt="" className="settings-lang-flag" />
-);
-
 const SectionHead = ({ title }: { title: string }) => (
   <div className="lp-section-head">
     <span className="lp-section-title">{title}</span>
   </div>
 );
 
+/** "c4708bb · 20 Oct 2026": the deployed build, so a bug report can say which version it was. */
+function buildLabel(lang: string) {
+  const commit = process.env.NEXT_PUBLIC_BUILD_COMMIT;
+  const time = process.env.NEXT_PUBLIC_BUILD_TIME;
+  const date = time ? new Date(time).toLocaleDateString(localeOf(lang), { day: "numeric", month: "short", year: "numeric" }) : "";
+  return [commit, date].filter(Boolean).join(" · ");
+}
+
+/** The public profile friends see (Subcount, joint accounts): one compact row with "Edit". */
+function IdentityCard({ onEdit }: { onEdit: () => void }) {
+  const t = useTranslations(useLang());
+  const { data: profile, isLoading } = useProfile();
+  const { data: user } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
+
+  if (isLoading) {
+    return (
+      <div className="lp-card pf-id" aria-hidden>
+        <span className="skeleton block size-14 shrink-0 rounded-full" />
+        <span className="flex flex-1 flex-col gap-2">
+          <span className="skeleton block h-4 w-1/2" />
+          <span className="skeleton block h-3 w-1/3" />
+        </span>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="lp-card pf-id">
+        <span className="pf-id-empty" aria-hidden>
+          <AtSign className="size-6" />
+        </span>
+        <span className="pf-id-main">
+          <span className="pf-id-name">{t("profile.setup.title")}</span>
+          <span className="pf-id-hint">{t("profile.noProfileHint")}</span>
+        </span>
+        <button type="button" className="lp-chip pf-id-create" onClick={onEdit}>
+          {t("profile.createShort")}
+        </button>
+      </div>
+    );
+  }
+
+  const copyHandle = async () => {
+    try {
+      await navigator.clipboard.writeText(`@${profile.handle}`);
+      toast(t("profile.handleCopied"), { icon: <Copy /> });
+    } catch {
+      // Clipboard blocked (permissions / insecure context): nothing to copy to.
+    }
+  };
+
+  return (
+    <div className="lp-card pf-id">
+      <ProfileAvatar name={profile.display_name} url={profile.avatar_url ?? user?.user_metadata?.avatar_url} size={56} />
+      <span className="pf-id-main">
+        <span className="pf-id-name">{profile.display_name}</span>
+        <button type="button" className="pf-handle" onClick={copyHandle} aria-label={`${t("profile.copyHandle")}: @${profile.handle}`}>
+          @{profile.handle}
+          <Copy className="size-3.5" aria-hidden />
+        </button>
+        <span className="pf-id-hint">{t("profile.seenByFriends")}</span>
+      </span>
+      <button type="button" className="pf-edit" onClick={onEdit} aria-label={t("profile.editTitle")}>
+        <Pencil className="size-4" aria-hidden />
+        <span className="pf-edit-label">{t("profile.edit")}</span>
+      </button>
+    </div>
+  );
+}
+
+/**
+ * My profile: who friends see (compact), then the settings most people use (appearance, privacy,
+ * notifications) and the account. Design reference: docs/design/profile.html.
+ */
 export default function SettingsBody() {
   const lang = useLang();
-  const es = lang === "es";
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
   const theme = themeStore.useValue();
   const privacyMode = usePrivacyMode();
   const calendarDotsOnly = useCalendarDotsOnly();
   const { data: profile } = useProfile();
-  const { data: user, isLoading } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
+  const { data: user } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
   const [signOutOpen, setSignOutOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   // Avoid animating the theme slider from its server position on first paint.
   const [sliderReady, setSliderReady] = useState(false);
   useEffect(() => {
@@ -119,68 +191,19 @@ export default function SettingsBody() {
     window.location.href = "/login";
   };
 
-  const name = user?.user_metadata?.name as string | undefined;
+  const provider = user?.app_metadata?.provider as string | undefined;
+  const build = buildLabel(lang);
 
   return (
     <div className="page-container lp-page fade-in">
-      <CompactPageHeader title={t("nav.settings")} />
+      <div className="pf-page">
+        <CompactPageHeader title={t("nav.settings")} />
 
-      <div className="lp-layout">
-        <aside className="lp-aside">
-          <div className="lp-card lp-profile">
-            {isLoading ? (
-              <>
-                <div className="skeleton" style={{ width: 52, height: 52, borderRadius: "50%", flexShrink: 0 }} />
-                <div className="flex flex-col gap-2 flex-1">
-                  <div className="skeleton" style={{ height: 14, width: "55%" }} />
-                  <div className="skeleton" style={{ height: 11, width: "80%" }} />
-                </div>
-              </>
-            ) : (
-              <>
-                <Avatar className="lp-avatar">
-                  {user?.user_metadata?.avatar_url && <AvatarImage src={user.user_metadata.avatar_url} alt="" referrerPolicy="no-referrer" />}
-                  <AvatarFallback className="lp-avatar-fallback">{(name || user?.email || "?").charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="lp-main">
-                  <p className="lp-profile-name">{name || "User"}</p>
-                  <p className="lp-profile-email">{user?.email}</p>
-                </div>
-              </>
-            )}
-          </div>
-        </aside>
-
-        <div className="lp-content">
-          <section className="lp-section">
-            <SectionHead title={t("profile.title")} />
-            <Collapsible open={profileOpen} onOpenChange={setProfileOpen} className="lp-card lp-group">
-              <CollapsibleTrigger className="lp-row">
-                <span className="lp-icon" aria-hidden>
-                  <UserRound className="size-5" />
-                </span>
-                <span className="lp-main">
-                  <span className="lp-title">
-                    <span>{profile ? profile.display_name : t("profile.setup.title")}</span>
-                  </span>
-                  <span className="lp-meta">
-                    <span className="lp-truncate">{profile ? "@" + profile.handle : t("profile.settings.desc")}</span>
-                  </span>
-                </span>
-                <ChevronDown className="lp-chevron size-4" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="subs-collapsible-content">
-                <div className="subs-collapsible-inner">
-                  <div className="lp-panel">
-                    <HandleSetup key={profile?.handle ?? "new"} profile={profile} showIntro={false} onDone={() => setProfileOpen(false)} />
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </section>
+        <div className="lp-sections">
+          <IdentityCard onEdit={() => setEditOpen(true)} />
 
           <section className="lp-section">
-            <SectionHead title={t("settings.preferences")} />
+            <SectionHead title={t("settings.appearance")} />
             <div className="lp-card lp-group">
               <div className="lp-row lp-row--static lp-pref lp-pref--stack">
                 <span className="lp-icon" aria-hidden>
@@ -216,18 +239,24 @@ export default function SettingsBody() {
                   </span>
                 </span>
                 <div className="lp-pref-control">
+                  {/* Language names in their own language, no flags: a flag is a country, not a language. */}
                   <Segmented
                     kind="lang"
                     value={lang}
                     onChange={setLang}
                     options={[
-                      { value: "en", label: "English", icon: flag("us") },
-                      { value: "es", label: "Español", icon: flag("es") },
+                      { value: "en", label: "English" },
+                      { value: "es", label: "Español" },
                     ]}
                   />
                 </div>
               </div>
+            </div>
+          </section>
 
+          <section className="lp-section">
+            <SectionHead title={t("settings.privacy")} />
+            <div className="lp-card lp-group">
               <label className="lp-row lp-pref">
                 <span className="lp-icon" aria-hidden>
                   <EyeOff className="size-5" />
@@ -253,29 +282,60 @@ export default function SettingsBody() {
                 </span>
                 <Switch className="lp-pref-control" checked={calendarDotsOnly} onCheckedChange={setCalendarDotsOnly} aria-label={t("settings.calendarDotsOnly")} />
               </label>
+
+              <PushHideAmountsRow />
             </div>
           </section>
 
-          <NotificationSettingsSection />
+          <div className="pf-split">
+            <NotificationSettingsSection />
 
-          <section className="lp-section">
-            <SectionHead title={es ? "Sesión" : "Session"} />
-            <div className="lp-card lp-group">
-              <button type="button" className="lp-row lp-row--danger" onClick={() => setSignOutOpen(true)}>
-                <span className="lp-icon" aria-hidden>
-                  <LogOut className="size-5" />
-                </span>
-                <span className="lp-main">
-                  <span className="lp-title">
-                    <span>{t("settings.signout")}</span>
+            <section className="lp-section">
+              <SectionHead title={t("settings.account")} />
+              <div className="lp-card lp-group">
+                <div className="lp-row lp-row--static">
+                  <span className="lp-icon" aria-hidden>
+                    <Mail className="size-5" />
                   </span>
-                </span>
-              </button>
-            </div>
-          </section>
+                  <span className="lp-main">
+                    <span className="lp-title">
+                      <span>{t("settings.email")}</span>
+                    </span>
+                    <span className="lp-meta">
+                      <span className="lp-truncate">{user?.email ?? "…"}</span>
+                    </span>
+                  </span>
+                  {provider && provider !== "email" && <span className="pf-provider">{provider.charAt(0).toUpperCase() + provider.slice(1)}</span>}
+                </div>
+                <button type="button" className="lp-row" onClick={() => setSignOutOpen(true)}>
+                  <span className="lp-icon" aria-hidden>
+                    <LogOut className="size-5" />
+                  </span>
+                  <span className="lp-main">
+                    <span className="lp-title">
+                      <span>{t("settings.signout")}</span>
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <footer className="pf-footer">
+            <button type="button" onClick={() => setFeedbackOpen(true)}>
+              {t("settings.feedback")}
+            </button>
+            {build && <span>Submana · {build}</span>}
+          </footer>
         </div>
       </div>
 
+      <Sheet open={editOpen} onOpenChange={setEditOpen} title={t(profile ? "profile.editTitle" : "profile.setup.title")}>
+        <SheetBody>
+          <HandleSetup key={profile?.handle ?? "new"} profile={profile} showIntro={false} showPreview onDone={() => setEditOpen(false)} />
+        </SheetBody>
+      </Sheet>
+      <FeedbackSheet open={feedbackOpen} onOpenChange={setFeedbackOpen} />
       <ConfirmSheet
         open={signOutOpen}
         onOpenChange={setSignOutOpen}

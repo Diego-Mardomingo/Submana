@@ -1,10 +1,21 @@
 import type { NextConfig } from "next";
+import { execSync } from "node:child_process";
 import withSerwistInit from "@serwist/next";
 
 const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
   ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin
   : "";
 const isDev = process.env.NODE_ENV !== "production";
+
+/** Short commit of this build, shown in the profile footer (Vercel provides it; locally, git). */
+function buildCommit() {
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7);
+  try {
+    return execSync("git rev-parse --short=7 HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  } catch {
+    return "";
+  }
+}
 
 /**
  * CSP. Scripts need 'unsafe-inline' for the theme script in layout.tsx and Next's bootstrap
@@ -36,11 +47,15 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_COMMIT: buildCommit(),
+    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
       // The service worker's own fetches are bound by the CSP served with sw.js. With the app's
-      // connect-src it blocked every remote image it intercepts (bank/subscription logos, flags),
+      // connect-src it blocked every remote image it intercepts (bank/subscription logos),
       // so it gets a policy allowing https fetches. Later entries override the same header key.
       { source: "/sw.js", headers: [{ key: "Content-Security-Policy", value: "default-src 'self'; connect-src 'self' https:" }] },
     ];

@@ -1,0 +1,616 @@
+/* ═══════════════════════════════════════════════
+   SUBCOUNT — overview (/subcount) and group page (/subcount/[id]).
+   Design reference: docs/design/subcount.html. Mobile first; from 1200px (with the 240px sidebar) two columns.
+   In favour / against: --success-text / --danger-text, always with a sign and a word.
+   ═══════════════════════════════════════════════ */
+
+.sc-pos { color: var(--success-text); }
+.sc-neg { color: var(--danger-text); }
+
+.sc-num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+
+.sc-caption {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-muy-claro);
+}
+
+/* Small word under an amount ("owes you", "you lent") */
+.sc-dir {
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sc-settled {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--gris-muy-claro);
+  white-space: nowrap;
+}
+
+.sc-muted-note {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+  white-space: nowrap;
+}
+
+/* ── Overview layout ── */
+.sc-overview {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  max-width: 36rem;
+  margin: 0 auto;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "balance" "people" "groups";
+}
+
+.sc-area-balance { grid-area: balance; }
+.sc-area-people { grid-area: people; }
+.sc-area-groups { grid-area: groups; }
+
+@media (min-width: 1200px) {
+  .sc-overview {
+    grid-template-columns: minmax(0, 1fr) 340px;
+    max-width: none;
+    grid-template-areas: "balance balance" "groups people";
+    column-gap: 2rem;
+    row-gap: 1.5rem;
+    align-items: start;
+  }
+
+  .sc-area-people {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+/* ── Balance card ── */
+.sc-balance {
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sc-balance-value {
+  display: block;
+  margin: 0.3rem 0 0.2rem;
+  font-size: 2.4rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.sc-ratio {
+  display: flex;
+  gap: 4px;
+  height: 8px;
+  margin-top: 0.9rem;
+}
+
+.sc-ratio > span {
+  min-width: 8px;
+  border-radius: 99px;
+  transition: flex-grow 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sc-ratio-pos { background: var(--success-text); }
+.sc-ratio-neg { background: var(--danger-text); }
+
+.sc-halves {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+.sc-half {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 14px;
+  background: var(--gris);
+}
+
+.sc-half--pos { background: var(--success-soft); }
+.sc-half--neg { background: var(--danger-soft); }
+
+.sc-half-value {
+  font-size: 1.12rem;
+}
+
+.sc-half small {
+  font-size: 0.7rem;
+  color: var(--gris-muy-claro);
+}
+
+.sc-square {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.sc-square-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--success-soft);
+  color: var(--success-text);
+  flex-shrink: 0;
+}
+
+.sc-square strong {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--blanco);
+}
+
+@media (min-width: 1200px) {
+  .sc-balance--split {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 0;
+    padding: 0;
+  }
+
+  .sc-balance--split .sc-balance-main {
+    padding: 1.25rem 1.4rem;
+  }
+
+  .sc-balance--split .sc-halves {
+    display: contents;
+  }
+
+  .sc-balance--split .sc-half {
+    justify-content: center;
+    padding: 1.25rem 1.4rem;
+    border-radius: 0;
+    background: none;
+    border-left: 1px solid var(--lp-divider);
+  }
+
+  .sc-balance--split .sc-half-value {
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+}
+
+/* ── Rows ── */
+.sc-avatars {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.sc-avatars > * + * {
+  margin-left: -0.45rem;
+}
+
+.sc-avatars > * {
+  box-shadow: 0 0 0 2px var(--gris-oscuro);
+  border-radius: 50%;
+}
+
+.sc-avatar-more {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--gris);
+  color: var(--gris-muy-claro);
+  font-size: 0.6rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.sc-show-all {
+  align-self: center;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Expense icon with the payer's avatar on its corner */
+.sc-tile {
+  position: relative;
+  overflow: visible;
+}
+
+.sc-tile-payer {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--gris-oscuro);
+}
+
+.sc-tile--settle {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sc-day {
+  margin: 0.5rem 0.4rem 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--gris-muy-claro);
+}
+
+.sc-day:first-child {
+  margin-top: 0;
+}
+
+/* ── Group page header ── */
+.sc-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  min-height: 44px;
+  margin: -0.5rem 0 -0.25rem -0.35rem;
+  padding-right: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.sc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sc-head h1 {
+  margin: 0;
+  min-width: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--blanco);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-head-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-right: -0.4rem;
+}
+
+/* 44px touch target (Apple HIG) around the header icons */
+.sc-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--gris-muy-claro);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sc-icon-btn:hover {
+  background: var(--gris);
+  color: var(--blanco);
+}
+
+.sc-head-actions .lp-add.add-btn {
+  margin-left: 0.25rem;
+}
+
+.sc-members {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0.15rem 0 1rem;
+  font-size: 0.78rem;
+  color: var(--gris-muy-claro);
+}
+
+.sc-members > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .sc-head h1 {
+    font-size: 1.85rem;
+  }
+}
+
+/* ── Group balance card ── */
+.sc-ghero {
+  padding: 1rem 1rem 0.9rem;
+}
+
+.sc-ghero .sc-balance-value {
+  font-size: 2.1rem;
+}
+
+.sc-mine {
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--lp-divider);
+}
+
+.sc-mine-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 60px;
+  padding: 0.5rem 0;
+}
+
+.sc-mine-row + .sc-mine-row {
+  border-top: 1px solid var(--lp-divider);
+}
+
+.sc-mine-row .lp-amount {
+  flex-shrink: 0;
+}
+
+.sc-settle-btn {
+  flex-shrink: 0;
+  height: 40px;
+  padding: 0 1rem;
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--accent-soft);
+  color: var(--accent);
+  transition: background 0.15s ease, filter 0.15s ease;
+}
+
+.sc-settle-btn:hover {
+  background: var(--accent-muted);
+}
+
+.sc-settle-btn--primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.sc-settle-btn--primary:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+
+.sc-gstats {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--lp-divider);
+  font-size: 0.72rem;
+  color: var(--gris-muy-claro);
+}
+
+.sc-gstats b {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: 0.86rem;
+  color: var(--blanco);
+}
+
+/* ── Group layout: one column up to 1200px; list + sticky balances column from there ── */
+.sc-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 36rem;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sc-group-main,
+.sc-group-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+@media (min-width: 1200px) {
+  .sc-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: start;
+    gap: 2rem;
+    max-width: none;
+  }
+
+  .sc-group-aside {
+    position: sticky;
+    top: 1.5rem;
+  }
+}
+
+/* ── Who pays whom (between others) ── */
+.sc-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex-shrink: 0;
+  color: var(--gris-claro);
+}
+
+/* ── Everyone's balance: one bar per person growing from zero ── */
+.sc-legend {
+  display: flex;
+  gap: 1rem;
+  padding: 0 0.4rem;
+  font-size: 0.7rem;
+  color: var(--gris-muy-claro);
+}
+
+.sc-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sc-legend i {
+  display: block;
+  width: 10px;
+  height: 4px;
+  border-radius: 4px;
+}
+
+.sc-bal {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  padding: 0.7rem 0.875rem;
+}
+
+.sc-bal-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--blanco);
+}
+
+.sc-bal-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.sc-bal-end small {
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--gris-muy-claro);
+}
+
+.sc-bar {
+  grid-column: 2 / 4;
+  position: relative;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--gris);
+}
+
+.sc-bar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--gris-claro);
+}
+
+.sc-bar > span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.sc-bar-pos {
+  left: 50%;
+  border-radius: 0 99px 99px 0;
+  background: var(--success-text);
+}
+
+.sc-bar-neg {
+  right: 50%;
+  border-radius: 99px 0 0 99px;
+  background: var(--danger-text);
+}
+
+/* ── Activity ── */
+.sc-ev {
+  align-items: flex-start;
+  cursor: default;
+}
+
+.sc-ev-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--gris);
+  color: var(--gris-muy-claro);
+}
+
+.sc-ev-icon--created { background: var(--accent-soft); color: var(--accent); }
+.sc-ev-icon--updated { background: var(--info-soft); color: var(--info); }
+.sc-ev-icon--deleted { background: var(--danger-soft); color: var(--danger-text); }
+.sc-ev-icon--settled { background: var(--success-soft); color: var(--success-text); }
+
+.sc-ev .lp-title > span:first-child {
+  white-space: normal;
+  font-weight: 500;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+/* ── Person sheet ── */
+.sc-person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0 1rem;
+  text-align: center;
+}
+
+.sc-person .sc-balance-value {
+  font-size: 2rem;
+  margin: 0.2rem 0 0;
+}
+
+.sc-person-name {
+  margin-top: 0.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--blanco);
+}
+
+.sc-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 64px;
+  padding: 0.55rem 0.875rem;
+}

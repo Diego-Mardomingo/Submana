@@ -17,11 +17,13 @@ import { createClient } from "@/lib/supabase/client";
  * Pick or edit the public profile (@handle + display name). Reused by Friends, Groups and Settings:
  * without a `profile` it is the first-time setup (prefilled from the Google account), with one it edits.
  */
-export function HandleSetup({ profile, onDone, showIntro = !profile }: {
+export function HandleSetup({ profile, onDone, showIntro = !profile, showPreview = false }: {
   profile?: Profile | null;
   /** Called after a successful save. */
   onDone?: (profile: Profile) => void;
   showIntro?: boolean;
+  /** How friends will see the profile, live while typing. */
+  showPreview?: boolean;
 }) {
   const t = useTranslations(useLang());
   const { data: user } = useQuery({ queryKey: ["user"], queryFn: async () => (await createClient().auth.getUser()).data.user });
@@ -104,6 +106,20 @@ export function HandleSetup({ profile, onDone, showIntro = !profile }: {
           <RowInput id="profile-name" value={displayName} onChange={(e) => setNameInput(e.target.value)} maxLength={60} />
         </FieldRow>
       </FieldGroup>
+
+      {showPreview && (
+        <div className="pf-preview">
+          <ProfileAvatar name={displayName || "?"} url={profile?.avatar_url ?? meta?.avatar_url} size={40} />
+          <span className="lp-main">
+            <span className="pf-preview-label">{t("profile.preview")}</span>
+            <span className="lp-title">
+              <span>
+                {displayName.trim() || "?"} <span className="pf-preview-handle">@{normalized}</span>
+              </span>
+            </span>
+          </span>
+        </div>
+      )}
 
       <FormError>{serverError}</FormError>
       <SheetButton type="submit" pending={save.isPending} disabled={!canSave}>

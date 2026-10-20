@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useEffectEvent, useState } from "react";
-import { ChevronRight, SlidersHorizontal } from "lucide-react";
+import { ChevronRight, Lock, SlidersHorizontal } from "lucide-react";
 import { Chips, FieldGroup, Stepper } from "@/components/SheetFields";
 import { PushDeviceSection } from "@/components/notifications/PushDeviceSection";
 import { Sheet, SheetBody } from "@/components/ui/sheet";
@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useLang } from "@/hooks/useLang";
 import { useNotificationSettings, useSaveNotificationSettings } from "@/hooks/useNotifications";
 import type { UIKey } from "@/lib/i18n/ui";
-import { useTranslations } from "@/lib/i18n/utils";
+import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import {
   familyLabelKey,
   isToggleEnabled,
@@ -28,9 +28,21 @@ const SectionHead = ({ title }: { title: string }) => (
   </div>
 );
 
-function SwitchRow({ label, description, checked, disabled, onChange }: { label: string; description?: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }) {
+function SwitchRow({ label, description, icon, checked, disabled, onChange }: {
+  label: string;
+  description?: string;
+  icon?: React.ReactNode;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}) {
   return (
     <label className="lp-row lp-pref">
+      {icon && (
+        <span className="lp-icon" aria-hidden>
+          {icon}
+        </span>
+      )}
       <span className="lp-main">
         <span className="lp-title">
           <span>{label}</span>
@@ -115,7 +127,7 @@ function NotificationTypesSheet({ open, onOpenChange }: { open: boolean; onOpenC
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={t("notifSettings.types")} description={t("notifSettings.desc")}>
+    <Sheet open={open} onOpenChange={onOpenChange} title={t("notifSettings.types")}>
       <SheetBody>
         {NOTIFICATION_FAMILIES.map((family) => (
           <FieldGroup key={family} title={t(familyLabelKey(family))}>
@@ -140,28 +152,38 @@ function NotificationTypesSheet({ open, onOpenChange }: { open: boolean; onOpenC
   );
 }
 
+/** Privacy row of the profile: push notifications without amounts (for the lock screen). */
+export function PushHideAmountsRow() {
+  const t = useTranslations(useLang());
+  const { data: settings } = useNotificationSettings();
+  const save = useSaveNotificationSettings();
+  return (
+    <SwitchRow
+      icon={<Lock className="size-5" />}
+      label={t("notifSettings.hideAmounts")}
+      description={t("notifSettings.hideAmountsDesc")}
+      checked={settings?.push_hide_amounts ?? false}
+      disabled={!settings}
+      onChange={(hide) => save.mutate({ push_hide_amounts: hide })}
+    />
+  );
+}
+
 /**
- * Profile section "Notifications": this device's push state, hide amounts in push, and a row that
- * opens the sheet to pick which types of notification to get.
+ * Profile section "Notifications": this device's push state and a row that opens the sheet to pick
+ * which types of notification to get (saying how many are on).
  */
 export function NotificationSettingsSection() {
   const t = useTranslations(useLang());
   const { data: settings } = useNotificationSettings();
-  const save = useSaveNotificationSettings();
   const [typesOpen, setTypesOpen] = useState(false);
+  const enabledCount = NOTIFICATION_TOGGLES.filter((item) => isToggleEnabled(item, settings?.disabled_types)).length;
 
   return (
     <section className="lp-section scroll-mt-4" id="notifications">
       <SectionHead title={t("notifSettings.title")} />
       <div className="lp-card lp-group">
         <PushDeviceSection />
-        <SwitchRow
-          label={t("notifSettings.hideAmounts")}
-          description={t("notifSettings.hideAmountsDesc")}
-          checked={settings?.push_hide_amounts ?? false}
-          disabled={!settings}
-          onChange={(hide) => save.mutate({ push_hide_amounts: hide })}
-        />
         <button type="button" className="lp-row" onClick={() => setTypesOpen(true)} aria-haspopup="dialog">
           <span className="lp-icon" aria-hidden>
             <SlidersHorizontal className="size-5" />
@@ -170,7 +192,9 @@ export function NotificationSettingsSection() {
             <span className="lp-title">
               <span>{t("notifSettings.types")}</span>
             </span>
-            <span className="lp-desc">{t("notifSettings.desc")}</span>
+            {settings && (
+              <span className="lp-desc">{interpolate(t("notifSettings.typesCount"), { n: String(enabledCount), total: String(NOTIFICATION_TOGGLES.length) })}</span>
+            )}
           </span>
           <ChevronRight className="lp-chevron size-4" />
         </button>

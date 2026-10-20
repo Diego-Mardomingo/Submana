@@ -1031,45 +1031,211 @@ button.lp-chip:hover {
 
 .is-warn { color: var(--warning); }
 
-/* ═══ Settings ═══ */
-.lp-profile {
+/* ═══ Settings (My profile) — design reference: docs/design/profile.html ═══ */
+/* One centred column; from 1200px Notifications and Account sit side by side. */
+.pf-page {
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.pf-split {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 1200px) {
+  .pf-page {
+    max-width: 760px;
+  }
+
+  .pf-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 1.25rem;
+  }
+}
+
+/* Identity: the public profile friends see, kept compact (friends are a small part of the app) */
+.pf-id {
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  padding: 1rem;
   min-width: 0;
+  padding: 0.875rem 0.875rem 0.875rem 1rem;
 }
 
-.lp-avatar.lp-avatar {
-  width: 52px;
-  height: 52px;
-  flex-shrink: 0;
+.pf-id-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
 }
 
-.lp-avatar-fallback {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.lp-profile-name {
-  margin: 0;
+.pf-id-name {
+  max-width: 100%;
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--blanco);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.lp-profile-email {
-  margin: 0;
-  font-size: 0.8rem;
+.pf-handle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  min-height: 28px;
+  margin-left: -0.4rem;
+  padding: 0 0.4rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--gris-muy-claro);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pf-handle svg {
+  flex-shrink: 0;
   color: var(--gris-claro);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.pf-handle:hover {
+  background: var(--gris);
+}
+
+.pf-id-hint {
+  font-size: 0.7rem;
+  color: var(--gris-claro);
+}
+
+.pf-id-empty {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gris);
+  color: var(--gris-muy-claro);
+  flex-shrink: 0;
+}
+
+.lp-chip.pf-id-create {
+  height: 36px;
+  padding: 0 1rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* "Edit": icon only on phones (so the name fits), with its label from 640px */
+.pf-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: 1px solid var(--gris);
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--blanco);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pf-edit:hover {
+  background: var(--gris);
+}
+
+.pf-edit-label {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .pf-edit {
+    width: auto;
+    height: 38px;
+    padding: 0 1rem;
+  }
+
+  .pf-edit-label {
+    display: inline;
+  }
+}
+
+.pf-provider {
+  flex-shrink: 0;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--gris);
+  color: var(--gris-muy-claro);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+/* Live preview in the edit sheet: how friends will see the profile */
+.pf-preview {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px dashed var(--gris);
+  border-radius: 14px;
+}
+
+.pf-preview-label {
+  font-size: 0.68rem;
+  color: var(--gris-claro);
+}
+
+.pf-preview-handle {
+  font-weight: 500;
+  color: var(--gris-muy-claro);
+}
+
+.pf-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.5rem 0 0.25rem;
+  font-size: 0.72rem;
+  color: var(--gris-claro);
+  font-variant-numeric: tabular-nums;
+}
+
+.pf-footer button {
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.lp-icon--accent {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .lp-desc {
