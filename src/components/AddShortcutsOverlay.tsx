@@ -3,21 +3,19 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Send, Split, Tags, Wallet, type LucideIcon } from "lucide-react";
-import { toast } from "@/lib/toast";
+import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Split, Tags, Wallet, type LucideIcon } from "lucide-react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { ActionRow, FieldGroup, Segmented, SheetButton } from "@/components/SheetFields";
+import { ActionRow, FieldGroup } from "@/components/SheetFields";
+import { FeedbackSheet } from "@/components/FeedbackSheet";
 import { SharedExpenseSheet } from "@/components/SharedExpenseSheet";
-import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
+import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useAccounts } from "@/hooks/useAccounts";
 import { useGroup, useGroups } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
 import { useProfile } from "@/hooks/useProfile";
-import { api } from "@/lib/api";
 import { getBankProvider } from "@/lib/bankProviders";
 import type { UIKey } from "@/lib/i18n/ui";
-import { apiErrorText } from "@/lib/apiErrorText";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
@@ -73,9 +71,6 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
   const { data: accounts = [] } = useAccounts();
   const [rendered, setRendered] = useState(open);
   const [modal, setModal] = useState<Modal | null>(null);
-  const [feedbackType, setFeedbackType] = useState<"error" | "suggestion">("suggestion");
-  const [feedbackMessage, setFeedbackMessage] = useState("");
-  const [sending, setSending] = useState(false);
   const [groupId, setGroupId] = useState<string>();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: groups = [], isLoading: groupsLoading } = useGroups(!!profile && open);
@@ -122,23 +117,6 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
   const pick = ({ href, modal: target }: Shortcut) => (target ? setModal(target) : go(href!));
   // Closing a sheet closes the whole menu.
   const closeModal = (isOpen: boolean) => !isOpen && close();
-
-  const sendFeedback = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const message = feedbackMessage.trim();
-    if (!message) return;
-    setSending(true);
-    try {
-      await api("/api/feedback", "POST", { type: feedbackType, message });
-      close();
-      setFeedbackMessage("");
-      toast.success(t("feedback.success"));
-    } catch (err) {
-      toast.error(t("feedback.error"), { description: apiErrorText(t, err) });
-    } finally {
-      setSending(false);
-    }
-  };
 
   const closeOnBackdrop = (e: React.MouseEvent) => e.target === e.currentTarget && onClose();
 
@@ -292,45 +270,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
         />
       )}
 
-      <Sheet open={modal === "feedback"} onOpenChange={closeModal} title={t("feedback.title")}>
-        <SheetForm onSubmit={sendFeedback}>
-          <SheetBody>
-            <Segmented
-              label={t("feedback.message")}
-              value={feedbackType}
-              onChange={setFeedbackType}
-              options={[
-                { value: "suggestion", label: t("feedback.typeSuggestion") },
-                { value: "error", label: t("feedback.typeError") },
-              ]}
-            />
-            <FieldGroup title={t("feedback.message")}>
-              <textarea
-                className="sf-textarea"
-                value={feedbackMessage}
-                onChange={(e) => setFeedbackMessage(e.target.value)}
-                placeholder={
-                  feedbackType === "error"
-                    ? es
-                      ? "¿Qué ha fallado y qué estabas haciendo?"
-                      : "What went wrong and what were you doing?"
-                    : es
-                      ? "¿Qué te gustaría mejorar o añadir?"
-                      : "What would you like to improve or add?"
-                }
-                rows={6}
-                aria-label={t("feedback.message")}
-              />
-            </FieldGroup>
-          </SheetBody>
-          <SheetFooter>
-            <SheetButton type="submit" pending={sending} disabled={!feedbackMessage.trim()}>
-              <Send aria-hidden />
-              {t("feedback.send")}
-            </SheetButton>
-          </SheetFooter>
-        </SheetForm>
-      </Sheet>
+      <FeedbackSheet open={modal === "feedback"} onOpenChange={closeModal} />
     </div>,
     document.body
   );

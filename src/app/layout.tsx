@@ -3,6 +3,7 @@ import { Sora, Inter } from "next/font/google";
 import "./globals.css";
 import "./components.css";
 import "./list-pages.css";
+import "./subcount.css";
 import "./dashboard.css";
 import "./home.css";
 import "./sheet.css";

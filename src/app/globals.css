@@ -132,6 +132,10 @@ html[data-nav-direction="same"]::view-transition-new(root) {
   --danger-muted: rgba(239, 68, 68, 0.25);
   --danger-rgb: 239, 68, 68;
 
+  /* Amounts as text (in favour / against): AA contrast on cards (11.8:1 and 6.5:1) */
+  --success-text: #6ee7b7;
+  --danger-text: #f87171;
+
   /* Warning - Ámbar suave */
   --warning: #fcd34d;
   --warning-hover: #fbbf24;
@@ -175,6 +179,10 @@ html[data-theme="light"] {
   --danger-soft: rgba(239, 68, 68, 0.12);
   --danger-muted: rgba(239, 68, 68, 0.25);
   --danger-rgb: 239, 68, 68;
+
+  /* Amounts as text: --success / --danger only reach 2.2:1 and 3.3:1 on light cards (these give 4.8:1 and 5.7:1) */
+  --success-text: #047857;
+  --danger-text: #b91c1c;
 
   /* Warning - Ámbar */
   --warning: #f59e0b;
@@ -614,14 +622,6 @@ button:not(:disabled),
   font-weight: 600;
   transition: color 0.2s ease, transform 0.2s ease;
   background: transparent !important;
-}
-
-.settings-lang-flag {
-  width: 1.25rem;
-  height: 0.9rem;
-  object-fit: cover;
-  border-radius: 2px;
-  flex-shrink: 0;
 }
 
 .settings-lang-btn:hover {

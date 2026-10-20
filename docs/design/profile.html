@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Submana · Perfil (rediseño)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ── Tokens de src/app/globals.css ── */
+:root, [data-theme="dark"] {
+  --negro: #0f1012; --gris-oscuro: #16171a; --gris: #23252a;
+  --gris-claro: #6b7280; --gris-muy-claro: #9ca3af; --blanco: #e8eaed;
+  --accent: #a78bfa; --accent-soft: rgba(167,139,250,.10); --accent-muted: rgba(167,139,250,.18);
+  --success-text: #6ee7b7; --success-soft: rgba(110,231,183,.10);
+  --danger: #ef4444; --danger-text: #f87171; --danger-soft: rgba(239,68,68,.12);
+  --warning: #fcd34d; --warning-soft: rgba(252,211,77,.10);
+  --info: #93c5fd; --info-soft: rgba(147,197,253,.10);
+  --card-subtle-gradient: linear-gradient(145deg, rgba(255,255,255,.02) 0%, transparent 50%, rgba(0,0,0,.03) 100%);
+  --sheet-shadow: 0 -12px 40px rgba(0,0,0,.5);
+}
+[data-theme="light"] {
+  --negro: #f8f9fb; --gris-oscuro: #eef0f4; --gris: #dde1e8;
+  --gris-claro: #6b7280; --gris-muy-claro: #4b5563; --blanco: #111318;
+  --accent: #7c5ccc; --accent-soft: rgba(124,92,204,.08); --accent-muted: rgba(124,92,204,.15);
+  --success-text: #047857; --success-soft: rgba(16,185,129,.08);
+  --danger: #ef4444; --danger-text: #b91c1c; --danger-soft: rgba(239,68,68,.12);
+  --warning: #f59e0b; --warning-soft: rgba(245,158,11,.08);
+  --info: #3b82f6; --info-soft: rgba(59,130,246,.08);
+  --sheet-shadow: 0 -12px 40px rgba(17,19,24,.15);
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 36px 40px 100px; background: var(--negro); color: var(--blanco); font-family: Sora, system-ui, sans-serif; transition: background .2s, color .2s; }
+
+/* ── Documento ── */
+.doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.doc-head h1 { font-size: 1.45rem; margin: 0; letter-spacing: -.02em; }
+.lead { color: var(--gris-muy-claro); font-size: .86rem; margin: 8px 0 0; max-width: 840px; line-height: 1.6; }
+.seg-doc { display: inline-flex; background: var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg-doc button { font: inherit; font-size: .74rem; font-weight: 600; border: none; background: transparent; padding: 6px 12px; color: var(--gris-muy-claro); border-radius: 999px; cursor: pointer; }
+.seg-doc button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+.doc-h2 { font-size: .74rem; text-transform: uppercase; letter-spacing: .09em; color: var(--gris-claro); margin: 56px 0 16px; font-weight: 700; display: flex; gap: 10px; align-items: center; }
+.doc-h2::after { content: ""; flex: 1; height: 1px; background: var(--gris); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; max-width: 1240px; }
+.cards > div { border: 1px solid var(--gris); border-radius: 14px; padding: 14px 16px; font-size: .76rem; line-height: 1.55; color: var(--gris-muy-claro); }
+.cards b { display: block; color: var(--blanco); font-size: .82rem; margin-bottom: 4px; }
+.cards .bad b::before { content: "✕ "; color: var(--danger-text); }
+.cards code, .notes code { font-family: ui-monospace, monospace; font-size: .9em; color: var(--accent); }
+.screens { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-start; }
+.cap { font-size: .74rem; color: var(--gris-claro); margin: 0 0 10px 6px; font-weight: 600; }
+.cap b { color: var(--blanco); }
+.notes { max-width: 900px; color: var(--gris-muy-claro); font-size: .8rem; line-height: 1.65; padding-left: 18px; margin: 22px 0 0; }
+.notes li { margin-bottom: 4px; }
+.notes b { color: var(--blanco); }
+
+/* ── Marcos ── */
+.phone { width: 390px; background: var(--negro); border: 1px solid var(--gris); border-radius: 36px; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+.phone .scroll { padding: 14px 16px 24px; flex: 1; }
+.statusbar { height: 40px; display: flex; align-items: flex-end; justify-content: space-between; padding: 0 28px 4px; font-size: .72rem; font-weight: 700; }
+.navbar { height: 64px; border-top: 1px solid var(--gris); background: var(--gris-oscuro); display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; justify-items: center; color: var(--gris-claro); }
+.navbar .fab { width: 44px; height: 44px; border-radius: 14px; background: var(--accent); color: #fff; display: grid; place-items: center; }
+.navbar .on { color: var(--accent); }
+.desktop { width: 1240px; border: 1px solid var(--gris); border-radius: 18px; overflow: hidden; display: grid; grid-template-columns: 220px 1fr; background: var(--negro); }
+.sidebar { border-right: 1px solid var(--gris); padding: 20px 12px; display: flex; flex-direction: column; gap: 2px; font-size: .8rem; color: var(--gris-muy-claro); background: var(--gris-oscuro); }
+.sidebar .brand { font-weight: 800; color: var(--blanco); font-size: 1rem; padding: 0 10px 16px; }
+.sidebar a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; }
+.sidebar a.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.sidebar .sep { height: 1px; background: var(--gris); margin: 10px 4px; }
+.desk-main { padding: 28px 36px 40px; }
+
+/* ── Primitivas ── */
+svg.i { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+svg.i.s { width: 16px; height: 16px; } svg.i.xs { width: 13px; height: 13px; }
+.card { background: var(--card-subtle-gradient), var(--gris-oscuro); border: 1px solid var(--gris); border-radius: 18px; }
+.av { border-radius: 50%; display: inline-grid; place-items: center; font-weight: 700; color: #fff; flex: none; background: #f59e0b; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 14px; }
+.topbar h3 { margin: 0; font-size: 1.6rem; letter-spacing: -.03em; font-weight: 800; }
+.sec { margin: 24px 6px 8px; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--gris-muy-claro); }
+.btn { font: inherit; font-size: .8rem; font-weight: 700; border-radius: 999px; min-height: 44px; padding: 0 18px; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; cursor: pointer; }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.soft { background: var(--accent-soft); color: var(--accent); }
+.btn.ghost { background: transparent; border-color: var(--gris); color: var(--blanco); }
+.btn.sm { min-height: 36px; padding: 0 14px; font-size: .74rem; }
+
+/* Filas (mismo patrón que lp-row) */
+.list > .row + .row { border-top: 1px solid var(--gris); }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 60px; }
+.ico { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: var(--gris); color: var(--gris-muy-claro); flex: none; }
+.ico.accent { background: var(--accent-soft); color: var(--accent); }
+.ico.danger { background: var(--danger-soft); color: var(--danger-text); }
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .t { font-size: .88rem; font-weight: 600; }
+.row .d { font-size: .72rem; color: var(--gris-muy-claro); line-height: 1.4; }
+.row .val { font-size: .8rem; color: var(--gris-muy-claro); white-space: nowrap; }
+.row .chev { color: var(--gris-claro); }
+.row.stack { flex-wrap: wrap; }
+.row.stack .ctl { flex-basis: 100%; }
+.row.danger .t { color: var(--danger-text); }
+.sw { width: 44px; height: 26px; border-radius: 99px; background: var(--gris); position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .2s; }
+.sw.on { background: var(--accent); }
+.sw.on::after { left: 21px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--negro); border: 1px solid var(--gris); border-radius: 12px; padding: 3px; width: 100%; }
+.seg span { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; border-radius: 9px; font-size: .78rem; font-weight: 600; color: var(--gris-muy-claro); }
+.seg span.on { background: var(--accent); color: #fff; }
+.badge { font-size: .64rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--success-soft); color: var(--success-text); white-space: nowrap; }
+.badge.warn { background: var(--warning-soft); color: var(--warning); }
+.badge.muted { background: var(--gris); color: var(--gris-muy-claro); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); display: inline-block; }
+
+/* ── Cabecera de identidad ── */
+.id { display: flex; align-items: center; gap: 14px; padding: 14px 14px 14px 16px; }
+.id .who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.id .name { font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.handle { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; font-size: .8rem; color: var(--gris-muy-claro); font-weight: 600; min-height: 28px; margin-left: -6px; padding: 0 6px; border-radius: 99px; }
+.handle:hover { background: var(--gris); }
+.handle svg { color: var(--gris-claro); }
+.id .hint { font-size: .68rem; color: var(--gris-claro); }
+.footer { text-align: center; font-size: .7rem; color: var(--gris-claro); margin: 22px 0 4px; line-height: 1.7; }
+.footer a { color: var(--accent); font-weight: 600; }
+
+/* ── Hoja ── */
+.dim { position: absolute; inset: 0; background: rgba(0,0,0,.45); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--gris-oscuro); border-radius: 26px 26px 0 0; box-shadow: var(--sheet-shadow); padding: 10px 16px 24px; border-top: 1px solid var(--gris); }
+.grab { width: 40px; height: 5px; border-radius: 5px; background: var(--gris); margin: 0 auto 12px; }
+.sheet-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.sheet-title b { font-size: 1rem; }
+.x { width: 32px; height: 32px; border-radius: 50%; background: var(--gris); display: grid; place-items: center; color: var(--gris-muy-claro); }
+.field { background: var(--negro); border: 1px solid var(--gris); border-radius: 14px; }
+.field > div { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px; font-size: .86rem; }
+.field > div + div { border-top: 1px solid var(--gris); }
+.field label { width: 76px; color: var(--gris-muy-claro); font-size: .8rem; flex: none; }
+.field .ok { margin-left: auto; color: var(--success-text); font-size: .72rem; font-weight: 600; display: inline-flex; gap: 4px; align-items: center; }
+.field-hint { font-size: .7rem; color: var(--gris-claro); margin: 8px 6px 0; line-height: 1.5; }
+.preview { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px dashed var(--gris); border-radius: 14px; margin-top: 14px; }
+.preview small { display: block; font-size: .66rem; color: var(--gris-claro); margin-bottom: 2px; }
+
+/* ── Escritorio ── */
+.d-col, .desk-main > .d-head { max-width: 760px; margin: 0 auto; }
+.d-head h3 { margin: 0 0 22px; font-size: 1.8rem; font-weight: 800; letter-spacing: -.03em; }
+.d-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+.inline-ctl { width: 300px; flex: none; }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/></symbol>
+  <symbol id="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></symbol>
+  <symbol id="palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></symbol>
+  <symbol id="lang" viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></symbol>
+  <symbol id="eyeoff" viewBox="0 0 24 24"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></symbol>
+  <symbol id="sliders" viewBox="0 0 24 24"><path d="M10 5H3"/><path d="M12 19H3"/><path d="M14 3v4"/><path d="M16 17v4"/><path d="M21 12h-9"/><path d="M21 19h-5"/><path d="M21 5h-7"/><path d="M8 10v4"/><path d="M8 12H3"/></symbol>
+  <symbol id="mail" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></symbol>
+  <symbol id="logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="msg" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+  <symbol id="at" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="house" viewBox="0 0 24 24"><path d="M3 10a2 2 0 0 1 .7-1.5l7-6a2 2 0 0 1 2.6 0l7 6a2 2 0 0 1 .7 1.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/></symbol>
+  <symbol id="dash" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+  <symbol id="list" viewBox="0 0 24 24"><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/></symbol>
+  <symbol id="menu" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M4 18h16"/><path d="M4 6h16"/></symbol>
+  <symbol id="plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="receipt" viewBox="0 0 24 24"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></symbol>
+  <symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+</svg>
+
+<header class="doc-head">
+  <div>
+    <h1>Perfil · rediseño</h1>
+    <p class="lead">
+      La página «Mi perfil» mezcla tres cosas: <b>quién eres para tus amigos</b>, <b>cómo se comporta la app</b> y <b>tu cuenta</b>.
+      Hoy están revueltas y se ven igual. La propuesta las separa en ese orden, deja arriba lo que más se usa y quita ruido para que cada fila se lea de un vistazo.
+      Diseñado primero para móvil (390 px) y adaptado a escritorio. Todo usa datos que ya existen, salvo lo marcado como <i>futuro</i>.
+    </p>
+  </div>
+  <div class="seg-doc" role="group" aria-label="Tema">
+    <button type="button" data-theme-btn="dark" aria-pressed="true">Oscuro</button>
+    <button type="button" data-theme-btn="light" aria-pressed="false">Claro</button>
+  </div>
+</header>
+
+<h2 class="doc-h2">Qué falla hoy (y por qué)</h2>
+<div class="cards">
+  <div class="bad"><b>Dos identidades distintas</b>Arriba sale «User» y el email (datos de Google); debajo, «Diego Prueba» y @handle (tu perfil de Submana). No se sabe cuál ven tus amigos. El avatar de la tarjeta tampoco es el <code>ProfileAvatar</code> que aparece en Subcount y en Amigos.</div>
+  <div class="bad"><b>Editar el perfil está escondido</b>Es un acordeón con una flecha ⌄ pequeña. Una acción tan importante (cambiar nombre o @handle) merece un botón «Editar perfil» visible.</div>
+  <div class="bad"><b>Muros de texto</b>«Modo privacidad» ocupa 5 líneas en móvil. Las descripciones deberían ser de una línea; los detalles, en la hoja o en el tooltip.</div>
+  <div class="bad"><b>Banderas para el idioma</b>Una bandera es un país, no un idioma (la de EE. UU. para «English»). Las guías de diseño (USWDS y otras) recomiendan el nombre del idioma escrito en ese idioma. Además, las banderas se cargan de flagcdn.com, un servicio externo.</div>
+  <div class="bad"><b>Grupos sin lógica</b>Los tres «ocultar importes» están repartidos entre Preferencias y Notificaciones. Agrupar por <i>intención</i> (privacidad) es más fácil de encontrar que agrupar por pantalla técnica.</div>
+  <div class="bad"><b>Detalles inconsistentes</b>«Ocultar importes en push» es la única fila sin icono y se desalinea. Aparece «Cerrar Sesión» con mayúscula. El título «Sesión» no está traducido (va escrito en el código). En escritorio, la columna izquierda solo tiene una tarjeta casi vacía.</div>
+</div>
+
+<h2 class="doc-h2">Principios</h2>
+<div class="cards">
+  <div><b>1 · Una sola identidad, la que ven tus amigos</b>Arriba, como el Apple ID en Ajustes de iOS: tu avatar, tu nombre y tu @handle de Submana. El email pasa a «Cuenta», porque es un dato de acceso, no de identidad.</div>
+  <div><b>2 · Lo frecuente arriba, lo raro abajo</b>Es lo que piden las guías de Android/Material y de Microsoft: identidad → apariencia → privacidad → notificaciones → cuenta. Cerrar sesión y borrar la cuenta van al final.</div>
+  <div><b>3 · Agrupar por intención</b>Todo lo que oculta importes va junto en «Privacidad». Cada grupo tiene un título concreto y menos de 6 filas.</div>
+  <div><b>4 · Una fila, una idea</b>Cada fila tiene icono, título y, como mucho, una línea de descripción. Los interruptores aplican el cambio al momento, sin botón de guardar.</div>
+  <div><b>5 · Peso proporcional al uso</b>Los amigos solo intervienen en Subcount y en las cuentas conjuntas, una parte pequeña de Submana. La identidad es una fila compacta con «Editar», sin contadores ni «Compartir»: no compite con los ajustes que usa todo el mundo.</div>
+  <div><b>6 · Preparado para la App Store</b>Apple obliga (guía 5.1.1(v)) a poder borrar la cuenta desde la app si se pueden crear cuentas. Queda pendiente para un siguiente paso: necesita un endpoint que borre los datos.</div>
+</div>
+
+<!-- ═════════════════════ MÓVIL ═════════════════════ -->
+<h2 class="doc-h2">Móvil</h2>
+<div class="screens">
+
+  <div>
+    <p class="cap"><b>Arriba</b> · identidad, apariencia y privacidad</p>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="topbar"><h3>Mi perfil</h3></div>
+        <div class="card id">
+          <span class="av" style="width:56px;height:56px;font-size:1.1rem">DM</span>
+          <div class="who">
+            <span class="name">Diego Mardomingo</span>
+            <span class="handle">@diego_m <svg class="i xs"><use href="#copy"/></svg></span>
+            <span class="hint">Así te ven tus amigos</span>
+          </div>
+          <span class="btn ghost" style="width:44px;padding:0" aria-label="Editar perfil"><svg class="i s"><use href="#pencil"/></svg></span>
+        </div>
+
+        <div class="sec">Apariencia</div>
+        <div class="card list">
+          <div class="row stack">
+            <span class="ico"><svg class="i s"><use href="#palette"/></svg></span>
+            <span class="main"><span class="t">Tema</span></span>
+            <div class="ctl"><div class="seg"><span><svg class="i xs"><use href="#sun"/></svg>Claro</span><span class="on"><svg class="i xs"><use href="#monitor"/></svg>Sistema</span><span><svg class="i xs"><use href="#moon"/></svg>Oscuro</span></div></div>
+          </div>
+          <div class="row stack">
+            <span class="ico"><svg class="i s"><use href="#lang"/></svg></span>
+            <span class="main"><span class="t">Idioma</span></span>
+            <div class="ctl"><div class="seg"><span>English</span><span class="on">Español</span></div></div>
+          </div>
+        </div>
+
+        <div class="sec">Privacidad</div>
+        <div class="card list">
+          <div class="row"><span class="ico"><svg class="i s"><use href="#eyeoff"/></svg></span><span class="main"><span class="t">Modo privacidad</span><span class="d">Difumina los importes; toca uno para verlo</span></span><span class="sw on"></span></div>
+          <div class="row"><span class="ico"><svg class="i s"><use href="#cal"/></svg></span><span class="main"><span class="t">Calendario sin importes</span><span class="d">Solo puntos de ingreso y gasto</span></span><span class="sw"></span></div>
+          <div class="row"><span class="ico"><svg class="i s"><use href="#lock"/></svg></span><span class="main"><span class="t">Ocultar importes en push</span><span class="d">Nadie los verá en tu pantalla de bloqueo</span></span><span class="sw on"></span></div>
+        </div>
+      </div>
+      <div class="navbar"><svg class="i"><use href="#house"/></svg><svg class="i"><use href="#dash"/></svg><span class="fab"><svg class="i"><use href="#plus"/></svg></span><svg class="i"><use href="#list"/></svg><svg class="i on"><use href="#menu"/></svg></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="cap"><b>Abajo</b> · notificaciones y cuenta</p>
+    <div class="phone">
+      <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="scroll">
+        <div class="sec" style="margin-top:6px">Notificaciones</div>
+        <div class="card list">
+          <div class="row"><span class="ico accent"><svg class="i s"><use href="#phone"/></svg></span><span class="main"><span class="t">Este dispositivo</span><span class="d">Desactivadas en este dispositivo</span></span><span class="btn primary sm">Activar</span></div>
+          <div class="row"><span class="ico"><svg class="i s"><use href="#sliders"/></svg></span><span class="main"><span class="t">Qué te avisamos</span><span class="d">9 de 11 tipos activados</span></span><svg class="i s chev"><use href="#chev-r"/></svg></div>
+        </div>
+
+        <div class="sec">Cuenta</div>
+        <div class="card list">
+          <div class="row"><span class="ico"><svg class="i s"><use href="#mail"/></svg></span><span class="main"><span class="t">Email</span><span class="d">diego.lopez@gmail.com</span></span><span class="badge muted">Google</span></div>
+          <div class="row"><span class="ico"><svg class="i s"><use href="#logout"/></svg></span><span class="main"><span class="t">Cerrar sesión</span></span></div>
+        </div>
+
+        <div class="footer">
+          <a>Enviar comentarios</a> · Submana · c4708bb · 20 oct 2026
+        </div>
+      </div>
+      <div class="navbar"><svg class="i"><use href="#house"/></svg><svg class="i"><use href="#dash"/></svg><span class="fab"><svg class="i"><use href="#plus"/></svg></span><svg class="i"><use href="#list"/></svg><svg class="i on"><use href="#menu"/></svg></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="cap"><b>Editar perfil</b> · hoja</p>
+    <div class="phone" style="min-height:760px">
+      <div class="statusbar"><span>9:41</span><span>●●● ▮</span></div>
+      <div class="scroll" style="opacity:.4"><div class="topbar"><h3>Mi perfil</h3></div><div class="card" style="height:90px"></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="sheet-title"><b>Editar perfil</b><span class="x">✕</span></div>
+        <div class="field">
+          <div><label>Nombre</label><span>Diego Mardomingo</span></div>
+          <div><label>@handle</label><span>diego_m</span><span class="ok"><svg class="i xs"><use href="#check"/></svg>Disponible</span></div>
+        </div>
+        <p class="field-hint">De 3 a 20 letras, números o guiones bajos. Tus amigos te encuentran escribiéndolo exacto.</p>
+        <div class="preview">
+          <span class="av" style="width:40px;height:40px;font-size:.8rem">DM</span>
+          <div><small>Vista previa en Subcount y Amigos</small><b style="font-size:.86rem">Diego Mardomingo</b> <span style="font-size:.78rem;color:var(--gris-muy-claro)">@diego_m</span></div>
+        </div>
+        <span class="btn primary" style="width:100%;margin-top:16px">Guardar</span>
+      </div>
+    </div>
+  </div>
+</div>
+<ul class="notes">
+  <li><b>Identidad:</b> una fila con <code>ProfileAvatar</code>, <code>display_name</code> y @handle del perfil de Submana (el mismo que ven tus amigos), más «Editar» (solo el icono en móvil, para que el nombre quepa; con texto en escritorio). Al tocar el @handle se copia (con toast «@handle copiado»), que es lo que necesitas cuando alguien te pide tu usuario. Sin contadores ni «Compartir»: las solicitudes pendientes ya llegan por notificaciones y por la página Amigos.</li>
+    <li><b>Idioma:</b> «English | Español» como texto, sin banderas. Ya no se hacen peticiones a flagcdn.com.</li>
+  <li><b>Privacidad:</b> se juntan los tres «ocultar importes»; el de push sale de Notificaciones. Textos de una línea; la explicación larga del modo privacidad queda en el tooltip del propio importe.</li>
+  <li><b>Notificaciones:</b> «Este dispositivo» muestra el estado en una línea y la acción en un botón (Activar / Probar). La fila de tipos dice cuántos están activos, que es más útil que «Elige de qué quieres que te avisemos».</li>
+  <li><b>Cuenta:</b> email con el proveedor (<code>user.app_metadata.provider</code>). «Cerrar sesión» en color normal: no es destructivo, ya hay confirmación. «Eliminar cuenta» queda para más adelante (necesita un endpoint que borre los datos y el usuario; Apple lo exige, 5.1.1(v)).</li>
+  <li><b>Pie:</b> «Enviar comentarios» abre el mismo formulario que el menú + (se guarda en la tabla <code>feedback</code>) y al lado va el build desplegado: commit corto y fecha (<code>VERCEL_GIT_COMMIT_SHA</code>; en local, <code>git rev-parse</code>), para saber qué versión tenía alguien que reporta un fallo.</li>
+  <li><b>Editar perfil:</b> el formulario actual (<code>HandleSetup</code>) pasa a una hoja, con una vista previa de cómo te verán. Si aún no tienes perfil, la cabecera muestra «Elige tu @handle» con un botón principal (ver Estados).</li>
+</ul>
+
+<h2 class="doc-h2">Estados</h2>
+<div class="screens">
+  <div style="width:390px">
+    <p class="cap"><b>Sin perfil</b> · primera vez</p>
+    <div class="card id">
+      <span class="av" style="width:56px;height:56px;background:var(--gris);color:var(--gris-muy-claro)"><svg class="i"><use href="#at"/></svg></span>
+      <div class="who">
+        <span class="name">Elige tu @handle</span>
+        <span class="hint" style="font-size:.72rem;line-height:1.45">Solo hace falta para Subcount y cuentas conjuntas</span>
+      </div>
+      <span class="btn soft sm">Crear</span>
+    </div>
+  </div>
+  <div style="width:390px">
+    <p class="cap"><b>Push</b> · los 4 estados de «Este dispositivo»</p>
+    <div class="card list">
+      <div class="row"><span class="ico accent"><svg class="i s"><use href="#phone"/></svg></span><span class="main"><span class="t">Este dispositivo</span><span class="d">Activadas</span></span><span class="badge">Activas</span></div>
+      <div class="row"><span class="ico accent"><svg class="i s"><use href="#phone"/></svg></span><span class="main"><span class="t">Este dispositivo</span><span class="d">Desactivadas</span></span><span class="btn primary sm">Activar</span></div>
+      <div class="row"><span class="ico"><svg class="i s"><use href="#phone"/></svg></span><span class="main"><span class="t">Bloqueadas en el navegador</span><span class="d">Permítelas en los ajustes del sistema</span></span><span class="badge warn">Bloqueadas</span></div>
+      <div class="row"><span class="ico"><svg class="i s"><use href="#phone"/></svg></span><span class="main"><span class="t">Instala Submana</span><span class="d">En iPhone, push solo desde la pantalla de inicio</span></span><svg class="i s chev"><use href="#chev-r"/></svg></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════ ESCRITORIO ═════════════════════ -->
+<h2 class="doc-h2">Escritorio (≥ 1200 px)</h2>
+<div class="desktop">
+  <nav class="sidebar">
+    <div class="brand">Submana</div>
+    <a><svg class="i s"><use href="#house"/></svg>Inicio</a><a><svg class="i s"><use href="#dash"/></svg>Panel</a><a><svg class="i s"><use href="#list"/></svg>Transacciones</a>
+    <div class="sep"></div>
+    <a><svg class="i s"><use href="#receipt"/></svg>Subcount</a><a><svg class="i s"><use href="#users"/></svg>Amigos</a><a><svg class="i s"><use href="#bell"/></svg>Notificaciones</a><a class="on"><svg class="i s"><use href="#user"/></svg>Mi perfil</a>
+  </nav>
+  <div class="desk-main">
+    <div class="d-head"><h3>Mi perfil</h3></div>
+    <div class="d-col">
+      <div class="card id">
+          <span class="av" style="width:64px;height:64px;font-size:1.25rem">DM</span>
+          <div class="who">
+            <span class="name">Diego Mardomingo</span>
+            <span class="handle">@diego_m <svg class="i xs"><use href="#copy"/></svg></span>
+            <span class="hint">Así te ven tus amigos</span>
+          </div>
+          <span class="btn ghost sm"><svg class="i s"><use href="#pencil"/></svg>Editar</span>
+        </div>
+      <div>
+        <div class="sec">Apariencia</div>
+        <div class="card list">
+          <div class="row"><span class="ico"><svg class="i s"><use href="#palette"/></svg></span><span class="main"><span class="t">Tema</span></span><div class="inline-ctl"><div class="seg"><span><svg class="i xs"><use href="#sun"/></svg>Claro</span><span class="on"><svg class="i xs"><use href="#monitor"/></svg>Sistema</span><span><svg class="i xs"><use href="#moon"/></svg>Oscuro</span></div></div></div>
+          <div class="row"><span class="ico"><svg class="i s"><use href="#lang"/></svg></span><span class="main"><span class="t">Idioma</span></span><div class="inline-ctl"><div class="seg"><span>English</span><span class="on">Español</span></div></div></div>
+        </div>
+        <div class="sec">Privacidad</div>
+        <div class="card list">
+          <div class="row"><span class="ico"><svg class="i s"><use href="#eyeoff"/></svg></span><span class="main"><span class="t">Modo privacidad</span><span class="d">Difumina los importes; toca uno para verlo</span></span><span class="sw on"></span></div>
+          <div class="row"><span class="ico"><svg class="i s"><use href="#cal"/></svg></span><span class="main"><span class="t">Calendario sin importes</span><span class="d">Solo puntos de ingreso y gasto</span></span><span class="sw"></span></div>
+          <div class="row"><span class="ico"><svg class="i s"><use href="#lock"/></svg></span><span class="main"><span class="t">Ocultar importes en push</span><span class="d">Nadie los verá en tu pantalla de bloqueo</span></span><span class="sw on"></span></div>
+        </div>
+        <div class="d-row-2">
+          <div>
+            <div class="sec">Notificaciones</div>
+            <div class="card list">
+              <div class="row"><span class="ico accent"><svg class="i s"><use href="#phone"/></svg></span><span class="main"><span class="t">Este dispositivo</span><span class="d">Activadas</span></span><span class="badge">Activas</span></div>
+              <div class="row"><span class="ico"><svg class="i s"><use href="#sliders"/></svg></span><span class="main"><span class="t">Qué te avisamos</span><span class="d">9 de 11 tipos</span></span><svg class="i s chev"><use href="#chev-r"/></svg></div>
+            </div>
+          </div>
+          <div>
+            <div class="sec">Cuenta</div>
+            <div class="card list">
+              <div class="row"><span class="ico"><svg class="i s"><use href="#mail"/></svg></span><span class="main"><span class="t">Email</span><span class="d">diego.lopez@gmail.com</span></span><span class="badge muted">Google</span></div>
+              <div class="row"><span class="ico"><svg class="i s"><use href="#logout"/></svg></span><span class="main"><span class="t">Cerrar sesión</span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="footer" style="text-align:left;margin-left:6px"><a>Enviar comentarios</a> · Submana · c4708bb · 20 oct 2026</div>
+      </div>
+    </div>
+  </div>
+</div>
+<ul class="notes">
+  <li><b>Una sola columna centrada</b> (máx. 760 px): sin contadores, la identidad ya no llena una columna lateral y quedaría otra tarjeta casi vacía, el mismo fallo de hoy. En escritorio, Tema e Idioma llevan el control en la misma línea.</li>
+  <li><b>Notificaciones y Cuenta</b> se ponen lado a lado (pocas filas cada una), así la página cabe en una pantalla de 800 px sin hacer scroll.</li>
+  <li>Por debajo de 1200 px (tablet, o portátil con la barra lateral), Notificaciones y Cuenta vuelven a ir una debajo de otra.</li>
+</ul>
+
+<h2 class="doc-h2">Qué cambia en el código</h2>
+<ul class="notes" style="margin-top:0">
+  <li><b>Mismo sistema de filas:</b> <code>lp-row</code>, <code>lp-icon</code> y <code>lp-desc</code>, sin estilos nuevos por pantalla. Solo hay CSS nuevo para la fila de identidad.</li>
+  <li><b>Componentes:</b> <code>SettingsBody</code> se reordena; <code>HandleSetup</code> se abre en un <code>Sheet</code>; <code>PushDeviceSection</code> se compacta a una fila; el interruptor «ocultar importes en push» se mueve de <code>NotificationSettingsSection</code> a Privacidad.</li>
+  <li><b>i18n:</b> las descripciones se acortan, «Cerrar sesión» va en minúscula, el título «Sesión/Session» que estaba escrito en el código se reemplaza por <code>settings.account</code>, y hay textos nuevos para la identidad y el pie.</li>
+  <li><b>Futuro, aparte:</b> «Eliminar cuenta» (endpoint + confirmación escribiendo el @handle) y subir tu propio avatar.</li>
+</ul>
+
+<script>
+document.querySelectorAll("[data-theme-btn]").forEach((b) =>
+  b.addEventListener("click", () => {
+    document.documentElement.dataset.theme = b.dataset.themeBtn;
+    document.querySelectorAll("[data-theme-btn]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  })
+);
+</script>
+</body>
+</html>
