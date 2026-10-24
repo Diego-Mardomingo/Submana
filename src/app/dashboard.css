@@ -369,6 +369,23 @@
   border-radius: 2px;
 }
 
+.dash-legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dash-legend-toggle[aria-pressed="false"] {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
 .dash-card-foot {
   padding-top: 0.75rem;
   border-top: 1px solid var(--lp-divider);
