@@ -3,18 +3,33 @@
 import { useSyncExternalStore } from "react";
 import {
   ArcElement,
+  BarController,
   BarElement,
   CategoryScale,
   Chart as ChartJS,
   Filler,
   Legend,
   LinearScale,
+  LineController,
   LineElement,
   PointElement,
   Tooltip,
 } from "chart.js";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Filler, Tooltip, Legend);
+// Controllers too: relying on react-chartjs-2 to register them broke `bar` ("not a registered controller") in production.
+ChartJS.register(
+  BarController,
+  LineController,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  Filler,
+  Tooltip,
+  Legend
+);
 
 if (typeof window !== "undefined") {
   // On touch devices tooltips open on tap only; tapping the chart again, tapping anywhere else
