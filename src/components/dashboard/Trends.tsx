@@ -26,6 +26,7 @@ export function IncomeExpenseCard({ lang }: { lang: Lang }) {
   const es = lang === "es";
   const t = useTranslations(lang);
   const [customRange, setCustomRange] = useState<DateRange | null>(null);
+  const [showBalance, setShowBalance] = useState(false);
   const range = customRange ?? lastYearRange();
   const { byMonth, keys, availableRange, isLoading } = useTransactionsRange(undefined, range);
   const { data: categories } = useCategories();
@@ -43,15 +44,19 @@ export function IncomeExpenseCard({ lang }: { lang: Lang }) {
           <MonthRangePicker shown={range} available={availableRange} isCustom={!!customRange} onChange={setCustomRange} monthCount={keys.length} />
         )}
       </CardHead>
-      <div className="dash-legend" aria-hidden>
-        <span>
+      <div className="dash-legend">
+        <span aria-hidden>
           <i style={{ background: "var(--success)" }} />
           {es ? "Ingresos" : "Income"}
         </span>
-        <span>
+        <span aria-hidden>
           <i style={{ background: "var(--danger)" }} />
           {es ? "Gastos" : "Expenses"}
         </span>
+        <button type="button" className="dash-legend-toggle" aria-pressed={showBalance} onClick={() => setShowBalance((v) => !v)}>
+          <i style={{ background: "var(--blanco)" }} />
+          {es ? "Balance" : "Net"}
+        </button>
       </div>
       <div className="dash-chart">
         {isLoading ? (
@@ -62,6 +67,7 @@ export function IncomeExpenseCard({ lang }: { lang: Lang }) {
             income={totals.map((m) => m.income)}
             expense={totals.map((m) => m.expense)}
             es={es}
+            showBalance={showBalance}
           />
         )}
       </div>
