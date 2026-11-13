@@ -536,3 +536,293 @@
     min-width: 11rem;
   }
 }
+
+/* ── Spending by category (bars by hand, no chart library) ── */
+.dash-cat-card {
+  grid-column: 1 / -1;
+}
+
+.dash-seg {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 99px;
+  background: var(--gris);
+}
+
+.dash-seg > button {
+  height: 24px;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: 99px;
+  background: none;
+  color: var(--gris-muy-claro);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dash-seg > button[aria-checked="true"] {
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+}
+
+.dash-seg > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.dash-cat-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dash-cat-total {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+}
+
+.dash-cat-total .dash-hero-caption {
+  margin: 0;
+}
+
+.dash-cat-total-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-cat-delta {
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-cat-delta.is-up { color: var(--danger-text); }
+.dash-cat-delta.is-down { color: var(--success-text); }
+.dash-cat-delta.is-flat { color: var(--gris-claro); }
+
+/* 100 % stacked ribbon with the weight of each category */
+.dash-cat-ribbon {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.dash-cat-ribbon > span {
+  min-width: 3px;
+  transition: opacity 0.2s ease;
+}
+
+.dash-cat-ribbon.has-focus > span:not(.is-on) {
+  opacity: 0.25;
+}
+
+.dash-cat-list {
+  margin: 0 -1rem;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--lp-divider);
+}
+
+.dash-cat + .dash-cat {
+  border-top: 1px solid var(--lp-divider);
+}
+
+.dash-cat-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .dash-cat-row:hover {
+    background: var(--lp-row-hover);
+  }
+}
+
+.dash-cat-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.dash-cat-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  color: var(--c);
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.dash-cat-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dash-cat-name {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.dash-cat-name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dash-cat-share {
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-cat-bar {
+  display: block;
+  height: 6px;
+  border-radius: 99px;
+  background: color-mix(in srgb, var(--gris) 70%, transparent);
+  overflow: hidden;
+}
+
+.dash-cat-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--c);
+  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dash-cat-amount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.dash-cat-amount > b {
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-cat-chevron {
+  color: var(--gris-claro);
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dash-cat.is-open .dash-cat-chevron {
+  transform: rotate(90deg);
+}
+
+/* Subcategories: animated open/close with a 0fr → 1fr grid row */
+.dash-cat-subs {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.dash-cat.is-open .dash-cat-subs {
+  grid-template-rows: 1fr;
+}
+
+.dash-cat-subs > ul {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+}
+
+.dash-cat-sub {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem 0.7rem;
+  padding: 0.4rem 1rem 0.4rem calc(1rem + 34px + 0.7rem);
+}
+
+.dash-cat-sub:last-child {
+  padding-bottom: 0.8rem;
+}
+
+.dash-cat-sub-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--gris-muy-claro);
+}
+
+.dash-cat-sub-name.is-none {
+  font-style: italic;
+}
+
+.dash-cat-sub-amount {
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-cat-sub .dash-cat-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+}
+
+.dash-cat-sub .dash-cat-bar > i {
+  background: color-mix(in srgb, var(--c) 65%, transparent);
+}
+
+.dash-cat-more {
+  align-self: center;
+  margin: -0.25rem 0 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dash-cat-subs,
+  .dash-cat-bar > i,
+  .dash-cat-chevron {
+    transition: none;
+  }
+}

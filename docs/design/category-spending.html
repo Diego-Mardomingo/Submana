@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Submana · Gastos por categoría (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ── Tokens copiados de src/app/globals.css y list-pages.css ── */
+:root, [data-theme="dark"] {
+  --negro: #0f1012; --gris-oscuro: #16171a; --gris: #23252a;
+  --gris-claro: #6b7280; --gris-muy-claro: #9ca3af; --blanco: #e8eaed;
+  --accent: #a78bfa; --accent-light: #c4b5fd; --accent-soft: rgba(167,139,250,.10); --accent-muted: rgba(167,139,250,.18);
+  --success: #6ee7b7; --success-soft: rgba(110,231,183,.10);
+  --danger: #ef4444; --danger-soft: rgba(239,68,68,.12);
+  --warning: #fcd34d; --info: #93c5fd; --teal: #5eead4;
+  --success-text: #6ee7b7; --danger-text: #f87171;
+  --card-subtle-gradient: linear-gradient(145deg, rgba(255,255,255,.02) 0%, transparent 50%, rgba(0,0,0,.03) 100%);
+  --lp-row-hover: rgba(255,255,255,.03);
+}
+[data-theme="light"] {
+  --negro: #f8f9fb; --gris-oscuro: #eef0f4; --gris: #dde1e8;
+  --gris-claro: #6b7280; --gris-muy-claro: #4b5563; --blanco: #111318;
+  --accent: #7c5ccc; --accent-light: #9678e0; --accent-soft: rgba(124,92,204,.08); --accent-muted: rgba(124,92,204,.15);
+  --success: #10b981; --success-soft: rgba(16,185,129,.08);
+  --danger: #ef4444; --danger-soft: rgba(239,68,68,.12);
+  --warning: #f59e0b; --info: #3b82f6; --teal: #14b8a6;
+  --success-text: #047857; --danger-text: #b91c1c;
+  --lp-row-hover: rgba(0,0,0,.03);
+}
+:root { --lp-radius: 16px; --lp-divider: color-mix(in srgb, var(--gris) 75%, transparent); }
+
+/* Paleta de categorías: solo tokens del tema, en este orden. La 7.ª en adelante va a "Otros". */
+:root { --c1: var(--accent); --c2: var(--info); --c3: var(--teal); --c4: var(--warning); --c5: var(--success); --c6: var(--accent-light); --c-other: var(--gris-claro); }
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 36px 40px 100px; background: var(--negro); color: var(--blanco); font-family: Sora, system-ui, sans-serif; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── Documento ── */
+.doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.doc-head h1 { font-size: 1.45rem; margin: 0; letter-spacing: -.02em; }
+.lead { color: var(--gris-muy-claro); font-size: .86rem; margin: 8px 0 0; max-width: 820px; line-height: 1.6; }
+.toolbar { display: flex; gap: 8px; }
+.tb-btn { height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--gris); background: var(--gris-oscuro); color: var(--blanco); font: 600 .78rem Sora, sans-serif; cursor: pointer; }
+.tb-btn[aria-pressed="true"] { background: var(--accent-muted); border-color: transparent; color: var(--accent); }
+h2 { font-size: 1rem; margin: 44px 0 4px; letter-spacing: -.01em; }
+h2 .tag { font-size: .66rem; font-weight: 700; padding: 3px 8px; border-radius: 99px; background: var(--accent-muted); color: var(--accent); margin-left: 8px; vertical-align: 2px; }
+.note { color: var(--gris-muy-claro); font-size: .8rem; line-height: 1.6; max-width: 820px; margin: 4px 0 18px; }
+.note b { color: var(--blanco); }
+.frames { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+.frame-label { font-size: .68rem; font-weight: 700; color: var(--gris-claro); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.phone { width: 390px; padding: 14px; border-radius: 28px; border: 1px solid var(--gris); background: var(--negro); }
+.desk { width: 760px; }
+
+/* ── Wireframe de ubicación ── */
+.wire { width: 900px; display: grid; gap: 10px; padding: 18px; border: 1px dashed var(--gris); border-radius: 18px; }
+.wire .blk { border-radius: 12px; background: var(--gris-oscuro); border: 1px solid var(--gris); color: var(--gris-claro); font-size: .72rem; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+.wire .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.wire .row21 { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+.wire .new { background: var(--accent-soft); border: 1.5px solid var(--accent); color: var(--accent); font-weight: 700; flex-direction: column; gap: 4px; }
+.wire .new small { font-weight: 500; color: var(--gris-muy-claro); }
+.wire .month { height: 26px; background: none; border: none; justify-content: flex-start; color: var(--blanco); font-weight: 700; }
+
+/* ── Tarjeta (mismas medidas que .lp-card.dash-card) ── */
+.lp-card { background: var(--card-subtle-gradient), var(--gris-oscuro); border: 1px solid var(--gris); border-radius: var(--lp-radius); }
+.dash-card { display: flex; flex-direction: column; gap: .75rem; min-width: 0; padding: .875rem 1rem 1rem; }
+.dash-card-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 24px; }
+.dash-card-head .title { font-size: .72rem; font-weight: 700; color: var(--gris-muy-claro); text-transform: uppercase; letter-spacing: .04em; }
+.seg { display: inline-flex; padding: 2px; border-radius: 99px; background: var(--gris); }
+.seg button { height: 24px; padding: 0 9px; white-space: nowrap; border: 0; border-radius: 99px; background: none; color: var(--gris-muy-claro); font: 700 .7rem Sora, sans-serif; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--gris-oscuro); color: var(--blanco); }
+.total { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.total .v { font-size: 1.7rem; font-weight: 800; letter-spacing: -.03em; }
+.total .cap { font-size: .74rem; font-weight: 600; color: var(--gris-claro); }
+
+/* Cinta apilada al 100 % */
+.ribbon { display: flex; height: 10px; border-radius: 99px; overflow: hidden; gap: 2px; }
+.ribbon span { height: 100%; transition: opacity .2s, flex-grow .4s cubic-bezier(.32,.72,0,1); }
+.ribbon.has-focus span:not(.on) { opacity: .25; }
+
+/* Filas de categoría */
+.cat-list { margin: 0 -1rem; border-top: 1px solid var(--lp-divider); }
+.cat { border-bottom: 1px solid var(--lp-divider); }
+.cat:last-child { border-bottom: 0; }
+.cat-row { width: 100%; display: grid; grid-template-columns: 34px minmax(0,1fr) auto 18px; align-items: center; gap: .7rem; padding: .65rem 1rem; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cat-row:hover { background: var(--lp-row-hover); }
+.emoji { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 1.05rem; background: color-mix(in srgb, var(--c) 16%, transparent); }
+.cat-main { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.cat-name { display: flex; justify-content: space-between; gap: 8px; font-size: .84rem; font-weight: 600; }
+.cat-name .pct { color: var(--gris-claro); font-weight: 600; font-size: .74rem; }
+.bar { height: 6px; border-radius: 99px; background: color-mix(in srgb, var(--gris) 70%, transparent); overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 99px; background: var(--c); transition: width .5s cubic-bezier(.32,.72,0,1); }
+.cat-amt { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.cat-amt b { font-size: .86rem; font-weight: 700; }
+.delta { font-size: .66rem; font-weight: 700; }
+.delta.up { color: var(--danger-text); } .delta.down { color: var(--success-text); } .delta.flat { color: var(--gris-claro); }
+.chev { color: var(--gris-claro); transition: transform .2s; font-size: .8rem; }
+.cat.open .chev { transform: rotate(90deg); }
+
+/* Subcategorías */
+.subs { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .25s ease; }
+.cat.open .subs { grid-template-rows: 1fr; }
+.subs > div { overflow: hidden; }
+.sub { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .35rem .7rem; align-items: center; padding: .45rem 1rem .45rem calc(1rem + 34px + .7rem); text-decoration: none; color: inherit; }
+.sub:hover { background: var(--lp-row-hover); }
+.sub:last-child { padding-bottom: .8rem; }
+.sub .n { font-size: .78rem; font-weight: 500; color: var(--gris-muy-claro); }
+.sub .n.none { font-style: italic; }
+.sub .a { font-size: .78rem; font-weight: 600; text-align: right; }
+.sub .bar { grid-column: 1 / -1; height: 4px; }
+.sub .bar i { background: color-mix(in srgb, var(--c) 65%, transparent); }
+
+.more { display: block; margin: .25rem auto 0; background: none; border: 0; color: var(--accent); font: 700 .75rem Sora, sans-serif; cursor: pointer; }
+
+/* ── Opción B: anillo doble ── */
+.sun-wrap { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 1.2rem; align-items: center; }
+.phone .sun-wrap { grid-template-columns: 1fr; justify-items: center; }
+.sun { position: relative; width: 220px; height: 220px; }
+.sun svg { width: 100%; height: 100%; overflow: visible; }
+.sun path { cursor: pointer; transition: opacity .2s, transform .2s; transform-origin: 110px 110px; stroke: var(--gris-oscuro); stroke-width: 1.5; }
+.sun.has-focus path:not(.on) { opacity: .22; }
+.sun-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; text-align: center; }
+.sun-center .k { font-size: .68rem; font-weight: 600; color: var(--gris-claro); max-width: 110px; }
+.sun-center .v { font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; }
+.sun-center .p { font-size: .7rem; font-weight: 700; color: var(--gris-muy-claro); }
+.legend { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.legend button { display: grid; grid-template-columns: 10px minmax(0,1fr) auto auto; gap: .6rem; align-items: center; padding: .4rem .5rem; border-radius: 8px; border: 0; background: none; color: inherit; font: 600 .78rem Sora, sans-serif; cursor: pointer; text-align: left; }
+.legend button:hover, .legend button.on { background: var(--lp-row-hover); }
+.legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.legend .pct { color: var(--gris-claro); font-size: .72rem; }
+.crumb { font-size: .74rem; font-weight: 700; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0; font-family: Sora, sans-serif; }
+
+.pros { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 900px; margin-top: 18px; }
+.pros div { border: 1px solid var(--gris); border-radius: 12px; padding: 12px 14px; font-size: .78rem; line-height: 1.6; color: var(--gris-muy-claro); }
+.pros b { color: var(--blanco); display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="doc-head">
+  <div>
+    <h1>Gastos por categoría y subcategoría</h1>
+    <p class="lead">Tarjeta nueva para el dashboard. Sin Chart.js: barras con <code>div</code> + CSS (opción A) o un anillo en SVG a mano (opción B). Colores solo de los tokens del tema. Los datos son de ejemplo; en la app saldrían de <code>useMetricTransactions(year, month)</code> agrupando por <code>rootOf(tx)</code> y <code>subcategory_id</code>.</p>
+  </div>
+  <div class="toolbar">
+    <button class="tb-btn" id="themeBtn">☀️ Tema claro</button>
+  </div>
+</div>
+
+<h2>1 · Dónde va</h2>
+<p class="note">Dentro de <b>MonthOverview</b>, justo debajo de Resumen / Presupuestos / Top gastos, para que <b>use el mismo selector de mes</b> (flechas, swipe, "Hoy"). Ocupa todo el ancho en escritorio; en móvil es una tarjeta más en la columna. Tendencias (12 meses) queda debajo, sin cambios.</p>
+<div class="wire">
+  <div class="blk" style="height:70px">BalanceHero · saldo + cuentas + gráfico</div>
+  <div class="blk month">‹ Noviembre 2026 ›</div>
+  <div class="row3">
+    <div class="blk" style="height:90px">Resumen</div>
+    <div class="blk" style="height:90px">Presupuestos</div>
+    <div class="blk" style="height:90px">Top gastos</div>
+  </div>
+  <div class="blk new" style="height:110px">Gastos por categoría · NUEVO<small>src/components/dashboard/CategoryBreakdown.tsx</small></div>
+  <div class="row21">
+    <div class="blk" style="height:70px">Ingresos vs gastos</div>
+    <div class="blk" style="height:70px">Proyección de ahorro</div>
+  </div>
+  <div class="blk" style="height:50px">Amigos</div>
+</div>
+
+<h2>2 · Opción A — Barras desplegables <span class="tag">Recomendada</span></h2>
+<p class="note">Arriba, el total del mes y una <b>cinta apilada</b> con el peso de cada categoría. Debajo, categorías ordenadas por importe con su barra, % del total y variación frente al mes anterior. <b>Tocar una categoría la despliega</b> con sus subcategorías (barras más finas, relativas a la categoría). Cada subcategoría enlaza a Transacciones filtradas. Se muestran 6 categorías + "Otros"; "Ver todas" despliega el resto. Pasa el ratón por la cinta o las filas.</p>
+<div class="frames">
+  <div><div class="frame-label">Móvil · 390 px</div><div class="phone"><div id="a-mobile"></div></div></div>
+  <div><div class="frame-label">Escritorio · ancho completo</div><div class="desk"><div id="a-desk"></div></div></div>
+</div>
+
+<h2>3 · Opción B — Anillo doble (sunburst)</h2>
+<p class="note">Anillo interior = categorías, anillo exterior = sus subcategorías, en tonos del mismo color. El centro muestra lo que tengas encima. <b>Tocar una categoría hace zoom</b>: el anillo pasa a mostrar solo sus subcategorías y aparece "← Todas". Más vistoso, pero se lee peor con muchas categorías pequeñas.</p>
+<div class="frames">
+  <div><div class="frame-label">Móvil · 390 px</div><div class="phone"><div id="b-mobile"></div></div></div>
+  <div><div class="frame-label">Escritorio</div><div class="desk"><div id="b-desk"></div></div></div>
+</div>
+
+<div class="pros">
+  <div><b>A · Barras</b>Comparar longitudes es más preciso que comparar ángulos; los nombres largos caben; funciona igual con 3 que con 15 categorías; accesible (es una lista de botones). Encaja con las filas de Presupuestos.</div>
+  <div><b>B · Anillo</b>Ve las dos jerarquías de un vistazo y queda llamativo, pero los segmentos pequeños apenas se ven, en móvil ocupa mucho alto y necesita la leyenda igualmente.</div>
+</div>
+
+<script>
+const DATA = [
+  { e: "🏠", n: "Vivienda", prev: 812, subs: [["Alquiler", 650], ["Luz", 72], ["Internet", 40], ["Comunidad", 30], ["Agua", 28]] },
+  { e: "🛒", n: "Alimentación", prev: 365, subs: [["Supermercado", 318], ["Mercado", 70], ["Panadería", 24]] },
+  { e: "🍽️", n: "Ocio", prev: 310, subs: [["Restaurantes", 148], ["Bares", 64], ["Conciertos", 52], ["Cine", 22]] },
+  { e: "🚗", n: "Transporte", prev: 180, subs: [["Gasolina", 96], ["Transporte público", 40], ["Mantenimiento", 20], ["Parking", 18]] },
+  { e: "📺", n: "Suscripciones", prev: 62, subs: [["Gimnasio", 35], ["Netflix", 13], ["Spotify", 11], ["iCloud", 3]] },
+  { e: "👕", n: "Ropa", prev: 20, subs: [["Ropa", 55]] },
+  { e: "💊", n: "Salud", prev: 30, subs: [["Farmacia", 28], [null, 20]] },
+  { e: "🎁", n: "Regalos", prev: 0, subs: [["Cumpleaños", 25], [null, 15]] },
+  { e: "📚", n: "Educación", prev: 12, subs: [["Libros", 18]] },
+];
+const COLORS = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)", "var(--c6)"];
+const MAX = 6;
+
+const fmt = (v) => v.toLocaleString("es-ES", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+const pct = (v, t) => (t ? Math.round((v / t) * 100) : 0) + "%";
+
+const cats = DATA.map((c) => ({ ...c, total: c.subs.reduce((s, [, v]) => s + v, 0) })).sort((a, b) => b.total - a.total);
+const TOTAL = cats.reduce((s, c) => s + c.total, 0);
+const PREV = cats.reduce((s, c) => s + c.prev, 0);
+
+/** Top 6 con color propio; el resto se agrupa en "Otros" (sus categorías pasan a ser las "subcategorías"). */
+function grouped() {
+  const top = cats.slice(0, MAX).map((c, i) => ({ ...c, c: COLORS[i] }));
+  const rest = cats.slice(MAX);
+  if (rest.length) top.push({ e: "•••", n: "Otros", c: "var(--c-other)", total: rest.reduce((s, c) => s + c.total, 0), prev: rest.reduce((s, c) => s + c.prev, 0), subs: rest.map((c) => [`${c.e} ${c.n}`, c.total]) });
+  return top;
+}
+
+function deltaHtml(cur, prev) {
+  if (!prev) return `<span class="delta flat">nuevo</span>`;
+  const d = Math.round(((cur - prev) / prev) * 100);
+  if (d === 0) return `<span class="delta flat">= mes ant.</span>`;
+  return `<span class="delta ${d > 0 ? "up" : "down"}">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}%</span>`;
+}
+
+/* ───────────── Opción A ───────────── */
+function renderA(root) {
+  let expandedAll = false;
+  const draw = () => {
+    const list = expandedAll ? cats.map((c, i) => ({ ...c, c: COLORS[i] ?? "var(--c-other)" })) : grouped();
+    const max = list[0].total;
+    root.innerHTML = `
+      <div class="lp-card dash-card">
+        <div class="dash-card-head"><span class="title">Gastos por categoría</span>
+          <div class="seg"><button aria-pressed="true">Mes</button><button>3 meses</button><button>Año</button></div></div>
+        <div class="total"><span class="v num">${fmt(TOTAL)}</span><span class="cap">gastado en noviembre</span>${deltaHtml(TOTAL, PREV)}</div>
+        <div class="ribbon">${list.map((c, i) => `<span data-i="${i}" title="${c.n} · ${fmt(c.total)}" style="flex-grow:${c.total};background:${c.c}"></span>`).join("")}</div>
+        <div class="cat-list">
+          ${list.map((c, i) => `
+          <div class="cat" data-i="${i}" style="--c:${c.c}">
+            <button class="cat-row" aria-expanded="false">
+              <span class="emoji">${c.e}</span>
+              <span class="cat-main"><span class="cat-name"><span>${c.n}</span><span class="pct num">${pct(c.total, TOTAL)}</span></span>
+                <span class="bar"><i style="width:${(c.total / max) * 100}%"></i></span></span>
+              <span class="cat-amt"><b class="num">${fmt(c.total)}</b>${deltaHtml(c.total, c.prev)}</span>
+              <span class="chev">›</span>
+            </button>
+            <div class="subs"><div>
+              ${c.subs.slice().sort((a, b) => b[1] - a[1]).map(([n, v]) => `
+                <a class="sub" href="#" onclick="return false" title="Ver transacciones">
+                  <span class="n ${n ? "" : "none"}">${n ?? "Sin subcategoría"}</span>
+                  <span class="a num">${fmt(v)} <span class="pct" style="color:var(--gris-claro);font-weight:600">· ${pct(v, c.total)}</span></span>
+                  <span class="bar"><i style="width:${(v / c.total) * 100}%"></i></span>
+                </a>`).join("")}
+            </div></div>
+          </div>`).join("")}
+        </div>
+        ${cats.length > MAX ? `<button class="more">${expandedAll ? "Agrupar pequeñas en «Otros»" : `Ver las ${cats.length} categorías`}</button>` : ""}
+      </div>`;
+
+    const ribbon = root.querySelector(".ribbon");
+    const focus = (i) => {
+      ribbon.classList.toggle("has-focus", i != null);
+      ribbon.querySelectorAll("span").forEach((s) => s.classList.toggle("on", s.dataset.i == i));
+    };
+    root.querySelectorAll(".cat").forEach((el) => {
+      el.addEventListener("mouseenter", () => focus(el.dataset.i));
+      el.addEventListener("mouseleave", () => focus(null));
+      el.querySelector(".cat-row").addEventListener("click", (e) => {
+        const open = el.classList.toggle("open");
+        e.currentTarget.setAttribute("aria-expanded", open);
+      });
+    });
+    ribbon.querySelectorAll("span").forEach((s) => {
+      s.addEventListener("mouseenter", () => focus(s.dataset.i));
+      s.addEventListener("mouseleave", () => focus(null));
+    });
+    root.querySelector(".more")?.addEventListener("click", () => { expandedAll = !expandedAll; draw(); });
+    root.querySelector(".cat").classList.add("open"); // la primera abierta para el mockup
+  };
+  draw();
+}
+
+/* ───────────── Opción B ───────────── */
+const polar = (r, a) => [110 + r * Math.sin(a), 110 - r * Math.cos(a)];
+function arc(r0, r1, a0, a1) {
+  const gap = 0.004; a0 += gap; a1 -= gap;
+  if (a1 - a0 >= Math.PI * 2 - 0.02) a1 = a0 + Math.PI * 2 - 0.02;
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  const [x0, y0] = polar(r1, a0), [x1, y1] = polar(r1, a1), [x2, y2] = polar(r0, a1), [x3, y3] = polar(r0, a0);
+  return `M${x0},${y0} A${r1},${r1} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${r0},${r0} 0 ${large} 0 ${x3},${y3} Z`;
+}
+
+function renderB(root) {
+  let zoom = null;
+  const draw = () => {
+    const list = grouped();
+    const shades = [72, 56, 42, 32, 24];
+    let paths = "", legend = "";
+    let a = 0;
+    if (zoom == null) {
+      list.forEach((c, i) => {
+        const span = (c.total / TOTAL) * Math.PI * 2;
+        paths += `<path class="cat-p" data-k="c${i}" data-i="${i}" d="${arc(58, 82, a, a + span)}" fill="${c.c}"><title>${c.n} · ${fmt(c.total)}</title></path>`;
+        let b = a;
+        c.subs.slice().sort((x, y) => y[1] - x[1]).forEach(([n, v], j) => {
+          const s = (v / TOTAL) * Math.PI * 2;
+          paths += `<path data-k="c${i}" data-i="${i}" d="${arc(86, 104, b, b + s)}" fill="color-mix(in srgb, ${c.c} ${shades[j] ?? 20}%, transparent)"><title>${n ?? "Sin subcategoría"} · ${fmt(v)}</title></path>`;
+          b += s;
+        });
+        legend += `<button data-k="c${i}" data-i="${i}" style="--c:${c.c}"><i></i><span>${c.e} ${c.n}</span><span class="pct num">${pct(c.total, TOTAL)}</span><b class="num">${fmt(c.total)}</b></button>`;
+        a += span;
+      });
+    } else {
+      const c = list[zoom];
+      c.subs.slice().sort((x, y) => y[1] - x[1]).forEach(([n, v], j) => {
+        const s = (v / c.total) * Math.PI * 2;
+        const col = `color-mix(in srgb, ${c.c} ${[100, 75, 58, 44, 32][j] ?? 25}%, transparent)`;
+        paths += `<path data-k="s${j}" d="${arc(62, 104, a, a + s)}" fill="${col}"><title>${n ?? "Sin subcategoría"} · ${fmt(v)}</title></path>`;
+        legend += `<button data-k="s${j}" style="--c:${col}"><i></i><span>${n ?? "Sin subcategoría"}</span><span class="pct num">${pct(v, c.total)}</span><b class="num">${fmt(v)}</b></button>`;
+        a += s;
+      });
+    }
+    const head = zoom == null ? { k: "Total noviembre", v: TOTAL, p: "" } : { k: `${list[zoom].e} ${list[zoom].n}`, v: list[zoom].total, p: pct(list[zoom].total, TOTAL) + " del total" };
+    root.innerHTML = `
+      <div class="lp-card dash-card">
+        <div class="dash-card-head"><span class="title">Gastos por categoría</span>
+          ${zoom == null ? `<div class="seg"><button aria-pressed="true">Mes</button><button>3 meses</button><button>Año</button></div>` : `<button class="crumb">← Todas las categorías</button>`}</div>
+        <div class="sun-wrap">
+          <div class="sun"><svg viewBox="0 0 220 220">${paths}</svg>
+            <div class="sun-center"><span class="k">${head.k}</span><span class="v num">${fmt(head.v)}</span><span class="p">${head.p}</span></div></div>
+          <div class="legend">${legend}</div>
+        </div>
+      </div>`;
+
+    const sun = root.querySelector(".sun");
+    const center = root.querySelector(".sun-center");
+    const reset = center.innerHTML;
+    const focus = (k, el) => {
+      sun.classList.toggle("has-focus", k != null);
+      sun.querySelectorAll("path").forEach((p) => p.classList.toggle("on", p.dataset.k === k));
+      root.querySelectorAll(".legend button").forEach((b) => b.classList.toggle("on", b.dataset.k === k));
+      if (k == null) { center.innerHTML = reset; return; }
+      const btn = root.querySelector(`.legend button[data-k="${k}"]`);
+      const [, name, p, v] = btn.children;
+      center.innerHTML = `<span class="k">${name.textContent}</span><span class="v num">${v.textContent}</span><span class="p">${p.textContent}</span>`;
+    };
+    root.querySelectorAll("[data-k]").forEach((el) => {
+      el.addEventListener("mouseenter", () => focus(el.dataset.k));
+      el.addEventListener("mouseleave", () => focus(null));
+      if (zoom == null) el.addEventListener("click", () => { zoom = Number(el.dataset.i); draw(); });
+    });
+    root.querySelector(".crumb")?.addEventListener("click", () => { zoom = null; draw(); });
+  };
+  draw();
+}
+
+renderA(document.getElementById("a-mobile"));
+renderA(document.getElementById("a-desk"));
+renderB(document.getElementById("b-mobile"));
+renderB(document.getElementById("b-desk"));
+
+const btn = document.getElementById("themeBtn");
+btn.onclick = () => {
+  const html = document.documentElement;
+  const light = html.dataset.theme !== "light";
+  html.dataset.theme = light ? "light" : "dark";
+  btn.textContent = light ? "🌙 Tema oscuro" : "☀️ Tema claro";
+};
+</script>
+</body>
+</html>
