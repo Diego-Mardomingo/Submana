@@ -20,6 +20,7 @@ import { monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
 import { cn } from "@/lib/utils";
+import { CategoryBreakdownCard } from "./CategoryBreakdown";
 import { CardHead, money, SeeAll, signClass, signedMoney, Stat } from "./shared";
 
 type Month = { year: number; month: number };
@@ -224,6 +225,7 @@ export default function MonthOverview() {
         <SummaryCard month={month} es={es} />
         <BudgetsCard month={month} es={es} />
         <TopExpensesCard month={month} es={es} />
+        <CategoryBreakdownCard month={month} es={es} />
       </div>
     </section>
   );
