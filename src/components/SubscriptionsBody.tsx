@@ -36,7 +36,7 @@ const daysFromToday = (date: Date) => {
 };
 
 /** "Hoy", "Mañana", "En 5 días" for the coming week, otherwise "14 mar" (plus the year when it differs). */
-function useDateLabels() {
+export function useDateLabels() {
   const lang = useLang();
   const es = lang === "es";
   const short = (date: Date) =>

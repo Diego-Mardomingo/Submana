@@ -1,37 +1,54 @@
 /* ═══════════════════════════════════════════════
-   HOME — month calendar + agenda of the picked day, on the list-pages vocabulary.
-   Mobile: calendar card, then the day's agenda below. Tablet: roomier cells.
-   Desktop: calendar on the left, the agenda in a sticky column on the right.
+   HOME — the month at a glance. No cards: the content sits on the page background, separated by
+   hairlines and space. Mobile: calendar, the picked day's agenda, then the month's figures, what is
+   pending and the next charges. Desktop: the calendar on the left, the rest in a sticky column.
+   Design reference: docs/design/home.html.
    ═══════════════════════════════════════════════ */
 
+.home-page {
+  /* Spending intensity: one hue in four steps (spending is not an error, so it is not red). */
+  --heat-1: color-mix(in srgb, var(--accent) 15%, var(--gris-oscuro));
+  --heat-2: color-mix(in srgb, var(--accent) 32%, var(--gris-oscuro));
+  --heat-3: color-mix(in srgb, var(--accent) 54%, var(--gris-oscuro));
+  --heat-4: color-mix(in srgb, var(--accent) 82%, var(--gris-oscuro));
+}
+
 @media (min-width: 1024px) {
-  .cal-page.lp-page.page-container {
+  .home-page.lp-page.page-container {
     max-width: 1180px;
   }
 }
 
-.cal-layout {
+.home-layout {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.75rem;
+  min-width: 0;
+}
+
+.home-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
   min-width: 0;
 }
 
 @media (min-width: 1024px) {
-  .cal-layout {
+  .home-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 360px;
+    grid-template-columns: minmax(0, 1fr) 340px;
     align-items: start;
-    gap: 2rem;
+    gap: 3rem;
   }
 
-  .cal-agenda {
+  .home-side {
     position: sticky;
     top: 1.5rem;
+    padding-top: 0.5rem;
   }
 }
 
-/* ── Filter button (page header) ── */
+/* ── Filter button (header) and its sheet ── */
 .cal-filter-btn {
   position: relative;
   display: grid;
@@ -81,206 +98,195 @@
   flex-shrink: 0;
 }
 
-/* ── Calendar card ── */
-.cal-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+/* ── Header: the month is the page title ── */
+.home-cal {
   min-width: 0;
-  padding: 0.875rem 0.625rem 0.625rem;
   touch-action: pan-y;
 }
 
-.cal-month {
-  margin: -0.375rem 0 0;
-}
-
-/* Subscriptions of the month: total, charged vs upcoming */
-.cal-subs {
+.home-top {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.7rem 0.75rem;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--gris) 45%, transparent);
-}
-
-.cal-subs-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.cal-subs-total {
-  font-size: 1.05rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  color: var(--blanco);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.cal-subs-meter {
-  width: 100%;
-  height: 5px;
-}
-
-.cal-subs-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.25rem 0.75rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--gris-claro);
-  font-variant-numeric: tabular-nums;
-}
-
-.cal-subs-legend > span {
-  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.6rem;
+  min-height: 44px;
+  margin-bottom: 0.875rem;
+}
+
+.home-top h1 {
+  margin: 0;
+  min-width: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
   white-space: nowrap;
+  color: var(--blanco);
 }
 
-.cal-legend-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 99px;
-  background: var(--gris-claro);
-  flex-shrink: 0;
+.home-top h1::first-letter {
+  text-transform: uppercase;
 }
 
-.cal-subs-count {
+.home-top h1 span {
+  font-weight: 500;
+  letter-spacing: -0.03em;
   color: var(--gris-claro);
 }
 
-/* Weekday names and the day grid share the same 7 columns */
-.cal-weekdays,
-.cal-grid {
+.home-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.home-top-actions .cal-filter-btn {
+  margin-left: 0.25rem;
+}
+
+/* ── Calendar ── */
+.home-weekdays,
+.home-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 5px;
 }
 
-.cal-weekdays {
-  margin-top: 0.25rem;
+.home-weekdays {
+  margin-bottom: 6px;
   font-size: 0.66rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-weight: 600;
   text-align: center;
   color: var(--gris-claro);
 }
 
-.cal-weekdays > span:nth-child(n + 6) {
-  color: color-mix(in srgb, var(--gris-claro) 70%, transparent);
-}
-
-.cal-weekday-short {
+.home-weekday-short {
   display: none;
 }
 
-/* ── Day cell ── */
-.cal-day {
+.home-day {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
-  height: 66px;
-  padding: 5px 2px 6px;
-  border: 1px solid color-mix(in srgb, var(--gris) 70%, transparent);
+  height: 50px;
+  padding: 6px 0 0;
+  border: 0;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--gris) 18%, transparent);
+  background: var(--gris-oscuro);
   color: var(--blanco);
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: filter 0.15s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.cal-day:active {
-  background: var(--lp-row-hover);
+.home-day.heat-1 { background: var(--heat-1); }
+.home-day.heat-2 { background: var(--heat-2); }
+.home-day.heat-3 { background: var(--heat-3); }
+.home-day.heat-4 { background: var(--heat-4); }
+
+/* What hasn't happened yet has no fill: only the outline. */
+.home-day.is-future {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--lp-divider);
+}
+
+.home-day:active {
+  filter: brightness(1.15);
 }
 
 @media (hover: hover) {
-  .cal-day:hover {
+  .home-day:hover {
+    filter: brightness(1.15);
+  }
+
+  .home-day.is-future:hover {
     background: var(--lp-row-hover);
-    border-color: var(--gris);
   }
 }
 
-.cal-day:focus-visible {
+.home-day:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
-.cal-day-num {
-  display: grid;
-  place-items: center;
-  min-width: 24px;
-  height: 22px;
-  padding: 0 4px;
+.home-day.is-selected {
+  outline: 2px solid var(--blanco);
+  outline-offset: 2px;
+}
+
+.home-day-num {
+  min-width: 20px;
+  padding: 0 5px;
   border-radius: 99px;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 20px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-.cal-day.is-past .cal-day-num {
   color: var(--gris-muy-claro);
 }
 
-.cal-day.is-today .cal-day-num {
-  color: var(--accent);
+.home-day.heat-2 .home-day-num,
+.home-day.heat-3 .home-day-num {
+  color: var(--blanco);
+}
+
+.home-day.heat-4 .home-day-num {
+  color: #fff;
+}
+
+.home-day.is-future .home-day-num {
+  color: var(--gris-claro);
+}
+
+.home-day.is-today .home-day-num {
+  background: var(--blanco);
+  color: var(--negro);
   font-weight: 800;
 }
 
-.cal-day.is-selected {
-  background: var(--accent-soft);
-  border-color: var(--accent-muted);
-}
-
-.cal-day.is-selected .cal-day-num {
-  color: var(--blanco);
-  font-weight: 700;
-}
-
-.cal-day.is-today.is-selected .cal-day-num {
-  background: var(--accent);
-  color: var(--negro);
+/* A day with income */
+.home-day.has-income::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 99px;
+  background: var(--success);
 }
 
 /* Subscription logos, overlapping */
-.cal-day-logos {
+.home-day-logos {
   display: flex;
   align-items: center;
 }
 
-.cal-day-logo,
-.cal-day-more {
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
+.home-day-logo,
+.home-day-more {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 1.5px var(--gris-oscuro);
+  box-shadow: 0 0 0 1.5px var(--negro);
 }
 
-.cal-day-logo {
+.home-day-logo {
   object-fit: cover;
   background: var(--gris);
 }
 
-.cal-day-logo + .cal-day-logo,
-.cal-day-logo + .cal-day-more {
+.home-day-logo + .home-day-logo,
+.home-day-logo + .home-day-more {
   margin-left: -5px;
 }
 
-.cal-day-more {
+.home-day-more {
   display: grid;
   place-items: center;
   background: var(--gris);
@@ -290,153 +296,422 @@
   letter-spacing: -0.02em;
 }
 
-/* Bottom line: income / expense marks and the day's net */
-.cal-day-foot {
+/* Legend */
+.home-key {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
-  max-width: 100%;
-  margin-top: auto;
-  overflow: hidden;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 0.625rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--gris-claro);
 }
 
-.cal-day-dots {
-  display: flex;
-  gap: 2px;
-  flex-shrink: 0;
+.home-key > i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
 }
 
-.cal-day-dots > i {
-  width: 5px;
-  height: 5px;
+.home-key > i.heat-1 { background: var(--heat-1); }
+.home-key > i.heat-2 { background: var(--heat-2); }
+.home-key > i.heat-3 { background: var(--heat-3); }
+.home-key > i.heat-4 { background: var(--heat-4); }
+
+.home-key-income {
+  width: 6px;
+  height: 6px;
+  margin-left: 0.6rem;
   border-radius: 99px;
-  background: var(--gris-claro);
-}
-
-.cal-day-dots > i.is-income {
   background: var(--success);
 }
 
-.cal-day-dots > i.is-expense {
-  background: var(--danger);
+/* ── Agenda of the picked day ── */
+.home-agenda {
+  margin-top: 1.125rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--lp-divider);
+  scroll-margin: 1rem;
 }
 
-.cal-day-net {
+.home-agenda-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 36px;
+}
+
+.home-agenda-title {
   min-width: 0;
-  font-size: 0.58rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  color: var(--gris-muy-claro);
+  color: var(--blanco);
+}
+
+.home-agenda-title::first-letter {
+  text-transform: uppercase;
+}
+
+.home-agenda-title small {
+  margin-left: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--gris-claro);
+}
+
+.home-agenda-net {
+  font-size: 0.82rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  color: var(--gris-muy-claro);
 }
 
-.cal-day-net.is-income {
-  color: var(--success);
+.home-agenda-close {
+  margin-left: auto;
 }
 
-/* ── Day agenda ── */
-.cal-agenda {
-  scroll-margin-top: 1rem;
+.home-agenda-empty {
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  color: var(--gris-claro);
 }
 
-.cal-meta-icon {
+.home-meta-icon {
   width: 11px;
   height: 11px;
   flex-shrink: 0;
 }
 
-.cal-agenda-empty {
-  margin: 0;
-  padding: 1rem 0.875rem;
+.home-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-family: inherit;
   font-size: 0.85rem;
-  color: var(--gris-claro);
-  text-align: center;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.cal-add-row .lp-title {
-  color: var(--accent);
+.home-add:hover {
+  color: var(--accent-light);
+}
+
+/* Rows straight on the background: no side padding, hairlines between them. */
+.home-rows > .lp-row {
+  padding-inline: 0;
+  border-radius: 0;
+}
+
+.home-rows > .lp-row + .lp-row {
+  border-top: 1px solid var(--lp-divider);
+}
+
+.home-rows > .lp-row:hover,
+.home-rows > .lp-row:active {
+  background: none;
+}
+
+@media (hover: hover) {
+  .home-rows > .lp-row:hover .lp-title {
+    color: var(--accent-light);
+  }
+}
+
+/* ── The month in figures ── */
+.home-label {
+  margin: 0;
+  font-size: 0.8rem;
   font-weight: 600;
+  color: var(--gris-muy-claro);
 }
 
-.cal-add-icon.lp-icon {
-  background: var(--accent-soft);
+.home-balance {
+  margin: 0.3rem 0 0.75rem;
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--blanco);
+}
+
+.home-balance.is-income {
+  color: var(--success-text);
+}
+
+.home-balance.is-negative {
+  color: var(--danger-text);
+}
+
+.home-balance.is-muted {
+  color: var(--gris-claro);
+}
+
+.home-pair {
+  display: flex;
+  gap: 1.75rem;
+}
+
+.home-pair > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.home-pair span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+.home-pair b {
+  font-size: 0.98rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--blanco);
+}
+
+.home-vs {
+  max-width: 40ch;
+  margin: 0.875rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--gris-muy-claro);
+}
+
+.home-vs b {
+  font-weight: 700;
+  color: var(--blanco);
+}
+
+/* ── Pending: one line that unfolds; absent when there is nothing ── */
+.home-pending {
+  border-block: 1px solid var(--lp-divider);
+}
+
+.home-pending-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--blanco);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.home-pending-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.home-pending-count {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: var(--negro);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-pending-chevron {
+  margin-left: auto;
+  color: var(--gris-claro);
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.home-pending-trigger[data-state="open"] .home-pending-chevron {
+  transform: rotate(90deg);
+}
+
+.home-pending .home-rows > .lp-row:first-child {
+  border-top: 1px solid var(--lp-divider);
+}
+
+.home-go {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
   color: var(--accent);
 }
 
-/* ── Larger screens: roomier cells, more of each day visible ── */
-@media (min-width: 480px) {
-  .cal-day {
-    height: 70px;
-  }
-
-  .cal-day-logo,
-  .cal-day-more {
-    width: 20px;
-    height: 20px;
-  }
+/* ── Next charges: a row of tiles ── */
+.home-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
+.home-section-aside {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+.home-section-aside b {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--blanco);
+}
+
+.home-dues {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.home-due {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  padding: 0.75rem 0.75rem 0.7rem;
+  border: 0;
+  border-radius: 14px;
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.home-due:hover {
+  background: var(--gris);
+}
+
+.home-due:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.home-due-logo {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 0.45rem;
+  border-radius: 9px;
+  object-fit: cover;
+  background: var(--gris);
+}
+
+.home-due-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.home-due-when {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--gris-claro);
+}
+
+.home-due-amount {
+  margin-top: 0.3rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Larger screens: roomier cells, the day number in the corner ── */
 @media (min-width: 768px) {
-  .cal-card {
-    padding: 1rem 1rem 0.875rem;
-    gap: 0.875rem;
+  .home-top {
+    margin-bottom: 1.125rem;
   }
 
-  .cal-weekdays,
-  .cal-grid {
-    gap: 6px;
+  .home-top h1 {
+    font-size: 2.1rem;
   }
 
-  .cal-weekday-narrow {
+  .home-weekdays,
+  .home-grid {
+    gap: 7px;
+  }
+
+  .home-weekday-narrow {
     display: none;
   }
 
-  .cal-weekday-short {
+  .home-weekday-short {
     display: inline;
   }
 
-  .cal-day {
-    height: 86px;
-    gap: 4px;
-    padding: 7px 4px 8px;
+  .home-day {
+    align-items: flex-start;
+    gap: 6px;
+    height: 76px;
+    padding: 8px 0 0 9px;
+    border-radius: 14px;
   }
 
-  .cal-day-num {
-    font-size: 0.9rem;
-    height: 24px;
-    min-width: 26px;
+  .home-day-num {
+    font-size: 0.86rem;
+    line-height: 22px;
+    min-width: 22px;
   }
 
-  .cal-day-logo,
-  .cal-day-more {
-    width: 24px;
-    height: 24px;
+  .home-day.has-income::after {
+    top: 9px;
+    right: 9px;
+    width: 7px;
+    height: 7px;
+  }
+
+  .home-day-logos {
+    padding-left: 2px;
+  }
+
+  .home-day-logo,
+  .home-day-more {
+    width: 22px;
+    height: 22px;
     border-radius: 7px;
   }
 
-  .cal-day-more {
-    font-size: 0.62rem;
+  .home-day-more {
+    font-size: 0.6rem;
   }
 
-  .cal-day-foot {
-    gap: 4px;
-  }
-
-  .cal-day-dots > i {
-    width: 6px;
-    height: 6px;
-  }
-
-  .cal-day-net {
-    font-size: 0.7rem;
+  .home-balance {
+    font-size: 3rem;
   }
 }
 
 @media (min-width: 1280px) {
-  .cal-day {
-    height: 92px;
+  .home-day {
+    height: 84px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-day,
+  .home-pending-chevron {
+    transition: none;
   }
 }
