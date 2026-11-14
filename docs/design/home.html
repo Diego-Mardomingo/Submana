@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Submana · Inicio (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+/* ── Tokens copiados de src/app/globals.css ── */
+:root, [data-theme="dark"] {
+  --negro: #0f1012; --gris-oscuro: #16171a; --gris: #23252a;
+  --gris-claro: #6b7280; --gris-muy-claro: #9ca3af; --blanco: #e8eaed;
+  --accent: #a78bfa; --accent-soft: rgba(167,139,250,.10); --accent-muted: rgba(167,139,250,.18);
+  --success: #6ee7b7; --danger: #ef4444; --warning: #fcd34d; --info: #93c5fd;
+  --success-text: #6ee7b7; --danger-text: #f87171; --warning-text: #fcd34d;
+  --row-hover: rgba(255,255,255,.04);
+}
+[data-theme="light"] {
+  --negro: #f8f9fb; --gris-oscuro: #eef0f4; --gris: #dde1e8;
+  --gris-claro: #6b7280; --gris-muy-claro: #4b5563; --blanco: #111318;
+  --accent: #7c5ccc; --accent-soft: rgba(124,92,204,.08); --accent-muted: rgba(124,92,204,.15);
+  --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6;
+  --success-text: #047857; --danger-text: #b91c1c; --warning-text: #b45309;
+  --row-hover: rgba(0,0,0,.04);
+}
+:root {
+  --line: color-mix(in srgb, var(--gris) 80%, transparent);
+  /* Intensidad de gasto: un solo color en cuatro pasos (gastar no es un error, así que no es rojo). */
+  --heat-1: color-mix(in srgb, var(--accent) 15%, var(--gris-oscuro));
+  --heat-2: color-mix(in srgb, var(--accent) 32%, var(--gris-oscuro));
+  --heat-3: color-mix(in srgb, var(--accent) 54%, var(--gris-oscuro));
+  --heat-4: color-mix(in srgb, var(--accent) 82%, var(--gris-oscuro));
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; padding: 36px 40px 100px; background: var(--negro); color: var(--blanco); font-family: Sora, system-ui, sans-serif; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── Documento ── */
+.doc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.doc-head h1 { font-size: 1.45rem; margin: 0; letter-spacing: -.02em; }
+.lead { color: var(--gris-muy-claro); font-size: .86rem; margin: 8px 0 0; max-width: 760px; line-height: 1.6; }
+.tb-btn { height: 34px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--gris); background: var(--gris-oscuro); font-weight: 600; font-size: .78rem; }
+.doc > h2 { font-size: 1rem; margin: 44px 0 4px; letter-spacing: -.01em; }
+.note { color: var(--gris-muy-claro); font-size: .8rem; line-height: 1.6; max-width: 760px; margin: 4px 0 18px; }
+.note b { color: var(--blanco); }
+.frames { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+.frame-label { font-size: .7rem; font-weight: 700; color: var(--gris-claro); margin-bottom: 8px; }
+.phone { width: 390px; border-radius: 28px; border: 1px solid var(--gris); background: var(--negro); overflow: hidden; }
+.phone .screen { padding: 18px 18px 26px; }
+.desk { width: 1080px; border-radius: 18px; border: 1px solid var(--gris); background: var(--negro); display: grid; grid-template-columns: 196px minmax(0,1fr); overflow: hidden; }
+.desk .screen { padding: 30px 36px 36px; }
+.side { border-right: 1px solid var(--gris); padding: 18px 12px; display: flex; flex-direction: column; gap: 4px; font-size: .8rem; font-weight: 600; color: var(--gris-muy-claro); }
+.side .brand { color: var(--blanco); font-weight: 800; font-size: 1rem; padding: 4px 10px 14px; }
+.side span { padding: 8px 10px; border-radius: 10px; }
+.side .on { background: var(--accent-soft); color: var(--accent); }
+.bar { height: 68px; border-top: 1px solid var(--gris); background: var(--gris-oscuro); display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; justify-items: center; font-size: .62rem; font-weight: 700; color: var(--gris-claro); }
+.bar .on { color: var(--accent); }
+.bar .plus { width: 46px; height: 46px; margin-top: -26px; border-radius: 50%; background: var(--accent); color: var(--negro); display: grid; place-items: center; font-size: 1.5rem; font-weight: 500; }
+
+/* ── Página: sin tarjetas; el contenido va sobre el fondo y lo separan líneas y aire ── */
+.home { display: grid; gap: 26px; }
+.desk .home { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 48px; align-items: start; }
+.col { display: grid; gap: 26px; min-width: 0; }
+
+/* Cabecera: el mes es el título de la pantalla */
+.top { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+.top h1 { margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; white-space: nowrap; }
+.desk .top h1 { font-size: 2.3rem; }
+.top h1 span { font-weight: 500; color: var(--gris-claro); letter-spacing: -.03em; }
+.top .sp { flex: 1; }
+.rnd { width: 34px; height: 34px; border-radius: 50%; border: 0; background: none; display: grid; place-items: center; color: var(--gris-muy-claro); position: relative; }
+.rnd:hover { background: var(--row-hover); color: var(--blanco); }
+.rnd svg { width: 18px; height: 18px; }
+.rnd i { position: absolute; top: 6px; right: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--negro); }
+
+/* ── Calendario ── */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+.desk .cal { gap: 7px; }
+.cal .w { font-size: .64rem; font-weight: 600; color: var(--gris-claro); text-align: center; padding-bottom: 3px; }
+.cell { position: relative; height: 48px; border: 0; border-radius: 12px; background: var(--gris-oscuro); padding: 7px 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.desk .cell { height: 66px; border-radius: 14px; align-items: flex-start; padding: 9px 0 0 11px; }
+.cell .n { font-size: .78rem; font-weight: 600; line-height: 18px; min-width: 18px; text-align: center; color: var(--gris-muy-claro); }
+.cell.l1 { background: var(--heat-1); } .cell.l2 { background: var(--heat-2); }
+.cell.l3 { background: var(--heat-3); } .cell.l4 { background: var(--heat-4); }
+.cell.l2 .n, .cell.l3 .n { color: var(--blanco); }
+.cell.l4 .n { color: #fff; }
+/* Lo que aún no ha pasado no tiene relleno: solo el contorno. */
+.cell.future { background: none; box-shadow: inset 0 0 0 1px var(--line); }
+.cell.future .n { color: var(--gris-claro); }
+.cell.today .n { background: var(--blanco); color: var(--negro); border-radius: 99px; padding: 0 5px; font-weight: 800; }
+.cell.sel { outline: 2px solid var(--blanco); outline-offset: 2px; }
+.cell:hover { filter: brightness(1.12); }
+.cell.inc::after { content: ""; position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.lg { display: grid; place-items: center; background: var(--c); color: #fff; font-weight: 800; flex: none; }
+.cell .lg { width: 16px; height: 16px; border-radius: 5px; font-size: 0; box-shadow: 0 0 0 1.5px var(--negro); }
+.desk .cell .lg { width: 20px; height: 20px; border-radius: 6px; font-size: .56rem; }
+
+.key { display: flex; align-items: center; justify-content: flex-end; gap: 5px; margin-top: 10px; font-size: .66rem; font-weight: 500; color: var(--gris-claro); }
+.key i { width: 11px; height: 11px; border-radius: 3px; }
+.key .gap { width: 10px; }
+.key .inc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+/* Agenda: aparece solo al tocar un día */
+.agenda { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.agenda[hidden] { display: none; }
+.agenda-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.agenda-head b { font-size: .92rem; font-weight: 700; }
+.agenda-head .net { font-size: .8rem; font-weight: 600; color: var(--gris-muy-claro); }
+.agenda-head .sp { flex: 1; }
+.row { width: 100%; display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 12px; padding: 9px 0; background: none; border: 0; text-align: left; }
+.row + .row { border-top: 1px solid var(--line); }
+.ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-size: 1rem; background: var(--gris-oscuro); }
+.ico.lg { font-size: .7rem; background: var(--c); }
+.main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.ti { font-size: .84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.me { font-size: .72rem; font-weight: 500; color: var(--gris-claro); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.amt { font-size: .86rem; font-weight: 700; white-space: nowrap; }
+.amt.in { color: var(--success-text); }
+.soon { color: var(--warning-text); font-weight: 600; }
+.empty { margin: 8px 0; font-size: .78rem; color: var(--gris-claro); }
+.link { height: 34px; padding: 0; border: 0; background: none; color: var(--accent); font-size: .8rem; font-weight: 700; }
+
+/* ── Resumen del mes ── */
+.label { margin: 0; font-size: .78rem; font-weight: 600; color: var(--gris-muy-claro); }
+.balance { display: block; margin: 4px 0 10px; font-size: 2.7rem; font-weight: 800; letter-spacing: -.045em; line-height: 1; }
+.desk .balance { font-size: 3rem; }
+.balance.pos { color: var(--success-text); }
+.pair { display: flex; gap: 28px; }
+.pair div { display: flex; flex-direction: column; gap: 3px; }
+.pair span { font-size: .7rem; font-weight: 600; color: var(--gris-claro); }
+.pair b { font-size: .95rem; font-weight: 700; }
+.vs { margin: 14px 0 0; font-size: .8rem; line-height: 1.55; color: var(--gris-muy-claro); max-width: 40ch; }
+.vs b { color: var(--blanco); font-weight: 700; }
+
+/* ── Avisos: una línea que se despliega; no existe si no hay nada ── */
+.todo { border-block: 1px solid var(--line); }
+.todo summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 14px 0; font-size: .86rem; font-weight: 700; cursor: pointer; }
+.todo summary::-webkit-details-marker { display: none; }
+.todo .count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 99px; background: var(--accent); color: var(--negro); font-size: .72rem; font-weight: 800; display: grid; place-items: center; }
+.todo .chev { margin-left: auto; color: var(--gris-claro); transition: transform .2s; }
+.todo[open] .chev { transform: rotate(90deg); }
+.todo .row { border-top: 1px solid var(--line); }
+.go { font-size: .76rem; font-weight: 700; color: var(--accent); }
+.tone { background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); font-weight: 800; font-size: .8rem; }
+
+/* ── Próximos cobros: fila horizontal ── */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.sec-head .total { font-size: .76rem; font-weight: 600; color: var(--gris-claro); }
+.sec-head .total b { color: var(--blanco); font-weight: 700; }
+.dues { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.due { border: 0; background: var(--gris-oscuro); border-radius: 14px; padding: 12px 12px 11px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; text-align: left; }
+.due:hover { background: var(--gris); }
+.due .lg { width: 28px; height: 28px; border-radius: 9px; font-size: .68rem; margin-bottom: 7px; }
+.due .ti { max-width: 100%; }
+.due .amt { margin-top: 5px; }
+
+@media (prefers-reduced-motion: reduce) { .todo .chev { transition: none; } }
+</style>
+</head>
+<body>
+<div class="doc">
+  <div class="doc-head">
+    <div>
+      <h1>Inicio: el mes de un vistazo</h1>
+      <p class="lead">El calendario sigue siendo el protagonista, pero ahora se lee sin números: cada día se tiñe según lo gastado y lleva los logos de sus cobros. Debajo, el balance del mes, los avisos que esperan una decisión y los próximos cobros. Mismos colores y tipografía que el resto de la app, sin tarjetas con borde. El Dashboard sigue aparte.</p>
+    </div>
+    <button class="tb-btn" id="theme">Tema claro</button>
+  </div>
+
+  <h2>Al entrar</h2>
+  <p class="note"><b>Días pasados</b>: relleno violeta, más intenso cuanto más gastaste respecto a un día normal tuyo (el alquiler no apaga el resto: los picos se quedan en el tono máximo). <b>Días futuros</b>: solo contorno, con el logo de la suscripción que se cobra. <b>Punto verde</b>: hubo un ingreso. La agenda del día ya no ocupa sitio fijo.</p>
+  <div class="frames">
+    <div><div class="frame-label">Móvil · 390 px</div><div class="phone"><div class="screen" data-home></div>
+      <div class="bar"><span class="on">Inicio</span><span>Dashboard</span><span class="plus">+</span><span>Movimientos</span><span>Menú</span></div></div></div>
+    <div><div class="frame-label">Móvil · al tocar un día</div><div class="phone"><div class="screen" data-home data-select="13"></div>
+      <div class="bar"><span class="on">Inicio</span><span>Dashboard</span><span class="plus">+</span><span>Movimientos</span><span>Menú</span></div></div></div>
+  </div>
+
+  <h2>Escritorio</h2>
+  <p class="note">El calendario ocupa la columna ancha y el resumen, los avisos y los cobros van a la derecha. Los avisos aparecen aquí desplegados; en móvil empiezan plegados en una línea.</p>
+  <div class="frames">
+    <div><div class="desk">
+      <div class="side"><span class="brand">Submana</span><span class="on">Inicio</span><span>Dashboard</span><span>Transacciones</span><span>Cuentas</span><span>Suscripciones</span><span>Presupuestos</span></div>
+      <div class="screen" data-home data-open></div></div></div>
+  </div>
+</div>
+
+<template id="home-tpl">
+  <div class="home">
+    <div class="col">
+      <section>
+        <div class="top">
+          <h1>Noviembre <span>2026</span></h1><span class="sp"></span>
+          <button class="rnd" aria-label="Mes anterior"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+          <button class="rnd" aria-label="Mes siguiente"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+          <button class="rnd" aria-label="Notificaciones, 2 nuevas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><i></i></button>
+        </div>
+        <div class="cal" role="group" aria-label="Noviembre 2026"></div>
+        <div class="key" aria-hidden="true">Menos<i style="background:var(--heat-1)"></i><i style="background:var(--heat-2)"></i><i style="background:var(--heat-3)"></i><i style="background:var(--heat-4)"></i>Más gasto<span class="gap"></span><span class="inc-dot"></span>Ingreso</div>
+        <div class="agenda" hidden></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section>
+        <p class="label">Balance de noviembre</p>
+        <span class="balance pos num">+901,70 €</span>
+        <div class="pair">
+          <div><span>Gastado</span><b class="num">1.248,30 €</b></div>
+          <div><span>Ingresado</span><b class="num">2.150,00 €</b></div>
+        </div>
+        <p class="vs">Llevas gastados <b class="num">120 € menos</b> que en octubre a día 14.</p>
+      </section>
+
+      <details class="todo">
+        <summary><span class="count">3</span>Cosas pendientes<span class="chev">›</span></summary>
+        <button class="row"><span class="ico tone" style="--c:var(--info)">3</span><span class="main"><span class="ti">Movimientos del banco por revisar</span><span class="me">Posibles duplicados</span></span><span class="go">Revisar</span></button>
+        <button class="row"><span class="ico tone" style="--c:var(--warning)">🍽️</span><span class="main"><span class="ti">Restaurantes al 92 %</span><span class="me">Quedan 12,40 € del presupuesto</span></span><span class="go">Ver</span></button>
+        <button class="row"><span class="ico tone" style="--c:var(--success)">L</span><span class="main"><span class="ti">Lucía te debe 23,50 €</span><span class="me">Subcount · Piso</span></span><span class="go">Saldar</span></button>
+      </details>
+
+      <section>
+        <div class="sec-head"><p class="label">Próximos cobros</p><span class="total"><b class="num">68,87 €</b> hasta fin de mes</span></div>
+        <div class="dues">
+          <button class="due"><span class="lg" style="--c:#1db954">S</span><span class="ti">Spotify</span><span class="me soon">En 3 días</span><span class="amt num">11,99 €</span></button>
+          <button class="due"><span class="lg" style="--c:#e50914">N</span><span class="ti">Netflix</span><span class="me">vie 20</span><span class="amt num">13,99 €</span></button>
+          <button class="due"><span class="lg" style="--c:#f97316">G</span><span class="ti">Gimnasio</span><span class="me">mié 25</span><span class="amt num">39,90 €</span></button>
+        </div>
+      </section>
+    </div>
+  </div>
+</template>
+
+<script>
+// Noviembre 2026 empieza en domingo; hoy es sábado 14.
+const TODAY = 14, DAYS = 30, FIRST = 7, WD = ["L", "M", "X", "J", "V", "S", "D"];
+const SPENT = [688, 12, 64.99, 0, 21, 86, 45, 29.99, 9, 0, 122, 18, 73, 58];
+const INCOME = { 2: ["Bizum de Marta", 50], 10: ["Nómina", 2100] };
+const SUBS = { 3: ["Amazon Prime", "#00a8e1", 4.99], 8: ["Disney+", "#113ccf", 9.99], 11: ["ChatGPT", "#10a37f", 22], 17: ["Spotify", "#1db954", 11.99], 20: ["Netflix", "#e50914", 13.99], 25: ["Gimnasio", "#f97316", 39.9], 28: ["iCloud", "#3b82f6", 2.99] };
+const TXS = {
+  1: [["🏠", "Alquiler", "BBVA · Vivienda", 650], ["🛒", "Carrefour", "BBVA · Supermercado", 38]],
+  11: [["🛒", "Lidl", "BBVA · Supermercado", 100]],
+  13: [["🍽️", "La Tagliatella", "Revolut · Restaurantes", 42], ["⛽", "Repsol", "BBVA · Transporte", 31]],
+  14: [["🛒", "Mercadona", "BBVA · Supermercado", 54.2], ["☕", "Café Federal", "Revolut · Restaurantes", 3.8]],
+};
+const LONG = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+const eur = (n) => n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+const weekday = (d) => (FIRST - 1 + d - 1) % 7;
+
+// Intensidad relativa a un día normal (la mediana de los días con gasto), no al máximo del mes.
+const sorted = SPENT.filter(Boolean).sort((a, b) => a - b);
+const typical = sorted[Math.floor(sorted.length / 2)];
+const level = (spent) => (!spent ? 0 : spent < typical * 0.5 ? 1 : spent < typical * 1.25 ? 2 : spent < typical * 2.5 ? 3 : 4);
+
+function cell(d) {
+  const sub = SUBS[d], future = d > TODAY, spent = future ? 0 : SPENT[d - 1];
+  const cls = ["cell", future ? "future" : `l${level(spent)}`, d === TODAY && "today", INCOME[d] && "inc"].filter(Boolean).join(" ");
+  const label = `${LONG[weekday(d)]} ${d}` + (spent ? `, gastado ${eur(spent)}` : "") + (INCOME[d] ? `, ingreso de ${eur(INCOME[d][1])}` : "") + (sub ? `, cobro de ${sub[0]}` : "");
+  return `<button class="${cls}" data-d="${d}" aria-label="${label}" ${d === 1 ? `style="grid-column-start:${FIRST}"` : ""}><span class="n">${d}</span>${sub ? `<span class="lg" style="--c:${sub[1]}">${sub[0][0]}</span>` : ""}</button>`;
+}
+
+function agendaHtml(d) {
+  const sub = SUBS[d], inc = INCOME[d], future = d > TODAY;
+  const txs = TXS[d] ?? (!future && SPENT[d - 1] ? [["🧾", "Compras del día", "BBVA", SPENT[d - 1] - (sub ? sub[2] : 0)]] : []);
+  const net = (inc ? inc[1] : 0) - (future ? 0 : SPENT[d - 1]);
+  const rows = [
+    inc && `<button class="row"><span class="ico">💶</span><span class="main"><span class="ti">${inc[0]}</span><span class="me">BBVA · Ingreso</span></span><span class="amt in num">+${eur(inc[1])}</span></button>`,
+    sub && `<button class="row"><span class="ico lg" style="--c:${sub[1]}">${sub[0][0]}</span><span class="main"><span class="ti">${sub[0]}</span><span class="me">Suscripción · <span class="${future ? "soon" : ""}">${future ? "Pendiente" : "Cobrado"}</span></span></span><span class="amt num">-${eur(sub[2])}</span></button>`,
+    ...txs.map((t) => `<button class="row"><span class="ico">${t[0]}</span><span class="main"><span class="ti">${t[1]}</span><span class="me">${t[2]}</span></span><span class="amt num">-${eur(t[3])}</span></button>`),
+  ].filter(Boolean);
+  return `<div class="agenda-head"><b>${d === TODAY ? "Hoy" : LONG[weekday(d)] + " " + d}</b>${net ? `<span class="net num">${net > 0 ? "+" : "-"}${eur(Math.abs(net))}</span>` : ""}<span class="sp"></span><button class="rnd" data-close aria-label="Cerrar el día"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    ${rows.join("") || `<p class="empty">${future ? "Nada programado este día." : "Sin movimientos este día."}</p>`}
+    <button class="link">+ Añadir movimiento</button>`;
+}
+
+for (const host of document.querySelectorAll("[data-home]")) {
+  host.append(document.getElementById("home-tpl").content.cloneNode(true));
+  const cal = host.querySelector(".cal"), agenda = host.querySelector(".agenda");
+  cal.innerHTML = WD.map((w) => `<span class="w">${w}</span>`).join("") + Array.from({ length: DAYS }, (_, i) => cell(i + 1)).join("");
+  let selected = null;
+  // Tocar un día abre su agenda; tocarlo otra vez (o la ×) la cierra.
+  const select = (d) => {
+    selected = d === selected ? null : d;
+    cal.querySelectorAll(".cell").forEach((b) => b.classList.toggle("sel", +b.dataset.d === selected));
+    agenda.hidden = selected === null;
+    if (selected !== null) agenda.innerHTML = agendaHtml(selected);
+  };
+  host.addEventListener("click", (e) => {
+    const day = e.target.closest(".cell");
+    if (day) select(+day.dataset.d);
+    else if (e.target.closest("[data-close]")) select(selected);
+  });
+  if (host.dataset.select) select(+host.dataset.select);
+  if ("open" in host.dataset) host.querySelector(".todo").open = true;
+}
+
+document.getElementById("theme").addEventListener("click", (e) => {
+  const light = document.documentElement.dataset.theme !== "light";
+  document.documentElement.dataset.theme = light ? "light" : "dark";
+  e.currentTarget.textContent = light ? "Tema oscuro" : "Tema claro";
+});
+</script>
+</body>
+</html>
