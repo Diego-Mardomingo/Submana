@@ -956,7 +956,63 @@ html:not([data-theme="light"]) .sf-btn--primary { color: #16121f; }
 .sf-badge--muted { background: var(--gris); color: var(--gris-muy-claro); border-color: transparent; }
 .sf-badge--warn { background: var(--warning-soft); color: var(--warning); border-color: transparent; }
 .sf-badge--star { background: rgba(245, 158, 11, 0.12); color: #f59e0b; border-color: transparent; }
+.sf-badge--danger { background: var(--danger-soft); color: var(--danger-text); border-color: transparent; }
+.sf-badge--accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 .sf-badge svg { width: 12px; height: 12px; }
+
+/* ── Notice inside a sheet: something to decide (a new price, a missing charge) ── */
+.sf-notice { --tone: var(--warning); --tone-soft: var(--warning-soft); display: flex; gap: 0.75rem; padding: 0.85rem 0.9rem; border-radius: 16px; background: var(--tone-soft); border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent); min-width: 0; }
+.sf-notice--danger { --tone: var(--danger-text); --tone-soft: var(--danger-soft); }
+.sf-notice--accent { --tone: var(--accent); --tone-soft: var(--accent-soft); }
+.sf-notice-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; flex-shrink: 0; background: color-mix(in srgb, var(--tone) 18%, transparent); color: var(--tone); }
+.sf-notice-icon svg { width: 18px; height: 18px; }
+.sf-notice-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.sf-notice-title { font-size: 0.88rem; font-weight: 700; color: var(--blanco); line-height: 1.35; }
+.sf-notice-text { font-size: 0.78rem; line-height: 1.45; color: var(--gris-muy-claro); }
+.sf-notice-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+.sf-notice-btn { display: inline-flex; align-items: center; gap: 0.35rem; height: 32px; padding: 0 0.85rem; border-radius: 999px; border: 1px solid var(--gris); background: var(--negro); color: var(--blanco); font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+.sf-notice-btn--primary { background: var(--blanco); color: var(--negro); border-color: transparent; }
+.sf-notice-btn:disabled { opacity: 0.6; cursor: default; }
+.sf-notice-btn svg { width: 15px; height: 15px; }
+.sf-notice-btn:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }
+
+/* ── Charges of a subscription ── */
+.sf-charge { --tone: var(--gris-claro); --tone-soft: var(--gris); display: flex; align-items: center; gap: 0.75rem; min-height: 56px; padding: 0.55rem 0.9rem; min-width: 0; width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
+button.sf-charge:hover { background: color-mix(in srgb, var(--blanco) 4%, transparent); }
+button.sf-charge:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sf-charge[data-status="paid"] { --tone: var(--success-text); --tone-soft: var(--success-soft); }
+.sf-charge[data-status="changed"] { --tone: var(--warning); --tone-soft: var(--warning-soft); }
+.sf-charge[data-status="missed"] { --tone: var(--danger-text); --tone-soft: var(--danger-soft); }
+.sf-charge-icon { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; background: var(--tone-soft); color: var(--tone); }
+.sf-charge:is([data-status="upcoming"], [data-status="pending"], [data-status="unverified"], [data-status="skipped"]) .sf-charge-icon { background: none; box-shadow: inset 0 0 0 1.5px var(--gris); }
+.sf-charge-icon svg { width: 15px; height: 15px; }
+.sf-charge-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.sf-charge-date { font-size: 0.86rem; font-weight: 600; color: var(--blanco); }
+.sf-charge-status { font-size: 0.74rem; color: var(--gris-muy-claro); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sf-charge-status b { color: var(--tone); font-weight: 600; }
+.sf-charge-end { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; flex-shrink: 0; }
+.sf-charge-amount { font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sf-charge-amount.is-muted { color: var(--gris-claro); font-weight: 600; }
+.sf-charge-diff { font-size: 0.7rem; font-weight: 700; color: var(--warning); font-variant-numeric: tabular-nums; }
+.sf-charge-link { font-size: 0.72rem; font-weight: 700; color: var(--accent); }
+
+/* ── Price history ── */
+.sf-price { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.85rem 0.9rem 0.5rem; }
+.sf-price-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.sf-price-head span { font-size: 0.78rem; color: var(--gris-muy-claro); }
+.sf-price-head strong { font-size: 1rem; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--warning); white-space: nowrap; }
+.sf-price-head strong.is-down { color: var(--success-text); }
+.sf-price-head strong.is-flat { color: var(--gris-muy-claro); }
+.sf-price svg { display: block; width: 100%; height: auto; overflow: visible; }
+.sf-price .sf-price-ax { fill: var(--gris-claro); font-size: 9px; font-family: inherit; }
+.sf-price .sf-price-grid { stroke: var(--sf-divider); stroke-width: 1; }
+.sf-price .sf-price-area { fill: var(--accent-soft); }
+.sf-price .sf-price-line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.sf-price .sf-price-next { fill: none; stroke: var(--warning); stroke-width: 2; stroke-dasharray: 3 3; }
+.sf-price .sf-price-dot { fill: var(--accent); stroke: var(--gris-oscuro); stroke-width: 2; }
+.sf-price .sf-price-dot.is-next { fill: var(--warning); }
+.sf-price .sf-price-val { fill: var(--blanco); font-size: 10px; font-weight: 700; font-family: inherit; }
+.sf-price .sf-price-val.is-next { fill: var(--warning); }
 
 .sf-dot {
   width: 9px;

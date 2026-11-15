@@ -2,12 +2,13 @@ import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { normalizeReminderOffsets, parseReminderOffsetsInput, validateSubscriptionFields } from "@/lib/subscriptionValidation";
+import { SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
 
 export async function GET() {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const { data, error } = await supabase.from("subscriptions").select("*").eq("user_id", user.id).order("id", { ascending: true });
+  const { data, error } = await supabase.from("subscriptions").select(SUBSCRIPTION_SELECT).eq("user_id", user.id).order("id", { ascending: true });
   if (error) return jsonServerError("crud/subscriptions", error);
   return jsonCachedResponse({ data });
 }
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
   const { data, error } = await supabase
     .from("subscriptions")
     .insert({ user_id: user.id, service_name: name, icon: body.icon || initialsAvatarDataUri(name), ...fields })
-    .select()
+    .select(SUBSCRIPTION_SELECT)
     .single();
   if (error) return jsonServerError("crud/subscriptions", error);
   return jsonResponse({ data }, 201);

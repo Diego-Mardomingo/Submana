@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Repeat, Trash2 } from "lucide-react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
@@ -57,6 +57,7 @@ export const TransactionRow = memo(function TransactionRow(props: {
         </span>
         {(account || category || author) && (
           <span className="lp-meta">
+            {tx.subscription_id && <Repeat className="lp-meta-icon" strokeWidth={2.5} aria-label={t("tx.subscription")} />}
             {author && (
               <span className="inline-flex items-center gap-1" title={interpolate(t("joint.addedBy"), { name: author.display_name })}>
                 <ProfileAvatar name={author.display_name} url={author.avatar_url} size={16} />

@@ -24,6 +24,7 @@ import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useBudgetWarning } from "@/hooks/useBudgets";
 import { useResolveBankReview } from "@/hooks/useBanking";
 import { useLang } from "@/hooks/useLang";
+import { useChargeAction, useLinkTransaction, useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import {
   useCreateTransaction,
   useUndoableDeleteTransaction,
@@ -37,6 +38,9 @@ import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { toast } from "@/lib/toast";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
+import { isSubscriptionActive } from "@/lib/subscriptions";
+import { chargeDateFor, daysBetween, priceAt } from "@/lib/subscriptionReconciliation";
 
 function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, onUseSimilar }: {
   transaction: Transaction | null;
@@ -66,6 +70,13 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const [subcategoryId, setSubcategoryId] = useState(transaction?.subcategory_id ?? "");
   const [error, setError] = useState("");
   const [amountInvalid, setAmountInvalid] = useState(false);
+  const { data: subscriptions = [] } = useSubscriptions();
+  const linkTx = useLinkTransaction();
+  const chargeAction = useChargeAction();
+  const linkedTo = transaction?.subscription_id ?? "";
+  // A row of a joint account may be linked to another member's subscription: leave that link alone.
+  const ownLink = !linkedTo || subscriptions.some((s) => s.id === linkedTo);
+  const [subscriptionId, setSubscriptionId] = useState(linkedTo);
 
   // New transactions default to the page's account, then to the account marked as default.
   const accountId = pickedAccountId || (transaction ? "" : (defaultAccountId ?? accounts.find((a) => a.is_default)?.id ?? ""));
@@ -78,6 +89,22 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const subcategory = subcategories.find((s) => s.id === subcategoryId);
   const excludedFromMetrics = category?.exclude_from_metrics || subcategory?.exclude_from_metrics;
   const label = (c: { id: string; name: string }) => categoryNames.get(c.id) ?? c.name;
+
+  // Subscriptions with a charge near the date, the ones paid from this account first.
+  const day = toDateString(date);
+  const chargeOf = (s: Subscription) => (s.id === linkedTo && transaction?.subscription_charge_date) || chargeDateFor(s, day);
+  const subOptions =
+    type !== "expense" || !ownLink
+      ? []
+      : subscriptions
+          .filter((s) => s.id === subscriptionId || (isSubscriptionActive(s, date) && chargeOf(s)))
+          .map((s) => ({ sub: s, charge: chargeOf(s) }))
+          .sort(
+            (a, b) =>
+              Number(b.sub.account_id === accountId) - Number(a.sub.account_id === accountId) ||
+              Math.abs(daysBetween(a.charge || day, day)) - Math.abs(daysBetween(b.charge || day, day))
+          );
+  const picked = subOptions.find((o) => o.sub.id === subscriptionId);
 
   // While creating, look for a bank movement that is probably this same one (avoids a twin the next import must reconcile).
   const { data: similar = [] } = useSimilarTransactions({
@@ -112,15 +139,45 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
     };
     try {
       const checkBudgets = await watchBudgets(payload);
-      if (transaction) await updateTx.mutateAsync({ id: transaction.id, ...payload });
-      else await createTx.mutateAsync(payload);
+      const saved: { id: string } = transaction ? await updateTx.mutateAsync({ id: transaction.id, ...payload }) : await createTx.mutateAsync(payload);
       toast.success(t(transaction ? "transactions.saved" : "transactions.created"));
       void checkBudgets();
       onDone();
+      const target = type === "expense" ? subscriptionId : "";
+      if (ownLink && saved?.id && target !== linkedTo) void linkSubscription(saved.id, target, num);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     }
   };
+
+  /** Links the saved transaction to the picked subscription (or unlinks it); an amount other than the price gets its own toast. */
+  async function linkSubscription(transactionId: string, target: string, amount: number) {
+    const sub = subscriptions.find((s) => s.id === target);
+    try {
+      const result = await linkTx.mutateAsync({ transactionId, subscriptionId: target || null });
+      const chargeDate = result?.charge_date;
+      if (!sub || !chargeDate) return;
+      const cents = (n: number) => Math.round(n * 100);
+      if (cents(amount) === cents(priceAt(sub, chargeDate)) || cents(amount) === cents(Number(sub.cost))) return;
+      const diff = amount - Number(sub.cost);
+      const decide = (action: "accept_price" | "dismiss_price") =>
+        chargeAction.mutateAsync({ id: sub.id, action, chargeDate }).catch(() => toast.error(t("toast.chargeError"), { description: t("toast.chargeErrorDesc") }));
+      toast.warning(interpolate(t(diff > 0 ? "toast.priceUp" : "toast.priceDown"), { name: sub.service_name, amount: formatCurrency(amount) }), {
+        description: interpolate(t("toast.priceChangedDesc"), { diff: `${diff > 0 ? "+" : "−"}${formatCurrency(Math.abs(diff))}`, saved: formatCurrency(Number(sub.cost)) }),
+        action: { label: t("toast.update"), onClick: () => void decide("accept_price") },
+        cancel: { label: t("toast.ignore"), onClick: () => void decide("dismiss_price") },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      toast.error(
+        message === "charge_taken"
+          ? t("link.chargeTaken")
+          : message === "no_charge_near" && sub
+            ? interpolate(t("link.noCharge"), { name: sub.service_name })
+            : t("toast.chargeError")
+      );
+    }
+  }
 
   return (
     <SheetForm onSubmit={handleSubmit}>
@@ -222,6 +279,40 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
             )}
           </FieldStack>
         </FieldGroup>
+
+        {subOptions.length > 0 && (
+          <FieldGroup
+            title={t("tx.subscription")}
+            hint={
+              picked
+                ? picked.charge
+                  ? interpolate(t("tx.subscription.hint"), {
+                      date: parseDateString(picked.charge).toLocaleDateString(localeOf(lang), { day: "numeric", month: "short" }),
+                      amount: formatCurrency(priceAt(picked.sub, picked.charge)),
+                    })
+                  : t("tx.subscription.noCharge")
+                : undefined
+            }
+          >
+            <FieldStack>
+              <Chips
+                scroll
+                label={t("tx.subscription")}
+                value={subscriptionId}
+                onChange={setSubscriptionId}
+                options={[
+                  { value: "", label: t("tx.subscription.none") },
+                  ...subOptions.map(({ sub }) => ({
+                    value: sub.id,
+                    label: sub.service_name,
+                    // eslint-disable-next-line @next/next/no-img-element -- remote service logos
+                    icon: <img src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt="" />,
+                  })),
+                ]}
+              />
+            </FieldStack>
+          </FieldGroup>
+        )}
 
         <FieldGroup title={t("common.category")} hint={jointAccount ? t("joint.categoriesHint") : excludedFromMetrics ? t("categories.excludeFromMetricsInfo") : undefined}>
           <FieldStack>

@@ -20,6 +20,8 @@ export const queryKeys = {
   subscriptions: {
     all: ["subscriptions"] as const,
     lists: () => [...queryKeys.subscriptions.all, "list"] as const,
+    candidates: (id: string, chargeDate: string, filters: { all: boolean; q: string }) =>
+      [...queryKeys.subscriptions.all, "candidates", id, chargeDate, filters] as const,
   },
   categories: {
     all: ["categories"] as const,

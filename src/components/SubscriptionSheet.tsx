@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, SquarePen, Trash2, XCircle } from "lucide-react";
+import { ChevronLeft, CircleAlert, SquarePen, Trash2, TrendingDown, TrendingUp, XCircle } from "lucide-react";
 import IconPicker from "@/components/IconPicker";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
@@ -20,7 +20,9 @@ import {
   SheetButton,
   Stepper,
 } from "@/components/SheetFields";
+import { ChargePickerSheet, ChargesGroup, PriceGroup, SubscriptionNotices } from "@/components/SubscriptionCharges";
 import { useFrequencyLabel, useSubscriptionActions } from "@/components/SubscriptionDialogs";
+import { TransactionSheet } from "@/components/TransactionSheet";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
 import { parseCurrencyValue } from "@/lib/currency";
@@ -32,10 +34,11 @@ import { parseDateString, toDateString } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
 import type { UIKey } from "@/lib/i18n/ui";
 import { RENEWAL_OFFSETS } from "@/lib/notifications/catalog";
-import { useTranslations } from "@/lib/i18n/utils";
+import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { toast } from "@/lib/toast";
-import { isSubscriptionActive, monthlyCost, nextPaymentDate, totalSpent } from "@/lib/subscriptions";
+import { isSubscriptionActive, monthlyCost, nextPaymentDate } from "@/lib/subscriptions";
+import { lastCharge, pendingPriceChange, reconciledTotal } from "@/lib/subscriptionReconciliation";
 
 type Mode = "view" | "edit";
 
@@ -68,6 +71,11 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
   const isMonthly = sub.frequency === "monthly" && (sub.frequency_value || 1) === 1;
   const day = (date: Date) => date.toLocaleDateString(localeOf(lang), { day: "numeric", month: "short", year: "numeric" });
   const muted = <span className="is-muted">—</span>;
+  const [pickCharge, setPickCharge] = useState<string | null>(null);
+  const [openTx, setOpenTx] = useState<string | null>(null);
+  const change = active ? pendingPriceChange(sub) : null;
+  const missed = active && lastCharge(sub)?.status === "missed";
+  const spent = reconciledTotal(sub);
 
   return (
     <>
@@ -86,10 +94,34 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
                 {es ? "Termina" : "Ends"} {day(parseDateString(sub.end_date))}
               </span>
             )}
+            {change && (
+              <span className="sf-badge sf-badge--warn">
+                {change.diff > 0 ? <TrendingUp aria-hidden /> : <TrendingDown aria-hidden />}
+                <SensitiveAmount>{interpolate(t("sub.badge.charged"), { amount: formatCurrency(change.charged) })}</SensitiveAmount>
+              </span>
+            )}
+            {missed && (
+              <span className="sf-badge sf-badge--danger">
+                <CircleAlert aria-hidden />
+                {t("sub.badge.missed")}
+              </span>
+            )}
           </div>
         </FormHero>
 
-        <FieldGroup>
+        <SubscriptionNotices sub={sub} onLink={setPickCharge} />
+
+        <FieldGroup
+          hint={
+            spent.linked === 0
+              ? undefined
+              : spent.estimated > 0
+                ? interpolate(t("sub.totalHintMixed"), { linked: spent.linked, estimated: spent.estimated })
+                : spent.linked === 1
+                  ? t("sub.totalHintOne")
+                  : interpolate(t("sub.totalHint"), { count: spent.linked })
+          }
+        >
           <InfoRow label={t("sub.nextPayment")}>{next ? <span className="lp-soon">{day(next)}</span> : muted}</InfoRow>
           <InfoRow label={t("subscriptions.reminders")}>
             {sub.reminder_offsets?.length ? [...sub.reminder_offsets].sort((a, b) => a - b).map((offset) => t(offsetLabelKey(offset))).join(", ") : muted}
@@ -101,9 +133,12 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
             </InfoRow>
           )}
           <InfoRow label={t("sub.totalSpent")}>
-            <SensitiveAmount>{formatCurrency(totalSpent(sub))}</SensitiveAmount>
+            <SensitiveAmount>{formatCurrency(spent.total)}</SensitiveAmount>
           </InfoRow>
         </FieldGroup>
+
+        <ChargesGroup sub={sub} onLink={setPickCharge} onOpenTransaction={setOpenTx} />
+        <PriceGroup sub={sub} />
 
         <FieldGroup>
           <InfoRow label={t("sub.startDate")}>{day(parseDateString(sub.start_date))}</InfoRow>
@@ -118,6 +153,7 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
               <span className="is-muted">{es ? "Sin cuenta" : "No account"}</span>
             )}
           </InfoRow>
+          {sub.match_pattern && <InfoRow label={t("sub.bankText")}>{sub.match_pattern}</InfoRow>}
         </FieldGroup>
 
         <FieldGroup>
@@ -148,6 +184,8 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
           {t("sub.edit")}
         </SheetButton>
       </SheetFooter>
+      <ChargePickerSheet sub={sub} chargeDate={pickCharge} onOpenChange={(open) => !open && setPickCharge(null)} />
+      <TransactionSheet open={!!openTx} onOpenChange={(open) => !open && setOpenTx(null)} transactionId={openTx} />
     </>
   );
 }
@@ -168,6 +206,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
   const [frequency, setFrequency] = useState<Subscription["frequency"]>(sub?.frequency ?? "monthly");
   const [every, setEvery] = useState(sub?.frequency_value || 1);
   const [accountId, setAccountId] = useState(sub?.account_id ?? "");
+  const [matchPattern, setMatchPattern] = useState(sub?.match_pattern ?? "");
   // Reminders: a new subscription starts with the default of the profile (still loading? the default of the app).
   const { data: notificationSettings } = useNotificationSettings();
   const [pickedOffsets, setPickedOffsets] = useState<number[] | null>(null);
@@ -204,6 +243,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
       frequency_value: every,
       account_id: accountId || null,
       reminder_offsets: offsets,
+      ...(sub && { match_pattern: matchPattern.trim() || null }),
     };
     try {
       if (sub) await updateSub.mutateAsync({ id: sub.id, ...input });
@@ -301,6 +341,21 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
             />
           </FieldStack>
         </FieldGroup>
+
+        {sub && (
+          <FieldGroup hint={t("sub.bankTextHint")}>
+            <FieldRow label={t("sub.bankTextField")} htmlFor="sub-bank-text">
+              <RowInput
+                id="sub-bank-text"
+                placeholder={t("sub.bankTextPlaceholder")}
+                value={matchPattern}
+                maxLength={200}
+                onChange={(e) => setMatchPattern(e.target.value)}
+                enterKeyHint="done"
+              />
+            </FieldRow>
+          </FieldGroup>
+        )}
       </SheetBody>
 
       <SheetFooter>

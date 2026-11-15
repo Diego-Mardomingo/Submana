@@ -28,6 +28,9 @@ export interface Transaction {
   bank_description?: string | null;
   category_id?: string | null;
   subcategory_id?: string | null;
+  /** The subscription charge this transaction pays (YYYY-MM-DD of the expected charge). */
+  subscription_id?: string | null;
+  subscription_charge_date?: string | null;
   /** Who wrote the row (joint accounts hold rows of several members). */
   user_id?: string;
   account?: { name: string; color?: string | null; is_joint?: boolean } | null;

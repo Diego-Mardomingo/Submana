@@ -16,7 +16,7 @@ const WATCHED: { table: string; keys: QueryKey[] }[] = [
   // Joint accounts: the account itself (name, balance), its members/invites and its movements.
   { table: "accounts", keys: [queryKeys.accounts.all, queryKeys.transactions.all] },
   { table: "account_members", keys: [queryKeys.accounts.all, queryKeys.transactions.all] },
-  { table: "transactions", keys: [queryKeys.transactions.all, queryKeys.accounts.all, queryKeys.budgets.all] },
+  { table: "transactions", keys: [queryKeys.transactions.all, queryKeys.accounts.all, queryKeys.budgets.all, queryKeys.subscriptions.all] },
   // New notifications ring the bell and refresh the inbox and the counters.
   { table: "notifications", keys: [queryKeys.notifications.all] },
 ];

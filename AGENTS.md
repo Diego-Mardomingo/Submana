@@ -1,5 +1,13 @@
 # Submana — notes for agents and contributors
 
+## Mockups
+
+New design proposals go in the "Submana Mockups" artifact (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o), one hash view per proposal plus a card on its `#inicio` view. The older mockups stay in `docs/design/`.
+
+- Each screen is a `<figure class="kit-screen">` with a `<template>` inside, drawn in an iframe of the device's width with the app's real CSS. Write the markup with the components' real classes. The page's own script explains the attributes and placeholders.
+- The artifact publishes `src/app/*.css` under `app/`, plus `kit/modules.css` (the CSS modules with their classes prefixed by file name, built by the artifact's `kit/build-modules.mjs`) and `kit/screen.css`. Republish them whenever the app's CSS changes, so the mockups keep matching the app.
+- Open questions go in its decisions block. The answers are stored in the artifact's database (`decisions` collection); read them before building.
+
 ## UI conventions
 
 ### Toasts
@@ -31,7 +39,7 @@ Rules:
 
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
+## This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
