@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonCachedResponse, jsonError, jsonResponse, jsonServerError, parseRequestBody, unauthorized } from "@/lib/apiHelpers";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { normalizeReminderOffsets, parseReminderOffsetsInput, validateSubscriptionFields } from "@/lib/subscriptionValidation";
+import { reconcileSubscription } from "@/lib/subscriptionAutoMatch";
 import { SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
 
 export async function GET() {
@@ -41,5 +42,6 @@ export async function POST(request: NextRequest) {
     .select(SUBSCRIPTION_SELECT)
     .single();
   if (error) return jsonServerError("crud/subscriptions", error);
-  return jsonResponse({ data }, 201);
+  // Its charges may already be among the transactions: look for them now.
+  return jsonResponse({ data: (await reconcileSubscription(supabase, user.id, data.id)) ?? data }, 201);
 }

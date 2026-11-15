@@ -152,6 +152,7 @@ export default function BankStatementUpload({ accountId, bankProvider, autoOpenF
       queryClient.invalidateQueries({ queryKey: queryKeys.accounts.all }),
       queryClient.invalidateQueries({ queryKey: queryKeys.transactions.all }),
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.all }),
     ]);
 
   const handleImport = async (resolutions: ReviewResolutions) => {
@@ -180,7 +181,11 @@ export default function BankStatementUpload({ accountId, bankProvider, autoOpenF
       }
       setImportResult(result);
       setState("success");
-      toast.success(interpolate(t("import.successToast"), { count: (result.actual?.imported ?? 0) + (result.deposit?.imported ?? 0) }));
+      const subsLinked = (result.actual?.subscriptions_linked ?? 0) + (result.deposit?.subscriptions_linked ?? 0);
+      const subsReview = (result.actual?.subscriptions_review ?? 0) + (result.deposit?.subscriptions_review ?? 0);
+      toast.success(interpolate(t("import.successToast"), { count: (result.actual?.imported ?? 0) + (result.deposit?.imported ?? 0) }), {
+        ...((subsLinked || subsReview) && { description: interpolate(t("import.subscriptions"), { linked: subsLinked, review: subsReview }) }),
+      });
       // A budget that reached 80 % / 100 % because of the import: one warning, as when saving a transaction by hand.
       const crossed = mergeCrossedBudgets(result.actual?.crossedBudgets, result.deposit?.crossedBudgets);
       if (crossed.length === 1) {

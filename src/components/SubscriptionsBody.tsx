@@ -13,7 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useUrlParam } from "@/hooks/useUrlParam";
 import { useLang } from "@/hooks/useLang";
-import { useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
+import { useReconcileOnce, useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import { parseDateString } from "@/lib/date";
 import { parseIdParam } from "@/lib/deepLinks";
 import { formatCurrency, localeOf } from "@/lib/format";
@@ -88,6 +88,7 @@ export default function SubscriptionsBody() {
   const freqLabel = useFrequencyLabel();
   const dates = useDateLabels();
   const { data: subscriptions = [], isLoading } = useSubscriptions();
+  useReconcileOnce(isLoading ? undefined : subscriptions);
   const [inactiveOpen, setInactiveOpen] = useState(false);
   const actions = useSubscriptionActions();
   const [createOpen, setCreateOpen] = useCreateDialog();
@@ -127,6 +128,7 @@ export default function SubscriptionsBody() {
       );
     }
     if (status?.kind === "missed") return <span className="lp-alert lp-truncate">{t("sub.status.missed")}</span>;
+    if (status?.kind === "review") return <span className="lp-review lp-truncate">{t("sub.status.review")}</span>;
     if (sub.end_date) {
       return (
         <span className="lp-warn lp-truncate">

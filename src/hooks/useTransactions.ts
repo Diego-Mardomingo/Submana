@@ -31,6 +31,11 @@ export interface Transaction {
   /** The subscription charge this transaction pays (YYYY-MM-DD of the expected charge). */
   subscription_id?: string | null;
   subscription_charge_date?: string | null;
+  /** Automatic matching thinks it may be this subscription's charge on `subscription_review_date`: the user confirms. */
+  subscription_review_id?: string | null;
+  subscription_review_date?: string | null;
+  /** Set on create when automatic matching found something (see lib/subscriptionAutoMatch). */
+  subscription_match?: import("@/lib/subscriptionAutoMatch").ManualMatchInfo;
   /** Who wrote the row (joint accounts hold rows of several members). */
   user_id?: string;
   account?: { name: string; color?: string | null; is_joint?: boolean } | null;
@@ -208,14 +213,17 @@ interface TransactionInput {
   account_id?: string;
   category_id?: string;
   subcategory_id?: string;
+  /** Create only: "0" when the sheet links it to a subscription itself (no automatic matching). */
+  auto_match?: "0";
 }
 
 const invalidate = [queryKeys.transactions.all, queryKeys.accounts.all, queryKeys.budgets.all];
 
 export function useCreateTransaction() {
   return useOptimisticMutation({
-    mutationFn: (tx: TransactionInput) => api("/api/crud/transactions", "POST", tx),
-    invalidate,
+    mutationFn: (tx: TransactionInput) => api<Transaction>("/api/crud/transactions", "POST", tx),
+    // Automatic matching may have linked it to a subscription charge.
+    invalidate: [...invalidate, queryKeys.subscriptions.all],
     meta: { silentError: true }, // the sheet shows the error inline
   });
 }

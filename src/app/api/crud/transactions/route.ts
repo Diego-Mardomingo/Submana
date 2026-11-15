@@ -18,6 +18,7 @@ import { notifyBudgetThresholds, requestLang } from "@/lib/notifications/budgets
 import { jointTransactionEvents } from "@/lib/notifications/events/joint";
 import { notifyAfter } from "@/lib/notifications/server";
 import { fetchProfiles } from "@/lib/shared/server";
+import { manualMatch, reconcileNewTransactions, type ManualMatch } from "@/lib/subscriptionAutoMatch";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 type WithAuthor = { user_id: string; account?: { is_joint?: boolean } | null; author?: { user_id: string; handle: string; display_name: string; avatar_url: string | null } | null };
@@ -94,7 +95,8 @@ export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
-  const tx = readTransactionInput(await parseRequestBody(request));
+  const body = await parseRequestBody(request);
+  const tx = readTransactionInput(body);
   if (!Number.isFinite(tx.amount) || tx.amount <= 0 || !tx.date || !tx.account_id) return jsonError("missing_fields");
   if (tx.type !== "income" && tx.type !== "expense") return jsonError("invalid_type");
   const access = await getAccountAccess(supabase, user.id, tx.account_id);
@@ -121,5 +123,15 @@ export async function POST(request: NextRequest) {
   // Joint account: the other members are told. Personal expense: check whether a budget reached 80 % / 100 %.
   if (access.isJoint) notifyAfter(() => jointTransactionEvents([{ accountId: data.account_id, kind: "added", tx: data }], user.id));
   else if (tx.type === "expense") notifyBudgetThresholds(user.id, [data.date ?? tx.date], await requestLang());
-  return jsonResponse({ data }, 201);
+
+  // A charge of one of my subscriptions? (Unless the sheet links it to the one the user picked.)
+  let match: ManualMatch | null = null;
+  if (tx.type === "expense" && body.auto_match !== "0") {
+    try {
+      match = manualMatch(await reconcileNewTransactions(supabase, user.id, [data.id]));
+    } catch (error) {
+      console.error("[crud/transactions] subscription reconciliation", error);
+    }
+  }
+  return jsonResponse({ data: match ? { ...data, ...match.row, subscription_match: match.info } : data }, 201);
 }
