@@ -1,8 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import type { LinkedCharge, PriceStep } from "@/lib/subscriptionReconciliation";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
 import { useUndoableDelete } from "./useUndoableDelete";
 
@@ -18,6 +19,16 @@ export interface Subscription {
   account_id?: string | null;
   /** Days before a charge on which a reminder is sent (0, 1, 3, 7); empty = no reminders. */
   reminder_offsets: number[];
+  /** Bank text learned when a charge was linked; recognises the next ones. */
+  match_pattern?: string | null;
+  /** YYYY-MM-DD charges the user marked as not charged. */
+  skipped_charges?: string[] | null;
+  /** YYYY-MM-DD of the charge whose other amount the user chose to ignore. */
+  dismissed_price_charge?: string | null;
+  /** Price steps, oldest first. */
+  price_history?: PriceStep[] | null;
+  /** Transactions linked to its charges. */
+  charges?: LinkedCharge[] | null;
 }
 
 export function useSubscriptions() {
@@ -38,6 +49,7 @@ interface SubscriptionInput {
   frequency_value?: number;
   account_id?: string | null;
   reminder_offsets?: number[];
+  match_pattern?: string | null;
 }
 
 const invalidate = [queryKeys.subscriptions.all];
@@ -71,4 +83,64 @@ export function useUndoableDeleteSubscription() {
       commit: (init) => api(`/api/crud/subscriptions/${sub.id}`, "DELETE", undefined, init),
       invalidate,
     });
+}
+
+const invalidateLinks = [queryKeys.subscriptions.all, queryKeys.transactions.all];
+
+export type ChargeAction = "accept_price" | "undo_price" | "dismiss_price" | "undismiss_price" | "skip" | "unskip";
+
+/** Decide about one charge (update or ignore a new price, mark it as not charged); returns the subscription. */
+export function useChargeAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action, chargeDate }: { id: string; action: ChargeAction; chargeDate: string }) =>
+      api<Subscription>(`/api/crud/subscriptions/${id}/charges`, "POST", { action, charge_date: chargeDate }),
+    onSuccess: (sub) => queryClient.setQueryData<Subscription[]>(queryKeys.subscriptions.lists(), (list) => list && replaceById(list, sub)),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.subscriptions.all }),
+    meta: { silentError: true }, // callers show a toast
+  });
+}
+
+/**
+ * Link a transaction to a subscription's charge (`chargeDate` omitted: the closest one), or unlink it with
+ * `subscriptionId: null`. Resolves to the charge date it was linked to.
+ */
+export function useLinkTransaction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transactionId, subscriptionId, chargeDate }: { transactionId: string; subscriptionId: string | null; chargeDate?: string }) =>
+      api<{ charge_date?: string }>(`/api/crud/transactions/${transactionId}/subscription`, "PUT", {
+        subscription_id: subscriptionId,
+        ...(chargeDate && { charge_date: chargeDate }),
+      }),
+    onSettled: () => Promise.all(invalidateLinks.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+    meta: { silentError: true },
+  });
+}
+
+export interface ChargeCandidate {
+  id: string;
+  amount: number;
+  date: string;
+  description: string | null;
+  bank_description: string | null;
+  account_id: string;
+  category_id: string | null;
+  subcategory_id: string | null;
+  account?: { name: string; color: string | null } | null;
+  score: number;
+  reason: "strong" | "amount" | "date" | "name" | null;
+}
+
+/** Transactions that could be a charge, best first (`all`: every account; `q`: search by description). */
+export function useChargeCandidates(id: string | null, chargeDate: string | null, filters: { all: boolean; q: string }) {
+  return useQuery<ChargeCandidate[]>({
+    queryKey: queryKeys.subscriptions.candidates(id ?? "", chargeDate ?? "", filters),
+    queryFn: () => {
+      const params = new URLSearchParams({ charge: chargeDate!, ...(filters.all && { all: "1" }), ...(filters.q && { q: filters.q }) });
+      return api(`/api/crud/subscriptions/${id}/candidates?${params}`);
+    },
+    enabled: !!id && !!chargeDate,
+    placeholderData: keepPreviousData,
+  });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useState } from "react";
-import { ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { Check, ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
 import { SubscriptionsIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -17,9 +17,10 @@ import { useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import { parseDateString } from "@/lib/date";
 import { parseIdParam } from "@/lib/deepLinks";
 import { formatCurrency, localeOf } from "@/lib/format";
-import { useTranslations } from "@/lib/i18n/utils";
+import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { isSubscriptionActive, monthlyCost, nextPaymentDate } from "@/lib/subscriptions";
+import { listStatus } from "@/lib/subscriptionReconciliation";
 
 const DAY_MS = 86_400_000;
 const daysFromToday = (date: Date) => {
@@ -114,6 +115,38 @@ export default function SubscriptionsBody() {
   const perMonthLabel = (sub: Subscription) =>
     sub.frequency === "monthly" && (sub.frequency_value || 1) === 1 ? undefined : `≈ ${formatCurrency(monthlyCost(sub))}/${es ? "mes" : "mo"}`;
 
+  /** How the last charge went (a problem first, then the end date), else the frequency. */
+  const activeTail = (sub: Subscription) => {
+    const status = listStatus(sub);
+    if (status?.kind === "price") {
+      const key = status.charged > Number(sub.cost) ? "sub.status.priceUp" : "sub.status.priceDown";
+      return (
+        <span className="lp-warn lp-truncate">
+          <SensitiveAmount>{interpolate(t(key), { amount: formatCurrency(status.charged) })}</SensitiveAmount>
+        </span>
+      );
+    }
+    if (status?.kind === "missed") return <span className="lp-alert lp-truncate">{t("sub.status.missed")}</span>;
+    if (sub.end_date) {
+      return (
+        <span className="lp-warn lp-truncate">
+          {es ? "Termina" : "Ends"} {dates.short(parseDateString(sub.end_date))}
+        </span>
+      );
+    }
+    if (status?.kind === "paid") {
+      return (
+        <span className="lp-paid">
+          <Check strokeWidth={3} aria-hidden />
+          {t("sub.status.paid")}
+        </span>
+      );
+    }
+    if (status?.kind === "pending") return <span className="lp-waiting lp-truncate">{t("sub.status.waiting")}</span>;
+    if (status?.kind === "skipped") return <span className="lp-waiting lp-truncate">{t("sub.status.skipped")}</span>;
+    return <span className="lp-truncate">{freqLabel(sub)}</span>;
+  };
+
   const activeMeta = (sub: Subscription) => {
     const date = next.get(sub.id);
     const soon = date && daysFromToday(date) <= 3;
@@ -121,13 +154,7 @@ export default function SubscriptionsBody() {
       <>
         <span className={soon ? "lp-soon" : undefined}>{date ? dates.relative(date) : es ? "Sin más cobros" : "No more charges"}</span>
         <span className="lp-meta-sep">·</span>
-        {sub.end_date ? (
-          <span className="lp-warn lp-truncate">
-            {es ? "Termina" : "Ends"} {dates.short(parseDateString(sub.end_date))}
-          </span>
-        ) : (
-          <span className="lp-truncate">{freqLabel(sub)}</span>
-        )}
+        {activeTail(sub)}
       </>
     );
   };

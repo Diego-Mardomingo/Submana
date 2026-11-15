@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { normalizeReminderOffsets, validateSubscriptionFields } from "@/lib/subscriptionValidation";
+import { SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
 
 type Params = { params: Promise<{ id: string }> };
 
-const EDITABLE = ["service_name", "icon", "cost", "start_date", "end_date", "frequency", "frequency_value", "account_id", "reminder_offsets"];
+const EDITABLE = ["service_name", "icon", "cost", "start_date", "end_date", "frequency", "frequency_value", "account_id", "reminder_offsets", "match_pattern"];
 
 export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;
@@ -14,6 +15,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const body = (await request.json()) as Record<string, unknown>;
   const updates = Object.fromEntries(EDITABLE.filter((key) => body[key] !== undefined).map((key) => [key, body[key]]));
   if ("account_id" in updates) updates.account_id ||= null;
+  if ("match_pattern" in updates) {
+    if (updates.match_pattern != null && typeof updates.match_pattern !== "string") return jsonError("invalid_match_pattern");
+    updates.match_pattern = String(updates.match_pattern ?? "").trim().slice(0, 200) || null;
+  }
   if (Object.keys(updates).length === 0) return jsonError("No fields to update");
   const invalid = validateSubscriptionFields(updates);
   if (invalid) return jsonError(invalid);
@@ -27,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     .update(updates)
     .eq("id", id)
     .eq("user_id", user.id)
-    .select()
+    .select(SUBSCRIPTION_SELECT)
     .maybeSingle();
   if (error) return jsonServerError("crud/subscriptions/[id]", error);
   if (!data) return jsonError("Subscription not found", 404);

@@ -524,6 +524,19 @@ button.lp-chip:hover {
 
 .lp-warn { color: var(--warning); font-weight: 600; }
 .lp-soon { color: var(--accent); font-weight: 600; }
+.lp-alert { color: var(--danger-text); font-weight: 600; }
+
+/* How a subscription's last charge went (subscriptions list) */
+.lp-paid { display: inline-flex; align-items: center; gap: 3px; color: var(--success-text); font-weight: 600; white-space: nowrap; }
+.lp-paid svg { width: 12px; height: 12px; flex-shrink: 0; }
+.lp-waiting { color: var(--gris-muy-claro); font-weight: 600; }
+
+/* Small icon inside a meta line (a transaction linked to a subscription) */
+.lp-meta-icon { width: 11px; height: 11px; flex-shrink: 0; }
+
+/* Why a transaction is offered to link a subscription charge */
+.lp-match { display: inline-flex; align-items: center; height: 18px; padding: 0 0.45rem; border-radius: 99px; font-size: 0.62rem; font-weight: 700; background: var(--gris); color: var(--gris-muy-claro); white-space: nowrap; }
+.lp-match--strong { background: var(--success-soft); color: var(--success-text); }
 
 /* Dimmed rows (inactive subscriptions) */
 .lp-row--dim .lp-icon,
