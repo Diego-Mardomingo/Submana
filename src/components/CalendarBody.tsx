@@ -2,8 +2,8 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Landmark, Loader2, Plus, Repeat, X } from "lucide-react";
-import { BudgetsIcon, SubcountIcon } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Landmark, Link2, Loader2, Plus, Repeat, TrendingDown, TrendingUp, X } from "lucide-react";
+import { BudgetsIcon, SubcountIcon, SubscriptionsIcon } from "@/components/icons";
 import CalendarAccountFilter from "@/components/CalendarAccountFilter";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -24,18 +24,21 @@ import { useProfile } from "@/hooks/useProfile";
 import { useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import { useSwipe } from "@/hooks/useSwipe";
 import { useTransactions, type Transaction } from "@/hooks/useTransactions";
-import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
+import { appNow, calendarDayInAppTimeZone, monthKey, parseDateString, shiftMonth } from "@/lib/date";
 import { formatCurrency, localeOf, monthName } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { metricTransactions, sumByType } from "@/lib/metricsFilters";
 import { fromCents } from "@/lib/shared/splits";
 import { heatLevels } from "@/lib/spendHeat";
-import { isPaymentDay, isSubscriptionActive, nextPaymentDate } from "@/lib/subscriptions";
+import { listStatus, monthCharges, pendingPriceChange, type Charge } from "@/lib/subscriptionReconciliation";
+import { isSubscriptionActive, nextPaymentDate } from "@/lib/subscriptions";
 import { cn } from "@/lib/utils";
 
 type Month = { year: number; month: number };
-type DayData = { day: number; subs: Subscription[]; txs: Transaction[] };
+/** A subscription charge drawn on a day, with its real status (issue #108). */
+type DayCharge = { sub: Subscription; charge: Charge };
+type DayData = { day: number; subs: DayCharge[]; txs: Transaction[] };
 type PendingItem = { key: string; href: string; icon: React.ReactNode; color: string; title: React.ReactNode; hint: React.ReactNode; action: string };
 
 const currentMonth = (): Month => ({ year: appNow().getFullYear(), month: appNow().getMonth() + 1 });
@@ -60,15 +63,18 @@ function withAmount(text: string, amount: number, strong = false) {
   );
 }
 
+/** Ring on the logo by the charge's status: missing, another amount, waiting to be confirmed. */
+const LOGO_STATUS: Partial<Record<Charge["status"], string>> = { missed: "is-missed", changed: "is-changed", review: "is-review" };
+
 /** Subscription logos of a day: up to two, or the first one plus "+N". */
-function DayLogos({ subs }: { subs: Subscription[] }) {
+function DayLogos({ subs }: { subs: DayCharge[] }) {
   if (subs.length === 0) return null;
   const shown = subs.length > 2 ? subs.slice(0, 1) : subs;
   return (
     <span className="home-day-logos" aria-hidden>
-      {shown.map((sub) => (
+      {shown.map(({ sub, charge }) => (
         // eslint-disable-next-line @next/next/no-img-element -- remote service logos
-        <img key={sub.id} src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt="" className="home-day-logo" />
+        <img key={`${sub.id}-${charge.date}`} src={sub.icon || initialsAvatarDataUri(sub.service_name)} alt="" className={cn("home-day-logo", LOGO_STATUS[charge.status])} />
       ))}
       {subs.length > 2 && <span className="home-day-more">+{subs.length - 1}</span>}
     </span>
@@ -141,18 +147,29 @@ export default function CalendarBody() {
   const key = monthKey(view.year, view.month);
   const daysInMonth = new Date(view.year, view.month, 0).getDate();
   const days: DayData[] = Array.from({ length: daysInMonth }, (_, i) => ({ day: i + 1, subs: [], txs: [] }));
+  // Each charge once: one with a movement (linked or to confirm) is drawn on the day it was booked, and that
+  // movement is not listed again under it (the subscription row stands for it and opens it).
+  const chargeTxIds = new Set<string>();
+  for (const sub of subscriptions) {
+    if (isAccountHidden(sub.account_id)) continue;
+    for (const { day, charge } of monthCharges(sub, view.year, view.month)) {
+      days[day - 1].subs.push({ sub, charge });
+      const moved = charge.tx ?? charge.review;
+      if (moved) chargeTxIds.add(moved.id);
+    }
+  }
+  const countedIds = new Set(metricTransactions(transactions, categories, { jointAccountIds }).map((tx) => tx.id));
+  // The figures count every movement, also the ones shown as a subscription charge.
+  const counted: Transaction[][] = days.map(() => []);
   if (!monthLoading) {
     for (const tx of transactions) {
       const date = calendarDayInAppTimeZone(tx.date);
-      if (date.startsWith(key) && !isAccountHidden(tx.account_id)) days[Number(date.slice(8)) - 1].txs.push(tx);
+      if (!date.startsWith(key) || isAccountHidden(tx.account_id)) continue;
+      const index = Number(date.slice(8)) - 1;
+      if (!chargeTxIds.has(tx.id)) days[index].txs.push(tx);
+      if (countedIds.has(tx.id)) counted[index].push(tx);
     }
   }
-  for (const sub of subscriptions) {
-    if (isAccountHidden(sub.account_id)) continue;
-    for (const entry of days) if (isPaymentDay(sub, view.year, view.month - 1, entry.day)) entry.subs.push(sub);
-  }
-  const countedIds = new Set(metricTransactions(transactions, categories, { jointAccountIds }).map((tx) => tx.id));
-  const counted = days.map((entry) => entry.txs.filter((tx) => countedIds.has(tx.id)));
   const heat = heatLevels(counted.map((txs) => sumByType(txs).expense));
 
   // The month in figures, with the same accounts the calendar shows.
@@ -214,6 +231,50 @@ export default function CalendarBody() {
       action: t("home.see"),
     });
   }
+  // Subscription charges waiting on the user: a charge that never came, a new price, movements to confirm.
+  const shortDay = (iso: string) => parseDateString(iso).toLocaleDateString(localeOf(lang), { day: "numeric", month: "short" }).replace(".", "");
+  const toConfirm: Subscription[] = [];
+  for (const sub of subscriptions) {
+    if (isAccountHidden(sub.account_id)) continue;
+    if ((sub.reviews ?? []).length > 0) toConfirm.push(sub);
+    const status = listStatus(sub);
+    if (status?.kind === "missed") {
+      pending.push({
+        key: `missed-${sub.id}`,
+        href: `/subscriptions?sub=${sub.id}`,
+        icon: <SubscriptionsIcon className="size-[18px]" strokeWidth={2} />,
+        color: "var(--danger)",
+        title: interpolate(t("home.missedTitle"), { name: sub.service_name }),
+        hint: interpolate(t("home.missedHint"), { date: shortDay(status.date) }),
+        action: t("home.see"),
+      });
+    }
+    const change = status?.kind === "price" ? pendingPriceChange(sub) : null;
+    if (change) {
+      const up = change.diff > 0;
+      pending.push({
+        key: `price-${sub.id}`,
+        href: `/subscriptions?sub=${sub.id}`,
+        icon: up ? <TrendingUp className="size-[18px]" strokeWidth={2} /> : <TrendingDown className="size-[18px]" strokeWidth={2} />,
+        color: "var(--warning)",
+        title: withAmount(interpolate(t(up ? "home.priceTitleUp" : "home.priceTitleDown"), { name: sub.service_name, amount: "{amount}" }), change.charged),
+        hint: t("home.priceHint"),
+        action: t("home.see"),
+      });
+    }
+  }
+  if (toConfirm.length > 0) {
+    const count = toConfirm.reduce((sum, sub) => sum + (sub.reviews?.length ?? 0), 0);
+    pending.push({
+      key: "match-review",
+      href: toConfirm.length === 1 ? `/subscriptions?sub=${toConfirm[0].id}` : "/subscriptions",
+      icon: <Link2 className="size-[18px]" strokeWidth={2} />,
+      color: "var(--accent)",
+      title: interpolate(t(count === 1 ? "home.matchReviewOne" : "home.matchReviewMany"), { count }),
+      hint: toConfirm.map((sub) => sub.service_name).join(", "),
+      action: t("home.review"),
+    });
+  }
   if (balances && balances.owed_to_me_cents > 0) {
     pending.push({
       key: "owed",
@@ -249,7 +310,7 @@ export default function CalendarBody() {
         .slice(0, UPCOMING_COUNT)
     : [];
   // Still to be charged before the month ends (only meaningful for the running month).
-  const toCharge = isCurrent ? days.reduce((sum, entry) => (isFuture(entry.day) ? sum + entry.subs.reduce((s, sub) => s + Number(sub.cost), 0) : sum), 0) : 0;
+  const toCharge = isCurrent ? days.reduce((sum, entry) => (isFuture(entry.day) ? sum + entry.subs.reduce((s, { charge }) => s + charge.expected, 0) : sum), 0) : 0;
 
   const selected = picked === null ? null : Math.min(picked, daysInMonth);
   const selectedDay = selected === null ? null : days[selected - 1];
@@ -276,11 +337,33 @@ export default function CalendarBody() {
     return relative ? { title: relative, detail: date } : { title: date };
   })();
   const dayNet = selected === null ? 0 : counted[selected - 1].reduce((sum, tx) => sum + (tx.type === "income" ? 1 : -1) * Number(tx.amount), 0);
-  const subStatus = (day: number) => {
-    const s = stamp(view.year, view.month, day);
+  /** What the agenda says about a charge (its real status), with the class that colours it. */
+  const chargeStatus = ({ status, amount }: Charge, day: number): { label: React.ReactNode; className?: string } | null => {
     if (todayStamp === null) return null;
-    if (s === todayStamp) return { label: t("home.chargedToday"), soon: true };
-    return s < todayStamp ? { label: t("home.charged"), soon: false } : { label: t("home.upcomingCharge"), soon: true };
+    switch (status) {
+      case "paid":
+      case "unverified":
+        return { label: t("home.charged") };
+      case "changed":
+        return { label: withAmount(t("home.chargeChanged"), amount), className: "lp-warn" };
+      case "review":
+        return { label: t("home.chargeReview"), className: "lp-review" };
+      case "missed":
+        return { label: t("home.chargeMissed"), className: "lp-alert" };
+      case "skipped":
+        return { label: t("home.chargeSkipped"), className: "lp-waiting" };
+      case "pending":
+        return { label: t(stamp(view.year, view.month, day) === todayStamp ? "home.chargedToday" : "home.chargePending"), className: "lp-soon" };
+      default:
+        return { label: t("home.upcomingCharge"), className: "lp-soon" };
+    }
+  };
+  /** A charge with its movement opens the movement (where a charge to confirm is answered); the others open the subscription. */
+  const openCharge = ({ sub, charge }: DayCharge) => {
+    const moved = charge.tx ?? charge.review;
+    const tx = moved ? transactions.find((row) => row.id === moved.id) : undefined;
+    if (tx) setEditing(tx);
+    else setOpenSub(sub);
   };
 
   const firstWeekday = new Date(view.year, view.month - 1, 1).getDay() || 7;
@@ -380,10 +463,13 @@ export default function CalendarBody() {
                 </button>
               </div>
               <div className="home-rows">
-                {selectedDay.subs.map((sub) => {
-                  const status = subStatus(selected);
+                {selectedDay.subs.map((item) => {
+                  const { sub, charge } = item;
+                  const status = chargeStatus(charge, selected);
+                  // A charge that never came: its expected amount in grey, without a sign.
+                  const gone = charge.status === "missed" || charge.status === "skipped";
                   return (
-                    <button key={`sub-${sub.id}`} type="button" className="lp-row" onClick={() => setOpenSub(sub)}>
+                    <button key={`sub-${sub.id}-${charge.date}`} type="button" className="lp-row" onClick={() => openCharge(item)}>
                       <SubscriptionIcon sub={sub} />
                       <span className="lp-main">
                         <span className="lp-title">
@@ -395,13 +481,14 @@ export default function CalendarBody() {
                           {status && (
                             <>
                               <span className="lp-meta-sep">·</span>
-                              <span className={status.soon ? "lp-soon" : undefined}>{status.label}</span>
+                              <span className={cn("lp-truncate", status.className)}>{status.label}</span>
                             </>
                           )}
                         </span>
                       </span>
-                      <span className="lp-amount is-expense">
-                        -<SensitiveAmount>{formatCurrency(Number(sub.cost))}</SensitiveAmount>
+                      <span className={cn("lp-amount", gone ? "is-muted" : "is-expense")}>
+                        {!gone && "-"}
+                        <SensitiveAmount>{formatCurrency(charge.amount)}</SensitiveAmount>
                       </span>
                     </button>
                   );

@@ -24,6 +24,10 @@ const shared = { groupId: ID, groupName: "Piso", expenseId: ID2, title: "Cena", 
 const SAMPLES: { [T in NotificationType]: NotificationParams[T] } = {
   "subscription.renewal": { subscriptionId: ID, name: "Netflix", amount: 12.99, date: "2026-10-12", daysBefore: 3 },
   "subscription.ending": { subscriptionId: ID, name: "Gym", date: "2026-10-30", lastCharge: true },
+  "subscription.price_change": { subscriptionId: ID, name: "Netflix", chargeDate: "2026-11-03", charged: 13.99, saved: 12.99 },
+  "subscription.missed_charge": { subscriptionId: ID, name: "Basic-Fit", date: "2026-11-10", amount: 29.99 },
+  "subscription.unexpected_charge": { subscriptionId: ID, name: "Disney+", accountId: ID, transactionId: ID2, date: "2026-10-20", amount: 9.99, endDate: "2026-09-30" },
+  "subscription.match_review": { subscriptionId: ID, name: "ChatGPT Plus", accountId: ID, transactionId: ID2, date: "2026-11-12", amount: 23.04, description: "OPENAI *CHATGPT SUBSCR" },
   "budget.threshold": { budgetId: ID, name: "Comida", threshold: 80, month: "2026-10", spent: 240, limit: 300 },
   "summary.monthly": { month: "2026-09", spent: 1234.5, income: 2000, savings: 765.5, overBudgets: 2, topCategory: "Comida" },
   "import.reminder": { month: "2026-09" },
@@ -53,7 +57,7 @@ const LANGS: Lang[] = ["en", "es"];
 
 describe("catalog", () => {
   it("lists every type from the plan and none for debt reminders", () => {
-    expect(NOTIFICATION_TYPES).toHaveLength(25);
+    expect(NOTIFICATION_TYPES).toHaveLength(29);
     expect(NOTIFICATION_TYPES.some((type) => type.includes("debt"))).toBe(false);
     expect(Object.keys(SAMPLES).sort()).toEqual([...NOTIFICATION_TYPES].sort());
   });
@@ -81,6 +85,21 @@ describe("catalog", () => {
     expect(notificationUrl("friend.request_received", SAMPLES["friend.request_received"])).toBe("/friends");
     expect(notificationUrl("shared.member_removed", SAMPLES["shared.member_removed"])).toBe("/subcount");
     expect(notificationUrl("joint.account_deleted", SAMPLES["joint.account_deleted"])).toBe("/accounts");
+    expect(notificationUrl("subscription.price_change", SAMPLES["subscription.price_change"])).toBe(`/subscriptions?sub=${ID}`);
+    expect(notificationUrl("subscription.missed_charge", SAMPLES["subscription.missed_charge"])).toBe(`/subscriptions?sub=${ID}`);
+    expect(notificationUrl("subscription.match_review", SAMPLES["subscription.match_review"])).toBe(`/account/${ID}?tx=${ID2}`);
+    expect(notificationUrl("subscription.unexpected_charge", SAMPLES["subscription.unexpected_charge"])).toBe(`/account/${ID}?tx=${ID2}`);
+  });
+
+  it("renders the subscription charge notifications", () => {
+    const t = getTranslations("es");
+    const price = renderNotification({ type: "subscription.price_change", params: SAMPLES["subscription.price_change"] }, t, "es");
+    expect(price).toMatchObject({ title: "Netflix ha subido a 13,99 €", body: "+1,00 € respecto a 12,99 €. Cobro del 3 nov" });
+    const down = renderNotification({ type: "subscription.price_change", params: { ...SAMPLES["subscription.price_change"], charged: 11.99 } }, t, "es");
+    expect(down).toMatchObject({ title: "Netflix ha bajado a 11,99 €", body: "-1,00 € respecto a 12,99 €. Cobro del 3 nov" });
+    expect(renderNotification({ type: "subscription.missed_charge", params: SAMPLES["subscription.missed_charge"] }, t, "es")).toMatchObject({ title: "No vemos el cobro de Basic-Fit", body: "Esperábamos 29,99 € el 10 nov" });
+    expect(renderNotification({ type: "subscription.unexpected_charge", params: SAMPLES["subscription.unexpected_charge"] }, t, "es")).toMatchObject({ title: "Disney+ te ha cobrado 9,99 €", body: "Terminó el 30 sept. ¿La cancelaste?" });
+    expect(renderNotification({ type: "subscription.match_review", params: SAMPLES["subscription.match_review"] }, t, "es")).toMatchObject({ title: "¿Es el cobro de ChatGPT Plus?", body: "OPENAI *CHATGPT SUBSCR · 23,04 € el 12 nov" });
   });
 
   it("only joint transactions aggregate, with a 5 minute window keyed by actor and account", () => {
@@ -91,8 +110,8 @@ describe("catalog", () => {
     expect(aggregate?.key({ actorId: "a", params: SAMPLES["joint.transaction"] })).toBe(`a:${ID}`);
   });
 
-  it("only the budget threshold and the test notification skip the push or the inbox", () => {
-    expect(NOTIFICATION_TYPES.filter((type) => !NOTIFICATIONS[type].push)).toEqual(["budget.threshold"]);
+  it("only the budget threshold, movements to confirm and the test notification skip the push or the inbox", () => {
+    expect(NOTIFICATION_TYPES.filter((type) => !NOTIFICATIONS[type].push)).toEqual(["subscription.match_review", "budget.threshold"]);
     expect(NOTIFICATION_TYPES.filter((type) => !NOTIFICATIONS[type].inbox)).toEqual(["system.push_test"]);
   });
 

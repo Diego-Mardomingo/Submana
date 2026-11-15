@@ -74,3 +74,13 @@ export async function dismissSubscription(supabase: SupabaseClient, txId: string
     .select()
     .maybeSingle();
 }
+
+/**
+ * Marks as read the notifications about something the user just decided (a price accepted or ignored,
+ * a charge marked as not charged, a movement confirmed or not). Never fails the action.
+ */
+export async function markNotificationsRead(supabase: SupabaseClient, userId: string, dedupeKeys: string[]) {
+  if (dedupeKeys.length === 0) return;
+  const { error } = await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("user_id", userId).in("dedupe_key", dedupeKeys).is("read_at", null);
+  if (error) console.error("[subscriptions] mark notifications read", error);
+}

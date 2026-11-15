@@ -21,6 +21,14 @@ export const NOTIFICATION_FAMILIES: Exclude<NotificationFamily, "system">[] = ["
 export interface NotificationParams {
   "subscription.renewal": { subscriptionId: string; name: string; amount: number; /** YYYY-MM-DD charge date */ date: string; daysBefore: RenewalOffset };
   "subscription.ending": { subscriptionId: string; name: string; /** YYYY-MM-DD */ date: string; /** true: that date is the last charge; false: the subscription just ends */ lastCharge: boolean };
+  /** A linked charge came for another amount than the price in force that day. */
+  "subscription.price_change": { subscriptionId: string; name: string; /** YYYY-MM-DD charge date */ chargeDate: string; charged: number; saved: number };
+  /** A charge whose grace window is over with no transaction. */
+  "subscription.missed_charge": { subscriptionId: string; name: string; /** YYYY-MM-DD */ date: string; amount: number };
+  /** An expense that fits a subscription that already ended. */
+  "subscription.unexpected_charge": { subscriptionId: string; name: string; accountId: string; transactionId: string; /** YYYY-MM-DD of the movement */ date: string; amount: number; endDate: string | null };
+  /** A movement may be a charge of the subscription: the user confirms it (in-app only). */
+  "subscription.match_review": { subscriptionId: string; name: string; accountId: string; transactionId: string; /** YYYY-MM-DD of the movement */ date: string; amount: number; description: string | null };
   "budget.threshold": {
     budgetId: string;
     /** Budget label (its categories); empty for the general budget. */
@@ -239,6 +247,61 @@ export const NOTIFICATIONS: { [T in NotificationType]: NotificationDef<T> } = {
     plan: (p, { lang }) => {
       const vars = { name: text(p.name), date: dayLabel(p.date, lang) };
       return { title: { key: "notif.subscription.ending.title", vars }, body: [{ key: p.lastCharge ? "notif.subscription.ending.bodyLast" : "notif.subscription.ending.body", vars }] };
+    },
+  },
+  "subscription.price_change": {
+    family: "subscriptions",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    url: (p) => `/subscriptions?sub=${p.subscriptionId}`,
+    plan: (p, { lang, hide }) => {
+      const charged = Number(p.charged) || 0;
+      const saved = Number(p.saved) || 0;
+      const diff = Math.round((charged - saved) * 100) / 100;
+      const vars = { name: text(p.name), charged: money(charged), saved: money(saved), diff: money(Math.abs(diff)), sign: diff >= 0 ? "+" : "-", date: dayLabel(p.chargeDate, lang) };
+      const up = diff >= 0;
+      return {
+        title: { key: hide ? (up ? "notif.subscription.price_change.titleHidden" : "notif.subscription.price_change.titleDownHidden") : up ? "notif.subscription.price_change.title" : "notif.subscription.price_change.titleDown", vars },
+        body: [{ key: hide ? "notif.subscription.price_change.bodyHidden" : "notif.subscription.price_change.body", vars }],
+      };
+    },
+  },
+  "subscription.missed_charge": {
+    family: "subscriptions",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    url: (p) => `/subscriptions?sub=${p.subscriptionId}`,
+    plan: (p, { lang, hide }) => {
+      const vars = { name: text(p.name), amount: money(p.amount), date: dayLabel(p.date, lang) };
+      return { title: { key: "notif.subscription.missed_charge.title", vars }, body: [{ key: hide ? "notif.subscription.missed_charge.bodyHidden" : "notif.subscription.missed_charge.body", vars }] };
+    },
+  },
+  "subscription.unexpected_charge": {
+    family: "subscriptions",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    url: (p) => `/account/${p.accountId}?tx=${p.transactionId}`,
+    plan: (p, { lang, hide }) => {
+      const vars = { name: text(p.name), amount: money(p.amount), date: dayLabel(p.date, lang), end: dayLabel(p.endDate, lang) };
+      return {
+        title: { key: hide ? "notif.subscription.unexpected_charge.titleHidden" : "notif.subscription.unexpected_charge.title", vars },
+        body: [{ key: vars.end ? "notif.subscription.unexpected_charge.body" : "notif.subscription.unexpected_charge.bodyNoEnd", vars }],
+      };
+    },
+  },
+  "subscription.match_review": {
+    family: "subscriptions",
+    push: false,
+    inbox: true,
+    defaultEnabled: true,
+    url: (p) => `/account/${p.accountId}?tx=${p.transactionId}`,
+    plan: (p, { lang, hide }) => {
+      const vars = { name: text(p.name), amount: money(p.amount), date: dayLabel(p.date, lang), description: text(p.description) };
+      const key = hide ? "notif.subscription.match_review.bodyHidden" : vars.description ? "notif.subscription.match_review.body" : "notif.subscription.match_review.bodyNoText";
+      return { title: { key: "notif.subscription.match_review.title", vars }, body: [{ key, vars }] };
     },
   },
   "budget.threshold": {
@@ -565,6 +628,16 @@ export interface NotificationToggle {
 export const NOTIFICATION_TOGGLES: NotificationToggle[] = [
   { id: "subscription.renewal", family: "subscriptions", types: ["subscription.renewal"], labelKey: "notifSettings.subscription.renewal.label", descKey: "notifSettings.subscription.renewal.desc" },
   { id: "subscription.ending", family: "subscriptions", types: ["subscription.ending"], labelKey: "notifSettings.subscription.ending.label", descKey: "notifSettings.subscription.ending.desc" },
+  { id: "subscription.price_change", family: "subscriptions", types: ["subscription.price_change"], labelKey: "notifSettings.subscription.price_change.label", descKey: "notifSettings.subscription.price_change.desc" },
+  // "Por confirmar" has no switch of its own: it goes with the missed-charge one (both are about charges not found).
+  {
+    id: "subscription.missed_charge",
+    family: "subscriptions",
+    types: ["subscription.missed_charge", "subscription.match_review"],
+    labelKey: "notifSettings.subscription.missed_charge.label",
+    descKey: "notifSettings.subscription.missed_charge.desc",
+  },
+  { id: "subscription.unexpected_charge", family: "subscriptions", types: ["subscription.unexpected_charge"], labelKey: "notifSettings.subscription.unexpected_charge.label", descKey: "notifSettings.subscription.unexpected_charge.desc" },
   { id: "budget.threshold", family: "budgets", types: ["budget.threshold"], labelKey: "notifSettings.budget.threshold.label", descKey: "notifSettings.budget.threshold.desc" },
   { id: "summary.monthly", family: "budgets", types: ["summary.monthly"], labelKey: "notifSettings.summary.monthly.label", descKey: "notifSettings.summary.monthly.desc" },
   { id: "import.reminder", family: "budgets", types: ["import.reminder"], labelKey: "notifSettings.import.reminder.label", descKey: "notifSettings.import.reminder.desc" },

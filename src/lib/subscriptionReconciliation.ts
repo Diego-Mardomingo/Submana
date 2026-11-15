@@ -391,3 +391,59 @@ function matchScore(sub: MatchableSubscription, tx: CandidateTx, chargeDate: str
   const nameScore = descriptionScore(txTokens, pattern.length ? pattern : descriptionTokens(sub.service_name));
   return { score: 0.25 * dateScore + 0.3 * amountScore + 0.45 * nameScore, nameScore, amountExact };
 }
+
+/* ── Home calendar (phase 3) ── */
+
+export interface DayCharge {
+  /** Day of the month (1-31) where it shows: the day the money moved when there is a movement (linked or to confirm), else the charge date. */
+  day: number;
+  /** The charge with its real status; future payment days come as "upcoming". */
+  charge: Charge;
+}
+
+/**
+ * The charges of a subscription that fall in a month (1-12), for the Home calendar. Past and today's
+ * come from chargeHistory with their real status; a charge with a movement (linked or to confirm) shows on
+ * the day it was booked (a late charge is not drawn twice). Payment days after today are "upcoming".
+ */
+export function monthCharges(sub: ReconcilableSubscription, year: number, month: number, today?: Date): DayCharge[] {
+  const todayStr = todayIso(today);
+  const prefix = `${year}-${String(month).padStart(2, "0")}-`;
+  const out: DayCharge[] = [];
+  const shownDates = new Set<string>();
+  for (const charge of chargeHistory(sub, today)) {
+    if (charge.status === "upcoming") continue;
+    const moved = charge.tx ?? charge.review;
+    const where = moved ? txDay(moved) : charge.date;
+    shownDates.add(charge.date);
+    if (where.startsWith(prefix)) out.push({ day: Number(where.slice(8, 10)), charge });
+  }
+  const first = `${prefix}01`;
+  const last = toDateString(new Date(year, month, 0, 12));
+  const from = todayStr >= first ? addDays(todayStr, 1) : first;
+  if (from <= last) {
+    for (const date of chargeDatesBetween(sub, noonOf(from), noonOf(last)).map(toDateString)) {
+      if (shownDates.has(date)) continue;
+      const expected = priceAt(sub, date);
+      out.push({ day: Number(date.slice(8, 10)), charge: { date, status: "upcoming", expected, amount: expected } });
+    }
+  }
+  return out.sort((a, b) => a.day - b.day);
+}
+
+/** A charge that should have arrived and did not, for the missed-charge notification (cron). */
+export interface MissedCharge {
+  date: string;
+  expected: number;
+}
+
+/**
+ * Charges that just became "missed" (no transaction once the grace window is over), at most
+ * `lookbackDays` old so the first run does not flood the inbox with the past. Newest first.
+ */
+export function recentMissedCharges(sub: ReconcilableSubscription, today?: Date, lookbackDays = 7): MissedCharge[] {
+  const todayStr = todayIso(today);
+  return chargeHistory(sub, today)
+    .filter((c) => c.status === "missed" && daysBetween(c.date, todayStr) <= GRACE_DAYS + lookbackDays)
+    .map((c) => ({ date: c.date, expected: c.expected }));
+}

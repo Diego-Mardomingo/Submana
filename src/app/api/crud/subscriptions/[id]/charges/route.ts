@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
-import { isDay, readSubscription, SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
+import { missedChargeDedupeKey } from "@/lib/notifications/jobs/missedCharges";
+import { priceChangeDedupeKey } from "@/lib/notifications/events/subscriptions";
+import { isDay, markNotificationsRead, readSubscription, SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -84,5 +86,8 @@ export async function POST(request: NextRequest, { params }: Params) {
   const { data, error } = await supabase.from("subscriptions").update(updates).eq("id", id).eq("user_id", user.id).select(SUBSCRIPTION_SELECT).maybeSingle();
   if (error) return jsonServerError("subscriptions/charges", error);
   if (!data) return jsonError("Subscription not found", 404);
+  // The notification about what was just decided is no longer news.
+  if (body.action === "accept_price" || body.action === "dismiss_price") await markNotificationsRead(supabase, user.id, [priceChangeDedupeKey(id, chargeDate)]);
+  if (body.action === "skip") await markNotificationsRead(supabase, user.id, [missedChargeDedupeKey(id, chargeDate)]);
   return jsonResponse({ data });
 }
