@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Check, FileUp, HandCoins, Landmark, Mail, MailOpen, Trash2, UserPlus } from "lucide-react";
+import { Check, FileUp, HandCoins, Landmark, Mail, MailOpen, Trash2, TrendingDown, TrendingUp, UserPlus } from "lucide-react";
 import { BudgetsIcon, DashboardIcon, NotificationsIcon, SubcountIcon, SubscriptionsIcon } from "@/components/icons";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -27,7 +27,7 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 /** Icon and colour of a notification type (by family, with a few exceptions). */
-function look(type: string): { Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; tone: Tone } {
+function look(type: string, params: Record<string, unknown> = {}): { Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; tone: Tone } {
   if (!isNotificationType(type)) return { Icon: NotificationsIcon, tone: "accent" };
   switch (type) {
     case "budget.threshold":
@@ -38,6 +38,13 @@ function look(type: string): { Icon: React.ComponentType<{ className?: string; s
       return { Icon: FileUp, tone: "success" };
     case "shared.settlement":
       return { Icon: HandCoins, tone: "accent" };
+    case "subscription.price_change":
+      return { Icon: Number(params.charged) < Number(params.saved) ? TrendingDown : TrendingUp, tone: "warning" };
+    case "subscription.missed_charge":
+    case "subscription.unexpected_charge":
+      return { Icon: SubscriptionsIcon, tone: "danger" };
+    case "subscription.match_review":
+      return { Icon: SubscriptionsIcon, tone: "accent" };
   }
   switch (NOTIFICATIONS[type as NotificationType].family) {
     case "subscriptions":
@@ -156,7 +163,7 @@ export const NotificationRow = memo(function NotificationRow({ item, timeLabel, 
   const lang = useLang();
   const t = useTranslations(lang);
   const unread = item.read_at == null;
-  const { Icon, tone } = look(item.type);
+  const { Icon, tone } = look(item.type, item.params);
   const { title, bodyParts } = renderNotification(item, t, lang);
 
   const stop = (action: () => void) => (e: React.MouseEvent) => {

@@ -23,6 +23,9 @@ export interface UnexpectedChargeFound {
   subscriptionId: string;
   serviceName: string;
   transactionId: string;
+  accountId: string;
+  /** YYYY-MM-DD the movement was booked. */
+  txDate: string;
   chargeDate: string;
   amount: number;
   endDate: string | null;
@@ -40,6 +43,9 @@ export interface ReviewFound {
   subscriptionId: string;
   serviceName: string;
   transactionId: string;
+  accountId: string;
+  /** YYYY-MM-DD the movement was booked. */
+  txDate: string;
   chargeDate: string;
   amount: number;
   description: string | null;
@@ -83,7 +89,7 @@ async function applyMatches(supabase: SupabaseClient, subs: Sub[], txs: Matchabl
     const sub = byId.get(match.subscriptionId)!;
     const tx = txById.get(match.txId)!;
     if (match.kind === "unexpected") {
-      summary.unexpected.push({ subscriptionId: sub.id, serviceName: sub.service_name, transactionId: tx.id, chargeDate: match.chargeDate, amount: Number(tx.amount), endDate: sub.end_date ?? null });
+      summary.unexpected.push({ subscriptionId: sub.id, serviceName: sub.service_name, transactionId: tx.id, accountId: tx.account_id ?? "", txDate: txDay(tx), chargeDate: match.chargeDate, amount: Number(tx.amount), endDate: sub.end_date ?? null });
       continue;
     }
     if (match.kind === "review") {
@@ -97,7 +103,7 @@ async function applyMatches(supabase: SupabaseClient, subs: Sub[], txs: Matchabl
         .maybeSingle();
       if (error || !data) continue;
       summary.review++;
-      summary.reviews.push({ subscriptionId: sub.id, serviceName: sub.service_name, transactionId: tx.id, chargeDate: match.chargeDate, amount: Number(tx.amount), description: tx.bank_description || tx.description || null });
+      summary.reviews.push({ subscriptionId: sub.id, serviceName: sub.service_name, transactionId: tx.id, accountId: tx.account_id ?? "", txDate: txDay(tx), chargeDate: match.chargeDate, amount: Number(tx.amount), description: tx.bank_description || tx.description || null });
       continue;
     }
     const { data, error } = await supabase

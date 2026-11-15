@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { NextRequest } from "next/server";
 import { cleanupNotifications } from "@/lib/notifications/jobs/cleanup";
 import { loadImportReminderEvents } from "@/lib/notifications/jobs/importReminder";
+import { loadMissedChargeEvents } from "@/lib/notifications/jobs/missedCharges";
 import { loadRenewalEvents } from "@/lib/notifications/jobs/renewals";
 import { loadSummaryEvents } from "@/lib/notifications/jobs/summary";
 import { isSendHour, madridClock } from "@/lib/notifications/jobs/time";
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
   await run("renewals", () => loadRenewalEvents(admin, clock));
   await run("summary", () => loadSummaryEvents(admin, clock));
   await run("importReminder", () => loadImportReminderEvents(admin, clock));
+  await run("missedCharges", () => loadMissedChargeEvents(admin, clock));
   try {
     result.cleanup = { deleted: await cleanupNotifications(admin) };
   } catch (error) {

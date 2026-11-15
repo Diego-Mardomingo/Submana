@@ -4,7 +4,9 @@ import { classifyImportRows, decisionAction, type ClassifyCandidate } from "@/li
 import { matchScore } from "@/lib/dedup/matchScore";
 import { filterAlreadyImportedStatementRows } from "@/lib/importDuplicateDetection";
 import { tagInternalTransfersAfterImport } from "@/lib/importTransferTagging";
-import { reconcileNewTransactions, type ReconcileSummary } from "@/lib/subscriptionAutoMatch";
+import { reconcileEvents } from "@/lib/notifications/events/subscriptions";
+import { notifyAfter } from "@/lib/notifications/server";
+import { emptySummary, reconcileNewTransactions, type ReconcileSummary } from "@/lib/subscriptionAutoMatch";
 import { buildDuplicateConflictKey, buildDuplicateConflictKeyLegacy, buildImportLineId } from "@/lib/parsers/importKeys";
 import type { ImportedTransaction, ImportPreviewRow, ImportResolution, ImportRowStatus, ImportTransactionsResponse } from "@/lib/parsers/types";
 
@@ -319,6 +321,15 @@ export async function importTransactions(args: {
     reconcile = await reconcileNewTransactions(supabase, userId, [...insertedIds, ...mergeTargets]);
   } catch (error) {
     console.error("[import] subscription reconciliation", error);
+  }
+  // Price changes and charges of ended subscriptions are notified; the movements to confirm only ring
+  // when nobody is looking (bank sync): after a statement import the result toast already counts them.
+  if (reconcile) {
+    const { reviews, ...rest } = reconcile;
+    notifyAfter([
+      ...reconcileEvents(userId, { ...rest, reviews: [] }),
+      ...reconcileEvents(userId, { ...emptySummary(), reviews }, { selfInitiated: source === "import" }),
+    ]);
   }
 
   return {

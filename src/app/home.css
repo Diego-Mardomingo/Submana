@@ -281,6 +281,21 @@
   background: var(--gris);
 }
 
+/* The charge's status as a ring (issue #108): it never came (greyed out), another amount, to confirm. */
+.home-day-logo.is-missed {
+  opacity: 0.45;
+  filter: grayscale(1);
+  box-shadow: 0 0 0 1.5px var(--danger);
+}
+
+.home-day-logo.is-changed {
+  box-shadow: 0 0 0 1.5px var(--warning);
+}
+
+.home-day-logo.is-review {
+  box-shadow: 0 0 0 1.5px var(--accent);
+}
+
 .home-day-logo + .home-day-logo,
 .home-day-logo + .home-day-more {
   margin-left: -5px;

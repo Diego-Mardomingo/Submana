@@ -6,6 +6,8 @@ import {
   chargeHistory,
   lastCharge,
   listStatus,
+  monthCharges,
+  recentMissedCharges,
   pendingPriceChange,
   priceAt,
   reconciledTotal,
@@ -205,5 +207,42 @@ describe("automatic matching", () => {
     const withReview = { ...chatgpt, reviews: [{ id: "r", amount: 23.04, date: "2026-11-12T09:00:00Z", subscription_review_date: "2026-11-12", bank_description: "OPENAI" }] };
     expect(chargeHistory(withReview, day("2026-11-20"))[1]).toMatchObject({ date: "2026-11-12", status: "review", amount: 23.04 });
     expect(listStatus(withReview, day("2026-11-20"))).toEqual({ kind: "review", date: "2026-11-12" });
+  });
+});
+
+describe("Home calendar", () => {
+  it("places each charge once, linked ones on the day the money moved", () => {
+    const spotify = sub({ start_date: "2026-09-05", cost: 10.99, price_history: [{ cost: 10.99, valid_from: "2026-09-05" }], charges: [tx("2026-10-05", 10.99), tx("2026-11-06", 10.99, "2026-11-05")] });
+    const nov = monthCharges(spotify, 2026, 11, TODAY);
+    expect(nov.map((c) => [c.day, c.charge.status])).toEqual([[6, "paid"]]);
+    expect(nov[0].charge.tx?.id).toBe("tx-2026-11-05");
+  });
+  it("gives past days their real status and future days 'upcoming'", () => {
+    const gym = sub({ start_date: "2026-09-10", cost: 29.99, price_history: [{ cost: 29.99, valid_from: "2026-09-10" }], charges: [tx("2026-10-10", 29.99)] });
+    expect(monthCharges(gym, 2026, 11, TODAY).map((c) => [c.day, c.charge.status])).toEqual([[10, "missed"]]);
+    expect(monthCharges(gym, 2026, 12, TODAY).map((c) => [c.day, c.charge.status])).toEqual([[10, "upcoming"]]);
+    const weekly = sub({ start_date: "2026-11-02", frequency: "weekly" });
+    expect(monthCharges(weekly, 2026, 11, TODAY).map((c) => [c.day, c.charge.status])).toEqual([[2, "unverified"], [9, "unverified"], [16, "upcoming"], [23, "upcoming"], [30, "upcoming"]]);
+  });
+  it("shows a changed amount", () => {
+    const netflix = sub({ charges: [tx("2026-10-03", 12.99), tx("2026-11-03", 13.99)] });
+    expect(monthCharges(netflix, 2026, 11, TODAY)[0].charge).toMatchObject({ status: "changed", amount: 13.99 });
+  });
+});
+
+describe("recentMissedCharges", () => {
+  const gym = sub({ start_date: "2026-08-10", cost: 29.99, price_history: [{ cost: 29.99, valid_from: "2026-08-10" }], charges: [tx("2026-08-10", 29.99)] });
+  it("only the ones that turned missed lately", () => {
+    // 10 sep and 10 oct missed too, but they are older than the lookback.
+    expect(recentMissedCharges(gym, TODAY)).toEqual([{ date: "2026-11-10", expected: 29.99 }]);
+    expect(recentMissedCharges(gym, day("2026-11-13"))).toEqual([]);
+    expect(recentMissedCharges(gym, day("2026-11-14"))).toEqual([{ date: "2026-11-10", expected: 29.99 }]);
+  });
+});
+
+describe("Home calendar: charges to confirm", () => {
+  it("shows on the day the movement was booked", () => {
+    const chat = sub({ start_date: "2026-10-12", cost: 22.99, price_history: [{ cost: 22.99, valid_from: "2026-10-12" }], reviews: [{ id: "r", amount: 23.04, date: "2026-11-13T09:00:00Z", subscription_review_date: "2026-11-12" }] });
+    expect(monthCharges(chat, 2026, 11, TODAY).map((c) => [c.day, c.charge.status, c.charge.amount])).toEqual([[13, "review", 23.04]]);
   });
 });

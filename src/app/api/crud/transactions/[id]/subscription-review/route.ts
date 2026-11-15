@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
-import { dismissSubscription, linkCharge, readSubscription } from "@/lib/subscriptionsServer";
+import { dismissSubscription, linkCharge, markNotificationsRead, readSubscription } from "@/lib/subscriptionsServer";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -28,6 +28,8 @@ export async function POST(request: NextRequest, { params }: Params) {
   const sub = await readSubscription(supabase, user.id, tx.subscription_review_id);
   if (!sub) return jsonError("Subscription not found", 404);
 
+  // Answered here: the "is this the charge?" notification is no longer news.
+  await markNotificationsRead(supabase, user.id, [`subscription.match_review:${id}:${sub.id}`]);
   try {
     if (body.action === "dismiss") {
       const { data, error } = await dismissSubscription(supabase, id, sub.id, tx.subscription_dismissed_ids);
