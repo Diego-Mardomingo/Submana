@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Check, CircleHelp, Repeat, Trash2 } from "lucide-react";
 import {
   ActionRow,
   AmountField,
@@ -24,7 +24,8 @@ import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useBudgetWarning } from "@/hooks/useBudgets";
 import { useResolveBankReview } from "@/hooks/useBanking";
 import { useLang } from "@/hooks/useLang";
-import { useChargeAction, useLinkTransaction, useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
+import { useChargeAction, useLinkTransaction, useResolveReview, useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
+import type { ManualMatchInfo } from "@/lib/subscriptionAutoMatch";
 import {
   useCreateTransaction,
   useUndoableDeleteTransaction,
@@ -73,6 +74,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const { data: subscriptions = [] } = useSubscriptions();
   const linkTx = useLinkTransaction();
   const chargeAction = useChargeAction();
+  const resolveReview = useResolveReview();
   const linkedTo = transaction?.subscription_id ?? "";
   // A row of a joint account may be linked to another member's subscription: leave that link alone.
   const ownLink = !linkedTo || subscriptions.some((s) => s.id === linkedTo);
@@ -137,18 +139,70 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
       category_id: (jointAccount && !category ? "" : categoryId) || undefined,
       subcategory_id: (jointAccount && !subcategory ? "" : subcategoryId) || undefined,
     };
+    const target = type === "expense" ? subscriptionId : "";
     try {
       const checkBudgets = await watchBudgets(payload);
-      const saved: { id: string } = transaction ? await updateTx.mutateAsync({ id: transaction.id, ...payload }) : await createTx.mutateAsync(payload);
+      // A subscription picked by hand is linked below; otherwise the server looks for the charge itself.
+      const saved: { id: string; subscription_match?: ManualMatchInfo } = transaction
+        ? await updateTx.mutateAsync({ id: transaction.id, ...payload })
+        : await createTx.mutateAsync({ ...payload, ...(target && { auto_match: "0" as const }) });
       toast.success(t(transaction ? "transactions.saved" : "transactions.created"));
       void checkBudgets();
       onDone();
-      const target = type === "expense" ? subscriptionId : "";
       if (ownLink && saved?.id && target !== linkedTo) void linkSubscription(saved.id, target, num);
+      else if (!transaction && saved?.subscription_match) announceMatch(saved.id, saved.subscription_match, num);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     }
   };
+
+  /** A charge whose amount isn't the saved price: asks whether it's the new one. True when it asked. */
+  function askPrice(sub: Subscription, chargeDate: string, amount: number) {
+    const cents = (n: number) => Math.round(n * 100);
+    if (cents(amount) === cents(priceAt(sub, chargeDate)) || cents(amount) === cents(Number(sub.cost))) return false;
+    const diff = amount - Number(sub.cost);
+    const decide = (action: "accept_price" | "dismiss_price") =>
+      chargeAction.mutateAsync({ id: sub.id, action, chargeDate }).catch(() => toast.error(t("toast.chargeError"), { description: t("toast.chargeErrorDesc") }));
+    toast.warning(interpolate(t(diff > 0 ? "toast.priceUp" : "toast.priceDown"), { name: sub.service_name, amount: formatCurrency(amount) }), {
+      description: interpolate(t("toast.priceChangedDesc"), { diff: `${diff > 0 ? "+" : "−"}${formatCurrency(Math.abs(diff))}`, saved: formatCurrency(Number(sub.cost)) }),
+      action: { label: t("toast.update"), onClick: () => void decide("accept_price") },
+      cancel: { label: t("toast.ignore"), onClick: () => void decide("dismiss_price") },
+    });
+    return true;
+  }
+
+  /** What automatic matching found for the transaction just created: one toast. */
+  function announceMatch(transactionId: string, match: ManualMatchInfo, amount: number) {
+    const sub = subscriptions.find((s) => s.id === match.subscription_id);
+    const name = match.service_name;
+    const date = parseDateString(match.charge_date).toLocaleDateString(localeOf(lang), { day: "numeric", month: "short" });
+    if (match.kind === "unexpected") {
+      toast.warning(interpolate(t("toast.unexpected"), { name }), { description: t("toast.unexpectedDesc") });
+      return;
+    }
+    if (match.kind === "review") {
+      const answer = (action: "confirm" | "dismiss") =>
+        resolveReview
+          .mutateAsync({ transactionId, action })
+          .then(() => toast.success(interpolate(t(action === "confirm" ? "toast.chargeLinked" : "toast.reviewDismissed"), { name })))
+          .catch(() => toast.error(t("toast.chargeError"), { description: t("toast.chargeErrorDesc") }));
+      toast.info(interpolate(t("toast.autoReview"), { name }), {
+        description: interpolate(t("toast.autoReviewDesc"), { date }),
+        action: { label: t("notice.review.confirm"), onClick: () => void answer("confirm") },
+        cancel: { label: t("notice.review.dismiss"), onClick: () => void answer("dismiss") },
+      });
+      return;
+    }
+    if (match.expected !== undefined && sub && askPrice(sub, match.charge_date, amount)) return;
+    toast(interpolate(t("toast.autoLinked"), { name }), {
+      icon: <Repeat aria-hidden />,
+      description: interpolate(t("toast.autoLinkedDesc"), { date }),
+      action: {
+        label: t("common.undo"),
+        onClick: () => void linkTx.mutateAsync({ transactionId, subscriptionId: null }).catch(() => toast.error(t("toast.chargeError"))),
+      },
+    });
+  }
 
   /** Links the saved transaction to the picked subscription (or unlinks it); an amount other than the price gets its own toast. */
   async function linkSubscription(transactionId: string, target: string, amount: number) {
@@ -157,16 +211,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
       const result = await linkTx.mutateAsync({ transactionId, subscriptionId: target || null });
       const chargeDate = result?.charge_date;
       if (!sub || !chargeDate) return;
-      const cents = (n: number) => Math.round(n * 100);
-      if (cents(amount) === cents(priceAt(sub, chargeDate)) || cents(amount) === cents(Number(sub.cost))) return;
-      const diff = amount - Number(sub.cost);
-      const decide = (action: "accept_price" | "dismiss_price") =>
-        chargeAction.mutateAsync({ id: sub.id, action, chargeDate }).catch(() => toast.error(t("toast.chargeError"), { description: t("toast.chargeErrorDesc") }));
-      toast.warning(interpolate(t(diff > 0 ? "toast.priceUp" : "toast.priceDown"), { name: sub.service_name, amount: formatCurrency(amount) }), {
-        description: interpolate(t("toast.priceChangedDesc"), { diff: `${diff > 0 ? "+" : "−"}${formatCurrency(Math.abs(diff))}`, saved: formatCurrency(Number(sub.cost)) }),
-        action: { label: t("toast.update"), onClick: () => void decide("accept_price") },
-        cancel: { label: t("toast.ignore"), onClick: () => void decide("dismiss_price") },
-      });
+      askPrice(sub, chargeDate, amount);
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
       toast.error(
@@ -207,6 +252,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
         </FormHero>
 
         {transaction?.review_match_id && <BankReviewBanner transaction={transaction} onDone={onDone} />}
+        {transaction?.subscription_review_id && !transaction.subscription_id && <SubscriptionReviewBanner transaction={transaction} onDone={onDone} />}
 
         {!transaction && onUseSimilar && similar.length > 0 && (
           <div className="similar-banner">
@@ -369,6 +415,49 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
         </SheetButton>
       </SheetFooter>
     </SheetForm>
+  );
+}
+
+/** Automatic matching thinks this may be a subscription charge: confirm it or say it's not. */
+function SubscriptionReviewBanner({ transaction, onDone }: { transaction: Transaction; onDone: () => void }) {
+  const lang = useLang();
+  const t = useTranslations(lang);
+  const { data: subscriptions = [] } = useSubscriptions();
+  const resolve = useResolveReview();
+  const sub = subscriptions.find((s) => s.id === transaction.subscription_review_id);
+  const chargeDate = transaction.subscription_review_date;
+  if (!sub || !chargeDate) return null;
+  const date = parseDateString(chargeDate).toLocaleDateString(localeOf(lang), { day: "numeric", month: "short" });
+
+  const run = async (action: "confirm" | "dismiss") => {
+    try {
+      await resolve.mutateAsync({ transactionId: transaction.id, action });
+      toast.success(interpolate(t(action === "confirm" ? "toast.chargeLinked" : "toast.reviewDismissed"), { name: sub.service_name }));
+      onDone();
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === "charge_taken" ? t("link.chargeTaken") : t("toast.chargeError"));
+    }
+  };
+
+  return (
+    <div className="sf-notice sf-notice--accent" role="status">
+      <span className="sf-notice-icon">
+        <CircleHelp aria-hidden />
+      </span>
+      <div className="sf-notice-body">
+        <span className="sf-notice-title">{interpolate(t("review.banner"), { name: sub.service_name, date })}</span>
+        <span className="sf-notice-text">{interpolate(t("tx.subscription.hint"), { date, amount: formatCurrency(priceAt(sub, chargeDate)) })}</span>
+        <div className="sf-notice-actions">
+          <button type="button" className="sf-notice-btn sf-notice-btn--primary" disabled={resolve.isPending} onClick={() => run("confirm")}>
+            <Check aria-hidden />
+            {t("notice.review.confirm")}
+          </button>
+          <button type="button" className="sf-notice-btn" disabled={resolve.isPending} onClick={() => run("dismiss")}>
+            {t("notice.review.dismiss")}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -530,6 +530,7 @@ button.lp-chip:hover {
 .lp-paid { display: inline-flex; align-items: center; gap: 3px; color: var(--success-text); font-weight: 600; white-space: nowrap; }
 .lp-paid svg { width: 12px; height: 12px; flex-shrink: 0; }
 .lp-waiting { color: var(--gris-muy-claro); font-weight: 600; }
+.lp-review { color: var(--accent); font-weight: 600; }
 
 /* Small icon inside a meta line (a transaction linked to a subscription) */
 .lp-meta-icon { width: 11px; height: 11px; flex-shrink: 0; }

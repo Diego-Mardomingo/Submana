@@ -23,6 +23,17 @@ export interface PriceStep {
   source?: "manual" | "detected";
 }
 
+/** A transaction waiting for the user to confirm it is a charge (`subscription_review_id`). */
+export interface ReviewCharge {
+  id: string;
+  amount: number | string;
+  date: string;
+  /** YYYY-MM-DD of the expected charge it may cover. */
+  subscription_review_date: string;
+  description?: string | null;
+  bank_description?: string | null;
+}
+
 /** A transaction linked to a subscription (only what reconciliation needs). */
 export interface LinkedCharge {
   id: string;
@@ -38,7 +49,7 @@ export interface LinkedCharge {
 export type ReconcilableSubscription = Pick<
   Subscription,
   "start_date" | "end_date" | "frequency" | "frequency_value" | "cost" | "skipped_charges" | "dismissed_price_charge" | "price_history" | "charges"
->;
+> & { reviews?: ReviewCharge[] | null };
 
 export type ChargeStatus =
   /** Linked, for the price in force that day. */
@@ -53,6 +64,8 @@ export type ChargeStatus =
   | "skipped"
   /** Before the first linked charge: nothing to check it against. */
   | "unverified"
+  /** A transaction may be this charge: the user confirms it or not. */
+  | "review"
   /** The next charge. */
   | "upcoming";
 
@@ -64,6 +77,8 @@ export interface Charge {
   expected: number;
   /** The linked transaction, if any. */
   tx?: LinkedCharge;
+  /** The transaction waiting to be confirmed as this charge ("review"). */
+  review?: ReviewCharge;
   /** What was charged (linked) or is expected. */
   amount: number;
   /** amount - expected, for "changed". */
@@ -108,6 +123,7 @@ export function chargeHistory(sub: ReconcilableSubscription, today?: Date): Char
   const linked = new Map((sub.charges ?? []).map((tx) => [tx.subscription_charge_date, tx]));
   const firstLinked = [...linked.keys()].sort()[0] ?? null;
   const skipped = new Set(sub.skipped_charges ?? []);
+  const reviews = new Map((sub.reviews ?? []).map((tx) => [tx.subscription_review_date, tx]));
 
   const fromLinked = (date: string, tx: LinkedCharge): Charge => {
     const expected = priceAt(sub, date);
@@ -126,6 +142,11 @@ export function chargeHistory(sub: ReconcilableSubscription, today?: Date): Char
       continue;
     }
     const expected = priceAt(sub, date);
+    const review = reviews.get(date);
+    if (review && !skipped.has(date)) {
+      charges.push({ date, status: "review", expected, review, amount: Number(review.amount) });
+      continue;
+    }
     const status: ChargeStatus = skipped.has(date)
       ? "skipped"
       : daysBetween(date, todayStr) <= GRACE_DAYS
@@ -180,6 +201,7 @@ export function pendingPriceChange(sub: ReconcilableSubscription, today?: Date):
 export type ListStatus =
   | { kind: "price"; charged: number }
   | { kind: "missed"; date: string }
+  | { kind: "review"; date: string }
   | { kind: "pending"; date: string }
   | { kind: "skipped"; date: string }
   | { kind: "paid"; date: string };
@@ -193,6 +215,7 @@ export function listStatus(sub: ReconcilableSubscription, today?: Date): ListSta
   if (!last) return null;
   switch (last.status) {
     case "missed":
+    case "review":
     case "pending":
     case "skipped":
       return { kind: last.status, date: last.date };
@@ -265,4 +288,106 @@ export function scoreCandidate(
   const reason: CandidateReason | null =
     score >= 0.8 ? "strong" : amountScore >= 0.6 ? "amount" : nameScore >= 0.5 ? "name" : dateScore >= 0.8 ? "date" : null;
   return { score, reason };
+}
+
+/* ── Automatic matching (phase 2) ── */
+
+/** At or above: the transaction is linked on its own. */
+export const AUTO_LINK_SCORE = 0.8;
+/** At or above (and below AUTO_LINK_SCORE): it waits for the user to confirm it. */
+export const REVIEW_SCORE = 0.55;
+
+export type MatchableSubscription = ReconcilableSubscription & {
+  id: string;
+  service_name: string;
+  account_id?: string | null;
+  match_pattern?: string | null;
+};
+
+export interface MatchableTx extends CandidateTx {
+  account_id?: string | null;
+  /** Subscriptions the user said this transaction is not a charge of. */
+  subscription_dismissed_ids?: string[] | null;
+}
+
+export interface Match {
+  subscriptionId: string;
+  txId: string;
+  chargeDate: string;
+  score: number;
+  /** link: high confidence; review: ask the user; unexpected: fits a subscription that already ended (never linked). */
+  kind: "link" | "review" | "unexpected";
+}
+
+const scheduleNear = (sub: MatchableSubscription, day: string, ignoreEnd: boolean) =>
+  chargeDatesBetween({ ...sub, ...(ignoreEnd && { end_date: null }) }, noonOf(addDays(day, -GRACE_DAYS)), noonOf(addDays(day, GRACE_DAYS))).map(toDateString);
+
+/**
+ * Every way a new expense could be a charge: same account as the subscription (when it has one), the
+ * transaction within ±3 days of a scheduled charge nobody covers yet (not skipped), and some evidence
+ * in the description (or the exact amount within a day). A charge of a subscription that already ended
+ * comes back as "unexpected" when it is a strong match.
+ */
+export function matchOptions(subs: MatchableSubscription[], tx: MatchableTx): Match[] {
+  if (tx.type !== "expense") return [];
+  const day = txDay(tx);
+  const dismissed = new Set(tx.subscription_dismissed_ids ?? []);
+  const out: Match[] = [];
+  for (const sub of subs) {
+    if (dismissed.has(sub.id)) continue;
+    if (sub.account_id && tx.account_id && sub.account_id !== tx.account_id) continue;
+    const ended = !!sub.end_date && sub.end_date < day;
+    const taken = new Set((sub.charges ?? []).map((c) => c.subscription_charge_date));
+    const skipped = new Set(sub.skipped_charges ?? []);
+    for (const chargeDate of scheduleNear(sub, day, ended)) {
+      if (taken.has(chargeDate) || skipped.has(chargeDate)) continue;
+      const { score, nameScore, amountExact } = matchScore(sub, tx, chargeDate);
+      const evidence = nameScore >= 0.5 || (amountExact && Math.abs(daysBetween(chargeDate, day)) <= 1);
+      if (!evidence) continue;
+      if (ended) {
+        if (score >= AUTO_LINK_SCORE) out.push({ subscriptionId: sub.id, txId: tx.id, chargeDate, score, kind: "unexpected" });
+        continue;
+      }
+      if (score >= REVIEW_SCORE) out.push({ subscriptionId: sub.id, txId: tx.id, chargeDate, score, kind: score >= AUTO_LINK_SCORE ? "link" : "review" });
+    }
+  }
+  return out.sort((a, b) => b.score - a.score);
+}
+
+/** The single best match of one transaction, or null. */
+export function bestMatch(subs: MatchableSubscription[], tx: MatchableTx): Match | null {
+  return matchOptions(subs, tx)[0] ?? null;
+}
+
+/**
+ * Matches for a batch of transactions: best scores first, each transaction and each charge used once
+ * (a charge with a link no longer takes reviews).
+ */
+export function assignMatches(subs: MatchableSubscription[], txs: MatchableTx[]): Match[] {
+  const options = txs.flatMap((tx) => matchOptions(subs, tx)).sort((a, b) => b.score - a.score);
+  const usedTx = new Set<string>();
+  const usedCharge = new Set<string>();
+  const chosen: Match[] = [];
+  for (const option of options) {
+    const charge = `${option.subscriptionId}|${option.chargeDate}`;
+    if (usedTx.has(option.txId) || (option.kind !== "unexpected" && usedCharge.has(charge))) continue;
+    usedTx.add(option.txId);
+    if (option.kind !== "unexpected") usedCharge.add(charge);
+    chosen.push(option);
+  }
+  return chosen;
+}
+
+/** scoreCandidate restricted to the ±3-day matching window, with the pieces the gates need. */
+function matchScore(sub: MatchableSubscription, tx: CandidateTx, chargeDate: string) {
+  const expected = priceAt(sub, chargeDate);
+  const delta = Math.abs(daysBetween(chargeDate, txDay(tx)));
+  const dateScore = delta === 0 ? 1 : delta === 1 ? 0.9 : delta === 2 ? 0.8 : 0.65;
+  const diff = Math.abs(cents(tx.amount) - cents(expected));
+  const amountExact = diff === 0;
+  const amountScore = amountExact ? 1 : diff <= Math.max(150, cents(expected) * 0.1) ? 0.6 : 0;
+  const txTokens = descriptionTokens(tx.bank_description || tx.description);
+  const pattern = descriptionTokens(sub.match_pattern);
+  const nameScore = descriptionScore(txTokens, pattern.length ? pattern : descriptionTokens(sub.service_name));
+  return { score: 0.25 * dateScore + 0.3 * amountScore + 0.45 * nameScore, nameScore, amountExact };
 }

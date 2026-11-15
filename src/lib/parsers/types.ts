@@ -1,3 +1,4 @@
+import type { ReconcileSummary } from "@/lib/subscriptionAutoMatch";
 import type { CrossedBudget } from "@/lib/budgetThresholds";
 
 /**
@@ -64,6 +65,11 @@ export interface ImportTransactionsResponse {
   internal_transfers_tagged?: number;
   /** New rows flagged as possible duplicates of a manual transaction (bank sync only). */
   review?: number;
+  /** New expenses linked to a subscription charge on their own / waiting for the user to confirm one. */
+  subscriptions_linked?: number;
+  subscriptions_review?: number;
+  /** What the subscription reconciliation found (server side: notifications). */
+  reconcile?: ReconcileSummary;
   /** Budgets that crossed 80 % / 100 % because of this import (the client shows one toast). */
   crossedBudgets?: CrossedBudget[];
 }

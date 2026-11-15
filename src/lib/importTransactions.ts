@@ -4,6 +4,7 @@ import { classifyImportRows, decisionAction, type ClassifyCandidate } from "@/li
 import { matchScore } from "@/lib/dedup/matchScore";
 import { filterAlreadyImportedStatementRows } from "@/lib/importDuplicateDetection";
 import { tagInternalTransfersAfterImport } from "@/lib/importTransferTagging";
+import { reconcileNewTransactions, type ReconcileSummary } from "@/lib/subscriptionAutoMatch";
 import { buildDuplicateConflictKey, buildDuplicateConflictKeyLegacy, buildImportLineId } from "@/lib/parsers/importKeys";
 import type { ImportedTransaction, ImportPreviewRow, ImportResolution, ImportRowStatus, ImportTransactionsResponse } from "@/lib/parsers/types";
 
@@ -275,6 +276,7 @@ export async function importTransactions(args: {
 
   let imported = 0;
   let tagged = 0;
+  let insertedIds: string[] = [];
   if (toInsert.length > 0) {
     const { data: inserted, error } = await supabase
       .from("transactions")
@@ -301,6 +303,7 @@ export async function importTransactions(args: {
     if (error) return { error: error.message };
 
     imported = inserted.length;
+    insertedIds = inserted.map((t) => t.id);
     tagged = await tagInternalTransfersAfterImport({ supabase, userId, insertedIds: inserted.map((t) => t.id), joint });
   }
 
@@ -310,6 +313,14 @@ export async function importTransactions(args: {
   else await adjustAccountBalance(supabase, userId, accountId, toInsert.reduce((sum, r) => sum + signedAmount(r.tx), 0));
   const { data: account } = await supabase.from("accounts").select("balance").eq("id", accountId).single();
 
+  // New lines (and manual rows that just got their bank text) may be subscription charges.
+  let reconcile: ReconcileSummary | undefined;
+  try {
+    reconcile = await reconcileNewTransactions(supabase, userId, [...insertedIds, ...mergeTargets]);
+  } catch (error) {
+    console.error("[import] subscription reconciliation", error);
+  }
+
   return {
     imported,
     merged,
@@ -318,5 +329,8 @@ export async function importTransactions(args: {
     new_balance: Number(account?.balance ?? 0),
     internal_transfers_tagged: tagged,
     review: toInsert.filter((r) => r.reviewMatchId).length,
+    subscriptions_linked: reconcile?.linked ?? 0,
+    subscriptions_review: reconcile?.review ?? 0,
+    reconcile,
   };
 }

@@ -3,7 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
-import type { LinkedCharge, PriceStep } from "@/lib/subscriptionReconciliation";
+import type { LinkedCharge, PriceStep, ReviewCharge } from "@/lib/subscriptionReconciliation";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
 import { useUndoableDelete } from "./useUndoableDelete";
 
@@ -29,6 +29,10 @@ export interface Subscription {
   price_history?: PriceStep[] | null;
   /** Transactions linked to its charges. */
   charges?: LinkedCharge[] | null;
+  /** Transactions that may be one of its charges, waiting for the user. */
+  reviews?: ReviewCharge[] | null;
+  /** When its charges were last looked for among the existing transactions. */
+  auto_reconciled_at?: string | null;
 }
 
 export function useSubscriptions() {
@@ -115,6 +119,38 @@ export function useLinkTransaction() {
       }),
     onSettled: () => Promise.all(invalidateLinks.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
     meta: { silentError: true },
+  });
+}
+
+/** Answers "is this the charge of X?" for a transaction automatic matching wasn't sure about. */
+export function useResolveReview() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ transactionId, action }: { transactionId: string; action: "confirm" | "dismiss" }) =>
+      api<{ charge_date?: string }>(`/api/crud/transactions/${transactionId}/subscription-review`, "POST", { action }),
+    onSettled: () => Promise.all(invalidateLinks.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+    meta: { silentError: true },
+  });
+}
+
+/**
+ * Once per session: subscriptions that were never reconciled (created before automatic matching) get
+ * their charges looked for among the existing transactions.
+ */
+export function useReconcileOnce(subs: Subscription[] | undefined) {
+  const queryClient = useQueryClient();
+  const pending = !!subs?.some((s) => s.auto_reconciled_at === null);
+  useQuery({
+    queryKey: ["subscriptions-reconcile-once"],
+    queryFn: async () => {
+      const found = await api<{ linked: number; review: number }>("/api/crud/subscriptions/reconcile", "POST");
+      if (found.linked || found.review) await Promise.all(invalidateLinks.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+      return found;
+    },
+    enabled: pending,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: false,
   });
 }
 

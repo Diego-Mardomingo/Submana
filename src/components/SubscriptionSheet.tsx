@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, CircleAlert, SquarePen, Trash2, TrendingDown, TrendingUp, XCircle } from "lucide-react";
+import { ChevronLeft, CircleAlert, CircleHelp, SquarePen, Trash2, TrendingDown, TrendingUp, XCircle } from "lucide-react";
 import IconPicker from "@/components/IconPicker";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
@@ -38,7 +38,7 @@ import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { toast } from "@/lib/toast";
 import { isSubscriptionActive, monthlyCost, nextPaymentDate } from "@/lib/subscriptions";
-import { lastCharge, pendingPriceChange, reconciledTotal } from "@/lib/subscriptionReconciliation";
+import { chargeHistory, lastCharge, pendingPriceChange, reconciledTotal } from "@/lib/subscriptionReconciliation";
 
 type Mode = "view" | "edit";
 
@@ -75,6 +75,7 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
   const [openTx, setOpenTx] = useState<string | null>(null);
   const change = active ? pendingPriceChange(sub) : null;
   const missed = active && lastCharge(sub)?.status === "missed";
+  const review = active && chargeHistory(sub).some((c) => c.status === "review");
   const spent = reconciledTotal(sub);
 
   return (
@@ -98,6 +99,12 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
               <span className="sf-badge sf-badge--warn">
                 {change.diff > 0 ? <TrendingUp aria-hidden /> : <TrendingDown aria-hidden />}
                 <SensitiveAmount>{interpolate(t("sub.badge.charged"), { amount: formatCurrency(change.charged) })}</SensitiveAmount>
+              </span>
+            )}
+            {review && (
+              <span className="sf-badge sf-badge--accent">
+                <CircleHelp aria-hidden />
+                {t("sub.status.review")}
               </span>
             )}
             {missed && (

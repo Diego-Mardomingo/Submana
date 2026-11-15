@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Check, CircleDashed, Clock, Link2, List, Minus, Search, SearchX, TrendingDown, TrendingUp, X } from "lucide-react";
+import { Calendar, Check, CircleDashed, CircleHelp, Clock, Link2, List, Minus, Search, SearchX, TrendingDown, TrendingUp, X } from "lucide-react";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Chips, FieldGroup } from "@/components/SheetFields";
 import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
 import { useLang } from "@/hooks/useLang";
-import { useChargeAction, useChargeCandidates, useLinkTransaction, type ChargeAction, type Subscription } from "@/hooks/useSubscriptions";
+import { useChargeAction, useChargeCandidates, useLinkTransaction, useResolveReview, type ChargeAction, type Subscription } from "@/hooks/useSubscriptions";
 import { useAccounts } from "@/hooks/useAccounts";
 import { parseDateString } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
@@ -70,7 +70,8 @@ export function SubscriptionNotices({ sub, onLink }: { sub: Subscription; onLink
   const change = pendingPriceChange(sub);
   const last = lastCharge(sub);
   const missed = last?.status === "missed" ? last : null;
-  if (!change && !missed) return null;
+  const review = chargeHistory(sub).find((c) => c.status === "review" && c.review);
+  if (!change && !missed && !review) return null;
   const money = (n: number) => formatCurrency(n);
 
   return (
@@ -120,6 +121,7 @@ export function SubscriptionNotices({ sub, onLink }: { sub: Subscription; onLink
           </div>
         </div>
       )}
+      {review?.review && <ReviewNotice sub={sub} charge={review} />}
       {missed && (
         <div className="sf-notice sf-notice--danger" role="status">
           <span className="sf-notice-icon">
@@ -151,11 +153,51 @@ export function SubscriptionNotices({ sub, onLink }: { sub: Subscription; onLink
   );
 }
 
+/** Asks about a transaction that may be one of the charges (automatic matching wasn't sure). */
+function ReviewNotice({ sub, charge }: { sub: Subscription; charge: Charge }) {
+  const t = useTranslations(useLang());
+  const day = useShortDay();
+  const resolve = useResolveReview();
+  const tx = charge.review!;
+  const answer = async (action: "confirm" | "dismiss") => {
+    try {
+      await resolve.mutateAsync({ transactionId: tx.id, action });
+      if (action === "confirm") toast.success(interpolate(t("toast.chargeLinked"), { name: sub.service_name }));
+      else toast.success(interpolate(t("toast.reviewDismissed"), { name: sub.service_name }));
+    } catch {
+      toast.error(t("toast.chargeError"), { description: t("toast.chargeErrorDesc") });
+    }
+  };
+  return (
+    <div className="sf-notice sf-notice--accent" role="status">
+      <span className="sf-notice-icon">
+        <CircleHelp aria-hidden />
+      </span>
+      <div className="sf-notice-body">
+        <span className="sf-notice-title">{interpolate(t("notice.review.title"), { date: day(charge.date) })}</span>
+        <span className="sf-notice-text">
+          {interpolate(t("notice.review.text"), { desc: tx.bank_description || tx.description || "—", amount: formatCurrency(Number(tx.amount)) })}
+        </span>
+        <div className="sf-notice-actions">
+          <button type="button" className="sf-notice-btn sf-notice-btn--primary" disabled={resolve.isPending} onClick={() => void answer("confirm")}>
+            <Check aria-hidden />
+            {t("notice.review.confirm")}
+          </button>
+          <button type="button" className="sf-notice-btn" disabled={resolve.isPending} onClick={() => void answer("dismiss")}>
+            {t("notice.review.dismiss")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const STATUS_ICON: Record<ChargeStatus, React.ComponentType<{ strokeWidth?: number }>> = {
   paid: Check,
   changed: TrendingUp,
   pending: Clock,
   missed: X,
+  review: CircleHelp,
   skipped: Minus,
   unverified: CircleDashed,
   upcoming: Calendar,
@@ -181,6 +223,8 @@ export function ChargesGroup({ sub, onLink, onOpenTransaction }: { sub: Subscrip
         ? interpolate(t("charge.arrived"), { date: day(c.bookedOn) })
         : c.status === "changed"
           ? (c.tx?.bank_description || c.tx?.description || "")
+          : c.status === "review"
+            ? (c.review?.bank_description || c.review?.description || "")
           : c.status === "pending"
             ? interpolate(t("charge.until"), { date: day(shiftDay(c.date, GRACE_DAYS)) })
             : "";
@@ -196,7 +240,7 @@ export function ChargesGroup({ sub, onLink, onOpenTransaction }: { sub: Subscrip
     <FieldGroup title={t("sub.charges")}>
       {shown.map((c) => {
         const Icon = c.status === "changed" && (c.diff ?? 0) < 0 ? TrendingDown : STATUS_ICON[c.status];
-        const linkable = !c.tx && c.status !== "upcoming";
+        const linkable = !c.tx && !c.review && c.status !== "upcoming";
         const content = (
           <>
             <span className="sf-charge-icon" aria-hidden>
@@ -207,7 +251,7 @@ export function ChargesGroup({ sub, onLink, onOpenTransaction }: { sub: Subscrip
               <span className="sf-charge-status">{statusText(c)}</span>
             </span>
             <span className="sf-charge-end">
-              <span className={`sf-charge-amount ${c.tx ? "" : "is-muted"}`}>
+              <span className={`sf-charge-amount ${c.tx || c.review ? "" : "is-muted"}`}>
                 <SensitiveAmount>{formatCurrency(c.amount)}</SensitiveAmount>
               </span>
               {c.diff !== undefined && (
@@ -219,8 +263,8 @@ export function ChargesGroup({ sub, onLink, onOpenTransaction }: { sub: Subscrip
             </span>
           </>
         );
-        if (c.tx) {
-          const id = c.tx.id;
+        if (c.tx || c.review) {
+          const id = (c.tx ?? c.review)!.id;
           return (
             <button key={c.date} type="button" className="sf-charge" data-status={c.status} onClick={() => onOpenTransaction(id)}>
               {content}

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  assignMatches,
+  bestMatch,
   chargeDateFor,
   chargeHistory,
   lastCharge,
@@ -9,6 +11,8 @@ import {
   reconciledTotal,
   scoreCandidate,
   type LinkedCharge,
+  type MatchableSubscription,
+  type MatchableTx,
   type ReconcilableSubscription,
 } from "./subscriptionReconciliation";
 
@@ -152,5 +156,54 @@ describe("scoreCandidate", () => {
   it("uses the learned bank text before the name", () => {
     const chat = { ...gym, cost: 22.99, service_name: "ChatGPT Plus", match_pattern: "OPENAI *CHATGPT SUBSCR" };
     expect(scoreCandidate(chat, candidate("OPENAI *CHATGPT SUBSCR", 23.04, "2026-11-12"), "2026-11-12").reason).toBe("strong");
+  });
+});
+
+describe("automatic matching", () => {
+  const bbva = "acc-bbva";
+  const base = (over: Partial<MatchableSubscription>): MatchableSubscription => ({ ...sub(), id: "s", service_name: "x", account_id: bbva, match_pattern: null, ...over });
+  const chatgpt = base({ id: "chatgpt", service_name: "ChatGPT Plus", cost: 22.99, start_date: "2026-11-12", price_history: [{ cost: 22.99, valid_from: "2026-11-12" }] });
+  const netflix = base({ id: "netflix", service_name: "Netflix", cost: 12.99 });
+  const gym = base({ id: "gym", service_name: "Basic-Fit", cost: 29.99, start_date: "2026-09-10", price_history: [{ cost: 29.99, valid_from: "2026-09-10" }] });
+  const expense = (id: string, desc: string, amount: number, iso: string, over: Partial<MatchableTx> = {}): MatchableTx => ({ id, type: "expense", amount, date: `${iso}T09:00:00Z`, bank_description: desc, account_id: bbva, ...over });
+
+  it("first ChatGPT charge (dollars, no learned text) waits for confirmation", () => {
+    expect(bestMatch([chatgpt], expense("t1", "OPENAI *CHATGPT SUBSCR", 23.04, "2026-11-12"))).toMatchObject({ subscriptionId: "chatgpt", chargeDate: "2026-11-12", kind: "review" });
+  });
+  it("with the learned bank text the next one links on its own", () => {
+    const learned = { ...chatgpt, match_pattern: "OPENAI *CHATGPT SUBSCR" };
+    expect(bestMatch([learned], expense("t2", "OPENAI *CHATGPT SUBSCR", 23.1, "2026-12-13"))).toMatchObject({ chargeDate: "2026-12-12", kind: "link" });
+  });
+  it("a new price still links (the sheet then asks about the price)", () => {
+    expect(bestMatch([netflix], expense("t3", "NETFLIX.COM", 13.99, "2026-11-03"))).toMatchObject({ chargeDate: "2026-11-03", kind: "link" });
+  });
+  it("4 days late is out of the window", () => {
+    expect(bestMatch([gym], expense("t4", "BASIC FIT ESPANA SA", 29.99, "2026-11-14"))).toBeNull();
+    expect(bestMatch([gym], expense("t5", "BASIC FIT ESPANA SA", 29.99, "2026-11-13"))).toMatchObject({ chargeDate: "2026-11-10", kind: "link" });
+  });
+  it("needs the same account, an uncovered charge and some evidence", () => {
+    expect(bestMatch([netflix], expense("t6", "NETFLIX.COM", 12.99, "2026-11-03", { account_id: "other" }))).toBeNull();
+    const covered = { ...netflix, charges: [{ id: "x", amount: 12.99, date: "2026-11-03T09:00:00Z", subscription_charge_date: "2026-11-03" }] };
+    expect(bestMatch([covered], expense("t7", "NETFLIX.COM", 12.99, "2026-11-04"))).toBeNull();
+    expect(bestMatch([{ ...netflix, skipped_charges: ["2026-11-03"] }], expense("t8", "NETFLIX.COM", 12.99, "2026-11-03"))).toBeNull();
+    expect(bestMatch([netflix], expense("t9", "MERCADONA", 30, "2026-11-03"))).toBeNull();
+    expect(bestMatch([netflix], expense("t10", "NETFLIX.COM", 12.99, "2026-11-03", { type: "income" }))).toBeNull();
+    expect(bestMatch([netflix], expense("t11", "NETFLIX.COM", 12.99, "2026-11-03", { subscription_dismissed_ids: ["netflix"] }))).toBeNull();
+  });
+  it("exact amount on the day counts as evidence, as a review", () => {
+    expect(bestMatch([netflix], expense("t12", "TPV 4471", 12.99, "2026-11-03"))).toMatchObject({ kind: "review" });
+  });
+  it("a charge of an ended subscription is unexpected, never linked", () => {
+    const ended = { ...netflix, end_date: "2026-09-30" };
+    expect(bestMatch([ended], expense("t13", "NETFLIX.COM", 12.99, "2026-10-03"))).toMatchObject({ kind: "unexpected", chargeDate: "2026-10-03" });
+  });
+  it("a batch uses each charge and each transaction once, best first", () => {
+    const matches = assignMatches([netflix], [expense("a", "NETFLIX.COM", 12.99, "2026-11-05"), expense("b", "NETFLIX.COM", 12.99, "2026-11-03")]);
+    expect(matches).toEqual([expect.objectContaining({ txId: "b", chargeDate: "2026-11-03", kind: "link" })]);
+  });
+  it("a pending review shows in the history and the list", () => {
+    const withReview = { ...chatgpt, reviews: [{ id: "r", amount: 23.04, date: "2026-11-12T09:00:00Z", subscription_review_date: "2026-11-12", bank_description: "OPENAI" }] };
+    expect(chargeHistory(withReview, day("2026-11-20"))[1]).toMatchObject({ date: "2026-11-12", status: "review", amount: 23.04 });
+    expect(listStatus(withReview, day("2026-11-20"))).toEqual({ kind: "review", date: "2026-11-12" });
   });
 });
