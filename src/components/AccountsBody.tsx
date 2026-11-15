@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Bones } from "@/components/Bones";
-import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
+import { AccountDeleteWarning, AccountSheet } from "@/components/AccountSheet";
+import { AccountsIcon } from "@/components/icons";
 import { JointInvites } from "@/components/JointAccountSection";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -53,7 +54,7 @@ function AccountRowContent({ account, share, savingsLabel, star }: {
           // eslint-disable-next-line @next/next/no-img-element -- remote logos from arbitrary hosts
           <img src={account.icon} alt="" />
         ) : (
-          <CardIcon />
+          <AccountsIcon />
         )}
         {account.name.toLowerCase().includes("remunerada") && (
           <span className="lp-interest" title={savingsLabel}>
@@ -176,7 +177,7 @@ export default function AccountsBody() {
         <JointInvites className="lp-section mb-4" />
         <div className="lp-card lp-empty">
           <div className="lp-empty-icon">
-            <CardIcon size={24} strokeWidth={2.5} />
+            <AccountsIcon size={24} strokeWidth={2.5} />
           </div>
           <p className="lp-empty-title">{t("accounts.noAccounts")}</p>
           <p className="lp-empty-text">{es ? "Añade tus cuentas bancarias para ver tu patrimonio de un vistazo" : "Add your bank accounts to see your net worth at a glance"}</p>

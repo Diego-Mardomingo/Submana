@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check, UserMinus, UserPlus, Users, X } from "lucide-react";
+import { Check, UserMinus, UserPlus, X } from "lucide-react";
+import { FriendsIcon } from "@/components/icons";
 import { toast } from "@/lib/toast";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { HandleSetup } from "@/components/HandleSetup";
@@ -78,7 +79,7 @@ export default function FriendsBody() {
     });
   };
 
-  const header = <PageHeader icon={<Users className="size-6" />} title={t("friends.title")} subtitle={t("friends.subtitle")} />;
+  const header = <PageHeader icon={<FriendsIcon className="size-6" />} title={t("friends.title")} subtitle={t("friends.subtitle")} />;
 
   if (profileLoading) {
     return (
@@ -179,7 +180,7 @@ export default function FriendsBody() {
               {friends.length === 0 ? (
                 <div className="lp-card lp-empty">
                   <div className="lp-empty-icon">
-                    <Users />
+                    <FriendsIcon size={24} />
                   </div>
                   <p className="lp-empty-text">{t("friends.empty")}</p>
                 </div>

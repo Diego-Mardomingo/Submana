@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronLeft, ChevronRight, FileUp, ListX, Plus, SquarePen, Star, Trash2 } from "lucide-react";
 import { Bones } from "@/components/Bones";
-import { AccountDeleteWarning, AccountSheet, CardIcon } from "@/components/AccountSheet";
+import { AccountDeleteWarning, AccountSheet } from "@/components/AccountSheet";
+import { AccountsIcon } from "@/components/icons";
 import { BankConnectionRow, BankLinkSheet, BankSheet, useBankReturn } from "@/components/BankConnection";
 import BankStatementUpload from "@/components/BankStatementUpload";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
@@ -301,7 +302,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
                   // eslint-disable-next-line @next/next/no-img-element -- remote logos from arbitrary hosts
                   <img src={account.icon} alt="" />
                 ) : (
-                  <CardIcon size={26} strokeWidth={1.8} />
+                  <AccountsIcon size={26} strokeWidth={1.8} />
                 )}
                 {savings && (
                   <span className="lp-interest" title={es ? "Cuenta remunerada" : "Savings account"}>

@@ -3,7 +3,8 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Calendar, ChevronRight, CreditCard, FileUp, MessageCircle, Receipt, Split, Tags, Wallet, type LucideIcon } from "lucide-react";
+import { ChevronRight, FileUp, MessageCircle } from "lucide-react";
+import { AccountsIcon, BudgetsIcon, CategoriesIcon, SubcountIcon, SubscriptionsIcon, TransactionsIcon } from "@/components/icons";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ActionRow, FieldGroup } from "@/components/SheetFields";
 import { FeedbackSheet } from "@/components/FeedbackSheet";
@@ -21,12 +22,12 @@ import { cn } from "@/lib/utils";
 
 type Modal = "import" | "feedback" | "subcount" | "subcountExpense";
 /** `shortKey`: label under the arc bubble, where the + already says "new" and room is tight. */
-type Shortcut = { icon: LucideIcon; labelKey: UIKey; shortKey?: UIKey; href?: string; modal?: Modal };
+type Shortcut = { icon: React.ComponentType<{ strokeWidth?: number }>; labelKey: UIKey; shortKey?: UIKey; href?: string; modal?: Modal };
 
-const TRANSACTION: Shortcut = { icon: Receipt, labelKey: "addShortcuts.newTransaction", shortKey: "addShortcuts.transaction", href: "/transactions?open=create" };
+const TRANSACTION: Shortcut = { icon: TransactionsIcon, labelKey: "addShortcuts.newTransaction", shortKey: "addShortcuts.transaction", href: "/transactions?open=create" };
 const IMPORT: Shortcut = { icon: FileUp, labelKey: "addShortcuts.import", shortKey: "addShortcuts.importShort", modal: "import" };
-const SUBCOUNT: Shortcut = { icon: Split, labelKey: "addShortcuts.subcountExpense", shortKey: "addShortcuts.subcountShort", modal: "subcount" };
-const SUBSCRIPTION: Shortcut = { icon: Calendar, labelKey: "addShortcuts.newSubscription", shortKey: "addShortcuts.subscription", href: "/subscriptions?open=create" };
+const SUBCOUNT: Shortcut = { icon: SubcountIcon, labelKey: "addShortcuts.subcountExpense", shortKey: "addShortcuts.subcountShort", modal: "subcount" };
+const SUBSCRIPTION: Shortcut = { icon: SubscriptionsIcon, labelKey: "addShortcuts.newSubscription", shortKey: "addShortcuts.subscription", href: "/subscriptions?open=create" };
 const FEEDBACK: Shortcut = { icon: MessageCircle, labelKey: "addShortcuts.feedback", shortKey: "addShortcuts.feedbackShort", modal: "feedback" };
 
 /** Desktop list: the most used actions (transaction, import, shared expense) first, feedback last. */
@@ -34,9 +35,9 @@ const FLYOUT: Shortcut[][] = [
   [TRANSACTION, IMPORT, SUBCOUNT],
   [
     SUBSCRIPTION,
-    { icon: CreditCard, labelKey: "addShortcuts.newAccount", href: "/accounts?open=create" },
-    { icon: Wallet, labelKey: "addShortcuts.newBudget", href: "/budgets?open=create" },
-    { icon: Tags, labelKey: "addShortcuts.newCategory", href: "/categories?open=create" },
+    { icon: AccountsIcon, labelKey: "addShortcuts.newAccount", href: "/accounts?open=create" },
+    { icon: BudgetsIcon, labelKey: "addShortcuts.newBudget", href: "/budgets?open=create" },
+    { icon: CategoriesIcon, labelKey: "addShortcuts.newCategory", href: "/categories?open=create" },
   ],
   [FEEDBACK],
 ];
@@ -142,7 +143,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
                   onClick={() => pick(item)}
                 >
                   <span className="add-flyout-icon">
-                    <item.icon aria-hidden />
+                    <item.icon strokeWidth={2} />
                   </span>
                   {t(item.labelKey)}
                 </button>
@@ -166,7 +167,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
                 onClick={() => pick(item)}
               >
                 <span className="add-arc-bubble">
-                  <item.icon aria-hidden />
+                  <item.icon strokeWidth={2} />
                 </span>
                 <span className="add-arc-label">{t(item.shortKey ?? item.labelKey)}</span>
               </button>

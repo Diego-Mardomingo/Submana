@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════
    NAVIGATION
-   Phones: bottom bar (Home · Dashboard · + · Transactions · Menu). Tabs are icon-only and show
+   Phones: bottom bar (Home · Dashboard · Transactions · + · Subcount · Subscriptions · Menu). Tabs are icon-only and show
    their label while active; the + hangs from the bar's top edge as an accent drop.
    From 768px: sidebar with the add button, the main pages, "Manage" and settings at the bottom.
    ═══════════════════════════════════════════════ */
@@ -14,7 +14,7 @@
   z-index: 2147483647;
   view-transition-name: navigation;
   display: grid;
-  grid-template-columns: 1fr 1fr 64px 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr 56px 1fr 1fr 1fr;
   height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
   padding: 0 0.25rem env(safe-area-inset-bottom, 0px);
   background: color-mix(in srgb, var(--negro) 86%, transparent);
@@ -43,7 +43,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 48px;
+  /* Narrower than 48px on small phones, where seven columns share the bar. */
+  width: min(48px, calc(100% - 4px));
   height: 30px;
   border-radius: 999px;
   transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), background 0.25s ease;
@@ -56,16 +57,15 @@
 
 .tabLabel {
   position: absolute;
-  left: 0;
-  right: 0;
+  /* Wider than its column: only the active tab shows it, so it may reach under its neighbours. */
+  left: -20px;
+  right: -20px;
   bottom: 9px;
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
@@ -131,7 +131,7 @@
   position: absolute;
   top: -1px;
   left: 50%;
-  width: 120px;
+  width: 100px;
   height: 44px;
   transform: translateX(-50%);
   fill: var(--accent);
@@ -153,6 +153,13 @@
 
 html[data-theme="light"] .notchIcon {
   color: #ffffff;
+}
+
+/* Small phones: a slimmer drop so it doesn't touch the tabs either side. */
+@media (max-width: 359px) {
+  .notchShape {
+    width: 84px;
+  }
 }
 
 .notch:active .notchShape {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, ChevronDown, ChevronsLeft, Info, Pencil, Plus, Tags, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, ChevronsLeft, Info, Pencil, Plus, Trash2 } from "lucide-react";
+import { CategoriesIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { CategorySheet, type CategoryFormState } from "@/components/CategorySheet";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
@@ -259,7 +260,7 @@ export default function CategoriesBody() {
             ) : (
               <div className="lp-card lp-empty">
                 <div className="lp-empty-icon">
-                  <Tags size={24} strokeWidth={2.5} />
+                  <CategoriesIcon size={24} strokeWidth={2.5} />
                 </div>
                 <p className="lp-empty-title">{es ? "Sin categorías propias" : "No custom categories"}</p>
                 <p className="lp-empty-text">

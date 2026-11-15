@@ -27,13 +27,7 @@ import { BANK_PROVIDER_LIST, getBankProvider } from "@/lib/bankProviders";
 import { useTranslations } from "@/lib/i18n/utils";
 import { toast } from "@/lib/toast";
 import { PALETTE } from "@/lib/palette";
-
-export const CardIcon = ({ size = 20, strokeWidth = 2 }: { size?: number; strokeWidth?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} aria-hidden>
-    <rect x="1" y="4" width="22" height="16" rx="2" />
-    <line x1="1" y1="10" x2="23" y2="10" />
-  </svg>
-);
+import { AccountsIcon } from "@/components/icons";
 
 /** "Its N transactions will be deleted too", counted when the confirmation shows up. */
 export function AccountDeleteWarning({ accountId }: { accountId: string }) {
@@ -108,7 +102,7 @@ function AccountFormBody({ account, onDone, onDeleted }: { account: Account | nu
         <FormHero>
           <HeroTile color={form.color} contain={!!form.icon}>
             {/* eslint-disable-next-line @next/next/no-img-element -- remote logos */}
-            {form.icon ? <img src={form.icon} alt="" /> : <CardIcon size={30} strokeWidth={1.8} />}
+            {form.icon ? <img src={form.icon} alt="" /> : <AccountsIcon size={30} strokeWidth={1.8} />}
           </HeroTile>
           <AmountField
             id="account-balance"

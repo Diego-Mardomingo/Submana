@@ -2,7 +2,8 @@
 
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Landmark, Loader2, Plus, Repeat, Split, Wallet, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Landmark, Loader2, Plus, Repeat, X } from "lucide-react";
+import { BudgetsIcon, SubcountIcon } from "@/components/icons";
 import CalendarAccountFilter from "@/components/CalendarAccountFilter";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -206,7 +207,7 @@ export default function CalendarBody() {
     pending.push({
       key: `budget-${budget.id}`,
       href: "/budgets",
-      icon: (roots.length === 1 && categoryLookup.emoji.get(roots[0])) || <Wallet className="size-[18px]" strokeWidth={2} />,
+      icon: (roots.length === 1 && categoryLookup.emoji.get(roots[0])) || <BudgetsIcon className="size-[18px]" strokeWidth={2} />,
       color: spent > limit ? "var(--danger)" : "var(--warning)",
       title: interpolate(t("budgets.warning"), { name, pct: Math.round((spent / limit) * 100) }),
       hint: withAmount(t(spent > limit ? "home.budgetOver" : "home.budgetLeft"), Math.abs(limit - spent)),
@@ -217,7 +218,7 @@ export default function CalendarBody() {
     pending.push({
       key: "owed",
       href: "/subcount",
-      icon: <Split className="size-[18px]" strokeWidth={2} />,
+      icon: <SubcountIcon className="size-[18px]" strokeWidth={2} />,
       color: "var(--success)",
       title: withAmount(t("home.owedToYou"), fromCents(balances.owed_to_me_cents)),
       hint: t("nav.groups"),
@@ -228,7 +229,7 @@ export default function CalendarBody() {
     pending.push({
       key: "owe",
       href: "/subcount",
-      icon: <Split className="size-[18px]" strokeWidth={2} />,
+      icon: <SubcountIcon className="size-[18px]" strokeWidth={2} />,
       color: "var(--accent)",
       title: withAmount(t("home.youOwe"), fromCents(balances.i_owe_cents)),
       hint: t("nav.groups"),

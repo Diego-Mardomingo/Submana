@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, ArrowLeftRight, ArrowRight, Check, ChevronLeft, HandCoins, Pencil, Plus, Receipt, Settings2, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { SubcountIcon } from "@/components/icons";
 import { toast } from "@/lib/toast";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
@@ -631,7 +632,7 @@ export default function GroupDetail({ id }: { id: string }) {
     data.expenses.length === 0 ? (
       <div className="lp-card lp-empty">
         <div className="lp-empty-icon">
-          <Receipt />
+          <SubcountIcon size={24} />
         </div>
         <p className="lp-empty-text">{t("shared.empty")}</p>
         {!archived && (
