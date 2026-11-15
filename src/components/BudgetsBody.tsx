@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus, Trash2, Wallet } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { BudgetsIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { BudgetSheet } from "@/components/BudgetSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -42,7 +43,7 @@ export function BudgetRowContent({ budget, categories }: { budget: BudgetWithSpe
   return (
     <>
       <span className="lp-icon" style={{ color, background: `color-mix(in srgb, ${color} 16%, transparent)` }} aria-hidden>
-        {emoji ?? <Wallet size={19} strokeWidth={2} />}
+        {emoji ?? <BudgetsIcon size={19} strokeWidth={2} />}
       </span>
       <span className="lp-main">
         <span className="lp-title">
@@ -115,7 +116,7 @@ export default function BudgetsBody() {
         {header}
         <div className="lp-card lp-empty">
           <div className="lp-empty-icon">
-            <Wallet size={24} strokeWidth={2.5} />
+            <BudgetsIcon size={24} strokeWidth={2.5} />
           </div>
           <p className="lp-empty-title">{t("budgets.noBudgets")}</p>
           <p className="lp-empty-text">{t("budgets.noBudgetsText")}</p>

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, ChevronDown, ChevronRight, Pencil, Trash2, Users } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { SubcountIcon } from "@/components/icons";
 import { toast } from "@/lib/toast";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { GroupSettingsSheet, PAGE } from "@/components/GroupDetail";
@@ -433,7 +434,7 @@ export default function GroupsBody() {
               {active.length === 0 ? (
                 <div className="lp-card lp-empty">
                   <div className="lp-empty-icon">
-                    <Users />
+                    <SubcountIcon size={24} />
                   </div>
                   <p className="lp-empty-title">{t("groups.emptyTitle")}</p>
                   <p className="lp-empty-text">{t("groups.empty")}</p>

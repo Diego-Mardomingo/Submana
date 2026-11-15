@@ -3,9 +3,23 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, Calendar, ChevronRight, CreditCard, House, LayoutDashboard, Menu, Plus, Receipt, Tags, UserRound, Users, Wallet } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
-import { LogoMark, TransactionsIcon } from "@/components/icons";
+import {
+  AccountsIcon,
+  BudgetsIcon,
+  CategoriesIcon,
+  DashboardIcon,
+  FriendsIcon,
+  HomeIcon,
+  LogoMark,
+  MenuIcon,
+  NotificationsIcon,
+  SettingsIcon,
+  SubcountIcon,
+  SubscriptionsIcon,
+  TransactionsIcon,
+} from "@/components/icons";
 import { FieldGroup } from "@/components/SheetFields";
 import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { useLang } from "@/hooks/useLang";
@@ -21,28 +35,32 @@ const iconProps = { size: 20, strokeWidth: 1.75 };
 
 type NavItem = { href: string; shortcut: string; labelKey: UIKey; icon: React.ComponentType<typeof iconProps> };
 
-/** Keyboard shortcut → page. `main` sits in the mobile bar; the rest open from its menu sheet. */
+/** Keyboard shortcut → page, grouped as in the sidebar and the mobile menu sheet. */
 const NAV_GROUPS: Record<"main" | "manage" | "system", NavItem[]> = {
   main: [
-    { href: "/", shortcut: "f", labelKey: "nav.home", icon: House },
-    { href: "/dashboard", shortcut: "d", labelKey: "nav.dashboard", icon: LayoutDashboard },
+    { href: "/", shortcut: "f", labelKey: "nav.home", icon: HomeIcon },
+    { href: "/dashboard", shortcut: "d", labelKey: "nav.dashboard", icon: DashboardIcon },
     { href: "/transactions", shortcut: "q", labelKey: "nav.transactions", icon: TransactionsIcon },
   ],
   manage: [
-    { href: "/accounts", shortcut: "a", labelKey: "nav.accounts", icon: CreditCard },
-    { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: Tags },
-    { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: Calendar },
-    { href: "/budgets", shortcut: "e", labelKey: "nav.budgets", icon: Wallet },
-    { href: "/subcount", shortcut: "r", labelKey: "nav.groups", icon: Receipt },
+    { href: "/accounts", shortcut: "a", labelKey: "nav.accounts", icon: AccountsIcon },
+    { href: "/categories", shortcut: "c", labelKey: "nav.categories", icon: CategoriesIcon },
+    { href: "/subscriptions", shortcut: "s", labelKey: "nav.subscriptions", icon: SubscriptionsIcon },
+    { href: "/budgets", shortcut: "e", labelKey: "nav.budgets", icon: BudgetsIcon },
+    { href: "/subcount", shortcut: "r", labelKey: "nav.groups", icon: SubcountIcon },
   ],
   system: [
-    { href: "/friends", shortcut: "g", labelKey: "nav.friends", icon: Users },
-    { href: "/notifications", shortcut: "z", labelKey: "nav.notifications", icon: Bell },
-    { href: "/profile", shortcut: "x", labelKey: "nav.settings", icon: UserRound },
+    { href: "/friends", shortcut: "g", labelKey: "nav.friends", icon: FriendsIcon },
+    { href: "/notifications", shortcut: "z", labelKey: "nav.notifications", icon: NotificationsIcon },
+    { href: "/profile", shortcut: "x", labelKey: "nav.settings", icon: SettingsIcon },
   ],
 };
 const NAV_ITEMS = Object.values(NAV_GROUPS).flat();
-const MENU_ITEMS = [...NAV_GROUPS.manage, ...NAV_GROUPS.system];
+const navItem = (href: string) => NAV_ITEMS.find((item) => item.href === href)!;
+/** Mobile bar: three tabs left of the +, three right (the last one opens the menu sheet, which lists every page). */
+const BAR_LEFT = ["/", "/dashboard", "/transactions"].map(navItem);
+const BAR_RIGHT = ["/subcount", "/subscriptions"].map(navItem);
+const BAR_HREFS = new Set([...BAR_LEFT, ...BAR_RIGHT].map((item) => item.href));
 const ADD_SHORTCUT = "w";
 
 /** Up to 9 the number, beyond that "9+". */
@@ -78,7 +96,7 @@ export default function Navigation() {
   const [addAnchor, setAddAnchor] = useState<DOMRect | null>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
   const section = sectionOf(pathname);
-  const inMenuSection = MENU_ITEMS.some((item) => item.href === section);
+  const inMenuSection = NAV_ITEMS.some((item) => item.href === section) && !BAR_HREFS.has(section);
 
   const openAdd = () => {
     setMenuOpen(false);
@@ -137,7 +155,7 @@ export default function Navigation() {
     <>
       {isMobile ? (
         <nav className={styles.bar} id="main-nav" aria-label={t("nav.menu")}>
-          {NAV_GROUPS.main.slice(0, 2).map(({ href, icon, labelKey }) => (
+          {BAR_LEFT.map(({ href, icon, labelKey }) => (
             <BarTab key={href} href={href} icon={icon} label={t(labelKey)} active={section === href} onClick={onLinkClick(href)} />
           ))}
           <button
@@ -147,14 +165,16 @@ export default function Navigation() {
             aria-label={t(showAdd ? "nav.close" : "nav.add")}
             aria-expanded={showAdd}
           >
-            <svg className={styles.notchShape} viewBox="0 0 120 44" aria-hidden>
+            <svg className={styles.notchShape} viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden>
               <path d="M0 0 C28 0 24 40 60 40 C96 40 92 0 120 0 Z" />
             </svg>
             <Plus className={styles.notchIcon} strokeWidth={2.5} aria-hidden />
           </button>
-          <BarTab href="/transactions" icon={TransactionsIcon} label={t("nav.transactions")} active={section === "/transactions"} onClick={onLinkClick("/transactions")} />
+          {BAR_RIGHT.map(({ href, icon, labelKey }) => (
+            <BarTab key={href} href={href} icon={icon} label={t(labelKey)} active={section === href} onClick={onLinkClick(href)} />
+          ))}
           <BarTab
-            icon={Menu}
+            icon={MenuIcon}
             label={t("nav.menu")}
             active={menuOpen || (inMenuSection && !showAdd)}
             dot={unseen > 0}
@@ -195,7 +215,7 @@ export default function Navigation() {
       {isMobile && (
         <Sheet open={menuOpen} onOpenChange={setMenuOpen} title={t("nav.menu")}>
           <SheetBody className={styles.menuBody}>
-            {(["manage", "system"] as const).map((group) => (
+            {(["main", "manage", "system"] as const).map((group) => (
               <FieldGroup key={group} title={group === "manage" ? t("nav.manage") : undefined}>
                 {NAV_GROUPS[group].map(({ href, labelKey, icon: Icon }) => (
                   <Link

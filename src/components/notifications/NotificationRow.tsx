@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useState } from "react";
-import { Bell, Check, ChartColumn, FileUp, HandCoins, Landmark, Mail, MailOpen, Receipt, Repeat, Target, Trash2, UserPlus, type LucideIcon } from "lucide-react";
+import { Check, FileUp, HandCoins, Landmark, Mail, MailOpen, Trash2, UserPlus } from "lucide-react";
+import { BudgetsIcon, DashboardIcon, NotificationsIcon, SubcountIcon, SubscriptionsIcon } from "@/components/icons";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SwipeToReveal } from "@/components/SwipeToReveal";
@@ -26,13 +27,13 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 /** Icon and colour of a notification type (by family, with a few exceptions). */
-function look(type: string): { Icon: LucideIcon; tone: Tone } {
-  if (!isNotificationType(type)) return { Icon: Bell, tone: "accent" };
+function look(type: string): { Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>; tone: Tone } {
+  if (!isNotificationType(type)) return { Icon: NotificationsIcon, tone: "accent" };
   switch (type) {
     case "budget.threshold":
-      return { Icon: Target, tone: "danger" };
+      return { Icon: BudgetsIcon, tone: "danger" };
     case "summary.monthly":
-      return { Icon: ChartColumn, tone: "success" };
+      return { Icon: DashboardIcon, tone: "success" };
     case "import.reminder":
       return { Icon: FileUp, tone: "success" };
     case "shared.settlement":
@@ -40,15 +41,15 @@ function look(type: string): { Icon: LucideIcon; tone: Tone } {
   }
   switch (NOTIFICATIONS[type as NotificationType].family) {
     case "subscriptions":
-      return { Icon: Repeat, tone: "warning" };
+      return { Icon: SubscriptionsIcon, tone: "warning" };
     case "subcount":
-      return { Icon: Receipt, tone: "accent" };
+      return { Icon: SubcountIcon, tone: "accent" };
     case "friends":
       return { Icon: UserPlus, tone: "info" };
     case "joint":
       return { Icon: Landmark, tone: "info" };
     default:
-      return { Icon: Bell, tone: "accent" };
+      return { Icon: NotificationsIcon, tone: "accent" };
   }
 }
 

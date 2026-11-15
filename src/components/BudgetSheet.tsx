@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2, Wallet } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { BudgetsIcon } from "@/components/icons";
 import { toast } from "@/lib/toast";
 import { ActionRow, AmountField, Chips, FieldGroup, FieldStack, FormError, FormHero, HeroTile, SheetButton, Swatches } from "@/components/SheetFields";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
@@ -50,7 +51,7 @@ function BudgetFormBody({ budget, onDone }: { budget: BudgetWithSpent | null; on
     <SheetForm onSubmit={handleSubmit}>
       <SheetBody>
         <FormHero>
-          <HeroTile color={color}>{firstEmoji ?? <Wallet size={30} strokeWidth={1.8} />}</HeroTile>
+          <HeroTile color={color}>{firstEmoji ?? <BudgetsIcon size={30} strokeWidth={1.8} />}</HeroTile>
           <AmountField
             id="budget-amount"
             label={t("budgets.monthlyLimit")}

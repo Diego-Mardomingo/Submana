@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronRight, CreditCard } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { AccountsIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { MonthRangePicker } from "@/components/dashboard/MonthRangePicker";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -56,7 +57,7 @@ export default function BalanceHero() {
     return (
       <section className="lp-card lp-empty">
         <div className="lp-empty-icon">
-          <CreditCard size={24} strokeWidth={2.5} />
+          <AccountsIcon size={24} strokeWidth={2.5} />
         </div>
         <p className="lp-empty-title">{es ? "Aún no tienes cuentas" : "No accounts yet"}</p>
         <p className="lp-empty-text">{es ? "Añade tus cuentas para ver aquí tu saldo y su evolución" : "Add your accounts to see your balance and its history here"}</p>

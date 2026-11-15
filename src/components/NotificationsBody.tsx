@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Bell, CheckCheck, Settings2 } from "lucide-react";
+import { CheckCheck, Settings2 } from "lucide-react";
+import { NotificationsIcon } from "@/components/icons";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { NotificationRow } from "@/components/notifications/NotificationRow";
 import { Segmented, SheetButton } from "@/components/SheetFields";
@@ -145,7 +146,7 @@ export default function NotificationsBody() {
           </div>
         ) : items.length === 0 ? (
           <div className="lp-card lp-empty">
-            <div className="lp-empty-icon">{filter === "unread" ? <CheckCheck /> : <Bell />}</div>
+            <div className="lp-empty-icon">{filter === "unread" ? <CheckCheck /> : <NotificationsIcon size={24} />}</div>
             <p className="lp-empty-title">{t(filter === "unread" ? "notifications.emptyUnread" : "notifications.empty")}</p>
             <p className="lp-empty-text">{t(filter === "unread" ? "notifications.emptyUnreadDesc" : "notifications.emptyDesc")}</p>
             {filter === "unread" && (
