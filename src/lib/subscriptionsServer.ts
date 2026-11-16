@@ -1,11 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { shareLinkedCharges } from "@/lib/sharedSubscriptions";
 
 /**
  * Columns of a subscription as the API returns it: the row plus its price steps and the transactions
  * linked to its charges (see lib/subscriptionReconciliation).
  */
 export const SUBSCRIPTION_SELECT =
-  "*, price_history:subscription_price_history(cost, valid_from, source), charges:transactions!transactions_subscription_id_fkey(id, amount, date, subscription_charge_date, description, bank_description), reviews:transactions!transactions_subscription_review_id_fkey(id, amount, date, subscription_review_date, description, bank_description)";
+  "*, price_history:subscription_price_history(cost, valid_from, source), charges:transactions!transactions_subscription_id_fkey(id, amount, date, subscription_charge_date, description, bank_description), reviews:transactions!transactions_subscription_review_id_fkey(id, amount, date, subscription_review_date, description, bank_description), group_expenses:shared_expenses!shared_expenses_subscription_id_fkey(id, subscription_charge_date, deleted_at)";
 
 export const isDay = (value: unknown): value is string => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 
@@ -60,6 +61,8 @@ export async function linkCharge(supabase: SupabaseClient, userId: string, tx: L
     .eq("subscription_review_id", sub.id)
     .eq("subscription_review_date", chargeDate)
     .neq("id", tx.id);
+  // Shared with a Subcount group: the charge goes to the group.
+  await shareLinkedCharges(supabase, userId, [sub.id]);
   return { data };
 }
 

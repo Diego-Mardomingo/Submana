@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, CircleAlert, CircleHelp, SquarePen, Trash2, TrendingDown, TrendingUp, XCircle } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, CircleAlert, CircleHelp, SquarePen, Trash2, TrendingDown, TrendingUp, Users, XCircle } from "lucide-react";
 import IconPicker from "@/components/IconPicker";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
@@ -22,11 +23,14 @@ import {
 } from "@/components/SheetFields";
 import { ChargePickerSheet, ChargesGroup, PriceGroup, SubscriptionNotices } from "@/components/SubscriptionCharges";
 import { useFrequencyLabel, useSubscriptionActions } from "@/components/SubscriptionDialogs";
+import { initialSharing, sharingInput, SubscriptionSharingFields } from "@/components/SubscriptionSharing";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
 import { parseCurrencyValue } from "@/lib/currency";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useGroups } from "@/hooks/useGroups";
+import { useProfile } from "@/hooks/useProfile";
 import { useLang } from "@/hooks/useLang";
 import { useNotificationSettings } from "@/hooks/useNotifications";
 import { useCreateSubscription, useUpdateSubscription, type Subscription } from "@/hooks/useSubscriptions";
@@ -39,6 +43,8 @@ import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { toast } from "@/lib/toast";
 import { isSubscriptionActive, monthlyCost, nextPaymentDate } from "@/lib/subscriptions";
 import { chargeHistory, lastCharge, pendingPriceChange, reconciledTotal } from "@/lib/subscriptionReconciliation";
+import { myShareCents } from "@/lib/shared/subscriptionSplit";
+import { fromCents, toCents } from "@/lib/shared/splits";
 
 type Mode = "view" | "edit";
 
@@ -77,6 +83,14 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
   const missed = active && lastCharge(sub)?.status === "missed";
   const review = active && chargeHistory(sub).some((c) => c.status === "review");
   const spent = reconciledTotal(sub);
+  // Shared in a Subcount group: my part of each charge at the current price.
+  const { data: groups = [] } = useGroups(!!sub.shared_group_id);
+  const { data: profile } = useProfile();
+  const group = sub.shared_group_id ? groups.find((g) => g.id === sub.shared_group_id) : undefined;
+  const myPart =
+    group && sub.shared_split && profile
+      ? fromCents(myShareCents(sub.shared_split, group.members.map((m) => m.user_id), toCents(sub.cost), profile.user_id, profile.user_id))
+      : null;
 
   return (
     <>
@@ -99,6 +113,12 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
               <span className="sf-badge sf-badge--warn">
                 {change.diff > 0 ? <TrendingUp aria-hidden /> : <TrendingDown aria-hidden />}
                 <SensitiveAmount>{interpolate(t("sub.badge.charged"), { amount: formatCurrency(change.charged) })}</SensitiveAmount>
+              </span>
+            )}
+            {group && (
+              <span className="sf-badge sf-badge--accent">
+                <Users aria-hidden />
+                {t("sub.share.badge")}
               </span>
             )}
             {review && (
@@ -139,10 +159,39 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
               <span className="is-muted">/{es ? "mes" : "mo"}</span>
             </InfoRow>
           )}
+          {myPart !== null && (
+            <InfoRow label={t("sub.share.yourPart")}>
+              <SensitiveAmount>{formatCurrency(myPart)}</SensitiveAmount>
+              <span className="is-muted">/{freqLabel(sub).toLowerCase()}</span>
+            </InfoRow>
+          )}
           <InfoRow label={t("sub.totalSpent")}>
             <SensitiveAmount>{formatCurrency(spent.total)}</SensitiveAmount>
           </InfoRow>
         </FieldGroup>
+
+        {group && sub.shared_split && (
+          <FieldGroup title={t("sub.share.in")}>
+            <Link href={`/subcount/${group.id}`} className="sf-row sf-action" onClick={onClose}>
+              <span>{group.name}</span>
+              <span className="sf-row-value" style={{ flex: "none" }}>
+                {group.my_net_cents === 0 ? (
+                  <span className="is-muted">{t("sub.share.settled")}</span>
+                ) : (
+                  <span className={group.my_net_cents > 0 ? "sc-pos" : "sc-neg"}>
+                    <SensitiveAmount>
+                      {interpolate(t(group.my_net_cents > 0 ? "sub.share.owedToYou" : "sub.share.youOwe"), { amount: formatCurrency(fromCents(Math.abs(group.my_net_cents))) })}
+                    </SensitiveAmount>
+                  </span>
+                )}
+              </span>
+              <ChevronRight className="sf-action-chevron" aria-hidden />
+            </Link>
+            <InfoRow label={t("sub.share.split")}>
+              {t(`split.mode.${sub.shared_split.mode}` as const)} · {sub.shared_split.participants.length}
+            </InfoRow>
+          </FieldGroup>
+        )}
 
         <ChargesGroup sub={sub} onLink={setPickCharge} onOpenTransaction={setOpenTx} />
         <PriceGroup sub={sub} />
@@ -214,6 +263,8 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
   const [every, setEvery] = useState(sub?.frequency_value || 1);
   const [accountId, setAccountId] = useState(sub?.account_id ?? "");
   const [matchPattern, setMatchPattern] = useState(sub?.match_pattern ?? "");
+  const [sharing, setSharing] = useState(() => initialSharing(sub));
+  const { data: profile } = useProfile();
   // Reminders: a new subscription starts with the default of the profile (still loading? the default of the app).
   const { data: notificationSettings } = useNotificationSettings();
   const [pickedOffsets, setPickedOffsets] = useState<number[] | null>(null);
@@ -240,6 +291,11 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
       setError(es ? "La fecha de fin no puede ser anterior al inicio" : "The end date can't be before the start date");
       return;
     }
+    const share = sharingInput(sharing, sub, toCents(amount), profile?.user_id ?? "");
+    if (share === "invalid") {
+      setError(t("sub.share.invalid"));
+      return;
+    }
     const input = {
       icon: icon || undefined,
       service_name: name.trim(),
@@ -251,6 +307,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
       account_id: accountId || null,
       reminder_offsets: offsets,
       ...(sub && { match_pattern: matchPattern.trim() || null }),
+      ...share,
     };
     try {
       if (sub) await updateSub.mutateAsync({ id: sub.id, ...input });
@@ -258,7 +315,8 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
       toast.success(t(sub ? "sub.saved" : "sub.created"));
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error");
+      const message = err instanceof Error ? err.message : "Error";
+      setError(message === "group_not_found" ? t("sub.share.groupGone") : message === "invalid_shares" ? t("sub.share.invalid") : message);
     }
   };
 
@@ -348,6 +406,8 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
             />
           </FieldStack>
         </FieldGroup>
+
+        <SubscriptionSharingFields sub={sub} state={sharing} onChange={setSharing} costCents={toCents(parseCurrencyValue(cost) || 0)} />
 
         {sub && (
           <FieldGroup hint={t("sub.bankTextHint")}>

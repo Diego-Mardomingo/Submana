@@ -3,6 +3,7 @@ import { getAccountAccess, getAuthedClient, jsonCachedResponse, jsonError, jsonR
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { normalizeReminderOffsets, parseReminderOffsetsInput, validateSubscriptionFields } from "@/lib/subscriptionValidation";
 import { reconcileSubscription } from "@/lib/subscriptionAutoMatch";
+import { readSharing } from "@/lib/sharedSubscriptions";
 import { SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
 
 export async function GET() {
@@ -18,6 +19,8 @@ export async function POST(request: NextRequest) {
   const { supabase, user } = await getAuthedClient();
   if (!user) return unauthorized();
 
+  // Sharing needs the JSON as sent (parseRequestBody turns every value into a string).
+  const raw = (request.headers.get("content-type") ?? "").includes("application/json") ? await request.clone().json().catch(() => ({})) : {};
   const body = await parseRequestBody(request);
   const name = body.service_name;
   if (!name || !body.start_date) return jsonError("missing_fields");
@@ -35,13 +38,18 @@ export async function POST(request: NextRequest) {
   if (invalid) return jsonError(invalid);
   if (Array.isArray(fields.reminder_offsets)) fields.reminder_offsets = normalizeReminderOffsets(fields.reminder_offsets);
   if (fields.account_id && (await getAccountAccess(supabase, user.id, fields.account_id))?.role !== "owner") return jsonError("Account not found", 404);
+  const sharing = await readSharing(supabase, user.id, raw as Record<string, unknown>);
+  if (sharing && "error" in sharing) return jsonError(sharing.error, sharing.error === "group_not_found" ? 404 : 400);
 
   const { data, error } = await supabase
     .from("subscriptions")
-    .insert({ user_id: user.id, service_name: name, icon: body.icon || initialsAvatarDataUri(name), ...fields })
+    .insert({ user_id: user.id, service_name: name, icon: body.icon || initialsAvatarDataUri(name), ...fields, ...sharing })
     .select(SUBSCRIPTION_SELECT)
     .single();
-  if (error) return jsonServerError("crud/subscriptions", error);
+  if (error) {
+    if (error.message?.includes("group_not_found")) return jsonError("group_not_found", 404);
+    return jsonServerError("crud/subscriptions", error);
+  }
   // Its charges may already be among the transactions: look for them now.
   return jsonResponse({ data: (await reconcileSubscription(supabase, user.id, data.id)) ?? data }, 201);
 }

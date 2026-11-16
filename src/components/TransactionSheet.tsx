@@ -24,6 +24,7 @@ import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useBudgetWarning } from "@/hooks/useBudgets";
 import { useResolveBankReview } from "@/hooks/useBanking";
 import { useLang } from "@/hooks/useLang";
+import { useUnlinkCharge } from "@/components/SubscriptionCharges";
 import { useChargeAction, useLinkTransaction, useResolveReview, useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import type { ManualMatchInfo } from "@/lib/subscriptionAutoMatch";
 import {
@@ -73,6 +74,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const [amountInvalid, setAmountInvalid] = useState(false);
   const { data: subscriptions = [] } = useSubscriptions();
   const linkTx = useLinkTransaction();
+  const unlinkCharge = useUnlinkCharge();
   const chargeAction = useChargeAction();
   const resolveReview = useResolveReview();
   const linkedTo = transaction?.subscription_id ?? "";
@@ -199,7 +201,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
       description: interpolate(t("toast.autoLinkedDesc"), { date }),
       action: {
         label: t("common.undo"),
-        onClick: () => void linkTx.mutateAsync({ transactionId, subscriptionId: null }).catch(() => toast.error(t("toast.chargeError"))),
+        onClick: () => void unlinkCharge(transactionId, { undo: true }).catch(() => toast.error(t("toast.chargeError"))),
       },
     });
   }
@@ -208,7 +210,11 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   async function linkSubscription(transactionId: string, target: string, amount: number) {
     const sub = subscriptions.find((s) => s.id === target);
     try {
-      const result = await linkTx.mutateAsync({ transactionId, subscriptionId: target || null });
+      if (!target) {
+        await unlinkCharge(transactionId);
+        return;
+      }
+      const result = await linkTx.mutateAsync({ transactionId, subscriptionId: target });
       const chargeDate = result?.charge_date;
       if (!sub || !chargeDate) return;
       askPrice(sub, chargeDate, amount);

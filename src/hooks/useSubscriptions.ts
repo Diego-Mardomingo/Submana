@@ -3,6 +3,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
+import type { SharedSplit } from "@/lib/shared/subscriptionSplit";
 import type { LinkedCharge, PriceStep, ReviewCharge } from "@/lib/subscriptionReconciliation";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
 import { useUndoableDelete } from "./useUndoableDelete";
@@ -33,6 +34,14 @@ export interface Subscription {
   reviews?: ReviewCharge[] | null;
   /** When its charges were last looked for among the existing transactions. */
   auto_reconciled_at?: string | null;
+  /** Subcount group each charge is added to as an expense paid by me (null: not shared). */
+  shared_group_id?: string | null;
+  /** How each charge is split in that group. */
+  shared_split?: SharedSplit | null;
+  /** YYYY-MM-DD it was shared on: charges from then on go to the group. */
+  shared_from?: string | null;
+  /** The group expenses its charges created (deleted ones included, with deleted_at). */
+  group_expenses?: { id: string; subscription_charge_date: string; deleted_at: string | null }[] | null;
 }
 
 export function useSubscriptions() {
@@ -54,9 +63,12 @@ interface SubscriptionInput {
   account_id?: string | null;
   reminder_offsets?: number[];
   match_pattern?: string | null;
+  shared_group_id?: string | null;
+  shared_split?: SharedSplit | null;
 }
 
-const invalidate = [queryKeys.subscriptions.all];
+// A shared subscription may add expenses to its Subcount group.
+const invalidate = [queryKeys.subscriptions.all, queryKeys.shared.all];
 
 export function useCreateSubscription() {
   return useOptimisticMutation({
@@ -89,7 +101,7 @@ export function useUndoableDeleteSubscription() {
     });
 }
 
-const invalidateLinks = [queryKeys.subscriptions.all, queryKeys.transactions.all];
+const invalidateLinks = [queryKeys.subscriptions.all, queryKeys.transactions.all, queryKeys.shared.all];
 
 export type ChargeAction = "accept_price" | "undo_price" | "dismiss_price" | "undismiss_price" | "skip" | "unskip";
 
@@ -113,7 +125,7 @@ export function useLinkTransaction() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ transactionId, subscriptionId, chargeDate }: { transactionId: string; subscriptionId: string | null; chargeDate?: string }) =>
-      api<{ charge_date?: string }>(`/api/crud/transactions/${transactionId}/subscription`, "PUT", {
+      api<{ charge_date?: string; group_expense?: { id: string; group_id: string } | null }>(`/api/crud/transactions/${transactionId}/subscription`, "PUT", {
         subscription_id: subscriptionId,
         ...(chargeDate && { charge_date: chargeDate }),
       }),
