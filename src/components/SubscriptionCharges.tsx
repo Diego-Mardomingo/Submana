@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Check, CircleDashed, CircleHelp, Clock, Link2, List, Minus, Search, SearchX, TrendingDown, TrendingUp, X } from "lucide-react";
+import { Calendar, Check, CircleDashed, CircleHelp, Clock, Link2, List, Minus, Search, SearchX, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Chips, FieldGroup } from "@/components/SheetFields";
 import { Sheet, SheetBody } from "@/components/ui/sheet";
@@ -9,6 +9,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { useLang } from "@/hooks/useLang";
 import { useChargeAction, useChargeCandidates, useLinkTransaction, useResolveReview, type ChargeAction, type Subscription } from "@/hooks/useSubscriptions";
 import { useAccounts } from "@/hooks/useAccounts";
+import { useGroups } from "@/hooks/useGroups";
+import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryKeys";
+import { useQueryClient } from "@tanstack/react-query";
 import { parseDateString } from "@/lib/date";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -31,6 +35,41 @@ export function useShortDay() {
   return (iso: string) => {
     const date = parseDateString(iso.slice(0, 10));
     return date.toLocaleDateString(localeOf(lang), { day: "numeric", month: "short", ...(date.getFullYear() !== new Date().getFullYear() && { year: "numeric" }) });
+  };
+}
+
+/**
+ * Unlinks a transaction from its charge. A shared subscription keeps that charge's expense in its Subcount
+ * group: `undo` (reverting a link just made) deletes it too; otherwise a toast offers to delete it.
+ */
+export function useUnlinkCharge() {
+  const t = useTranslations(useLang());
+  const link = useLinkTransaction();
+  const queryClient = useQueryClient();
+  const { data: groups = [] } = useGroups();
+  const removeExpense = async (id: string) => {
+    await api(`/api/shared/expenses/${id}`, "DELETE");
+    await Promise.all([queryKeys.shared.all, queryKeys.subscriptions.all].map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  };
+  return async (transactionId: string, { undo = false } = {}) => {
+    const result = await link.mutateAsync({ transactionId, subscriptionId: null });
+    const expense = result?.group_expense;
+    if (!expense) return;
+    if (undo) {
+      await removeExpense(expense.id).catch(() => toast.error(t("toast.chargeError")));
+      return;
+    }
+    const group = groups.find((g) => g.id === expense.group_id)?.name ?? "Subcount";
+    toast.info(interpolate(t("toast.groupExpenseKept"), { group }), {
+      description: t("toast.groupExpenseKeptDesc"),
+      action: {
+        label: t("toast.groupExpenseDelete"),
+        onClick: () =>
+          void removeExpense(expense.id)
+            .then(() => toast(t("toast.groupExpenseDeleted"), { icon: <Trash2 aria-hidden /> }))
+            .catch(() => toast.error(t("toast.chargeError"))),
+      },
+    });
   };
 }
 
@@ -211,13 +250,14 @@ export function ChargesGroup({ sub, onLink, onOpenTransaction }: { sub: Subscrip
   const day = useShortDay();
   const [all, setAll] = useState(false);
   const charges = chargeHistory(sub);
+  const inGroup = new Set((sub.group_expenses ?? []).filter((e) => !e.deleted_at).map((e) => e.subscription_charge_date));
   if (charges.length === 0) return null;
   const past = charges.filter((c) => c.status !== "upcoming").length;
   const shown = all ? charges : charges.slice(0, VISIBLE_CHARGES);
 
   const statusText = (c: Charge) => {
     const label = t(`charge.${c.status}` as UIKey);
-    if (c.status === "upcoming" || c.status === "unverified") return label;
+    if (c.status === "upcoming" || (c.status === "unverified" && !inGroup.has(c.date))) return label;
     const detail =
       c.status === "paid" && c.bookedOn
         ? interpolate(t("charge.arrived"), { date: day(c.bookedOn) })
@@ -232,6 +272,7 @@ export function ChargesGroup({ sub, onLink, onOpenTransaction }: { sub: Subscrip
       <>
         <b>{label}</b>
         {detail && ` · ${detail}`}
+        {inGroup.has(c.date) && ` · ${t("charge.inGroup")}`}
       </>
     );
   };
@@ -417,6 +458,7 @@ export function ChargePickerSheet({ sub, chargeDate, onOpenChange }: { sub: Subs
   }, [query]);
   const { data: candidates = [], isFetching } = useChargeCandidates(sub.id, chargeDate, { all, q });
   const link = useLinkTransaction();
+  const unlink = useUnlinkCharge();
   const account = accounts.find((a) => a.id === sub.account_id);
   const expected = chargeDate ? chargeHistory(sub).find((c) => c.date === chargeDate)?.expected ?? Number(sub.cost) : 0;
 
@@ -426,7 +468,7 @@ export function ChargePickerSheet({ sub, chargeDate, onOpenChange }: { sub: Subs
       await link.mutateAsync({ transactionId: id, subscriptionId: sub.id, chargeDate });
       onOpenChange(false);
       toast.success(interpolate(t("toast.chargeLinked"), { name: sub.service_name }), {
-        action: { label: t("common.undo"), onClick: () => void link.mutateAsync({ transactionId: id, subscriptionId: null }) },
+        action: { label: t("common.undo"), onClick: () => void unlink(id, { undo: true }).catch(() => toast.error(t("toast.chargeError"))) },
       });
     } catch (error) {
       toast.error(error instanceof Error && error.message === "charge_taken" ? t("link.chargeTaken") : t("toast.chargeError"));

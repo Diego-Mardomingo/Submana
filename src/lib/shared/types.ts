@@ -37,6 +37,9 @@ export interface SharedExpenseItem {
   created_by: string;
   updated_by: string | null;
   created_at: string;
+  /** Set when a shared subscription created it: the charge it is for, and the subscription's logo. */
+  subscription_charge_date?: string | null;
+  subscription_icon?: string | null;
   shares: SharedShare[];
 }
 

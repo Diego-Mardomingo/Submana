@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArrowLeftRight, ArrowRight, Check, ChevronLeft, HandCoins, Pencil, Plus, Receipt, Settings2, Trash2, UserMinus, UserPlus } from "lucide-react";
+import { Archive, ArrowLeftRight, ArrowRight, Check, ChevronLeft, HandCoins, Pencil, Plus, Receipt, Repeat, Settings2, Trash2, UserMinus, UserPlus } from "lucide-react";
 import { SubcountIcon } from "@/components/icons";
 import { toast } from "@/lib/toast";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
@@ -35,6 +35,7 @@ import type { Transfer } from "@/lib/shared/debts";
 import { sharedErrorText } from "@/lib/shared/errorText";
 import { fromCents } from "@/lib/shared/splits";
 import type { GroupDetailData, SharedEventItem, SharedExpenseItem, SharedProfile } from "@/lib/shared/types";
+import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { cn } from "@/lib/utils";
 
 type Tab = "expenses" | "balances" | "activity";
@@ -222,6 +223,7 @@ function ExpenseRow({ expense, meId, profiles, highlighted, onOpen, onDelete }: 
   const t = useTranslations(useLang());
   const payer = profiles.get(expense.paid_by);
   const settlement = expense.kind === "settlement";
+  const fromSubscription = !settlement && !!expense.subscription_charge_date;
   const receiverId = settlement ? (expense.shares[0]?.user_id ?? "") : "";
   const total = formatCurrency(expense.total_amount);
   const { cents: impact, involved } = myImpact(expense, meId);
@@ -269,7 +271,14 @@ function ExpenseRow({ expense, meId, profiles, highlighted, onOpen, onDelete }: 
     >
       <button type="button" className={`lp-row ${highlighted ? "lp-row--highlight" : ""}`} onClick={() => onOpen(expense)}>
         <span className={cn("lp-icon sc-tile", settlement && "sc-tile--settle")} aria-hidden>
-          {settlement ? <ArrowLeftRight size={18} /> : <Receipt size={18} />}
+          {settlement ? (
+            <ArrowLeftRight size={18} />
+          ) : fromSubscription ? (
+            // eslint-disable-next-line @next/next/no-img-element -- remote service logos
+            <img src={expense.subscription_icon || initialsAvatarDataUri(expense.title)} alt="" className="sc-tile-logo" />
+          ) : (
+            <Receipt size={18} />
+          )}
           {!settlement && payer && <ProfileAvatar name={payer.display_name} url={payer.avatar_url} size={18} className="sc-tile-payer" />}
         </span>
         <span className="lp-main">
@@ -277,6 +286,7 @@ function ExpenseRow({ expense, meId, profiles, highlighted, onOpen, onDelete }: 
             <span>{title}</span>
           </span>
           <span className="lp-meta">
+            {fromSubscription && <Repeat className="lp-meta-icon" strokeWidth={2.5} aria-label={t("shared.fromSubscription")} />}
             <span className="lp-truncate">{meta}</span>
           </span>
         </span>

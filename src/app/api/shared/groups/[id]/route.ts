@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       supabase.from("group_members").select("user_id").eq("group_id", id),
       supabase
         .from("shared_expenses")
-        .select("id, group_id, kind, title, total_amount, date, paid_by, split_mode, created_by, updated_by, created_at, shares:shared_expense_shares(user_id, amount, weight)")
+        .select("id, group_id, kind, title, total_amount, date, paid_by, split_mode, created_by, updated_by, created_at, subscription_charge_date, subscription_icon, shares:shared_expense_shares(user_id, amount, weight)")
         .eq("group_id", id)
         .is("deleted_at", null)
         .order("date", { ascending: false })

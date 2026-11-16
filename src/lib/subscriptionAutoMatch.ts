@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAllPages, inChunks, listAccessibleAccounts } from "@/lib/apiHelpers";
 import { appNow, toDateString } from "@/lib/date";
 import { assignMatches, priceAt, txDay, type MatchableSubscription, type MatchableTx } from "@/lib/subscriptionReconciliation";
+import { shareLinkedCharges } from "@/lib/sharedSubscriptions";
 import { learnedPattern, readSubscription, SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
 
 /**
@@ -161,7 +162,10 @@ export async function reconcileNewTransactions(supabase: SupabaseClient, userId:
     supabase.from("transactions").select(TX_COLUMNS).in("id", chunk).eq("type", "expense").is("subscription_id", null)
   );
   if (rows.length === 0) return emptySummary();
-  return (await applyMatches(supabase, subs, rows as MatchableTx[])).summary;
+  const { summary } = await applyMatches(supabase, subs, rows as MatchableTx[]);
+  // Shared with a Subcount group: the new charges go to the group.
+  await shareLinkedCharges(supabase, userId, summary.links.map((l) => l.subscriptionId));
+  return summary;
 }
 
 /**
@@ -212,6 +216,7 @@ export async function reconcileHistory(supabase: SupabaseClient, userId: string,
     summary = merge(summary, (await applyMatches(supabase, allSubs, txs, { reviewSince, scope })).summary);
   }
   await markDone();
+  await shareLinkedCharges(supabase, userId, summary.links.map((l) => l.subscriptionId));
   return summary;
 }
 

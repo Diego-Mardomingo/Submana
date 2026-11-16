@@ -8,6 +8,7 @@ import { loadSummaryEvents } from "@/lib/notifications/jobs/summary";
 import { isSendHour, madridClock } from "@/lib/notifications/jobs/time";
 import type { NotifyEvent } from "@/lib/notifications/core";
 import { notify } from "@/lib/notifications/server";
+import { shareUnbankedCharges } from "@/lib/sharedSubscriptions";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -54,6 +55,13 @@ export async function GET(request: NextRequest) {
   await run("summary", () => loadSummaryEvents(admin, clock));
   await run("importReminder", () => loadImportReminderEvents(admin, clock));
   await run("missedCharges", () => loadMissedChargeEvents(admin, clock));
+  // Shared subscriptions without a bank: their charges go to the group on the expected day.
+  try {
+    result.sharedSubscriptions = { created: await shareUnbankedCharges(admin, clock) };
+  } catch (error) {
+    console.error("[cron/notifications] sharedSubscriptions", error);
+    errors.push("sharedSubscriptions");
+  }
   try {
     result.cleanup = { deleted: await cleanupNotifications(admin) };
   } catch (error) {

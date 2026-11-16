@@ -24,8 +24,10 @@ export function useMemberLabel(meId: string) {
  * percentages / shares), per-person values with the resulting amount, a live "left to assign"
  * counter and the title the group will see.
  */
-export function SplitEditor({ members, meId, totalCents, payerId, draft, onChange }: {
+export function SplitEditor({ members, meId, totalCents, payerId, draft, onChange, showTitle = true }: {
   members: SharedProfile[];
+  /** The title field (a shared subscription's expenses take its name). */
+  showTitle?: boolean;
   meId: string;
   totalCents: number;
   payerId: string;
@@ -61,17 +63,19 @@ export function SplitEditor({ members, meId, totalCents, payerId, draft, onChang
 
   return (
     <div className="split-editor">
-      <FieldGroup>
-        <FieldRow label={t("split.title")} htmlFor="split-title">
-          <RowInput
-            id="split-title"
-            value={draft.title}
-            onChange={(e) => patch({ title: e.target.value })}
-            placeholder={t("split.titlePlaceholder")}
-            maxLength={120}
-          />
-        </FieldRow>
-      </FieldGroup>
+      {showTitle && (
+        <FieldGroup>
+          <FieldRow label={t("split.title")} htmlFor="split-title">
+            <RowInput
+              id="split-title"
+              value={draft.title}
+              onChange={(e) => patch({ title: e.target.value })}
+              placeholder={t("split.titlePlaceholder")}
+              maxLength={120}
+            />
+          </FieldRow>
+        </FieldGroup>
+      )}
 
       <FieldGroup title={t("split.participants")}>
         <FieldStack>

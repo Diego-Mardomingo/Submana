@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { normalizeReminderOffsets, validateSubscriptionFields } from "@/lib/subscriptionValidation";
-import { SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
+import { readSharing, shareLinkedCharges } from "@/lib/sharedSubscriptions";
+import { readSubscription, SUBSCRIPTION_SELECT } from "@/lib/subscriptionsServer";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -19,6 +20,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     if (updates.match_pattern != null && typeof updates.match_pattern !== "string") return jsonError("invalid_match_pattern");
     updates.match_pattern = String(updates.match_pattern ?? "").trim().slice(0, 200) || null;
   }
+  const sharing = await readSharing(supabase, user.id, body);
+  if (sharing && "error" in sharing) return jsonError(sharing.error, sharing.error === "group_not_found" ? 404 : 400);
+  if (sharing) Object.assign(updates, sharing);
   if (Object.keys(updates).length === 0) return jsonError("No fields to update");
   const invalid = validateSubscriptionFields(updates);
   if (invalid) return jsonError(invalid);
@@ -34,8 +38,15 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     .eq("user_id", user.id)
     .select(SUBSCRIPTION_SELECT)
     .maybeSingle();
-  if (error) return jsonServerError("crud/subscriptions/[id]", error);
+  if (error) {
+    if (error.message?.includes("group_not_found")) return jsonError("group_not_found", 404);
+    return jsonServerError("crud/subscriptions/[id]", error);
+  }
   if (!data) return jsonError("Subscription not found", 404);
+  // Just shared: a charge already linked today goes to the group.
+  if (sharing?.shared_group_id && (await shareLinkedCharges(supabase, user.id, [id])).length > 0) {
+    return jsonResponse({ data: (await readSubscription(supabase, user.id, id)) ?? data });
+  }
   return jsonResponse({ data });
 }
 

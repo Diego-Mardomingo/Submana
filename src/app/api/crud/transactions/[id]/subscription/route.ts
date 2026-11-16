@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { getAccountAccess, getAuthedClient, jsonError, jsonResponse, jsonServerError, unauthorized } from "@/lib/apiHelpers";
 import { calendarDayInAppTimeZone } from "@/lib/date";
 import { chargeDateFor } from "@/lib/subscriptionReconciliation";
+import { chargeExpense } from "@/lib/sharedSubscriptions";
 import { dismissSubscription, isDay, linkCharge, readSubscription } from "@/lib/subscriptionsServer";
 
 type Params = { params: Promise<{ id: string }> };
@@ -37,7 +38,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (!tx.subscription_id) return jsonResponse({ data: tx });
     const { data, error: dismissError } = await dismissSubscription(supabase, id, tx.subscription_id, tx.subscription_dismissed_ids);
     if (dismissError) return jsonServerError("transactions/subscription", dismissError);
-    return jsonResponse({ data });
+    // Shared subscription: the group expense of that charge stays; the client offers to delete it.
+    const groupExpense = tx.subscription_charge_date ? await chargeExpense(supabase, tx.subscription_id, tx.subscription_charge_date) : null;
+    return jsonResponse({ data: { ...data, group_expense: groupExpense } });
   }
 
   if (tx.type !== "expense") return jsonError("not_an_expense");

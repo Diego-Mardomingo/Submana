@@ -246,6 +246,14 @@
   box-shadow: 0 0 0 2px var(--gris-oscuro);
 }
 
+/* A shared subscription's charge: its logo fills the tile */
+.sc-tile .sc-tile-logo {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+}
+
 .sc-tile--settle {
   background: var(--accent-soft);
   color: var(--accent);
