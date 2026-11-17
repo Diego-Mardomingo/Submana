@@ -1,0 +1,65 @@
+/* Base of every artboard in the "Submana Canvas" mockups, appended after the app's CSS by build-kit.mjs.
+   It stands in for what the app gets from Tailwind and next/font: the preflight reset, the handful of
+   utility classes the components use, and the font variables. */
+
+:root {
+  --font-sora: "Sora";
+  --font-inter: "Inter";
+}
+
+/* Tailwind v4 preflight (the parts that matter here) */
+*, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid var(--gris); }
+html { line-height: 1.5; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+a { color: inherit; text-decoration: inherit; }
+ol, ul { list-style: none; }
+img, svg { display: block; vertical-align: middle; }
+img { max-width: 100%; height: auto; }
+button, input, select, textarea { font: inherit; color: inherit; background-color: transparent; letter-spacing: inherit; border-radius: 0; }
+:where(button, input:where([type="button"], [type="reset"], [type="submit"])) { appearance: button; cursor: pointer; }
+input::placeholder { color: color-mix(in oklab, currentColor 50%, transparent); }
+
+/* Tailwind utilities used by the components */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border-width: 0; }
+.size-4 { width: 1rem; height: 1rem; }
+.size-5 { width: 1.25rem; height: 1.25rem; }
+.shrink-0 { flex-shrink: 0; }
+.flex-1 { flex: 1 1 0%; }
+.min-w-0 { min-width: 0; }
+
+/* ── The phone ──
+   An artboard's root is the phone: <div class="kit-phone">. The theme goes on <html data-theme>, like
+   in the app (the artboard's "Tema" tweak sets it). The phone's transform makes it
+   the containing block of the app's position: fixed pieces (sheets, bottom bar, toasts), so they stay
+   inside the frame; .kit-scroll is the page that scrolls under them. */
+.kit-phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  overflow: hidden;
+  transform: translateZ(0);
+  background: var(--negro);
+  color: var(--blanco);
+  font-family: var(--font-sora), "Sora", system-ui, sans-serif;
+}
+.kit-scroll {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-bottom: calc(var(--nav-h) + 16px);
+}
+.kit-scroll::-webkit-scrollbar { display: none; }
+
+/* Static sheets: in the app they are Radix dialogs. Here they only animate when they open. */
+.kit-phone .sheet { max-height: calc(100% - 2.25rem); }
+
+/* Initials avatar in an .lp-icon (src/lib/initialsAvatar.ts draws the same thing as an image). */
+.kit-avatar { display: grid; place-items: center; width: 100%; height: 100%; border-radius: inherit; color: #fff; font-size: 0.78rem; font-weight: 600; font-family: system-ui, sans-serif; }
+
+/* Toasts placed by hand (no timer): the progress bar stays still. */
+.kit-static .toast-progress { animation-play-state: paused !important; }
+
+/* Mark for what a proposal adds or changes. Artboards switch it with their "Marcar lo nuevo" tweak. */
+.kit-marks [data-new] { outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: 2px; border-radius: 6px; }

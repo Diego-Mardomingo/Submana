@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, CircleHelp, Repeat, Trash2 } from "lucide-react";
+import { Check, CircleHelp, Plus, Repeat, Trash2 } from "lucide-react";
 import {
   ActionRow,
   AmountField,
@@ -15,6 +15,7 @@ import {
   Segmented,
   SheetButton,
 } from "@/components/SheetFields";
+import { AccountSheet } from "@/components/AccountSheet";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
 import { Spinner } from "@/components/ui/spinner";
@@ -28,6 +29,7 @@ import { useUnlinkCharge } from "@/components/SubscriptionCharges";
 import { useChargeAction, useLinkTransaction, useResolveReview, useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
 import type { ManualMatchInfo } from "@/lib/subscriptionAutoMatch";
 import {
+  useCategoryUsage,
   useCreateTransaction,
   useUndoableDeleteTransaction,
   useSimilarTransactions,
@@ -44,34 +46,47 @@ import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { isSubscriptionActive } from "@/lib/subscriptions";
 import { chargeDateFor, daysBetween, priceAt } from "@/lib/subscriptionReconciliation";
 
-function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, onUseSimilar }: {
+/** What "save and add another" keeps for the next transaction. */
+type Carry = { type: "income" | "expense"; date: Date; accountId: string };
+
+/** Chips shown before "+N more"; a list only a couple longer than this is shown whole. */
+const TOP_CATEGORIES = 7;
+
+function TransactionForm({ transaction, defaultAccountId, defaultDate, carry, onDone, onUseSimilar, onAddAnother }: {
   transaction: Transaction | null;
   defaultAccountId?: string;
   defaultDate?: Date;
+  /** Kept from the transaction just saved with "save and add another". */
+  carry?: Carry;
   onDone: () => void;
   /** Create mode only: switch to editing a bank-backed transaction that already exists. */
   onUseSimilar?: (tx: Transaction) => void;
+  /** Create mode only: shows "save and add another", which saves and starts a new form. */
+  onAddAnother?: (carry: Carry) => void;
 }) {
   const lang = useLang();
-  const es = lang === "es";
   const t = useTranslations(lang);
-  const { data: accounts = [] } = useAccounts();
+  const { data: accounts = [], isLoading: accountsLoading } = useAccounts();
   const { data: categoriesData } = useCategories();
+  const { data: usageData } = useCategoryUsage();
   const categoryNames = useCategoryLookup().name;
   const createTx = useCreateTransaction();
   const updateTx = useUpdateTransaction();
   const deleteTx = useUndoableDeleteTransaction();
   const watchBudgets = useBudgetWarning();
 
-  const [type, setType] = useState<"income" | "expense">(transaction?.type ?? "expense");
+  const [type, setType] = useState<"income" | "expense">(transaction?.type ?? carry?.type ?? "expense");
   const [amount, setAmount] = useState(transaction ? Number(transaction.amount).toFixed(2).replace(".", ",") : "");
-  const [date, setDate] = useState(() => (transaction ? parseDateString(transaction.date) : (defaultDate ?? new Date())));
+  const [date, setDate] = useState(() => (transaction ? parseDateString(transaction.date) : (carry?.date ?? defaultDate ?? new Date())));
   const [description, setDescription] = useState(transaction?.description ?? "");
-  const [pickedAccountId, setAccountId] = useState(transaction?.account_id ?? "");
+  const [pickedAccountId, setAccountId] = useState(transaction?.account_id ?? carry?.accountId ?? "");
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? "");
   const [subcategoryId, setSubcategoryId] = useState(transaction?.subcategory_id ?? "");
   const [error, setError] = useState("");
   const [amountInvalid, setAmountInvalid] = useState(false);
+  const [submitter, setSubmitter] = useState<"save" | "again">("save");
+  const [allCategories, setAllCategories] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const { data: subscriptions = [] } = useSubscriptions();
   const linkTx = useLinkTransaction();
   const unlinkCharge = useUnlinkCharge();
@@ -93,6 +108,17 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
   const subcategory = subcategories.find((s) => s.id === subcategoryId);
   const excludedFromMetrics = category?.exclude_from_metrics || subcategory?.exclude_from_metrics;
   const label = (c: { id: string; name: string }) => categoryNames.get(c.id) ?? c.name;
+
+  // Most used first (last 90 days, this type); ties keep the server's order. Long lists start collapsed.
+  const usage = usageData?.[type] ?? {};
+  const byUse = <T extends { id: string }>(list: T[]) => [...list].sort((a, b) => (usage[b.id] ?? 0) - (usage[a.id] ?? 0));
+  const sortedParents = byUse(parents);
+  const collapsible = sortedParents.length > TOP_CATEGORIES + 2;
+  const topParents = sortedParents.slice(0, TOP_CATEGORIES);
+  const shownParents =
+    collapsible && !allCategories ? [...topParents, ...(category && !topParents.includes(category) ? [category] : [])] : sortedParents;
+  const hiddenCategories = sortedParents.length - shownParents.length;
+  const usedAny = parents.some((c) => usage[c.id]);
 
   // Subscriptions with a charge near the date, the ones paid from this account first.
   const day = toDateString(date);
@@ -119,17 +145,20 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
     description: description.trim(),
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Enter in a field submits with the first button, "save"; only the second one asks for another.
+    const again = !transaction && !!onAddAnother && !!(e.nativeEvent as SubmitEvent).submitter?.hasAttribute("data-again");
+    setSubmitter(again ? "again" : "save");
     setError("");
     const num = parseCurrencyValue(amount);
     if (num <= 0) {
       setAmountInvalid(true);
-      setError(es ? "Introduce un importe mayor que 0" : "Enter an amount greater than 0");
+      setError(t("tx.error.amount"));
       return;
     }
     if (!accountId) {
-      setError(es ? "Elige una cuenta" : "Choose an account");
+      setError(t("tx.error.account"));
       return;
     }
     const payload = {
@@ -150,11 +179,14 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
         : await createTx.mutateAsync({ ...payload, ...(target && { auto_match: "0" as const }) });
       toast.success(t(transaction ? "transactions.saved" : "transactions.created"));
       void checkBudgets();
-      onDone();
+      if (again) onAddAnother({ type, date, accountId });
+      else onDone();
       if (ownLink && saved?.id && target !== linkedTo) void linkSubscription(saved.id, target, num);
       else if (!transaction && saved?.subscription_match) announceMatch(saved.id, saved.subscription_match, num);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      // The server answers with codes in English: say it plainly instead.
+      console.error("[TransactionSheet] save", err);
+      setError(t("tx.error.save"));
     }
   };
 
@@ -230,7 +262,10 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
     }
   }
 
+  const pending = createTx.isPending || updateTx.isPending;
+
   return (
+    <>
     <SheetForm onSubmit={handleSubmit}>
       <SheetBody>
         <Segmented
@@ -250,6 +285,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
             value={amount}
             tone={type}
             invalid={amountInvalid}
+            autoFocus={!!carry}
             onChange={(value) => {
               setAmount(value);
               setAmountInvalid(false);
@@ -299,20 +335,22 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
               id="tx-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={es ? "Almuerzo, nómina…" : "Lunch, salary…"}
+              placeholder={t("tx.descriptionPlaceholder")}
               enterKeyHint="done"
             />
           </FieldRow>
           <FieldRow label={t("common.date")}>
-            <DatePicker value={date} onChange={(d) => d && setDate(d)} placeholder={es ? "Elegir fecha" : "Pick a date"} lang={lang} className="sf-picker" />
+            <DatePicker value={date} onChange={(d) => d && setDate(d)} placeholder={t("tx.pickDate")} lang={lang} className="sf-picker" />
           </FieldRow>
         </FieldGroup>
 
-        <FieldGroup title={t("common.account")}>
-          <FieldStack>
-            {accounts.length === 0 ? (
-              <p className="sf-hint">{es ? "Crea primero una cuenta" : "Create an account first"}</p>
-            ) : (
+        <FieldGroup title={t("common.account")} hint={!accountsLoading && accounts.length === 0 ? t("tx.noAccountHint") : undefined}>
+          {!accountsLoading && accounts.length === 0 ? (
+            <ActionRow tone="accent" icon={<Plus aria-hidden />} onClick={() => setAccountSheetOpen(true)}>
+              {t("tx.createAccount")}
+            </ActionRow>
+          ) : (
+            <FieldStack>
               <Chips
                 scroll
                 label={t("common.account")}
@@ -328,8 +366,8 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
                   icon: <span className="sf-chip-dot" aria-hidden />,
                 }))}
               />
-            )}
-          </FieldStack>
+            </FieldStack>
+          )}
         </FieldGroup>
 
         {subOptions.length > 0 && (
@@ -366,7 +404,18 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
           </FieldGroup>
         )}
 
-        <FieldGroup title={t("common.category")} hint={jointAccount ? t("joint.categoriesHint") : excludedFromMetrics ? t("categories.excludeFromMetricsInfo") : undefined}>
+        <FieldGroup
+          title={t("common.category")}
+          hint={
+            jointAccount
+              ? t("joint.categoriesHint")
+              : excludedFromMetrics
+                ? t("categories.excludeFromMetricsInfo")
+                : usedAny
+                  ? t("tx.categories.byUse")
+                  : undefined
+          }
+        >
           <FieldStack>
             <Chips
               label={t("common.category")}
@@ -375,20 +424,29 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
                 setCategoryId(id === categoryId ? "" : id);
                 setSubcategoryId("");
               }}
-              options={parents.map((c) => ({
+              options={shownParents.map((c) => ({
                 value: c.id,
                 label: label(c),
                 icon: c.emoji ? <span className="sf-chip-emoji">{c.emoji}</span> : undefined,
               }))}
+              after={
+                collapsible && (
+                  <button type="button" className="sf-chip sf-chip--more" aria-expanded={allCategories} onClick={() => setAllCategories(!allCategories)}>
+                    <span className="sf-chip-label">
+                      {allCategories ? t("tx.categories.less") : interpolate(t("tx.categories.more"), { count: hiddenCategories })}
+                    </span>
+                  </button>
+                )
+              }
             />
           </FieldStack>
           {subcategories.length > 0 && (
-            <FieldStack label={es ? "Subcategoría" : "Subcategory"}>
+            <FieldStack label={t("tx.subcategory")}>
               <Chips
-                label={es ? "Subcategoría" : "Subcategory"}
+                label={t("tx.subcategory")}
                 value={subcategoryId}
                 onChange={(id) => setSubcategoryId(id === subcategoryId ? "" : id)}
-                options={subcategories.map((c) => ({
+                options={byUse(subcategories).map((c) => ({
                   value: c.id,
                   label: label(c),
                   icon: c.emoji ? <span className="sf-chip-emoji">{c.emoji}</span> : undefined,
@@ -408,7 +466,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
                 onDone();
               }}
             >
-              {es ? "Eliminar transacción" : "Delete transaction"}
+              {t("tx.delete")}
             </ActionRow>
           </FieldGroup>
         )}
@@ -416,11 +474,33 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, onDone, o
 
       <SheetFooter>
         <FormError>{error}</FormError>
-        <SheetButton type="submit" pending={createTx.isPending || updateTx.isPending}>
-          {transaction ? (es ? "Guardar cambios" : "Save changes") : t("transactions.add")}
-        </SheetButton>
+        {transaction || !onAddAnother ? (
+          <SheetButton type="submit" pending={pending}>
+            {transaction ? t("tx.saveChanges") : t("transactions.add")}
+          </SheetButton>
+        ) : (
+          <div className="sheet-footer-row">
+            <SheetButton type="submit" pending={pending && submitter === "save"} disabled={pending}>
+              {t("common.save")}
+            </SheetButton>
+            <SheetButton type="submit" variant="ghost" className="sf-btn--again" data-again pending={pending && submitter === "again"} disabled={pending}>
+              {t("tx.saveAndAddAnother")}
+            </SheetButton>
+          </div>
+        )}
       </SheetFooter>
     </SheetForm>
+
+    {/* Outside the form: a submit inside the account sheet would bubble to this form's onSubmit. */}
+    <AccountSheet
+      open={accountSheetOpen}
+      onOpenChange={setAccountSheetOpen}
+      onCreated={(account) => {
+        setAccountId(account.id);
+        setError("");
+      }}
+    />
+    </>
   );
 }
 
@@ -514,27 +594,47 @@ function BankReviewBanner({ transaction, onDone }: { transaction: Transaction; o
   );
 }
 
-/** Create/edit form; while creating, "use it" on a similar bank movement swaps to editing that one. */
-function TransactionFormBody(props: { transaction: Transaction | null; defaultAccountId?: string; defaultDate?: Date; onDone: () => void }) {
+/**
+ * Create/edit form; while creating, "use it" on a similar bank movement swaps to editing that one, and
+ * "save and add another" starts a fresh form that keeps the type, date and account.
+ */
+function TransactionFormBody(props: {
+  transaction: Transaction | null;
+  defaultAccountId?: string;
+  defaultDate?: Date;
+  onDone: () => void;
+  onAddAnother?: () => void;
+}) {
   const [adopted, setAdopted] = useState<Transaction | null>(null);
+  const [round, setRound] = useState<{ n: number; carry?: Carry }>({ n: 0 });
+  const creating = !props.transaction && !adopted;
   return (
     <TransactionForm
-      key={adopted?.id ?? "form"}
+      key={adopted?.id ?? `form-${round.n}`}
       {...props}
+      carry={round.carry}
       transaction={adopted ?? props.transaction}
       onUseSimilar={props.transaction ? undefined : setAdopted}
+      onAddAnother={
+        creating
+          ? (carry) => {
+              setRound((r) => ({ n: r.n + 1, carry }));
+              props.onAddAnother?.();
+            }
+          : undefined
+      }
     />
   );
 }
 
 /** Loads a transaction known only by id (e.g. from a notification) before showing the form. */
 function TransactionById({ id, onDone }: { id: string; onDone: () => void }) {
-  const es = useLang() === "es";
+  const t = useTranslations(useLang());
   const { data, isLoading, isError } = useTransaction(id);
   if (data) return <TransactionFormBody transaction={data} onDone={onDone} />;
   return (
     <SheetBody className="items-center justify-center py-12 text-sm text-[var(--gris-claro)]">
-      {isLoading ? <Spinner className="size-6" /> : isError && (es ? "No se encontró la transacción" : "Transaction not found")}
+      {isLoading ? <Spinner className="size-6" /> : isError && t("tx.notFound")}
     </SheetBody>
   );
 }
@@ -553,12 +653,29 @@ export function TransactionSheet({ open, onOpenChange, transaction, transactionI
   const t = useTranslations(useLang());
   const shown = useSheetPayload(open, transaction ?? null);
   const shownId = useSheetPayload(open, transactionId ?? null);
-  const close = () => onOpenChange(false);
+  // Saved with "save and add another" since the sheet opened.
+  const [added, setAdded] = useState(0);
+  const change = (next: boolean) => {
+    if (!next) setAdded(0);
+    onOpenChange(next);
+  };
+  const close = () => change(false);
   const editing = !!shown || !!shownId;
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title={t(editing ? "transactions.edit" : "transactions.add")}>
+    <Sheet
+      open={open}
+      onOpenChange={change}
+      title={t(editing ? "transactions.edit" : "transactions.add")}
+      description={added > 0 ? (added === 1 ? t("tx.addedOne") : interpolate(t("tx.addedMany"), { count: added })) : undefined}
+    >
       {shown || !shownId ? (
-        <TransactionFormBody transaction={shown} defaultAccountId={defaultAccountId} defaultDate={defaultDate} onDone={close} />
+        <TransactionFormBody
+          transaction={shown}
+          defaultAccountId={defaultAccountId}
+          defaultDate={defaultDate}
+          onDone={close}
+          onAddAnother={() => setAdded((n) => n + 1)}
+        />
       ) : (
         <TransactionById id={shownId} onDone={close} />
       )}

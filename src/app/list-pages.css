@@ -343,6 +343,103 @@ button.lp-chip:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* Sort picker in a section header ("Next charge ⌄") and its menu */
+.lp-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+  height: 28px;
+  margin: -6px -0.45rem;
+  padding: 0 0.45rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gris-muy-claro);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.lp-sort:hover,
+.lp-sort[data-state="open"] {
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+}
+
+.lp-sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lp-sort svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.lp-sort-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  padding: 4px;
+  border: 1px solid var(--gris);
+  border-radius: 14px;
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  animation: lp-sort-in 0.16s ease-out;
+}
+
+@keyframes lp-sort-in {
+  from { opacity: 0; transform: translateY(-4px); }
+}
+
+.lp-sort-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.35rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+.lp-sort-item[data-highlighted] {
+  background: var(--gris);
+}
+
+.lp-sort-item > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.lp-sort-item small {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--gris-claro);
+}
+
+.lp-sort-check {
+  display: flex;
+  margin-left: auto;
+  color: var(--accent);
+}
+
+.lp-sort-check svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-sort-menu { animation: none; }
+}
+
 .lp-sections {
   display: flex;
   flex-direction: column;
@@ -612,6 +709,34 @@ button.lp-chip:hover {
 .lp-action .size-5 {
   width: 1.1rem;
   height: 1.1rem;
+}
+
+/* Swiped open on a phone, each action says what it does under its icon. On desktop (actions on hover) only the icon. */
+.lp-action-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.swipe-to-reveal:not(.swipe-to-reveal--desktop) .lp-action:has(.lp-action-label) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 58px;
+  height: 50px;
+  border-radius: 12px;
+}
+
+.swipe-to-reveal--desktop .lp-action-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ── Collapsible section trigger ── */
@@ -1555,4 +1680,102 @@ button.lp-next {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/* ── Transactions (phones and tablets): slim month bar once the summary card has scrolled away ── */
+.lp-mini {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  height: calc(54px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 1rem 0 0.4rem;
+  border-bottom: 1px solid var(--gris);
+  background: color-mix(in srgb, var(--negro) 86%, transparent);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  color: var(--blanco);
+  transform: translateY(-101%);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.lp-mini[data-shown="true"] {
+  transform: none;
+}
+
+@media (min-width: 768px) {
+  .lp-mini {
+    left: 240px;
+  }
+}
+
+/* The summary sits in a sticky column there. */
+@media (min-width: 1024px) {
+  .lp-mini {
+    display: none;
+  }
+}
+
+.lp-mini-month {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 118px;
+  height: 40px;
+  padding: 0 0.25rem;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 40px;
+  cursor: pointer;
+}
+
+.lp-mini-month span:first-child {
+  text-transform: capitalize;
+}
+
+.lp-mini-month span + span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+}
+
+.lp-mini-month:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.lp-mini-balance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  margin-left: auto;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.lp-mini-balance small {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris-claro);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-mini {
+    transition: none;
+  }
 }

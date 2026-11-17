@@ -205,6 +205,18 @@ export function useSimilarTransactions(input: {
   });
 }
 
+/**
+ * Uses of each category and subcategory in my transactions of the last 90 days, per type. Kept out of
+ * the transactions keys on purpose: saving a transaction doesn't reorder the chips under the user's finger.
+ */
+export function useCategoryUsage() {
+  return useQuery<Record<"income" | "expense", Record<string, number>>>({
+    queryKey: queryKeys.categories.usage(),
+    queryFn: () => api("/api/crud/transactions/category-usage"),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
 interface TransactionInput {
   amount: number;
   type: "income" | "expense";

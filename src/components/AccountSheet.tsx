@@ -45,7 +45,12 @@ export function AccountDeleteWarning({ accountId }: { accountId: string }) {
   );
 }
 
-function AccountFormBody({ account, onDone, onDeleted }: { account: Account | null; onDone: () => void; onDeleted?: () => void }) {
+function AccountFormBody({ account, onDone, onDeleted, onCreated }: {
+  account: Account | null;
+  onDone: () => void;
+  onDeleted?: () => void;
+  onCreated?: (account: Account) => void;
+}) {
   const lang = useLang();
   const es = lang === "es";
   const t = useTranslations(lang);
@@ -78,7 +83,10 @@ function AccountFormBody({ account, onDone, onDeleted }: { account: Account | nu
     const payload = { ...input, ...(balanceChanged && { balance }) };
     try {
       if (account) await updateAccount.mutateAsync({ id: account.id, ...payload });
-      else await createAccount.mutateAsync(payload);
+      else {
+        const created: Account | undefined = await createAccount.mutateAsync(payload);
+        if (created?.id) onCreated?.(created);
+      }
       toast.success(t(account ? "accounts.saved" : "accounts.created"));
       onDone();
     } catch (err) {
@@ -185,18 +193,20 @@ function AccountFormBody({ account, onDone, onDeleted }: { account: Account | nu
 }
 
 /** Create (no `account`) or edit / delete an account. */
-export function AccountSheet({ open, onOpenChange, account, onDeleted }: {
+export function AccountSheet({ open, onOpenChange, account, onDeleted, onCreated }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   account?: Account | null;
   /** After deleting (e.g. leave the account's page). */
   onDeleted?: () => void;
+  /** After creating one (e.g. pick it in the form that asked for it). */
+  onCreated?: (account: Account) => void;
 }) {
   const t = useTranslations(useLang());
   const shown = useSheetPayload(open, account ?? null);
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={shown ? t("accounts.edit") : t("accounts.add")}>
-      <AccountFormBody account={shown} onDone={() => onOpenChange(false)} onDeleted={onDeleted} />
+      <AccountFormBody account={shown} onDone={() => onOpenChange(false)} onDeleted={onDeleted} onCreated={onCreated} />
     </Sheet>
   );
 }

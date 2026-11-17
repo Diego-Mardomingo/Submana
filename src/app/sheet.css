@@ -224,6 +224,14 @@ html[data-theme="light"] .sheet-overlay {
   flex: 1;
 }
 
+/* "Save and add another": first in the row on screen, second in the DOM (Enter saves). */
+.sheet-footer-row > .sf-btn--again {
+  order: -1;
+  flex: 1.4;
+  padding: 0 0.8rem;
+  font-size: 0.84rem;
+}
+
 @media (min-width: 768px) {
   .sheet-footer {
     padding-bottom: 1rem;
@@ -641,6 +649,9 @@ html:not([data-theme="light"]) .sf-btn--primary { color: #16121f; }
 }
 
 .sf-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* "+N more" / "Show fewer" at the end of a long chip list. */
+.sf-chip--more { border-style: dashed; }
 
 .sf-chip img {
   width: 20px;
