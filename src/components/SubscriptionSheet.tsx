@@ -41,6 +41,7 @@ import { RENEWAL_OFFSETS } from "@/lib/notifications/catalog";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { toast } from "@/lib/toast";
+import { subscriptionSubject } from "@/lib/toastSubjects";
 import { isSubscriptionActive, monthlyCost, nextPaymentDate } from "@/lib/subscriptions";
 import { chargeHistory, lastCharge, pendingPriceChange, reconciledTotal } from "@/lib/subscriptionReconciliation";
 import { myShareCents } from "@/lib/shared/subscriptionSplit";
@@ -312,7 +313,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
     try {
       if (sub) await updateSub.mutateAsync({ id: sub.id, ...input });
       else await createSub.mutateAsync(input);
-      toast.success(t(sub ? "sub.saved" : "sub.created"));
+      toast.success(t(sub ? "sub.saved" : "sub.created"), { subject: subscriptionSubject(input) });
       onDone();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error";

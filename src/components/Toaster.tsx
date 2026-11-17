@@ -1,26 +1,31 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
-import { CircleCheck, Info, LoaderCircle, OctagonX, TriangleAlert, X } from "lucide-react";
+import { CircleCheck, CircleX, Info, TriangleAlert, X } from "lucide-react";
 import { DismissableLayer } from "radix-ui/internal";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { usePrivacyMode } from "@/hooks/usePrivacyMode";
+import { formatCurrency } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
-import { EXIT_MS, MAX_VISIBLE, toast, toastStore, type ToastButton, type ToastItem, type ToastType } from "@/lib/toast";
+import { EXIT_MS, MAX_VISIBLE, toast, toastLayout, toastStore, type ToastButton, type ToastItem, type ToastSubject, type ToastType } from "@/lib/toast";
 
-const ICONS: Record<ToastType, typeof Info> = {
+/** Solid glyphs (see .toast-glyph): the first shape is filled, the mark is cut out of it. */
+const GLYPHS: Partial<Record<ToastType, typeof Info>> = {
   success: CircleCheck,
-  error: OctagonX,
+  error: CircleX,
   warning: TriangleAlert,
   info: Info,
-  loading: LoaderCircle,
-  neutral: Info,
 };
 
 const GAP = 8;
 /** Collapsed deck (phones): how far each card behind the front one peeks out. */
 const PEEK = 8;
-const SWIPE_DISMISS_PX = 70;
+const SWIPE_DISMISS_PX = 60;
+/** Dragging towards the top edge closes it sooner than sideways. */
+const SWIPE_UP_DISMISS_PX = 28;
+
+type Size = { w: number; h: number };
 
 /** Renders the toasts fired with `toast` from `@/lib/toast`. Mounted once, in providers. */
 export function Toaster() {
@@ -28,13 +33,17 @@ export function Toaster() {
   const t = useTranslations(lang);
   const all = useSyncExternalStore(toastStore.subscribe, toastStore.getSnapshot, toastStore.getServerSnapshot);
   const phone = useMediaQuery("(max-width: 767px)");
-  const [heights, setHeights] = useState<Record<string, number>>({});
+  const [sizes, setSizes] = useState<Record<string, Size>>({});
   const [hovered, setHovered] = useState(false);
   const [opened, setOpened] = useState(false);
   const [hidden, setHidden] = useState(false);
   const ref = useRef<HTMLElement>(null);
-  const onHeight = useCallback(
-    (id: ToastItem["id"], height: number) => setHeights((prev) => (prev[String(id)] === height ? prev : { ...prev, [String(id)]: height })),
+  const onSize = useCallback(
+    (id: ToastItem["id"], size: Size) =>
+      setSizes((prev) => {
+        const old = prev[String(id)];
+        return old && old.w === size.w && old.h === size.h ? prev : { ...prev, [String(id)]: size };
+      }),
     []
   );
 
@@ -65,11 +74,13 @@ export function Toaster() {
     return () => document.removeEventListener("pointerdown", onDown);
   }, [opened]);
 
-  const sizes = visible.map((item) => heights[String(item.id)] ?? 0);
-  const frontHeight = sizes[0] ?? 0;
-  // Expanded: each card sits on top of the newer ones. Collapsed: a deck that peeks out.
-  const offsets = sizes.map((_, index) => (expanded ? sizes.slice(0, index).reduce((sum, h) => sum + h + GAP, 0) : index * PEEK));
-  const stackHeight = expanded ? sizes.reduce((sum, h) => sum + h, 0) + GAP * Math.max(0, sizes.length - 1) : frontHeight + Math.max(0, sizes.length - 1) * PEEK;
+  const measured = visible.map((item) => sizes[String(item.id)] ?? { w: 0, h: 0 });
+  const front = measured[0] ?? { w: 0, h: 0 };
+  // Expanded: each card sits below the newer ones. Collapsed: a deck that peeks out below the front one.
+  const offsets = measured.map((_, index) => (expanded ? measured.slice(0, index).reduce((sum, s) => sum + s.h + GAP, 0) : index * PEEK));
+  const stackHeight = expanded
+    ? measured.reduce((sum, s) => sum + s.h, 0) + GAP * Math.max(0, measured.length - 1)
+    : front.h + Math.max(0, measured.length - 1) * PEEK;
 
   return (
     // A branch of every Radix layer: tapping a toast doesn't close the open sheet or dialog.
@@ -86,7 +97,7 @@ export function Toaster() {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         onClick={(e) => {
-          if (phone && !expanded && !(e.target as HTMLElement).closest("button")) setOpened(true);
+          if (phone && !expanded && visible.length > 1 && !(e.target as HTMLElement).closest("button")) setOpened(true);
         }}
       >
         <ol>
@@ -98,9 +109,9 @@ export function Toaster() {
               collapsed={!expanded}
               y={offsets[index]}
               index={index}
-              frontHeight={frontHeight}
+              deck={front}
               closeLabel={t("toast.close")}
-              onHeight={onHeight}
+              onSize={onSize}
             />
           ))}
         </ol>
@@ -115,31 +126,34 @@ type CardProps = {
   collapsed: boolean;
   y: number;
   index: number;
-  frontHeight: number;
+  /** Size of the front toast, which the cards behind it take in a collapsed deck. */
+  deck: Size;
   closeLabel: string;
-  onHeight: (id: ToastItem["id"], height: number) => void;
+  onSize: (id: ToastItem["id"], size: Size) => void;
 };
 
-function ToastCard({ item, front, collapsed, y, index, frontHeight, closeLabel, onHeight }: CardProps) {
+function ToastCard({ item, front, collapsed, y, index, deck, closeLabel, onSize }: CardProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const swipe = useRef<{ x: number; id: number } | null>(null);
-  const [dx, setDx] = useState(0);
-  const { id, type, title, description, action, cancel, duration, version, leaving } = item;
-  const Icon = ICONS[type];
-  const inlineAction = action && !description && !cancel;
-  const buttons = (action || cancel) && !inlineAction;
+  const swipe = useRef<{ x: number; y: number; id: number } | null>(null);
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const { id, type, title, description, subject, action, cancel, duration, version, leaving } = item;
+  const { size, inlineAction } = toastLayout(item);
+  const timed = Number.isFinite(duration);
+  const behind = collapsed && !front;
+  const Glyph = GLYPHS[type];
   const press = (button: ToastButton) => {
     button.onClick();
     toast.dismiss(id);
   };
+  const timeout = () => toast.dismiss(id);
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new ResizeObserver(() => onHeight(id, el.offsetHeight));
+    const observer = new ResizeObserver(() => onSize(id, { w: el.offsetWidth, h: el.offsetHeight }));
     observer.observe(el);
     return () => observer.disconnect();
-  }, [id, onHeight]);
+  }, [id, onSize]);
 
   useEffect(() => {
     if (!leaving) return;
@@ -149,18 +163,22 @@ function ToastCard({ item, front, collapsed, y, index, frontHeight, closeLabel, 
 
   const onPointerDown = (e: ReactPointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
-    swipe.current = { x: e.clientX, id: e.pointerId };
+    swipe.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: ReactPointerEvent) => {
-    if (swipe.current?.id === e.pointerId) setDx(e.clientX - swipe.current.x);
+    if (swipe.current?.id !== e.pointerId) return;
+    const dy = e.clientY - swipe.current.y;
+    // Up, towards the edge, it follows the finger; down it resists.
+    setDrag({ x: e.clientX - swipe.current.x, y: dy < 0 ? dy : dy * 0.15 });
   };
   const onPointerUp = () => {
     if (!swipe.current) return;
     swipe.current = null;
-    if (Math.abs(dx) > SWIPE_DISMISS_PX) toast.dismiss(id);
-    else setDx(0);
+    if (Math.abs(drag.x) > SWIPE_DISMISS_PX || drag.y < -SWIPE_UP_DISMISS_PX) toast.dismiss(id);
+    else setDrag({ x: 0, y: 0 });
   };
+  const swiping = Math.abs(drag.x) + Math.abs(drag.y) > 4;
 
   return (
     <li
@@ -168,64 +186,101 @@ function ToastCard({ item, front, collapsed, y, index, frontHeight, closeLabel, 
       data-front={front}
       style={
         {
-          "--y": `${-y}px`,
+          "--y": `${y}px`,
           "--scale": collapsed ? 1 - index * 0.05 : 1,
-          "--deck-h": collapsed && !front ? `${frontHeight}px` : undefined,
+          "--deck-w": behind ? `${deck.w}px` : undefined,
+          "--deck-h": behind ? `${deck.h}px` : undefined,
           zIndex: MAX_VISIBLE - index,
         } as React.CSSProperties
       }
-      aria-hidden={collapsed && !front ? true : undefined}
+      aria-hidden={behind ? true : undefined}
     >
       <div
         ref={ref}
         className="toast"
         data-type={type}
-        data-compact={!description && !buttons}
+        data-size={size}
         data-leaving={leaving}
-        data-swiping={dx !== 0}
+        data-swiping={swiping}
         role={type === "error" ? "alert" : "status"}
-        style={{ "--swipe-x": `${dx}px` } as React.CSSProperties}
+        style={{ "--swipe-x": `${drag.x}px`, "--swipe-y": `${drag.y}px` } as React.CSSProperties}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <span className="toast-icon" aria-hidden>
-          {item.icon ?? <Icon />}
+        {/* Keyed by type: it remounts (and pops in) when a loading toast resolves. */}
+        <span key={type} className="toast-icon" aria-hidden>
+          {type === "loading" ? <Spinner /> : (item.icon ?? (Glyph ? <Glyph className="toast-glyph" /> : <Info />))}
         </span>
         <div className="toast-body">
           <div className="toast-title">{title}</div>
           {description && <div className="toast-desc">{description}</div>}
-          {buttons && (
+          {subject && <Subject subject={subject} />}
+          {cancel && (
             <div className="toast-actions">
               {action && (
                 <button type="button" className="toast-btn is-primary" onClick={() => press(action)}>
                   {action.label}
                 </button>
               )}
-              {cancel && (
-                <button type="button" className="toast-btn" onClick={() => press(cancel)}>
-                  {cancel.label}
-                </button>
-              )}
+              <button type="button" className="toast-btn" onClick={() => press(cancel)}>
+                {cancel.label}
+              </button>
             </div>
           )}
         </div>
         {inlineAction && action && (
           <button type="button" className="toast-inline-action" onClick={() => press(action)}>
+            {/* The ring is the countdown: pausing its animation pauses the toast. */}
+            {timed && (
+              <svg key={version} className="toast-ring" viewBox="0 0 16 16" aria-hidden>
+                <circle className="toast-ring-track" cx="8" cy="8" r="6.5" />
+                <circle className="toast-ring-left" cx="8" cy="8" r="6.5" pathLength={100} style={{ animationDuration: `${duration}ms` }} onAnimationEnd={timeout} />
+              </svg>
+            )}
             {action.label}
           </button>
         )}
-        {type !== "loading" && !inlineAction && (
+        {type !== "loading" && (
           <button type="button" className="toast-close" aria-label={closeLabel} onClick={() => toast.dismiss(id)}>
             <X />
           </button>
         )}
-        {Number.isFinite(duration) && (
-          // The countdown is this bar's animation: pausing it pauses the timer.
-          <span key={version} className="toast-progress" style={{ animationDuration: `${duration}ms` }} onAnimationEnd={() => toast.dismiss(id)} aria-hidden />
-        )}
+        {timed && !inlineAction && <span key={version} className="toast-timer" style={{ animationDuration: `${duration}ms` }} onAnimationEnd={timeout} aria-hidden />}
       </div>
     </li>
+  );
+}
+
+function Spinner() {
+  return (
+    <svg className="toast-spinner" viewBox="0 0 24 24">
+      <circle className="track" cx="12" cy="12" r="9" />
+      <circle className="arc" cx="12" cy="12" r="9" pathLength={100} />
+    </svg>
+  );
+}
+
+function Subject({ subject: { icon, label, amount, signed } }: { subject: ToastSubject }) {
+  const hideAmounts = usePrivacyMode();
+  const money = amount === undefined ? null : signed ? `${amount >= 0 ? "+" : "-"}${formatCurrency(Math.abs(amount))}` : formatCurrency(amount);
+  return (
+    <div className="toast-subject">
+      {icon && (
+        <span className="toast-subject-icon" aria-hidden>
+          {icon}
+        </span>
+      )}
+      <span className="toast-subject-label">{label}</span>
+      {money && (
+        <>
+          <span className="toast-subject-sep" aria-hidden>
+            ·
+          </span>
+          <span className={`toast-subject-amount${hideAmounts ? " sensitive-amount-blur" : ""}`}>{money}</span>
+        </>
+      )}
+    </div>
   );
 }

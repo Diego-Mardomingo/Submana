@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import type { GroupDetailData, SharedExpenseItem, SplitInput } from "@/lib/shared/types";
+import { sharedExpenseSubject } from "@/lib/toastSubjects";
 import { useUndoableDelete } from "./useUndoableDelete";
 
 /** Subcount lives apart from my finances: a write only refreshes the groups and balances. */
@@ -32,9 +33,10 @@ export function useDeleteSharedExpense() {
 /** Deletes a shared expense with an Undo toast: it is hidden now and the DELETE is sent when the toast closes. */
 export function useUndoableDeleteSharedExpense() {
   const undoableDelete = useUndoableDelete();
-  return (expense: Pick<SharedExpenseItem, "id" | "group_id">) =>
+  return (expense: Pick<SharedExpenseItem, "id" | "group_id" | "title" | "total_amount" | "subscription_icon">) =>
     undoableDelete({
       title: "shared.expenseDeleted",
+      subject: sharedExpenseSubject(expense),
       edits: [
         {
           queryKey: queryKeys.shared.group(expense.group_id),

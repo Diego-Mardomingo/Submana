@@ -42,6 +42,7 @@ import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { toast } from "@/lib/toast";
+import { transactionSubject } from "@/lib/toastSubjects";
 import { initialsAvatarDataUri } from "@/lib/initialsAvatar";
 import { isSubscriptionActive } from "@/lib/subscriptions";
 import { chargeDateFor, daysBetween, priceAt } from "@/lib/subscriptionReconciliation";
@@ -177,7 +178,9 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, carry, on
       const saved: { id: string; subscription_match?: ManualMatchInfo } = transaction
         ? await updateTx.mutateAsync({ id: transaction.id, ...payload })
         : await createTx.mutateAsync({ ...payload, ...(target && { auto_match: "0" as const }) });
-      toast.success(t(transaction ? "transactions.saved" : "transactions.created"));
+      toast.success(t(transaction ? "transactions.saved" : "transactions.created"), {
+        subject: transactionSubject(payload, subcategory?.emoji ?? category?.emoji ?? undefined, t(type === "income" ? "transactions.income" : "transactions.expense")),
+      });
       void checkBudgets();
       if (again) onAddAnother({ type, date, accountId });
       else onDone();

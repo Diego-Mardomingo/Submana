@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { toast, toastStore } from "./toast";
+import { toast, toastLayout, toastStore } from "./toast";
 
 const items = () => toastStore.getSnapshot();
 
@@ -67,6 +67,14 @@ describe("toast", () => {
     expect(items()[1]).toMatchObject({ type: "error", title: "Bad file" });
   });
 
+  it("keeps the subject and drops it when updated without one", () => {
+    const subject = { icon: "🛒", label: "Mercadona", amount: -46.3, signed: true };
+    const id = toast.success("Added", { subject });
+    expect(items()[0].subject).toEqual(subject);
+    toast.success("Saved", { id });
+    expect(items()[0].subject).toBeUndefined();
+  });
+
   it("notifies subscribers", () => {
     let calls = 0;
     const unsubscribe = toastStore.subscribe(() => calls++);
@@ -74,5 +82,23 @@ describe("toast", () => {
     unsubscribe();
     toast("Bye");
     expect(calls).toBe(1);
+  });
+});
+
+describe("toastLayout", () => {
+  const button = { label: "Undo", onClick: () => {} };
+
+  it("is a pill with only a title, with or without one action", () => {
+    expect(toastLayout({})).toEqual({ size: "pill", inlineAction: false });
+    expect(toastLayout({ action: button })).toEqual({ size: "pill", inlineAction: true });
+  });
+
+  it("is a card with a description or a subject, and keeps a single action inline", () => {
+    expect(toastLayout({ description: "Why" })).toEqual({ size: "card", inlineAction: false });
+    expect(toastLayout({ subject: { label: "Mercadona" }, action: button })).toEqual({ size: "card", inlineAction: true });
+  });
+
+  it("puts two buttons in a row under the text", () => {
+    expect(toastLayout({ action: button, cancel: button })).toEqual({ size: "card", inlineAction: false });
   });
 });

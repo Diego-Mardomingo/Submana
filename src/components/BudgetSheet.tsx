@@ -7,7 +7,7 @@ import { toast } from "@/lib/toast";
 import { ActionRow, AmountField, Chips, FieldGroup, FieldStack, FormError, FormHero, HeroTile, SheetButton, Swatches } from "@/components/SheetFields";
 import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/components/ui/sheet";
 import { parseCurrencyValue } from "@/lib/currency";
-import { rootIds, useCreateBudget, useUpdateBudget, useUndoableDeleteBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
+import { budgetToastSubject, rootIds, useCreateBudget, useUpdateBudget, useUndoableDeleteBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -39,7 +39,9 @@ function BudgetFormBody({ budget, onDone }: { budget: BudgetWithSpent | null; on
     try {
       if (budget) await updateBudget.mutateAsync({ id: budget.id, amount: value, color, category_ids: categoryIds });
       else await createBudget.mutateAsync({ amount: value, color, category_ids: categoryIds.length > 0 ? categoryIds : undefined });
-      toast.success(t(budget ? "budgets.saved" : "budgets.created"));
+      toast.success(t(budget ? "budgets.saved" : "budgets.created"), {
+        subject: budgetToastSubject({ categoryIds, amount: value }, categories, t("budgets.generalBudget")),
+      });
       onDone();
     } catch (err) {
       // The mutation rolls back its optimistic update.

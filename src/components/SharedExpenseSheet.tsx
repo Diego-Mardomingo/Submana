@@ -16,6 +16,7 @@ import { draftParticipants, evaluateDraft, initialDraft, isDraftSubmittable, typ
 import { sharedErrorText } from "@/lib/shared/errorText";
 import { toCents } from "@/lib/shared/splits";
 import type { SharedExpenseItem, SharedProfile } from "@/lib/shared/types";
+import { sharedExpenseSubject } from "@/lib/toastSubjects";
 
 function draftFromExpense(expense: SharedExpenseItem): SplitDraft {
   const values: Record<string, string> = {};
@@ -81,7 +82,9 @@ function ExpenseForm({ groupId, members, meId, expense, onDone }: {
     try {
       if (expense) await update.mutateAsync({ id: expense.id, ...input });
       else await create.mutateAsync(input);
-      toast.success(t(expense ? "shared.expenseSaved" : "shared.expenseCreated"));
+      toast.success(t(expense ? "shared.expenseSaved" : "shared.expenseCreated"), {
+        subject: sharedExpenseSubject({ title: input.title, total_amount: input.total, subscription_icon: expense?.subscription_icon }),
+      });
       onDone();
     } catch (err) {
       setError(sharedErrorText(t, err instanceof Error ? err.message : undefined));
