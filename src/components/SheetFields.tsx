@@ -140,10 +140,11 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
 
 export type ChipOption = { value: string; label: React.ReactNode; icon?: React.ReactNode; color?: string };
 
-/** Tappable chips; single choice unless `multiple`. `scroll` keeps them on one swipeable line. */
-export function Chips({ options, value, onChange, multiple, scroll, label }: {
+/** Tappable chips; single choice unless `multiple`. `scroll` keeps them on one swipeable line. `after` goes after the last chip. */
+export function Chips({ options, value, onChange, multiple, scroll, label, after }: {
   options: ChipOption[];
   label?: string;
+  after?: React.ReactNode;
 } & (
   | { multiple?: false; value: string; onChange: (value: string) => void }
   | { multiple: true; value: string[]; onChange: (value: string[]) => void }
@@ -170,6 +171,7 @@ export function Chips({ options, value, onChange, multiple, scroll, label }: {
           {multiple && selected(option.value) && <Check className="sf-chip-check" strokeWidth={3} aria-hidden />}
         </button>
       ))}
+      {after}
     </div>
   );
 }

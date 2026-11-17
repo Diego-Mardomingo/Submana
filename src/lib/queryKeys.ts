@@ -26,6 +26,7 @@ export const queryKeys = {
   categories: {
     all: ["categories"] as const,
     list: (filters: { archived: boolean }) => [...queryKeys.categories.all, "list", filters] as const,
+    usage: () => [...queryKeys.categories.all, "usage"] as const,
   },
   budgets: {
     all: ["budgets"] as const,

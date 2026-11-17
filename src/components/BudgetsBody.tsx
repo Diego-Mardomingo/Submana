@@ -224,13 +224,20 @@ export default function BudgetsBody() {
                         id={budget.id}
                         className="lp-swipe"
                         desktopMinWidth={1024}
+                        peek={budget.id === budgets[0]?.id}
                         actions={
                           <>
                             <button type="button" onClick={stop(() => setEditing(budget))} className="lp-action lp-action--edit" aria-label={t("common.edit")}>
                               <Pencil className="size-5" />
+                              <span className="lp-action-label" aria-hidden>
+                                {t("common.edit")}
+                              </span>
                             </button>
                             <button type="button" onClick={stop(() => deleteBudget(budget))} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
                               <Trash2 className="size-5" />
+                              <span className="lp-action-label" aria-hidden>
+                                {t("common.delete")}
+                              </span>
                             </button>
                           </>
                         }

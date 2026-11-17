@@ -2,11 +2,11 @@
 
 ## Mockups
 
-New design proposals go in the "Submana Mockups" artifact (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o), one hash view per proposal plus a card on its `#inicio` view. The older mockups stay in `docs/design/`.
+Visual changes get a mockup before they're built, and the user approves it first. New proposals go in the "Submana Canvas" artifact (https://claude.ai/artifact/Cp74oL4LxTuzY3UMFb1rZi), a Design canvas: one page per proposal (named after its issue, e.g. "#123 Pulido de UX"), one interactive artboard per screen (Play to try it), and the open questions in a sticky note and in the reply. Earlier proposals stay in the "Submana Mockups" artifact (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o) and in `docs/design/`.
 
-- Each screen is a `<figure class="kit-screen">` with a `<template>` inside, drawn in an iframe of the device's width with the app's real CSS. Write the markup with the components' real classes. The page's own script explains the attributes and placeholders.
-- The artifact publishes `src/app/*.css` under `app/`, plus `kit/modules.css` (the CSS modules with their classes prefixed by file name, built by the artifact's `kit/build-modules.mjs`) and `kit/screen.css`. Republish them whenever the app's CSS changes, so the mockups keep matching the app.
-- Open questions go in its decisions block. The answers are stored in the artifact's database (`decisions` collection); read them before building.
+- Each artboard is a 390×844 phone drawn with the app's real CSS: `<link rel="stylesheet" href="<kit url>">` in its `<head>` after the `support.js` line, and a root `<div class="kit-phone">` (`docs/design/canvas/base.css` explains it). Write the markup with the components' real classes; copy an existing artboard (`project/Suscripciones.dc.html`) for the bottom bar, toasts and swipe rows. Styles a proposal adds go in the artboard's `<helmet><style>`, commented with the app file they'll move to.
+- The kit is one stylesheet built by `node docs/design/canvas/build-kit.mjs <out file>` from `src/app/*.css`, the CSS modules (classes prefixed by file name: `Navigation_bar`) and `base.css`. Whenever the app's CSS changes, rebuild it, upload it as an asset of the canvas and point the artboards' `<link>` at the new `/_blob/…` url.
+- Each artboard has the tweaks `tema` (dark/light, sets `<html data-theme>`) and `marcarNuevo` (dashed outline on `[data-new]`, what the proposal changes).
 
 ## UI conventions
 

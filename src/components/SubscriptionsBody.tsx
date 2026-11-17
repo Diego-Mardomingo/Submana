@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useCallback, useEffect, useState } from "react";
-import { Check, ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { ArrowUpDown, Check, ChevronDown, Pencil, Plus, Trash2, XCircle } from "lucide-react";
+import { DropdownMenu } from "radix-ui";
 import { SubscriptionsIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -14,6 +15,7 @@ import { useCreateDialog } from "@/hooks/useCreateDialog";
 import { useUrlParam } from "@/hooks/useUrlParam";
 import { useLang } from "@/hooks/useLang";
 import { useReconcileOnce, useSubscriptions, type Subscription } from "@/hooks/useSubscriptions";
+import { createClientStore } from "@/lib/clientStore";
 import { parseDateString } from "@/lib/date";
 import { parseIdParam } from "@/lib/deepLinks";
 import { formatCurrency, localeOf } from "@/lib/format";
@@ -23,6 +25,28 @@ import { isSubscriptionActive, monthlyCost, nextPaymentDate } from "@/lib/subscr
 import { listStatus } from "@/lib/subscriptionReconciliation";
 
 const DAY_MS = 86_400_000;
+
+type SortKey = "next" | "price" | "name";
+const SORT_KEYS: SortKey[] = ["next", "price", "name"];
+const SORT_STORAGE_KEY = "submana-subscriptions-sort";
+
+/** The order picked for the active subscriptions, remembered on this device. */
+const sortStore = createClientStore<SortKey>(
+  () => {
+    try {
+      const value = localStorage.getItem(SORT_STORAGE_KEY) as SortKey | null;
+      return value && SORT_KEYS.includes(value) ? value : "next";
+    } catch {
+      return "next";
+    }
+  },
+  (value) => {
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, value);
+    } catch {}
+  },
+  "next"
+);
 const daysFromToday = (date: Date) => {
   const now = new Date();
   return Math.round((date.getTime() - new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime()) / DAY_MS);
@@ -104,11 +128,15 @@ export default function SubscriptionsBody() {
   // Live data for the open subscription (falls back to the snapshot once deleted).
   const sheetSub = linkedSub ?? (sheet ? (subscriptions.find((s) => s.id === sheet.sub.id) ?? sheet.sub) : null);
 
+  const sort = sortStore.useValue();
   const next = new Map(subscriptions.map((sub) => [sub.id, nextPaymentDate(sub)]));
   const nextTime = (sub: Subscription) => next.get(sub.id)?.getTime() ?? Infinity;
+  const byNext = (a: Subscription, b: Subscription) => nextTime(a) - nextTime(b) || Number(b.cost) - Number(a.cost);
+  const byPrice = (a: Subscription, b: Subscription) => monthlyCost(b) - monthlyCost(a) || byNext(a, b);
+  const byName = (a: Subscription, b: Subscription) => a.service_name.localeCompare(b.service_name, localeOf(lang), { sensitivity: "base" }) || byNext(a, b);
   const activeSubs = subscriptions
     .filter((sub) => isSubscriptionActive(sub))
-    .sort((a, b) => nextTime(a) - nextTime(b) || Number(b.cost) - Number(a.cost));
+    .sort(sort === "price" ? byPrice : sort === "name" ? byName : byNext);
   const inactiveSubs = subscriptions.filter((s) => !isSubscriptionActive(s)).sort((a, b) => Number(b.cost) - Number(a.cost));
   const totalMonthly = activeSubs.reduce((sum, sub) => sum + monthlyCost(sub), 0);
   const upcoming = activeSubs.find((sub) => next.get(sub.id));
@@ -181,8 +209,8 @@ export default function SubscriptionsBody() {
 
   const renderList = (subs: Subscription[], active: boolean) => (
     <SwipeToRevealGroup className="lp-card lp-group">
-      {subs.map((sub) => {
-        const button = (type: "cancel" | "delete", className: string, label: string, icon: React.ReactNode) => (
+      {subs.map((sub, index) => {
+        const button = (type: "cancel" | "delete", className: string, label: string, short: string, icon: React.ReactNode) => (
           <button
             type="button"
             onClick={(e) => {
@@ -194,6 +222,9 @@ export default function SubscriptionsBody() {
             aria-label={label}
           >
             {icon}
+            <span className="lp-action-label" aria-hidden>
+              {short}
+            </span>
           </button>
         );
         return (
@@ -202,6 +233,7 @@ export default function SubscriptionsBody() {
             id={sub.id}
             className="lp-swipe lp-swipe--3"
             desktopMinWidth={1024}
+            peek={active && index === 0}
             actions={
               <>
                 <button
@@ -214,9 +246,12 @@ export default function SubscriptionsBody() {
                   aria-label={t("sub.edit")}
                 >
                   <Pencil className="size-5" />
+                  <span className="lp-action-label" aria-hidden>
+                    {t("sub.edit")}
+                  </span>
                 </button>
-                {active && !sub.end_date && button("cancel", "lp-action--warn", t("sub.cancel"), <XCircle className="size-5" />)}
-                {button("delete", "lp-action--danger", t("sub.delete"), <Trash2 className="size-5" />)}
+                {active && !sub.end_date && button("cancel", "lp-action--warn", t("sub.cancel"), t("sub.swipe.cancel"), <XCircle className="size-5" />)}
+                {button("delete", "lp-action--danger", t("sub.delete"), t("sub.delete"), <Trash2 className="size-5" />)}
               </>
             }
           >
@@ -333,7 +368,7 @@ export default function SubscriptionsBody() {
                     <span className="lp-section-title">
                       {es ? "Activas" : "Active"} · {activeSubs.length}
                     </span>
-                    <span className="lp-section-aside">{es ? "Por próximo cobro" : "By next charge"}</span>
+                    <SortMenu value={sort} />
                   </div>
                   {renderList(activeSubs, true)}
                 </section>
@@ -359,5 +394,42 @@ export default function SubscriptionsBody() {
 
       {sheets}
     </div>
+  );
+}
+
+/** "Next charge ⌄" in the section header: picks how the active subscriptions are sorted. */
+function SortMenu({ value }: { value: SortKey }) {
+  const t = useTranslations(useLang());
+  const options: { key: SortKey; label: string; hint: string }[] = [
+    { key: "next", label: t("sub.sort.next"), hint: t("sub.sort.nextHint") },
+    { key: "price", label: t("sub.sort.price"), hint: t("sub.sort.priceHint") },
+    { key: "name", label: t("sub.sort.name"), hint: t("sub.sort.nameHint") },
+  ];
+  const current = options.find((o) => o.key === value) ?? options[0];
+  return (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger className="lp-sort" aria-label={`${t("sub.sort.label")}: ${current.label}`}>
+        <ArrowUpDown aria-hidden />
+        {current.label}
+        <ChevronDown aria-hidden />
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content className="lp-sort-menu" align="end" sideOffset={8} aria-label={t("sub.sort.label")}>
+          <DropdownMenu.RadioGroup value={value} onValueChange={(key) => sortStore.set(key as SortKey)}>
+            {options.map((o) => (
+              <DropdownMenu.RadioItem key={o.key} value={o.key} className="lp-sort-item">
+                <span>
+                  {o.label}
+                  <small>{o.hint}</small>
+                </span>
+                <DropdownMenu.ItemIndicator className="lp-sort-check">
+                  <Check strokeWidth={3} aria-hidden />
+                </DropdownMenu.ItemIndicator>
+              </DropdownMenu.RadioItem>
+            ))}
+          </DropdownMenu.RadioGroup>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
   );
 }

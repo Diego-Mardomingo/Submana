@@ -55,6 +55,11 @@ export const TransactionRow = memo(function TransactionRow(props: {
           <span>{tx.description || tx.category?.name || fallbackLabel}</span>
           {tx.review_match_id && <span className="sf-badge sf-badge--warn shrink-0">{t("bank.review.badge")}</span>}
           {tx.subscription_review_id && !tx.review_match_id && <span className="sf-badge sf-badge--accent shrink-0">{t("review.badge")}</span>}
+          {excluded && (
+            <span className="sf-badge sf-badge--muted shrink-0" title={t("tx.excluded.why")}>
+              {t("tx.excluded")}
+            </span>
+          )}
         </span>
         {(account || category || author) && (
           <span className="lp-meta">
@@ -89,11 +94,13 @@ export const TransactionRow = memo(function TransactionRow(props: {
  * Transactions grouped by day (newest first) with the day's net amount. Tapping a row opens the
  * edit sheet; swiping (or hovering on desktop) reveals edit / delete.
  */
-export function TransactionDayList({ transactions, countedIds, hideAccount }: {
+export function TransactionDayList({ transactions, countedIds, hideAccount, peek }: {
   transactions: Transaction[];
   /** Transactions that count for metrics; the rest are shown muted and left out of day totals. */
   countedIds: Set<string>;
   hideAccount?: boolean;
+  /** The first row slides open once to show it can be swiped, until the user has swiped once. */
+  peek?: boolean;
 }) {
   const lang = useLang();
   const es = lang === "es";
@@ -123,7 +130,7 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
   return (
     <>
       <div className="lp-sections">
-        {days.map((day) => {
+        {days.map((day, dayIndex) => {
           const txs = byDay.get(day)!;
           const net = dayNet(txs);
           const label = dayLabel(day);
@@ -139,19 +146,26 @@ export function TransactionDayList({ transactions, countedIds, hideAccount }: {
                 </span>
               </div>
               <SwipeToRevealGroup className="lp-card lp-group">
-                {txs.map((tx) => (
+                {txs.map((tx, index) => (
                   <SwipeToReveal
                     key={tx.id}
                     id={tx.id}
                     className="lp-swipe"
                     desktopMinWidth={1024}
+                    peek={peek && dayIndex === 0 && index === 0}
                     actions={
                       <>
                         <button type="button" onClick={() => setEditing(tx)} className="lp-action lp-action--edit" aria-label={t("common.edit")}>
                           <Pencil className="size-5" />
+                          <span className="lp-action-label" aria-hidden>
+                            {t("common.edit")}
+                          </span>
                         </button>
                         <button type="button" onClick={() => deleteTx(tx)} className="lp-action lp-action--danger" aria-label={t("common.delete")}>
                           <Trash2 className="size-5" />
+                          <span className="lp-action-label" aria-hidden>
+                            {t("common.delete")}
+                          </span>
                         </button>
                       </>
                     }

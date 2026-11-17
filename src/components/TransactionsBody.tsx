@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
@@ -47,6 +47,9 @@ const ListSkeleton = () => (
   </div>
 );
 
+/** Height of the slim month bar (.lp-mini in list-pages.css), without the safe area. */
+const MINI_BAR_HEIGHT = 54;
+
 /** Reads ?year=&month= (1-12), falling back to the current month. */
 function useUrlMonth() {
   const params = useSearchParams();
@@ -71,6 +74,19 @@ export default function TransactionsBody() {
   const jointAccountIds = useJointAccountIds();
   const [createOpen, setCreateOpen] = useCreateDialog();
   const [swipeArea, setSwipeArea] = useState<HTMLDivElement | null>(null);
+  // Phones: once the summary card has scrolled away, a slim bar keeps the month and balance on top.
+  const [summaryAway, setSummaryAway] = useState(false);
+  const listRef = useRef<HTMLDivElement>(null);
+  const scrollToListRef = useRef(false);
+  useEffect(() => {
+    if (!swipeArea) return;
+    // Away = under the bar (its 54px off the top), so the bar takes over as the card disappears.
+    const observer = new IntersectionObserver(([entry]) => setSummaryAway(!entry.isIntersecting && entry.boundingClientRect.top < 0), {
+      rootMargin: `-${MINI_BAR_HEIGHT}px 0px 0px 0px`,
+    });
+    observer.observe(swipeArea);
+    return () => observer.disconnect();
+  }, [swipeArea]);
 
   const now = appNow();
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
@@ -96,12 +112,50 @@ export default function TransactionsBody() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  useEffect(() => {
+    const list = listRef.current;
+    if (!monthDataReady || !scrollToListRef.current || !list) return;
+    scrollToListRef.current = false;
+    window.scrollTo({ top: list.getBoundingClientRect().top + window.scrollY - MINI_BAR_HEIGHT - 8 });
+  }, [monthDataReady, year, month]);
+
   const counted = metricTransactions(transactions, categories, { jointAccountIds });
   const countedIds = new Set(counted.map((tx) => tx.id));
   const { income, expense } = sumByType(counted);
   const balance = income - expense;
   const spentRatio = income > 0 ? expense / income : null;
   const loadingMonth = isFetching || isPlaceholderData;
+  const smooth = () => (matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth");
+  /** From the slim bar: show the new month from its first day, the bar still on top (once it has rendered: the summary's height changes). */
+  const changeMonthFromBar = (delta: number) => {
+    scrollToListRef.current = true;
+    changeMonth(delta);
+  };
+  const miniSummary = (
+    <div className="lp-mini" data-shown={summaryAway} inert={!summaryAway}>
+      <button type="button" className="lp-icon-btn" onClick={() => changeMonthFromBar(-1)} aria-label={es ? "Mes anterior" : "Previous month"}>
+        <ChevronLeft className="size-5" strokeWidth={2} />
+      </button>
+      <button
+        type="button"
+        className="lp-mini-month"
+        onClick={() => window.scrollTo({ top: 0, behavior: smooth() })}
+        aria-label={es ? "Volver al resumen del mes" : "Back to the month summary"}
+      >
+        <span>{monthName(month, lang, "long")}</span>
+        <span>{year}</span>
+      </button>
+      <button type="button" className="lp-icon-btn" onClick={() => changeMonthFromBar(1)} aria-label={es ? "Mes siguiente" : "Next month"}>
+        <ChevronRight className="size-5" strokeWidth={2} />
+      </button>
+      <span className="lp-mini-balance">
+        <small>Balance</small>
+        <span className={balance > 0 ? "is-income" : balance < 0 ? "is-negative" : "is-muted"}>
+          <SensitiveAmount>{balance === 0 ? formatCurrency(0) : signed(balance)}</SensitiveAmount>
+        </span>
+      </span>
+    </div>
+  );
 
   const summary = (
     <div ref={setSwipeArea} className="lp-card lp-summary">
@@ -196,11 +250,12 @@ export default function TransactionsBody() {
   return (
     <div className="page-container lp-page fade-in">
       <CompactPageHeader title={t("transactions.title")} addLabel={t("transactions.add")} onAdd={() => setCreateOpen(true)} />
+      {miniSummary}
 
       <div className="lp-layout">
         <aside className="lp-aside">{summary}</aside>
 
-        <div className="lp-content">
+        <div className="lp-content" ref={listRef}>
           {monthDataReady && transactions.length === 0 && (
             <div className="lp-card lp-empty lp-fade" key={`empty-${year}-${month}`}>
               <div className="lp-empty-icon">
@@ -217,7 +272,7 @@ export default function TransactionsBody() {
           {(!monthDataReady || transactions.length > 0) && (
             <Bones name="transactions" loading={!monthDataReady} fallback={<ListSkeleton />}>
               <div className="lp-fade" key={`list-${year}-${month}`}>
-                <TransactionDayList transactions={transactions} countedIds={countedIds} />
+                <TransactionDayList transactions={transactions} countedIds={countedIds} peek />
               </div>
             </Bones>
           )}
