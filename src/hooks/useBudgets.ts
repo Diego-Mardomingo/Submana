@@ -8,6 +8,7 @@ import { monthKey, shiftMonth } from "@/lib/date";
 import { queryKeys } from "@/lib/queryKeys";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { toast } from "@/lib/toast";
+import { budgetSubject } from "@/lib/toastSubjects";
 import { useCategoryLookup } from "./useCategories";
 import { useLang } from "./useLang";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
@@ -82,9 +83,12 @@ export function useUpdateBudget() {
 /** Deletes a budget with an Undo toast: it is hidden now and the DELETE is sent when the toast closes. */
 export function useUndoableDeleteBudget() {
   const undoableDelete = useUndoableDelete();
-  return (budget: Pick<BudgetWithSpent, "id">) =>
+  const categories = useCategoryLookup();
+  const t = useTranslations(useLang());
+  return (budget: BudgetWithSpent) =>
     undoableDelete({
       title: "budgets.deleted",
+      subject: budgetToastSubject(budget, categories, t("budgets.generalBudget")),
       edits: [{ queryKey: queryKeys.budgets.lists(), remove: (list: BudgetWithSpent[]) => removeById(list, budget.id) }],
       commit: (init) => api(`/api/crud/budgets/${budget.id}`, "DELETE", undefined, init),
       invalidate,
@@ -92,9 +96,20 @@ export function useUndoableDeleteBudget() {
 }
 
 /** Top-level categories linked to a budget. */
-export const rootIds = (budget: BudgetWithSpent, categories: ReturnType<typeof useCategoryLookup>) => [
+export const rootIds = (budget: Pick<BudgetWithSpent, "categoryIds">, categories: ReturnType<typeof useCategoryLookup>) => [
   ...new Set(budget.categoryIds.map((id) => categories.parent.get(id) ?? id)),
 ];
+
+/** A budget in a toast: first category's emoji, the names of its categories (or "General") and its limit. */
+export function budgetToastSubject(
+  budget: Pick<BudgetWithSpent, "categoryIds" | "amount">,
+  categories: ReturnType<typeof useCategoryLookup>,
+  generalLabel: string
+) {
+  const roots = rootIds(budget, categories);
+  const name = roots.length ? roots.map((id) => categories.name.get(id)).filter(Boolean).join(", ") : generalLabel;
+  return budgetSubject(name, roots.length ? categories.emoji.get(roots[0]) : undefined, budget.amount);
+}
 
 /**
  * Budgets that went from under a threshold (80 % or 100 % of the limit) to at or over it: one entry per

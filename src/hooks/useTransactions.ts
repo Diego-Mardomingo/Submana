@@ -8,7 +8,10 @@ import { metricTransactions } from "@/lib/metricsFilters";
 import { queryKeys } from "@/lib/queryKeys";
 import { useJointAccountIds } from "./useAccounts";
 import { fetchBudgets } from "./useBudgets";
-import { useCategories } from "./useCategories";
+import { useTranslations } from "@/lib/i18n/utils";
+import { transactionSubject } from "@/lib/toastSubjects";
+import { transactionEmoji, useCategories, useCategoryLookup } from "./useCategories";
+import { useLang } from "./useLang";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
 import { useUndoableDelete } from "./useUndoableDelete";
 
@@ -253,9 +256,12 @@ export function useUpdateTransaction() {
 /** Deletes a transaction with an Undo toast: the row is hidden now and the DELETE is sent when the toast closes. */
 export function useUndoableDeleteTransaction() {
   const undoableDelete = useUndoableDelete();
-  return (tx: Pick<Transaction, "id">) =>
+  const categories = useCategoryLookup();
+  const t = useTranslations(useLang());
+  return (tx: Transaction) =>
     undoableDelete({
       title: "transactions.deleted",
+      subject: transactionSubject(tx, transactionEmoji(categories, tx), t(tx.type === "income" ? "transactions.income" : "transactions.expense")),
       edits: [{ queryKey: queryKeys.transactions.lists(), remove: (list: Transaction[]) => removeById(list, tx.id) }],
       commit: (init) => api(`/api/crud/transactions/${tx.id}`, "DELETE", undefined, init),
       invalidate,

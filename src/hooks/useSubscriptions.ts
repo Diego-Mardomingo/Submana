@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { queryKeys } from "@/lib/queryKeys";
 import type { SharedSplit } from "@/lib/shared/subscriptionSplit";
 import type { LinkedCharge, PriceStep, ReviewCharge } from "@/lib/subscriptionReconciliation";
+import { subscriptionSubject } from "@/lib/toastSubjects";
 import { removeById, replaceById, useOptimisticMutation } from "./useOptimisticMutation";
 import { useUndoableDelete } from "./useUndoableDelete";
 
@@ -92,9 +93,10 @@ export function useUpdateSubscription({ silentError = false } = {}) {
 /** Deletes a subscription with an Undo toast: it is hidden now and the DELETE is sent when the toast closes. */
 export function useUndoableDeleteSubscription() {
   const undoableDelete = useUndoableDelete();
-  return (sub: Pick<Subscription, "id">) =>
+  return (sub: Pick<Subscription, "id" | "service_name" | "icon" | "cost">) =>
     undoableDelete({
       title: "sub.deleted",
+      subject: subscriptionSubject(sub),
       edits: [{ queryKey: queryKeys.subscriptions.lists(), remove: (list: Subscription[]) => removeById(list, sub.id) }],
       commit: (init) => api(`/api/crud/subscriptions/${sub.id}`, "DELETE", undefined, init),
       invalidate,

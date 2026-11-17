@@ -6,7 +6,7 @@ import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { TransactionSheet } from "@/components/TransactionSheet";
-import { useCategoryLookup } from "@/hooks/useCategories";
+import { transactionEmoji, useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
 import { useUndoableDeleteTransaction, type Transaction } from "@/hooks/useTransactions";
 import { appNow, calendarDayInAppTimeZone, parseDateString, toDateString } from "@/lib/date";
@@ -23,11 +23,7 @@ export const TrendIcon = ({ income, size = 18 }: { income: boolean; size?: numbe
 /** "+1.234,56 €" / "-12,00 €" */
 export const signed = (n: number) => `${n >= 0 ? "+" : "-"}${formatCurrency(Math.abs(n))}`;
 
-/** Emoji of a transaction's subcategory or category, if any. */
-export function transactionEmoji(lookup: ReturnType<typeof useCategoryLookup>, tx: Transaction) {
-  const find = (id?: string | null) => (id ? lookup.emoji.get(id) : undefined);
-  return find(tx.subcategory_id) ?? find(tx.category_id) ?? find(lookup.parent.get(tx.subcategory_id ?? ""));
-}
+export { transactionEmoji } from "@/hooks/useCategories";
 
 export const TransactionRow = memo(function TransactionRow(props: {
   tx: Transaction;

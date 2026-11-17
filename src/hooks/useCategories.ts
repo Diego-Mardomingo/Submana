@@ -64,6 +64,15 @@ export function useCategoryLookup() {
   return { ...lookup, isLoading };
 }
 
+/** Emoji of a transaction's subcategory or category, if any. */
+export function transactionEmoji(
+  lookup: Pick<ReturnType<typeof useCategoryLookup>, "emoji" | "parent">,
+  tx: { category_id?: string | null; subcategory_id?: string | null }
+) {
+  const find = (id?: string | null) => (id ? lookup.emoji.get(id) : undefined);
+  return find(tx.subcategory_id) ?? find(tx.category_id) ?? find(lookup.parent.get(tx.subcategory_id ?? ""));
+}
+
 /** Mutation that optimistically edits the user categories of the active (or archived) list. */
 function useCategoryMutation<TVars>(
   mutationFn: (vars: TVars) => Promise<unknown>,

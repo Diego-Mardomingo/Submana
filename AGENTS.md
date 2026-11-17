@@ -15,7 +15,7 @@ Visual changes get a mockup before they're built, and the user approves it first
 Use the app's own toasts. Do **not** use `sonner` (ESLint blocks it).
 
 - API: `import { toast } from "@/lib/toast"`. `<Toaster />` is already mounted in `src/app/providers.tsx`; never mount another.
-- Design reference: open `docs/design/toasts.html` in a browser. Styles live in `src/app/toast.css` and use only the theme tokens from `globals.css` (`--success`, `--danger`, `--warning`, `--info`, `--accent` and their `-soft` variants). Don't restyle toasts per screen. Change the design in `toast.css` and `toasts.html` together.
+- Design reference: the "Rediseño de los toasts" view of the Submana Mockups artifact (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o#toasts). An inverted surface at the top of the screen: a pill when there is only a title, a card with a description, a `subject` or two buttons; the type colour is only in the icon. Styles live in `src/app/toast.css` and use only the theme tokens from `globals.css`. Don't restyle toasts per screen.
 
 Pick the type by meaning:
 
@@ -28,12 +28,12 @@ Pick the type by meaning:
 | `toast(title, { icon })` | Plain confirmation with a custom icon (copied, deleted) |
 | `toast.promise(task, { loading, success, error })` | Anything slow (imports, uploads); one toast goes loading → result |
 
-Options: `description`, `action` / `cancel` (`{ label, onClick }`), `icon`, `duration`, `id` (reuse it to update a toast in place), `onClose` (runs once when it closes, whatever the cause). `toast.dismiss(id?)` closes one or all.
+Options: `description`, `subject` (`{ icon, label, amount, signed }`: the item the toast is about, under the title), `action` / `cancel` (`{ label, onClick }`; one action sits inline with a ring that counts down, two go in a row), `icon`, `duration`, `id` (reuse it to update a toast in place), `onClose` (runs once when it closes, whatever the cause). `toast.dismiss(id?)` closes one or all.
 
 Rules:
 - Text goes through i18n (`t(...)`), never hard-coded. Short title (≤ ~40 chars); details go in `description` (clamped to 3 lines).
 - Prefer an **Undo** toast over a confirm dialog for reversible deletes: `useUndoableDelete` (`src/hooks/useUndoableDelete.tsx`) hides the item and only sends the DELETE when the toast closes. Keep the confirm for what can't be undone or takes other data with it (an account and its transactions).
-- Confirm what the user did (created, saved, deleted) even if the screen also shows it. Don't fire several toasts that say the same thing; a separate consequence (a budget reaching 90 % after saving an expense) gets its own toast.
+- Confirm what the user did (created, saved, deleted) even if the screen also shows it, with its `subject` (builders in `src/lib/toastSubjects.tsx`; `useUndoableDelete` takes one too). Don't fire several toasts that say the same thing; a separate consequence (a budget reaching 90 % after saving an expense) gets its own toast.
 - Durations are set by type (4s, errors 6s, with buttons 8s, loading until resolved); only override `duration` for a reason.
 
 

@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
 /**
- * App-wide toasts (rendered by `<Toaster />` in providers). Look & rules: docs/design/toasts.html.
+ * App-wide toasts (rendered by `<Toaster />` in providers). Rules: AGENTS.md → Toasts. Design: the
+ * "Rediseño de los toasts" view of the Submana Mockups artifact (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o#toasts).
  *
  *   toast.success("Saved")
+ *   toast.success("Expense added", { subject: { icon: "🛒", label: "Mercadona", amount: -46.3, signed: true } })
  *   toast.error("Couldn't save", { description: "You're offline." })
  *   toast("Expense deleted", { icon: <Trash2 />, action: { label: "Undo", onClick: restore } })
  *   toast.promise(upload(), { loading: "Importing…", success: "Imported", error: (e) => e.message })
@@ -13,15 +15,28 @@ export type ToastType = "success" | "error" | "warning" | "info" | "loading" | "
 
 export type ToastButton = { label: string; onClick: () => void };
 
+/** What the toast is about, shown under the title: emoji or logo, name and amount. */
+export type ToastSubject = {
+  /** An emoji, or an <img> for a logo (16 px). */
+  icon?: ReactNode;
+  label: ReactNode;
+  /** In euros. Hidden like every other amount when privacy mode is on. */
+  amount?: number;
+  /** Show the sign (+/-) of the amount, as the transaction lists do. */
+  signed?: boolean;
+};
+
 export type ToastOptions = {
   /** Reuse an id to update a toast in place instead of adding another one. */
   id?: string | number;
   description?: ReactNode;
+  /** The item the toast is about (created, saved or deleted). */
+  subject?: ToastSubject;
   /** Milliseconds before it closes; `Infinity` keeps it until dismissed. Defaults depend on the type. */
   duration?: number;
-  /** Main action. Without a description it sits inline next to the title (e.g. "Undo"). */
+  /** Main action. Alone it sits inline, with a ring that counts down the time left (e.g. "Undo"). */
   action?: ToastButton;
-  /** Secondary button next to the action (e.g. "Not now"). */
+  /** Secondary button. With it, both buttons go in a row under the text (e.g. "Not now"). */
   cancel?: ToastButton;
   /** Replaces the type icon (neutral toasts mostly: trash, copy…). */
   icon?: ReactNode;
@@ -38,6 +53,14 @@ export type ToastItem = ToastOptions & {
   version: number;
   leaving: boolean;
 };
+
+/** A pill when there is only a title (and maybe one action); a card when there is more to show. */
+export function toastLayout(item: Pick<ToastOptions, "description" | "subject" | "action" | "cancel">) {
+  return {
+    size: item.description || item.subject || item.cancel ? ("card" as const) : ("pill" as const),
+    inlineAction: Boolean(item.action && !item.cancel),
+  };
+}
 
 /** Visible at once; the rest wait in the queue. */
 export const MAX_VISIBLE = 3;

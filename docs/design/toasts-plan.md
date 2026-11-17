@@ -1,6 +1,6 @@
 # Plan de toasts (issue #32)
 
-Dónde dispara toasts la app y por qué. Las reglas de uso (tipos, textos, duraciones) están en `AGENTS.md` → Toasts; el diseño en `docs/design/toasts.html`.
+Dónde dispara toasts la app y por qué. Las reglas de uso (tipos, textos, duraciones) están en `AGENTS.md` → Toasts; el diseño en la vista «Rediseño de los toasts» del artifact Submana Mockups (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o#toasts).
 
 ## Estado de partida
 
