@@ -282,6 +282,46 @@
   font-weight: 600;
 }
 
+/* The month's name opens the month picker (MonthPicker) */
+.lp-month-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  height: 36px;
+  padding: 0 0.45rem 0 0.7rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.lp-month-trigger:hover,
+.lp-month-trigger:is([aria-expanded="true"], [data-state="open"]) {
+  background: var(--gris);
+}
+
+.lp-month-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.lp-month-caret {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--gris-claro);
+  transition: rotate 0.2s ease;
+}
+
+:is(.lp-month-trigger, .home-month-trigger):is([aria-expanded="true"], [data-state="open"]) .lp-month-caret {
+  rotate: 180deg;
+}
+
 .lp-chip {
   display: inline-flex;
   align-items: center;

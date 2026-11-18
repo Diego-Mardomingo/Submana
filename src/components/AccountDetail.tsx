@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronLeft, ChevronRight, FileUp, ListX, Plus, SquarePen, Star, Trash2 } from "lucide-react";
@@ -9,6 +9,7 @@ import { AccountDeleteWarning, AccountSheet } from "@/components/AccountSheet";
 import { AccountsIcon } from "@/components/icons";
 import { BankConnectionRow, BankLinkSheet, BankSheet, useBankReturn } from "@/components/BankConnection";
 import BankStatementUpload from "@/components/BankStatementUpload";
+import { MonthPicker } from "@/components/MonthPicker";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -25,17 +26,18 @@ import { canEditAccount } from "@/lib/accountAccess";
 import { isConnectableProvider } from "@/lib/banking/types";
 import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
 import { parseIdParam } from "@/lib/deepLinks";
-import { appNow, calendarDayInAppTimeZone, monthKey, shiftMonth } from "@/lib/date";
+import { appNow, monthKey, shiftMonth } from "@/lib/date";
 import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
 import { toast } from "@/lib/toast";
+import { monthCounts, transactionMonthKey } from "@/lib/monthPicker";
 import { cn } from "@/lib/utils";
 
 const IMPORTABLE_PROVIDERS = ["trade_republic", "revolut", "bbva", "imagin"];
 
 /** "YYYY-MM" of a transaction, in the app's time zone (same as its day group). */
-const txMonthKey = (tx: Transaction) => calendarDayInAppTimeZone(tx.date).slice(0, 7);
+const txMonthKey = (tx: Transaction) => transactionMonthKey(tx.date);
 
 /** Months with transactions laid out by year: tap the first month, then the last one. */
 function MonthRangePicker({ counts, range, onChange }: {
@@ -115,11 +117,7 @@ function BulkDeleteSheet({ open, onOpenChange, accountId, transactions }: {
   const t = useTranslations(lang);
   const router = useRouter();
   const deleteTransactions = useDeleteAccountTransactions();
-  const counts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const tx of transactions) map.set(txMonthKey(tx), (map.get(txMonthKey(tx)) ?? 0) + 1);
-    return map;
-  }, [transactions]);
+  const counts = useMemo(() => monthCounts(transactions), [transactions]);
   const keys = [...counts.keys()].sort();
   const [mode, setMode] = useState<"all" | "range">("all");
   const [picked, setPicked] = useState<{ start: string; end: string; picking: boolean } | null>(null);
@@ -243,6 +241,14 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
     if (key >= firstKey && key <= currentKey) setSelected(target);
   };
   const goToToday = () => setSelected({ year: now.getFullYear(), month: now.getMonth() + 1 });
+  // The picker lists whole years: a month before the first transaction or after today goes to the nearest one.
+  const pickMonth = (target: { year: number; month: number }) => {
+    const key = monthKey(target.year, target.month);
+    const clamped = key < firstKey ? firstKey : key > currentKey ? currentKey : key;
+    const [year, month] = clamped.split("-").map(Number);
+    setSelected({ year, month });
+  };
+  const isThisAccount = useCallback((tx: Transaction) => tx.account_id === account.id, [account.id]);
 
   useSwipe(swipeArea, { onSwipeLeft: () => changeMonth(1), onSwipeRight: () => changeMonth(-1) }, 50);
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
@@ -340,8 +346,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
                 <ChevronLeft className="size-5" strokeWidth={2} />
               </button>
               <div className="lp-month-title">
-                <span>{monthName(selected.month, lang, "long")}</span>
-                <span className="lp-month-year">{selected.year}</span>
+                <MonthPicker value={selected} onChange={pickMonth} include={isThisAccount} />
                 {canNext && (
                   <button type="button" className="lp-chip" onClick={goToToday}>
                     {es ? "Hoy" : "Today"}
