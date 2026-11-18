@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, Plus } from "lucide-react";
 import { Bones } from "@/components/Bones";
+import { MonthPicker } from "@/components/MonthPicker";
 import { TransactionsIcon } from "@/components/icons";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
@@ -170,8 +171,7 @@ export default function TransactionsBody() {
           <ChevronLeft className="size-5" strokeWidth={2} />
         </button>
         <div className="lp-month-title">
-          <span>{monthName(month, lang, "long")}</span>
-          <span className="lp-month-year">{year}</span>
+          <MonthPicker value={{ year, month }} onChange={goTo} />
           {loadingMonth && !isLoading ? (
             <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label={es ? "Cargando" : "Loading"} />
           ) : (

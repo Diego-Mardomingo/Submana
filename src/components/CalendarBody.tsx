@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Landmark, Link2, Loader2, Plus, Repeat, TrendingDown, TrendingUp, X } from "lucide-react";
 import { BudgetsIcon, SubcountIcon, SubscriptionsIcon } from "@/components/icons";
 import CalendarAccountFilter from "@/components/CalendarAccountFilter";
+import { MonthPicker } from "@/components/MonthPicker";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useFrequencyLabel } from "@/components/SubscriptionDialogs";
@@ -116,6 +117,7 @@ export default function CalendarBody() {
   const jointAccountIds = useJointAccountIds();
   const categoryLookup = useCategoryLookup();
   const { isAccountHidden } = useCalendarAccountFilter();
+  const isShownTransaction = useCallback((tx: Transaction) => !isAccountHidden(tx.account_id), [isAccountHidden]);
 
   const goTo = (target: Month) => {
     setView(target);
@@ -376,7 +378,7 @@ export default function CalendarBody() {
         <section ref={setSwipeArea} className="home-cal" aria-label={t("home.calendar")}>
           <header className="home-top">
             <h1>
-              {viewMonthName} <span>{view.year}</span>
+              <MonthPicker variant="home" value={view} onChange={goTo} include={isShownTransaction} />
             </h1>
             {isFetching && monthLoading ? (
               <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label={t("home.loading")} />

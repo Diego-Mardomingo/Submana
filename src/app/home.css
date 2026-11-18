@@ -133,6 +133,40 @@
   color: var(--gris-claro);
 }
 
+/* The heading opens the month picker (MonthPicker) */
+.home-month-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  margin-left: -0.4rem;
+  padding: 0.1rem 0.4rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+}
+
+.home-month-trigger:hover,
+.home-month-trigger:is([aria-expanded="true"], [data-state="open"]) {
+  background: var(--gris);
+}
+
+.home-month-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.home-month-trigger .lp-month-caret {
+  width: 20px;
+  height: 20px;
+}
+
 .home-top-actions {
   display: flex;
   align-items: center;

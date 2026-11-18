@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 import { Bones } from "@/components/Bones";
 import { BudgetRowContent } from "@/components/BudgetsBody";
+import { MonthPicker } from "@/components/MonthPicker";
 import { TransactionRow, transactionEmoji } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { useBudgets } from "@/hooks/useBudgets";
@@ -16,7 +17,6 @@ import { useUrlParam } from "@/hooks/useUrlParam";
 import { prefetchMonth, useMetricTransactions, type Transaction } from "@/hooks/useTransactions";
 import { appNow, monthKey, shiftMonth } from "@/lib/date";
 import { parseMonthParam } from "@/lib/deepLinks";
-import { monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
 import { cn } from "@/lib/utils";
@@ -199,8 +199,7 @@ export default function MonthOverview() {
           <ChevronLeft className="size-5" strokeWidth={2} />
         </button>
         <div className="lp-month-title">
-          <span>{monthName(month.month, lang, "long")}</span>
-          <span className="lp-month-year">{month.year}</span>
+          <MonthPicker value={month} onChange={setMonth} />
           {isFetching ? (
             <Loader2 className="size-4 animate-spin text-muted-foreground" aria-label={es ? "Cargando" : "Loading"} />
           ) : (
