@@ -5,7 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import BalanceHero from "@/components/dashboard/BalanceHero";
 import FriendsCard from "@/components/dashboard/FriendsCard";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
-import MonthOverview from "@/components/dashboard/MonthOverview";
+import MonthlyBalanceCard from "@/components/dashboard/MonthlyBalanceCard";
+import MonthOverview, { useDashboardMonth, type Month } from "@/components/dashboard/MonthOverview";
 import { IncomeExpenseCard, SavingsProjectionCard } from "@/components/dashboard/Trends";
 import { useLang } from "@/hooks/useLang";
 import { prefetchMonth } from "@/hooks/useTransactions";
@@ -13,10 +14,24 @@ import { appNow, shiftMonth } from "@/lib/date";
 import { localeOf } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 
+const MONTH_SECTION_ID = "dash-month";
+
 export default function DashboardPage() {
   const lang = useLang();
   const t = useTranslations(lang);
   const queryClient = useQueryClient();
+  const [month, setMonth] = useDashboardMonth();
+
+  // A month picked on the balance-by-month card: the month section shows it, scrolled into view if it is
+  // below the screen (on phones the card can take most of it).
+  const showMonth = (picked: Month) => {
+    setMonth(picked);
+    const section = document.getElementById(MONTH_SECTION_ID);
+    if (section && section.getBoundingClientRect().top > window.innerHeight - 160) {
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      section.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
+    }
+  };
 
   // Warm the caches for the month switcher (current month ± 2).
   useEffect(() => {
@@ -41,7 +56,8 @@ export default function DashboardPage() {
 
       <div className="dash-layout">
         <BalanceHero />
-        <MonthOverview />
+        <MonthlyBalanceCard selected={month} onSelect={showMonth} />
+        <MonthOverview month={month} setMonth={setMonth} id={MONTH_SECTION_ID} />
         <section className="dash-section" aria-label={lang === "es" ? "Tendencias" : "Trends"}>
           <div className="lp-section-head">
             <span className="lp-section-title">{lang === "es" ? "Tendencias" : "Trends"}</span>

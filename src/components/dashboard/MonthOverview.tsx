@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Loader2, TrendingDown, TrendingUp } from "lucide-react";
@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { CategoryBreakdownCard } from "./CategoryBreakdown";
 import { CardHead, money, SeeAll, signClass, signedMoney, Stat } from "./shared";
 
-type Month = { year: number; month: number };
+export type Month = { year: number; month: number };
 
 const currentMonth = (): Month => ({ year: appNow().getFullYear(), month: appNow().getMonth() + 1 });
 
@@ -156,11 +156,11 @@ function TopExpensesCard({ month, es }: { month: Month; es: boolean }) {
   );
 }
 
-/** Month-based widgets driven by one month switcher (arrows, swipe, "Today" chip). */
-export default function MonthOverview() {
-  const lang = useLang();
-  const es = lang === "es";
-  const queryClient = useQueryClient();
+/**
+ * The month the Dashboard shows, shared by the month section and the balance-by-month card. Starts on the
+ * current month.
+ */
+export function useDashboardMonth() {
   const [month, setMonth] = useState(currentMonth);
   // Deep link (a notification): /dashboard?month=YYYY-MM jumps to that month, also while the page is open.
   // The param is consumed (removed) once applied, so the same link works again after moving to another month.
@@ -174,6 +174,22 @@ export default function MonthOverview() {
   useEffect(() => {
     if (linkedKey) clearMonthParam();
   }, [linkedKey, clearMonthParam]);
+  return [month, setMonth] as const;
+}
+
+/** Month-based widgets driven by one month switcher (arrows, swipe, "Today" chip). */
+export default function MonthOverview({
+  month,
+  setMonth,
+  id,
+}: {
+  month: Month;
+  setMonth: Dispatch<SetStateAction<Month>>;
+  id?: string;
+}) {
+  const lang = useLang();
+  const es = lang === "es";
+  const queryClient = useQueryClient();
   const [swipeArea, setSwipeArea] = useState<HTMLElement | null>(null);
   const { isFetching } = useMetricTransactions(month.year, month.month);
   const now = currentMonth();
@@ -187,7 +203,7 @@ export default function MonthOverview() {
   useSwipe(swipeArea, { onSwipeLeft: () => changeMonth(1), onSwipeRight: () => changeMonth(-1) }, 50);
 
   return (
-    <section ref={setSwipeArea} className="dash-section" aria-label={es ? "Mes" : "Month"}>
+    <section ref={setSwipeArea} id={id} className="dash-section" aria-label={es ? "Mes" : "Month"}>
       <div className="lp-month dash-month">
         <button
           type="button"
