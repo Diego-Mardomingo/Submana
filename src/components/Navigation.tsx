@@ -25,6 +25,7 @@ import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useNotificationCounts } from "@/hooks/useNotifications";
+import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import type { UIKey } from "@/lib/i18n/ui";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { getParentRoute } from "@/lib/navigation";
@@ -62,6 +63,8 @@ const BAR_LEFT = ["/", "/dashboard", "/transactions"].map(navItem);
 const BAR_RIGHT = ["/subcount", "/subscriptions"].map(navItem);
 const BAR_HREFS = new Set([...BAR_LEFT, ...BAR_RIGHT].map((item) => item.href));
 const ADD_SHORTCUT = "w";
+/** Folds and unfolds the desktop sidebar. */
+const SIDEBAR_SHORTCUT = "b";
 
 /** Up to 9 the number, beyond that "9+". */
 const countLabel = (count: number) => (count > 9 ? "9+" : String(count));
@@ -95,6 +98,8 @@ export default function Navigation() {
   const [showAdd, setShowAdd] = useState(false);
   const [addAnchor, setAddAnchor] = useState<DOMRect | null>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
+  const [collapsed, setCollapsed] = useSidebarCollapsed();
+  const { tip, showTip, hideTip, hideTipNow } = useRailTip(collapsed);
   const section = sectionOf(pathname);
   const inMenuSection = NAV_ITEMS.some((item) => item.href === section) && !BAR_HREFS.has(section);
 
@@ -104,11 +109,23 @@ export default function Navigation() {
     setShowAdd(true);
   };
 
+  const toggleSidebar = () => {
+    setShowAdd(false);
+    hideTipNow();
+    setCollapsed(!collapsed);
+  };
+
   const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
     if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
     const key = e.key.toLowerCase();
+    if (key === SIDEBAR_SHORTCUT) {
+      if (isMobile) return;
+      e.preventDefault();
+      toggleSidebar();
+      return;
+    }
     const item = NAV_ITEMS.find((n) => n.shortcut === key);
     if (key !== ADD_SHORTCUT && !item) return;
     e.preventDefault();
@@ -132,24 +149,32 @@ export default function Navigation() {
     if (scrollToTopIfCurrent(href)) e.preventDefault();
   };
 
-  const sidebarLink = ({ href, shortcut, labelKey, icon: Icon }: NavItem) => (
-    <Link
-      key={href}
-      href={href}
-      className={cn(styles.sideItem, section === href && styles.active)}
-      aria-current={section === href ? "page" : undefined}
-      onClick={onLinkClick(href)}
-    >
-      <Icon {...iconProps} />
-      <span>{t(labelKey)}</span>
-      {href === "/notifications" && unread > 0 && (
-        <span className={styles.count} aria-label={interpolate(t(unread === 1 ? "bell.label.one" : "bell.label.other"), { count: unread })}>
-          {countLabel(unread)}
-        </span>
-      )}
-      <kbd className={styles.kbd}>{shortcut.toUpperCase()}</kbd>
-    </Link>
-  );
+  const sidebarLink = ({ href, shortcut, labelKey, icon: Icon }: NavItem) => {
+    const unreadHere = href === "/notifications" && unread > 0;
+    return (
+      <Link
+        key={href}
+        href={href}
+        className={cn(styles.sideItem, section === href && styles.active)}
+        aria-current={section === href ? "page" : undefined}
+        onClick={onLinkClick(href)}
+        data-tip={unreadHere ? `${t(labelKey)} · ${countLabel(unread)}` : t(labelKey)}
+        data-tip-key={shortcut.toUpperCase()}
+      >
+        <Icon {...iconProps} />
+        <span className={styles.label}>{t(labelKey)}</span>
+        {unreadHere && (
+          <>
+            <span className={styles.count} aria-label={interpolate(t(unread === 1 ? "bell.label.one" : "bell.label.other"), { count: unread })}>
+              {countLabel(unread)}
+            </span>
+            <span className={styles.countDot} aria-hidden />
+          </>
+        )}
+        <kbd className={styles.kbd}>{shortcut.toUpperCase()}</kbd>
+      </Link>
+    );
+  };
 
   return (
     <>
@@ -185,22 +210,55 @@ export default function Navigation() {
           />
         </nav>
       ) : (
-        <nav className={styles.sidebar} id="main-nav">
-          <Link href="/" className={styles.brand} onClick={onLinkClick("/")}>
-            <span className={styles.brandMark}>
-              <LogoMark />
-            </span>
-            <span className={styles.brandName}>Submana</span>
-          </Link>
+        <nav
+          className={styles.sidebar}
+          id="main-nav"
+          onPointerOver={(e) => {
+            if (e.pointerType === "mouse") showTip((e.target as HTMLElement).closest<HTMLElement>("[data-tip]"));
+          }}
+          onPointerLeave={hideTip}
+          onPointerDown={hideTipNow}
+          onScroll={hideTipNow}
+          onFocus={(e) => {
+            const el = (e.target as HTMLElement).closest<HTMLElement>("[data-tip]");
+            if (el?.matches(":focus-visible")) showTip(el);
+          }}
+          onBlur={hideTip}
+        >
+          <div className={styles.brandRow}>
+            <Link href="/" className={styles.brand} onClick={onLinkClick("/")} aria-label="Submana">
+              <span className={styles.brandMark}>
+                <LogoMark />
+              </span>
+              <span className={styles.brandName}>Submana</span>
+            </Link>
+            <button
+              type="button"
+              className={styles.collapseBtn}
+              onClick={toggleSidebar}
+              aria-controls="main-nav"
+              aria-expanded={!collapsed}
+              aria-label={t(collapsed ? "nav.expand" : "nav.collapse")}
+              aria-keyshortcuts={SIDEBAR_SHORTCUT.toUpperCase()}
+              data-tip={t(collapsed ? "nav.expand" : "nav.collapse")}
+              data-tip-key={SIDEBAR_SHORTCUT.toUpperCase()}
+              data-tip-always=""
+            >
+              <SidebarIcon />
+            </button>
+          </div>
           <button
             ref={addBtnRef}
             type="button"
             className={cn(styles.addBtn, showAdd && styles.addBtnOpen)}
             onClick={() => (showAdd ? setShowAdd(false) : openAdd())}
             aria-expanded={showAdd}
+            aria-label={t("nav.add")}
+            data-tip={t("nav.add")}
+            data-tip-key={ADD_SHORTCUT.toUpperCase()}
           >
             <Plus className={styles.addIcon} size={18} strokeWidth={2.5} aria-hidden />
-            <span>{t("nav.add")}</span>
+            <span className={styles.label}>{t("nav.add")}</span>
             <kbd className={styles.kbd}>W</kbd>
           </button>
           <div className={styles.sideGroup}>{NAV_GROUPS.main.map(sidebarLink)}</div>
@@ -243,9 +301,66 @@ export default function Navigation() {
         </Sheet>
       )}
 
+      {!isMobile && (
+        <span className={styles.railTip} data-open={tip.open} data-glide={tip.glide} style={{ top: tip.top }} aria-hidden>
+          {tip.label}
+          {tip.keyHint && <kbd>{tip.keyHint}</kbd>}
+        </span>
+      )}
+
       <AddShortcutsOverlay open={showAdd} anchor={isMobile ? null : addAnchor} onClose={() => setShowAdd(false)} />
     </>
   );
+}
+
+/** Panel icon whose chevron turns round as the sidebar folds (styles.collapseChevron). */
+function SidebarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M9 3v18" />
+      <path className={styles.collapseChevron} d="m16 15-3-3 3-3" />
+    </svg>
+  );
+}
+
+type RailTip = { label: string; keyHint?: string; top: number; open: boolean; glide: boolean };
+
+/**
+ * The name and key of the sidebar item under the pointer (or keyboard focus), beside the rail. Only while folded,
+ * except for elements with data-tip-always. The first one waits a moment; moving to the next one while it is open
+ * is instant, and the tip glides there.
+ */
+function useRailTip(collapsed: boolean) {
+  const [tip, setTip] = useState<RailTip>({ label: "", top: 0, open: false, glide: false });
+  const open = useRef(false);
+  const timer = useRef<number | undefined>(undefined);
+
+  const hideTipNow = () => {
+    window.clearTimeout(timer.current);
+    open.current = false;
+    setTip((prev) => (prev.open ? { ...prev, open: false, glide: false } : prev));
+  };
+  // A short grace period, so crossing the gap between two items doesn't close it.
+  const hideTip = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(hideTipNow, 90);
+  };
+  const showTip = (el: HTMLElement | null) => {
+    if (!el?.dataset.tip || (!collapsed && el.dataset.tipAlways === undefined)) return hideTip();
+    window.clearTimeout(timer.current);
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      const glide = open.current;
+      open.current = true;
+      setTip({ label: el.dataset.tip!, keyHint: el.dataset.tipKey, top: r.top + r.height / 2, open: true, glide });
+    };
+    if (open.current) place();
+    else timer.current = window.setTimeout(place, 260);
+  };
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  return { tip, showTip, hideTip, hideTipNow };
 }
 
 /** Mobile bar tab: icon only, with its label shown while active. A link, or a button without `href`. */

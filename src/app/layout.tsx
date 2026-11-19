@@ -49,6 +49,12 @@ export default function RootLayout({
             __html: `(function(){var c=(document.cookie.match(/submana-theme=([^;]+)/)||[])[1],m=matchMedia('(prefers-color-scheme: dark)');function a(){var t=localStorage.getItem('submana-theme')||c||'system';document.documentElement.setAttribute('data-theme',t==='system'?(m.matches?'dark':'light'):t)}a();m.addEventListener('change',a)})();`,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            // Folds the desktop sidebar before paint if the user left it folded (useSidebarCollapsed).
+            __html: `try{if(localStorage.getItem('submana-sidebar')==='collapsed')document.documentElement.setAttribute('data-sidebar','collapsed')}catch(e){}`,
+          }}
+        />
         <div className="ios-top-edge" aria-hidden />
         <Providers>{children}</Providers>
       </body>

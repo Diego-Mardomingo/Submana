@@ -103,6 +103,15 @@ html[data-nav-direction="same"]::view-transition-new(root) {
 :root {
   /* Height of the mobile bottom navigation (without the safe area). */
   --nav-h: 68px;
+  /* Width of the desktop sidebar (from 768px): 240px, or a 72px rail when folded. The pre-paint script in
+     layout.tsx sets html[data-sidebar] from what the user chose, so the first paint already has the right width. */
+  --sidebar-w: 240px;
+  --sidebar-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --sidebar-dur: 0.38s;
+}
+
+html[data-sidebar="collapsed"] {
+  --sidebar-w: 72px;
 }
 
 :root,
@@ -283,7 +292,15 @@ button:not(:disabled),
 
 @media (min-width: 768px) {
   .auth-content-shell {
-    padding-left: 240px;
+    padding-left: var(--sidebar-w);
+    /* Moves with the sidebar when it folds, on the same curve. */
+    transition: padding-left var(--sidebar-dur) var(--sidebar-ease);
+  }
+}
+
+@media (min-width: 768px) and (prefers-reduced-motion: reduce) {
+  .auth-content-shell {
+    transition: none;
   }
 }
 

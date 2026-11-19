@@ -1749,7 +1749,8 @@ button.lp-next {
 
 @media (min-width: 768px) {
   .lp-mini {
-    left: 240px;
+    left: var(--sidebar-w);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), left var(--sidebar-dur) var(--sidebar-ease);
   }
 }
 

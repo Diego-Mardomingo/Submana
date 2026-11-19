@@ -2,7 +2,10 @@
    NAVIGATION
    Phones: bottom bar (Home · Dashboard · Transactions · + · Subcount · Subscriptions · Menu). Tabs are icon-only and show
    their label while active; the + hangs from the bar's top edge as an accent drop.
-   From 768px: sidebar with the add button, the main pages, "Manage" and settings at the bottom.
+   From 768px: sidebar with the add button, the main pages, "Manage" and settings at the bottom. The button next
+   to the brand (or B) folds it to a 72px rail of icons; html[data-sidebar="collapsed"] drives every folded style,
+   so the first paint is already right. While it folds nothing moves sideways: the icons sit where the rail is,
+   the labels fade out, and only the fold button travels to its place under the gem.
    ═══════════════════════════════════════════════ */
 
 /* ── Mobile bar ── */
@@ -266,11 +269,93 @@ html[data-theme="light"] .count {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  width: 240px;
+  width: var(--sidebar-w);
   padding: 1.25rem 0.85rem 1rem;
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
   background: var(--negro);
   border-right: 1px solid var(--gris);
+  transition: width var(--sidebar-dur) var(--sidebar-ease);
+}
+
+.sidebar > * {
+  flex-shrink: 0;
+}
+
+/* Brand and the fold button. Folded, the row grows so the button can sit under the gem. */
+.brandRow {
+  position: relative;
+  height: 2.75rem;
+  transition: height var(--sidebar-dur) var(--sidebar-ease);
+}
+
+.brandRow .brand {
+  width: max-content;
+}
+
+.collapseBtn {
+  position: absolute;
+  top: 0.375rem;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--gris-claro);
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    top var(--sidebar-dur) var(--sidebar-ease),
+    right var(--sidebar-dur) var(--sidebar-ease),
+    background 0.15s ease,
+    color 0.15s ease,
+    scale 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.collapseBtn:hover {
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+}
+
+.collapseBtn:active {
+  scale: 0.88;
+  transition-duration: var(--sidebar-dur), var(--sidebar-dur), 0.15s, 0.15s, 0.1s;
+}
+
+.collapseBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.collapseBtn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The chevron inside the panel icon turns round (pointing left, then right) with a small overshoot. */
+.collapseChevron {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: rotate 0.5s cubic-bezier(0.34, 1.4, 0.64, 1), translate 0.25s ease;
+}
+
+/* On hover it nudges the way it would go. */
+@media (hover: hover) {
+  .collapseBtn:hover .collapseChevron {
+    translate: -1px 0;
+  }
+}
+
+/* Text the rail hides: it fades out at once when folding, and back in a little late when unfolding, once there
+   is room for it. It stays in the accessibility tree, so the links keep their names. */
+.label {
+  min-width: 0;
+  white-space: nowrap;
+  transition: opacity 0.2s ease 0.1s, translate var(--sidebar-dur) var(--sidebar-ease);
 }
 
 .brand {
@@ -280,9 +365,11 @@ html[data-theme="light"] .count {
   padding: 0.25rem 0.5rem;
   color: var(--blanco);
   text-decoration: none;
+  transition: padding var(--sidebar-dur) var(--sidebar-ease);
 }
 
 .brandMark {
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 2.25rem;
@@ -320,6 +407,7 @@ html[data-theme="light"] .count {
   font: inherit;
   font-size: 0.9rem;
   font-weight: 700;
+  white-space: nowrap;
   box-shadow: 0 6px 20px -8px var(--accent);
   transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
@@ -343,6 +431,7 @@ html[data-theme="light"] .addBtn {
 }
 
 .addIcon {
+  flex-shrink: 0;
   transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
@@ -364,12 +453,29 @@ html[data-theme="light"] .addBtn {
 }
 
 .sideHeading {
+  position: relative;
   padding: 0 0.75rem 0.4rem;
+  white-space: nowrap;
+  transition: color 0.2s ease 0.1s;
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--gris-claro);
+}
+
+/* Folded, "Manage" becomes a short line that draws out from the centre. */
+.sideHeading::after {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: calc(50% - 0.2rem);
+  height: 1px;
+  background: var(--gris);
+  opacity: 0;
+  scale: 0 1;
+  transition: opacity 0.15s ease, scale 0.15s ease;
 }
 
 .sideFooter {
@@ -390,6 +496,7 @@ html[data-theme="light"] .addBtn {
   text-decoration: none;
   font-size: 0.88rem;
   font-weight: 600;
+  white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
@@ -453,7 +560,162 @@ html[data-theme="light"] .addBtn {
   color: var(--accent);
 }
 
+/* Folded: the unread number becomes a dot on the bell, popping in once the labels are gone. */
+.countDot {
+  position: absolute;
+  top: 7px;
+  left: calc(0.75rem + 13px);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--negro);
+  pointer-events: none;
+  scale: 0;
+  transition: scale 0.15s ease;
+}
+
+/* ── Folded rail ── */
+:global(html[data-sidebar="collapsed"]) .brandRow {
+  height: calc(2.75rem + 2.5rem);
+}
+
+:global(html[data-sidebar="collapsed"]) .brand {
+  padding-left: 0.25rem;
+}
+
+/* Under the gem, centred in the rail: (72px - padding - 32px) / 2 from the right. */
+:global(html[data-sidebar="collapsed"]) .collapseBtn {
+  top: 3rem;
+  right: 0.4rem;
+}
+
+:global(html[data-sidebar="collapsed"]) .collapseChevron {
+  rotate: 180deg;
+}
+
+@media (hover: hover) {
+  :global(html[data-sidebar="collapsed"]) .collapseBtn:hover .collapseChevron {
+    translate: 1px 0;
+  }
+}
+
+:global(html[data-sidebar="collapsed"]) .sidebar :is(.label, .brandName, .count, .kbd) {
+  opacity: 0;
+  translate: -6px 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, translate var(--sidebar-dur) var(--sidebar-ease);
+}
+
+:global(html[data-sidebar="collapsed"]) .sideHeading {
+  color: transparent;
+  transition: color 0.12s ease;
+}
+
+:global(html[data-sidebar="collapsed"]) .sideHeading::after {
+  opacity: 1;
+  scale: 1 1;
+  transition: opacity 0.2s ease 0.14s, scale 0.4s var(--sidebar-ease) 0.14s;
+}
+
+:global(html[data-sidebar="collapsed"]) .countDot {
+  scale: 1;
+  transition: scale 0.45s cubic-bezier(0.34, 1.6, 0.5, 1) 0.18s;
+}
+
+/* Name (and key) of what is under the pointer, beside the rail. It glides from one item to the next. */
+.railTip {
+  position: fixed;
+  left: calc(var(--sidebar-w) + 10px);
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.45rem 0.4rem 0.65rem;
+  border-radius: 9px;
+  background: var(--blanco);
+  color: var(--negro);
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  translate: -6px -50%;
+  scale: 0.96;
+  transform-origin: left center;
+  transition: opacity 0.12s ease, translate 0.12s ease, scale 0.12s ease, left var(--sidebar-dur) var(--sidebar-ease);
+}
+
+html[data-theme="light"] .railTip {
+  box-shadow: 0 8px 22px rgba(17, 19, 24, 0.2);
+}
+
+.railTip[data-open="true"] {
+  opacity: 1;
+  translate: 0 -50%;
+  scale: 1;
+  transition:
+    opacity 0.16s ease,
+    translate 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+    scale 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+    left var(--sidebar-dur) var(--sidebar-ease);
+}
+
+/* Moving between items while it is open: it glides instead of jumping. */
+.railTip[data-open="true"][data-glide="true"] {
+  transition:
+    opacity 0.16s ease,
+    translate 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+    scale 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+    top 0.22s var(--sidebar-ease),
+    left var(--sidebar-dur) var(--sidebar-ease);
+}
+
+/* Small arrow pointing at the rail. */
+.railTip::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: inherit;
+  translate: 0 -50%;
+  rotate: 45deg;
+}
+
+.railTip kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.3rem;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--negro) 12%, transparent);
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .sidebar,
+  .brandRow,
+  .brand,
+  .collapseBtn,
+  .collapseChevron,
+  .label,
+  .sideHeading,
+  .sideHeading::after,
+  .countDot,
+  .railTip,
+  .railTip[data-open="true"],
+  :global(html[data-sidebar="collapsed"]) .sidebar :is(.label, .brandName, .count, .kbd),
+  :global(html[data-sidebar="collapsed"]) :is(.sideHeading, .sideHeading::after, .countDot) {
+    transition: none !important;
+  }
+
   .tabIcon,
   .tabLabel,
   .notchIcon,
