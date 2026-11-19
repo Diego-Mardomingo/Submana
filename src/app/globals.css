@@ -964,6 +964,52 @@ html[data-edge-back]::view-transition-new(root) {
   animation: none;
 }
 
+/* ── Scrollbars (desktop): thin, without arrows or track, in the app's grey; lighter while the
+   pointer is over the area that scrolls. Phones keep their overlay scrollbars. Chromium and
+   Safari draw them from ::-webkit-scrollbar (the standard properties would turn those off and
+   still show arrows on Windows); Firefox uses the standard ones. ── */
+@media (hover: hover) and (pointer: fine) {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--gris);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 999px;
+  }
+
+  :where(body *):hover::-webkit-scrollbar-thumb,
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--gris-claro);
+  }
+
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+    }
+
+    html {
+      scrollbar-color: var(--gris) transparent;
+    }
+
+    :where(body *):hover {
+      scrollbar-color: var(--gris-claro) transparent;
+    }
+  }
+}
+
 /* ── iPhone details ── */
 /* Only what should bounce bounces: no rubber band of the whole page (pull to refresh owns it). */
 html,
