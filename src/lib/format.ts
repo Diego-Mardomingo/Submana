@@ -7,11 +7,11 @@ export function formatCurrency(n: number): string {
 
 const wholeFormat = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0, useGrouping: true });
 
-/** Rounded to whole euros with its sign, for tight spots: "+1.110 €", "-640 €", "0 €". */
+/** Rounded to whole euros with its sign, for tight spots: "+1.110 €", "−640 €", "0 €". */
 export function formatSignedWhole(n: number): string {
   const rounded = Math.round(n);
   if (rounded === 0) return "0 €";
-  return `${rounded > 0 ? "+" : "-"}${wholeFormat.format(Math.abs(rounded))} €`;
+  return `${rounded > 0 ? "+" : "−"}${wholeFormat.format(Math.abs(rounded))} €`;
 }
 
 export const localeOf = (lang: string) => (lang === "es" ? "es-ES" : "en-US");
