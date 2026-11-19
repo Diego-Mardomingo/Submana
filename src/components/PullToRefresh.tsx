@@ -14,6 +14,8 @@ const MAX = 120;
 /** At least this long spinning, so a fast refetch still reads as "it did something". */
 const MIN_SPIN_MS = 700;
 const DONE_MS = 650;
+/** The indicator starts fading this long before the page goes back up, so its label is gone before the content reaches it. */
+const FADE_LEAD_MS = 100;
 
 type Phase = "idle" | "pull" | "refreshing" | "done" | "error";
 
@@ -41,6 +43,7 @@ export function PullToRefresh() {
   const t = useTranslations(useLang());
   const [phase, setPhase] = useState<Phase>("idle");
   const [offset, setOffset] = useState(0);
+  const [leaving, setLeaving] = useState(false);
   const phaseRef = useRef<Phase>("idle");
   useEffect(() => {
     phaseRef.current = phase;
@@ -116,11 +119,14 @@ export function PullToRefresh() {
       await new Promise((resolve) => setTimeout(resolve, Math.max(0, MIN_SPIN_MS - (Date.now() - began))));
       setPhase(ok ? "done" : "error");
       await new Promise((resolve) => setTimeout(resolve, DONE_MS));
+      setLeaving(true);
+      await new Promise((resolve) => setTimeout(resolve, FADE_LEAD_MS));
       move(0, true);
       setTimeout(() => {
         if (current === 0) {
           shell.style.transition = "";
           setPhase("idle");
+          setLeaving(false);
         }
       }, 500);
     };
@@ -146,7 +152,15 @@ export function PullToRefresh() {
   const label =
     phase === "refreshing" ? t("pull.refreshing") : phase === "done" ? t("pull.done") : phase === "error" ? t("pull.error") : armed ? t("pull.release") : t("pull.pull");
   return (
-    <div className="ptr" data-phase={phase} data-armed={armed} style={{ opacity: phase === "pull" ? Math.min(1, offset / 40) : 1 }} role="status" aria-live="polite">
+    <div
+      className="ptr"
+      data-phase={phase}
+      data-armed={armed}
+      data-leaving={leaving || undefined}
+      style={{ opacity: leaving ? 0 : phase === "pull" ? Math.min(1, offset / 40) : 1 }}
+      role="status"
+      aria-live="polite"
+    >
       <svg className="ptr-gem" viewBox="6 10 52 47" aria-hidden>
         <g style={{ stroke: "var(--negro)" }} strokeWidth={1.6} strokeLinejoin="round">
           {LOGO_FACETS.map(({ points, fill }, i) => (

@@ -896,6 +896,12 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
   pointer-events: none;
 }
 
+/* Fades out (and shrinks a little) as the page goes back up, so the label never sits on the content. */
+.ptr[data-leaving] {
+  transform: scale(0.94);
+  transition: opacity 160ms ease-out, transform 160ms ease-out;
+}
+
 .ptr-gem {
   width: 34px;
   height: 28px;
