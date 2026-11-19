@@ -57,7 +57,7 @@ function SummaryCard({ month, es }: { month: Month; es: boolean }) {
         )}
       </CardHead>
       <Bones name="dashboard-summary" loading={current.isLoading} fallback={<div className="skeleton dash-block-skeleton" aria-hidden />}>
-        <div className="dash-summary lp-fade" key={monthKey(month.year, month.month)}>
+        <div className="dash-summary">
           <div>
             <span className={cn("lp-hero-value", signClass(current.balance))}>{signedMoney(current.balance)}</span>
             <span className="dash-hero-caption">{es ? "Resultado del mes" : "Net this month"}</span>

@@ -4,9 +4,7 @@ import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
-import { signed } from "@/components/TransactionDayList";
-import { formatCurrency } from "@/lib/format";
+import { Money } from "@/components/Money";
 import { cn } from "@/lib/utils";
 
 // Charts need the browser (canvas, CSS variables): load them client-side behind a placeholder.
@@ -14,9 +12,9 @@ const ChartSkeleton = () => <div className="skeleton dash-chart-skeleton" />;
 export const BalanceLine = dynamic(() => import("./charts").then((m) => m.BalanceLine), { ssr: false, loading: ChartSkeleton });
 export const IncomeExpenseBars = dynamic(() => import("./charts").then((m) => m.IncomeExpenseBars), { ssr: false, loading: ChartSkeleton });
 
-export const money = (n: number) => <SensitiveAmount>{formatCurrency(n)}</SensitiveAmount>;
-/** "+1.234,56 €" / "-12,00 €" (plain "0,00 €" for zero). */
-export const signedMoney = (n: number) => <SensitiveAmount>{n === 0 ? formatCurrency(0) : signed(n)}</SensitiveAmount>;
+export const money = (n: number) => <Money value={n} roll />;
+/** "+1.234,56 €" / "−12,00 €" (plain "0,00 €" for zero). */
+export const signedMoney = (n: number) => <Money value={n} signed roll />;
 export const signClass = (n: number) => (n > 0 ? "is-income" : n < 0 ? "is-negative" : "is-muted");
 
 /** Card title row with an optional action (link, range picker…) on the right. */

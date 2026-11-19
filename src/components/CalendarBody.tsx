@@ -7,11 +7,12 @@ import { BudgetsIcon, SubcountIcon, SubscriptionsIcon } from "@/components/icons
 import CalendarAccountFilter from "@/components/CalendarAccountFilter";
 import { MonthPicker } from "@/components/MonthPicker";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
+import { MINUS, Money } from "@/components/Money";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useFrequencyLabel } from "@/components/SubscriptionDialogs";
 import { SubscriptionIcon, useDateLabels } from "@/components/SubscriptionsBody";
 import { SubscriptionSheet } from "@/components/SubscriptionSheet";
-import { signed, TransactionRow, transactionEmoji } from "@/components/TransactionDayList";
+import { TransactionRow, transactionEmoji } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCalendarAccountFilter } from "@/contexts/CalendarFilterContext";
@@ -457,7 +458,7 @@ export default function CalendarBody() {
                 </span>
                 {!monthLoading && dayNet !== 0 && (
                   <span className={cn("home-agenda-net", dayNet > 0 && "is-income")}>
-                    <SensitiveAmount>{signed(dayNet)}</SensitiveAmount>
+                    <Money value={dayNet} signed />
                   </span>
                 )}
                 <button type="button" className="lp-icon-btn home-agenda-close" onClick={() => setPicked(null)} aria-label={t("home.closeDay")}>
@@ -489,8 +490,8 @@ export default function CalendarBody() {
                         </span>
                       </span>
                       <span className={cn("lp-amount", gone ? "is-muted" : "is-expense")}>
-                        {!gone && "-"}
-                        <SensitiveAmount>{formatCurrency(charge.amount)}</SensitiveAmount>
+                        {!gone && MINUS}
+                        <Money value={charge.amount} />
                       </span>
                     </button>
                   );
@@ -522,19 +523,19 @@ export default function CalendarBody() {
           <section className="home-summary" aria-label={t("home.summary")}>
             <p className="home-label">{interpolate(t("home.balanceOf"), { month: es ? viewMonthName.toLowerCase() : viewMonthName })}</p>
             <p className={cn("home-balance", hasMovements && (balance > 0 ? "is-income" : balance < 0 && "is-negative"), !hasMovements && "is-muted")}>
-              <SensitiveAmount>{balance === 0 ? formatCurrency(0) : signed(balance)}</SensitiveAmount>
+              <Money value={balance} signed roll />
             </p>
             <div className="home-pair">
               <div>
                 <span>{t("home.spent")}</span>
                 <b>
-                  <SensitiveAmount>{formatCurrency(expense)}</SensitiveAmount>
+                  <Money value={expense} roll />
                 </b>
               </div>
               <div>
                 <span>{t("home.received")}</span>
                 <b>
-                  <SensitiveAmount>{formatCurrency(income)}</SensitiveAmount>
+                  <Money value={income} roll />
                 </b>
               </div>
             </div>
@@ -585,7 +586,7 @@ export default function CalendarBody() {
                     <span className="home-due-name">{sub.service_name}</span>
                     <span className="home-due-when">{dates.relative(date)}</span>
                     <span className="home-due-amount">
-                      <SensitiveAmount>{formatCurrency(Number(sub.cost))}</SensitiveAmount>
+                      <Money value={Number(sub.cost)} />
                     </span>
                   </button>
                 ))}

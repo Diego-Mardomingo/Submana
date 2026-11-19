@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#8b5cf6",
+  themeColor: "#0f1012",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -45,8 +45,9 @@ export default function RootLayout({
       <body className="antialiased font-sans" suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
-            // Applies the saved theme before paint and follows the OS while it is "system".
-            __html: `(function(){var c=(document.cookie.match(/submana-theme=([^;]+)/)||[])[1],m=matchMedia('(prefers-color-scheme: dark)');function a(){var t=localStorage.getItem('submana-theme')||c||'system';document.documentElement.setAttribute('data-theme',t==='system'?(m.matches?'dark':'light'):t)}a();m.addEventListener('change',a)})();`,
+            // Applies the saved theme before paint and follows the OS while it is "system"; the
+            // browser's theme-color (Safari's bars) follows the theme's background.
+            __html: `(function(){var r=document.documentElement,c=(document.cookie.match(/submana-theme=([^;]+)/)||[])[1],m=matchMedia('(prefers-color-scheme: dark)');function a(){var t=localStorage.getItem('submana-theme')||c||'system';r.setAttribute('data-theme',t==='system'?(m.matches?'dark':'light'):t)}function s(){var e=document.querySelector('meta[name="theme-color"]');if(e)e.setAttribute('content',r.getAttribute('data-theme')==='light'?'#f8f9fb':'#0f1012')}a();s();m.addEventListener('change',a);new MutationObserver(s).observe(r,{attributes:true,attributeFilter:['data-theme']})})();`,
           }}
         />
         <script

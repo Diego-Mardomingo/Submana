@@ -6,12 +6,12 @@ import { ChevronRight } from "lucide-react";
 import { AccountsIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { MonthRangePicker } from "@/components/dashboard/MonthRangePicker";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { Money } from "@/components/Money";
 import { useAccounts, type Account } from "@/hooks/useAccounts";
 import { useLang } from "@/hooks/useLang";
 import { useTransactionsRange, type DateRange } from "@/hooks/useTransactions";
 import { appNow, monthKey } from "@/lib/date";
-import { formatCurrency, monthKeyLabel } from "@/lib/format";
+import { monthKeyLabel } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { netBalanceChange, runningTotals } from "@/lib/metricsFilters";
 import { cn } from "@/lib/utils";
@@ -81,7 +81,7 @@ export default function BalanceHero() {
         <span>{name}</span>
       </span>
       <span className={cn("dash-account-value", amount < 0 && "is-negative")}>
-        <SensitiveAmount>{formatCurrency(amount)}</SensitiveAmount>
+        <Money value={amount} />
       </span>
     </button>
   );
@@ -118,7 +118,7 @@ export default function BalanceHero() {
           </div>
           <div className="dash-hero-value-row">
             <span className={cn("dash-hero-value", balance < 0 && "is-negative")}>
-              <SensitiveAmount applyGradient={balance >= 0}>{formatCurrency(balance)}</SensitiveAmount>
+              <Money value={balance} applyGradient={balance >= 0} />
             </span>
             {!series.isLoading && (
               <span className={cn("dash-delta", signClass(thisMonth))}>

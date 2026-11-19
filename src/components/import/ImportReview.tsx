@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { MINUS, Money } from "@/components/Money";
 import { Button } from "@/components/ui/button";
 import { useCategoryLookup } from "@/hooks/useCategories";
 import { useLang } from "@/hooks/useLang";
-import { formatCurrency, localeOf } from "@/lib/format";
+import { localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import type { ImportedTransaction, ImportPreviewRow, ImportResolution, ImportRowMatch } from "@/lib/parsers/types";
 
@@ -117,8 +117,8 @@ export default function ImportReview({ groups, onCancel, onImport }: {
 
   const amount = (value: number, type: "income" | "expense") => (
     <span className={`bank-statement-preview-amount ${type}`}>
-      {type === "income" ? "+" : "-"}
-      <SensitiveAmount>{formatCurrency(value)}</SensitiveAmount>
+      {type === "income" ? "+" : MINUS}
+      <Money value={value} />
     </span>
   );
 
@@ -197,7 +197,7 @@ export default function ImportReview({ groups, onCancel, onImport }: {
               <div className="duplicate-card-label">{t("import.review.yourTx")}</div>
               <div className="duplicate-card-desc">{match.description || "—"}</div>
               <div className="duplicate-card-amount">
-                <SensitiveAmount>{formatCurrency(match.amount)}</SensitiveAmount>
+                <Money value={match.amount} />
               </div>
               <div className="import-review-hint">{formatStatementDate(match.date, lang)}</div>
             </div>
@@ -206,7 +206,7 @@ export default function ImportReview({ groups, onCancel, onImport }: {
               <div className="duplicate-card-label">{t("import.review.bankLine")}</div>
               <div className="duplicate-card-desc">{item.tx.description}</div>
               <div className="duplicate-card-amount">
-                <SensitiveAmount>{formatCurrency(item.tx.amount)}</SensitiveAmount>
+                <Money value={item.tx.amount} />
               </div>
               <div className="import-review-hint">{formatStatementDate(item.tx.date, lang)}</div>
             </div>

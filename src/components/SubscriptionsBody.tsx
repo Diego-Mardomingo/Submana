@@ -6,6 +6,7 @@ import { DropdownMenu } from "radix-ui";
 import { SubscriptionsIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { CompactPageHeader } from "@/components/PageHeader";
+import { Money } from "@/components/Money";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { useFrequencyLabel, useSubscriptionActions } from "@/components/SubscriptionDialogs";
 import { SubscriptionSheet } from "@/components/SubscriptionSheet";
@@ -97,7 +98,7 @@ const SubscriptionRow = memo(function SubscriptionRow({ sub, active, meta, perMo
       </span>
       <span className="lp-end">
         <span className="lp-amount">
-          <SensitiveAmount>{formatCurrency(Number(sub.cost))}</SensitiveAmount>
+          <Money value={Number(sub.cost)} />
         </span>
         {perMonth && <span className="lp-sub-amount">{perMonth}</span>}
       </span>
@@ -327,13 +328,13 @@ export default function SubscriptionsBody() {
                   <div className="lp-stat">
                     <span className="lp-label">{es ? "Al mes" : "Monthly"}</span>
                     <span className="lp-stat-value">
-                      <SensitiveAmount>{formatCurrency(totalMonthly)}</SensitiveAmount>
+                      <Money value={totalMonthly} roll />
                     </span>
                   </div>
                   <div className="lp-stat">
                     <span className="lp-label">{es ? "Al año" : "Yearly"}</span>
                     <span className="lp-stat-value">
-                      <SensitiveAmount>{formatCurrency(totalMonthly * 12)}</SensitiveAmount>
+                      <Money value={totalMonthly * 12} roll />
                     </span>
                   </div>
                   <div className="lp-stat">
@@ -353,7 +354,7 @@ export default function SubscriptionsBody() {
                         </strong>
                       </span>
                       <span className="lp-amount">
-                        <SensitiveAmount>{formatCurrency(Number(upcoming.cost))}</SensitiveAmount>
+                        <Money value={Number(upcoming.cost)} />
                       </span>
                     </button>
                   </>

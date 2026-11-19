@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Calendar, Check, CircleDashed, CircleHelp, Clock, Link2, List, Minus, Search, SearchX, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
+import { Money } from "@/components/Money";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Chips, FieldGroup } from "@/components/SheetFields";
 import { Sheet, SheetBody } from "@/components/ui/sheet";
@@ -293,11 +294,11 @@ export function ChargesGroup({ sub, onLink, onOpenTransaction }: { sub: Subscrip
             </span>
             <span className="sf-charge-end">
               <span className={`sf-charge-amount ${c.tx || c.review ? "" : "is-muted"}`}>
-                <SensitiveAmount>{formatCurrency(c.amount)}</SensitiveAmount>
+                <Money value={c.amount} />
               </span>
               {c.diff !== undefined && (
                 <span className="sf-charge-diff">
-                  <SensitiveAmount>{`${c.diff > 0 ? "+" : "−"}${formatCurrency(Math.abs(c.diff))}`}</SensitiveAmount>
+                  <Money value={c.diff} signed />
                 </span>
               )}
               {linkable && c.status !== "skipped" && <span className="sf-charge-link">{t("charge.link")}</span>}
@@ -369,7 +370,7 @@ export function PriceGroup({ sub }: { sub: Subscription }) {
           <span className="sf-row-label">{interpolate(t("sub.priceSince"), { date: day(step.valid_from) })}</span>
           <span className="sf-row-value">
             {step.source === "detected" && <span className="sf-badge sf-badge--muted">{t("sub.priceDetected")}</span>}
-            <SensitiveAmount>{formatCurrency(Number(step.cost))}</SensitiveAmount>
+            <Money value={Number(step.cost)} />
           </span>
         </div>
       ))}
@@ -529,7 +530,7 @@ export function ChargePickerSheet({ sub, chargeDate, onOpenChange }: { sub: Subs
                   </span>
                   <span className="lp-end">
                     <span className="lp-amount is-expense">
-                      -<SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
+                      <Money value={-Number(tx.amount)} />
                     </span>
                     {reason && <span className={`lp-match ${tx.reason === "strong" ? "lp-match--strong" : ""}`}>{t(reason)}</span>}
                   </span>

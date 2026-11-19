@@ -7,6 +7,7 @@ import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { formatCurrency } from "@/lib/format";
+import { haptic } from "@/lib/haptics";
 import { useTranslations } from "@/lib/i18n/utils";
 import { EXIT_MS, MAX_VISIBLE, toast, toastLayout, toastStore, type ToastButton, type ToastItem, type ToastSubject, type ToastType } from "@/lib/toast";
 
@@ -142,6 +143,7 @@ function ToastCard({ item, front, collapsed, y, index, deck, closeLabel, onSize 
   const behind = collapsed && !front;
   const Glyph = GLYPHS[type];
   const press = (button: ToastButton) => {
+    if (button === action) haptic();
     button.onClick();
     toast.dismiss(id);
   };

@@ -10,6 +10,7 @@ import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
 import { AvatarStack, NetAmount, signedMoney, toneClass } from "@/components/GroupsBody";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { Money } from "@/components/Money";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { SettleUpSheet } from "@/components/SettleUpSheet";
 import { Chips, DeleteAction, FieldGroup, FieldRow, FieldStack, FormError, RowInput, Segmented, SheetButton } from "@/components/SheetFields";
@@ -41,7 +42,7 @@ import { cn } from "@/lib/utils";
 type Tab = "expenses" | "balances" | "activity";
 export const PAGE = 30;
 
-const money = (n: number) => <SensitiveAmount>{formatCurrency(n)}</SensitiveAmount>;
+const money = (n: number) => <Money value={n} />;
 
 export function GroupSettingsSheet({ open, onOpenChange, data, meId }: {
   open: boolean;

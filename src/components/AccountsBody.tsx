@@ -10,7 +10,7 @@ import { AccountsIcon } from "@/components/icons";
 import { JointInvites } from "@/components/JointAccountSection";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { Money } from "@/components/Money";
 import { SortableContainer, SortableItem } from "@/components/Sortable";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -80,7 +80,7 @@ function AccountRowContent({ account, share, savingsLabel, star }: {
         )}
       </span>
       <span className={cn("lp-amount", balance < 0 && "is-negative")}>
-        <SensitiveAmount>{formatCurrency(balance)}</SensitiveAmount>
+        <Money value={balance} />
       </span>
     </>
   );
@@ -221,7 +221,7 @@ export default function AccountsBody() {
                 </span>
               </div>
               <span className={cn("lp-hero-value", total < 0 && "is-negative")}>
-                <SensitiveAmount>{formatCurrency(total)}</SensitiveAmount>
+                <Money value={total} roll />
               </span>
               {positiveTotal > 0 && (
                 <div className="lp-meter lp-meter--segmented" aria-hidden>

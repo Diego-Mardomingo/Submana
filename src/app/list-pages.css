@@ -211,7 +211,7 @@
 .lp-meter > span {
   height: 100%;
   border-radius: inherit;
-  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: width 0.5s var(--ease-ios);
 }
 
 .lp-meter--segmented > span {
@@ -507,12 +507,22 @@ button.lp-chip:hover {
   color: inherit;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.15s ease;
+  /* Pressing sinks the row a little; letting go brings it back with a short bounce. */
+  transition: background 0.15s ease, transform 0.45s var(--ease-spring);
   -webkit-tap-highlight-color: transparent;
 }
 
 .lp-row:active {
   background: var(--lp-row-hover);
+}
+
+.lp-row:active:not(:disabled):not(.lp-row--static) {
+  transform: scale(0.985);
+  transition-duration: 0.15s, var(--dur-tap);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-row:active:not(:disabled):not(.lp-row--static) { transform: none; }
 }
 
 @media (hover: hover) {
@@ -801,7 +811,7 @@ button.lp-chip:hover {
 }
 
 .lp-collapse-trigger svg {
-  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.3s var(--ease-ios);
 }
 
 .lp-collapse-trigger[data-state="open"] svg {
@@ -852,7 +862,7 @@ button.lp-chip:hover {
 
 /* ── Month change animation ── */
 .lp-fade {
-  animation: lp-fade-in 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: lp-fade-in 0.24s var(--ease-ios);
 }
 
 @keyframes lp-fade-in {
@@ -1199,7 +1209,7 @@ button.lp-chip:hover {
   display: block;
   height: 100%;
   border-radius: inherit;
-  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: width 0.5s var(--ease-ios);
 }
 
 .lp-pct {
@@ -1471,7 +1481,7 @@ button.lp-chip:hover {
 .lp-row .lp-chevron {
   flex-shrink: 0;
   color: var(--gris-claro);
-  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.3s var(--ease-ios);
 }
 
 .lp-row[data-state="open"] .lp-chevron {
@@ -1740,7 +1750,7 @@ button.lp-next {
   -webkit-backdrop-filter: blur(16px) saturate(1.3);
   color: var(--blanco);
   transform: translateY(-101%);
-  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.28s var(--ease-ios);
 }
 
 .lp-mini[data-shown="true"] {
@@ -1750,7 +1760,7 @@ button.lp-next {
 @media (min-width: 768px) {
   .lp-mini {
     left: var(--sidebar-w);
-    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), left var(--sidebar-dur) var(--sidebar-ease);
+    transition: transform 0.28s var(--ease-ios), left var(--sidebar-dur) var(--sidebar-ease);
   }
 }
 

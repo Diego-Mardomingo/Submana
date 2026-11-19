@@ -41,20 +41,20 @@
 
 /* Forward navigation (default) */
 ::view-transition-old(root) {
-  animation: vt-slide-to-left 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: vt-slide-to-left 0.28s var(--ease-ios);
 }
 
 ::view-transition-new(root) {
-  animation: vt-slide-from-right 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: vt-slide-from-right 0.28s var(--ease-ios);
 }
 
 /* Back navigation */
 html[data-nav-direction="back"]::view-transition-old(root) {
-  animation: vt-slide-to-right 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: vt-slide-to-right 0.28s var(--ease-ios);
 }
 
 html[data-nav-direction="back"]::view-transition-new(root) {
-  animation: vt-slide-from-left 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: vt-slide-from-left 0.28s var(--ease-ios);
 }
 
 /* Same level navigation (crossfade) */
@@ -106,8 +106,17 @@ html[data-nav-direction="same"]::view-transition-new(root) {
   /* Width of the desktop sidebar (from 768px): 240px, or a 72px rail when folded. The pre-paint script in
      layout.tsx sets html[data-sidebar] from what the user chose, so the first paint already has the right width. */
   --sidebar-w: 240px;
-  --sidebar-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --sidebar-ease: var(--ease-ios);
   --sidebar-dur: 0.38s;
+
+  /* Motion: every transition and animation picks its curve (and, for new pieces, its duration) here. */
+  --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);     /* enters and settles: sheets, pages, pills */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* a short bounce: letting go of something */
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);         /* leaves fast: closing, dismissing */
+  --dur-tap: 120ms;
+  --dur-quick: 220ms;
+  --dur-move: 420ms;
+  --dur-sheet: 480ms;
 }
 
 html[data-sidebar="collapsed"] {
@@ -833,5 +842,154 @@ html[data-theme="light"] [data-slot="button"][data-variant="outline"]:hover svg 
 
   .sortable-item--desktop .sortable-item__content {
     width: 100%;
+  }
+}
+
+/* ── Amounts (Money.tsx): the cents smaller and dimmed, so the whole part reads first ── */
+.amount-cents {
+  font-size: 0.78em;
+  font-weight: 600;
+  opacity: 0.62;
+}
+
+/* Digits that roll to their new value like an odometer. Each digit keeps its real glyph,
+   transparent (so width, baseline, copying and screen readers are the real ones), and shows a
+   0–9 strip on top, clipped to one line and moved to the digit in --d. */
+.odo {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.odo-d {
+  position: relative;
+  display: inline-block;
+  clip-path: inset(0 -0.1em);
+}
+
+.odo-g {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.odo-d::before {
+  content: "0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9";
+  white-space: pre;
+  position: absolute;
+  inset: 0 0 auto;
+  text-align: center;
+  transform: translateY(calc(var(--d, 0) * -1lh));
+  transition: transform 0.9s var(--ease-ios);
+  transition-delay: calc(var(--k, 0) * 28ms);
+}
+
+/* ── Pull to refresh (PullToRefresh.tsx): the gem assembles facet by facet ── */
+.ptr {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.ptr-gem {
+  width: 34px;
+  height: 28px;
+  overflow: visible;
+}
+
+.ptr-gem polygon {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0.3);
+  transition: opacity 0.15s ease, transform 0.35s var(--ease-spring);
+}
+
+.ptr-gem polygon.is-on {
+  opacity: 1;
+  transform: none;
+}
+
+.ptr[data-armed="true"] .ptr-gem {
+  animation: ptr-click 0.35s var(--ease-spring);
+}
+
+.ptr[data-phase="refreshing"] .ptr-gem g {
+  animation: ptr-spin 1.1s var(--ease-ios) infinite;
+  transform-origin: 32px 33px;
+}
+
+.ptr-text {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--gris-claro);
+  white-space: nowrap;
+}
+
+.ptr[data-phase="done"] .ptr-text {
+  color: var(--success-text);
+}
+
+.ptr[data-phase="error"] .ptr-text {
+  color: var(--danger-text);
+}
+
+@keyframes ptr-click {
+  50% { transform: scale(1.18); }
+}
+
+@keyframes ptr-spin {
+  to { transform: rotateY(360deg); }
+}
+
+/* ── Swipe back from the edge (EdgeSwipeBack.tsx): the page slides off the one below ── */
+html:is([data-edge-dragging], [data-edge-back]) body {
+  background: color-mix(in srgb, var(--negro) 80%, #000);
+}
+
+html:is([data-edge-dragging], [data-edge-back]) .auth-content-shell {
+  min-height: 100dvh;
+  background: var(--negro);
+  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.35);
+}
+
+/* The page already slid out: the parent appears without the usual page transition. */
+html[data-edge-back]::view-transition-old(root),
+html[data-edge-back]::view-transition-new(root) {
+  animation: none;
+}
+
+/* ── iPhone details ── */
+/* Only what should bounce bounces: no rubber band of the whole page (pull to refresh owns it). */
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
+/* A long press on a row, a card or the bar doesn't select text or open Safari's menu. */
+.lp-row,
+.sf-action,
+.home-day,
+nav {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .odo-d::before,
+  .ptr-gem polygon {
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+  }
+
+  .ptr-gem,
+  .ptr-gem g {
+    animation: none !important;
   }
 }

@@ -12,9 +12,9 @@ import BankStatementUpload from "@/components/BankStatementUpload";
 import { MonthPicker } from "@/components/MonthPicker";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { HeaderBell } from "@/components/notifications/NotificationBell";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { Money } from "@/components/Money";
 import { FieldGroup, FieldStack, FormError, Segmented, SheetButton } from "@/components/SheetFields";
-import { signed, TransactionDayList } from "@/components/TransactionDayList";
+import { TransactionDayList } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { Sheet, SheetBody, SheetFooter } from "@/components/ui/sheet";
 import { useAccounts, useDeleteAccount, useDeleteAccountTransactions, type Account } from "@/hooks/useAccounts";
@@ -27,7 +27,7 @@ import { isConnectableProvider } from "@/lib/banking/types";
 import { getBankProvider, type BankProvider } from "@/lib/bankProviders";
 import { parseIdParam } from "@/lib/deepLinks";
 import { appNow, monthKey, shiftMonth } from "@/lib/date";
-import { formatCurrency, monthKeyLabel, monthName } from "@/lib/format";
+import { monthKeyLabel, monthName } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { sumByType } from "@/lib/metricsFilters";
 import { toast } from "@/lib/toast";
@@ -335,7 +335,7 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
             <div className="ad-balance">
               <span className="lp-label">{es ? "Saldo actual" : "Current balance"}</span>
               <span className={cn("lp-hero-value", balance < 0 && "is-negative")}>
-                <SensitiveAmount>{formatCurrency(balance)}</SensitiveAmount>
+                <Money value={balance} roll />
               </span>
             </div>
           </div>
@@ -375,19 +375,19 @@ export default function AccountDetail({ account: initialAccount }: { account: Ac
                 <div className="lp-stat">
                   <span className="lp-label">{es ? "Ingresos" : "Income"}</span>
                   <span className={cn("lp-stat-value", income > 0 ? "is-income" : "is-muted")}>
-                    <SensitiveAmount>{formatCurrency(income)}</SensitiveAmount>
+                    <Money value={income} roll />
                   </span>
                 </div>
                 <div className="lp-stat">
                   <span className="lp-label">{es ? "Gastos" : "Expenses"}</span>
                   <span className={cn("lp-stat-value", expense === 0 && "is-muted")}>
-                    <SensitiveAmount>{formatCurrency(expense)}</SensitiveAmount>
+                    <Money value={expense} roll />
                   </span>
                 </div>
                 <div className="lp-stat">
                   <span className="lp-label">Balance</span>
                   <span className={cn("lp-stat-value", net > 0 ? "is-income" : net < 0 ? "is-negative" : "is-muted")}>
-                    <SensitiveAmount>{net === 0 ? formatCurrency(0) : signed(net)}</SensitiveAmount>
+                    <Money value={net} signed roll />
                   </span>
                 </div>
               </div>

@@ -38,7 +38,7 @@ import {
   type Transaction,
 } from "@/hooks/useTransactions";
 import { parseDateString, toDateString } from "@/lib/date";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { Money } from "@/components/Money";
 import { formatCurrency, localeOf } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { toast } from "@/lib/toast";
@@ -309,7 +309,7 @@ function TransactionForm({ transaction, defaultAccountId, defaultDate, carry, on
                   <span>
                     {interpolate(t("tx.similar.booked"), { date: parseDateString(tx.booked_at ?? tx.date).toLocaleDateString(localeOf(lang)) })}
                     {" · "}
-                    <SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
+                    <Money value={Number(tx.amount)} />
                   </span>
                 </div>
                 <button
@@ -578,7 +578,7 @@ function BankReviewBanner({ transaction, onDone }: { transaction: Transaction; o
           <span>
             {parseDateString(twin.date).toLocaleDateString(localeOf(lang))}
             {" · "}
-            <SensitiveAmount>{formatCurrency(Number(twin.amount))}</SensitiveAmount>
+            <Money value={Number(twin.amount)} />
           </span>
         </div>
       )}

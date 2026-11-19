@@ -3,7 +3,7 @@
 import { memo, useState } from "react";
 import { Pencil, Repeat, Trash2 } from "lucide-react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { MINUS, Money } from "@/components/Money";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { transactionEmoji, useCategoryLookup } from "@/hooks/useCategories";
@@ -20,8 +20,8 @@ export const TrendIcon = ({ income, size = 18 }: { income: boolean; size?: numbe
   </svg>
 );
 
-/** "+1.234,56 €" / "-12,00 €" */
-export const signed = (n: number) => `${n >= 0 ? "+" : "-"}${formatCurrency(Math.abs(n))}`;
+/** "+1.234,56 €" / "−12,00 €" */
+export const signed = (n: number) => `${n >= 0 ? "+" : MINUS}${formatCurrency(Math.abs(n))}`;
 
 export { transactionEmoji } from "@/hooks/useCategories";
 
@@ -79,8 +79,8 @@ export const TransactionRow = memo(function TransactionRow(props: {
         )}
       </span>
       <span className={`lp-amount ${excluded ? "is-muted" : income ? "is-income" : "is-expense"}`}>
-        {income ? "+" : "-"}
-        <SensitiveAmount>{formatCurrency(Number(tx.amount))}</SensitiveAmount>
+        {income ? "+" : MINUS}
+        <Money value={Number(tx.amount)} />
       </span>
     </button>
   );
@@ -138,7 +138,7 @@ export function TransactionDayList({ transactions, countedIds, hideAccount, peek
                   {label.detail && <small>{label.detail}</small>}
                 </span>
                 <span className={`lp-section-aside ${net > 0 ? "is-income" : ""}`}>
-                  <SensitiveAmount>{signed(net)}</SensitiveAmount>
+                  <Money value={net} signed />
                 </span>
               </div>
               <SwipeToRevealGroup className="lp-card lp-group">
