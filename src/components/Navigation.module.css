@@ -50,7 +50,7 @@
   width: min(48px, calc(100% - 4px));
   height: 30px;
   border-radius: 999px;
-  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), background 0.25s ease;
+  transition: transform 0.35s var(--ease-ios), background 0.25s ease;
 }
 
 .tabIcon svg {
@@ -71,7 +71,7 @@
   white-space: nowrap;
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.2s ease, transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity 0.2s ease, transform 0.35s var(--ease-ios);
   pointer-events: none;
 }
 
@@ -139,7 +139,7 @@
   transform: translateX(-50%);
   fill: var(--accent);
   filter: drop-shadow(0 4px 10px var(--accent-muted));
-  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1), filter 0.25s ease;
+  transition: transform 0.25s var(--ease-ios), filter 0.25s ease;
   pointer-events: none;
 }
 
@@ -151,7 +151,7 @@
   height: 24px;
   margin-left: -12px;
   color: var(--negro);
-  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.4s var(--ease-ios);
 }
 
 html[data-theme="light"] .notchIcon {
@@ -313,7 +313,7 @@ html[data-theme="light"] .count {
     right var(--sidebar-dur) var(--sidebar-ease),
     background 0.15s ease,
     color 0.15s ease,
-    scale 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+    scale 0.35s var(--ease-spring);
 }
 
 .collapseBtn:hover {
@@ -340,7 +340,7 @@ html[data-theme="light"] .count {
 .collapseChevron {
   transform-box: fill-box;
   transform-origin: center;
-  transition: rotate 0.5s cubic-bezier(0.34, 1.4, 0.64, 1), translate 0.25s ease;
+  transition: rotate 0.5s var(--ease-spring), translate 0.25s ease;
 }
 
 /* On hover it nudges the way it would go. */
@@ -375,7 +375,7 @@ html[data-theme="light"] .count {
   width: 2.25rem;
   height: 2.25rem;
   color: var(--accent);
-  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.25s var(--ease-ios);
 }
 
 .brandMark svg {
@@ -432,7 +432,7 @@ html[data-theme="light"] .addBtn {
 
 .addIcon {
   flex-shrink: 0;
-  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.4s var(--ease-ios);
 }
 
 .addBtnOpen .addIcon {
@@ -657,8 +657,8 @@ html[data-theme="light"] .railTip {
   scale: 1;
   transition:
     opacity 0.16s ease,
-    translate 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
-    scale 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+    translate 0.3s var(--ease-spring),
+    scale 0.3s var(--ease-spring),
     left var(--sidebar-dur) var(--sidebar-ease);
 }
 
@@ -666,8 +666,8 @@ html[data-theme="light"] .railTip {
 .railTip[data-open="true"][data-glide="true"] {
   transition:
     opacity 0.16s ease,
-    translate 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
-    scale 0.3s cubic-bezier(0.34, 1.4, 0.64, 1),
+    translate 0.3s var(--ease-spring),
+    scale 0.3s var(--ease-spring),
     top 0.22s var(--sidebar-ease),
     left var(--sidebar-dur) var(--sidebar-ease);
 }

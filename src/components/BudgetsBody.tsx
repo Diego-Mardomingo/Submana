@@ -6,7 +6,7 @@ import { BudgetsIcon } from "@/components/icons";
 import { Bones } from "@/components/Bones";
 import { BudgetSheet } from "@/components/BudgetSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { Money } from "@/components/Money";
 import { SortableContainer, SortableItem } from "@/components/Sortable";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
 import { rootIds, useBudgets, useUndoableDeleteBudget, type BudgetWithSpent } from "@/hooks/useBudgets";
@@ -17,7 +17,7 @@ import { useReorder } from "@/hooks/useReorder";
 import { useUrlParam } from "@/hooks/useUrlParam";
 import { parseMonthParam } from "@/lib/deepLinks";
 import { appNow, monthKey } from "@/lib/date";
-import { formatCurrency, monthName } from "@/lib/format";
+import { monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +26,7 @@ type Lookup = ReturnType<typeof useCategoryLookup>;
 /** Progress colour: red once exceeded, amber from 80%, otherwise `base`. */
 const statusColor = (pct: number, base: string) => (pct > 100 ? "var(--danger)" : pct >= 80 ? "var(--warning)" : base);
 
-const money = (n: number) => <SensitiveAmount>{formatCurrency(n)}</SensitiveAmount>;
+const money = (n: number) => <Money value={n} />;
 
 /** Row body shared by the list, the drag overlay and the dashboard. */
 export function BudgetRowContent({ budget, categories }: { budget: BudgetWithSpent; categories: Lookup }) {

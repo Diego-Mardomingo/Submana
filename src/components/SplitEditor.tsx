@@ -2,7 +2,7 @@
 
 import { Chips, FieldGroup, FieldRow, FieldStack, RowInput, Segmented } from "@/components/SheetFields";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { Money } from "@/components/Money";
 import { useLang } from "@/hooks/useLang";
 import { formatCurrency } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -126,7 +126,7 @@ export function SplitEditor({ members, meId, totalCents, payerId, draft, onChang
                   </label>
                 )}
                 <span className="split-amount">
-                  {cents === undefined ? "—" : <SensitiveAmount>{formatCurrency(fromCents(cents))}</SensitiveAmount>}
+                  {cents === undefined ? "—" : <Money value={fromCents(cents)} />}
                 </span>
               </div>
             );

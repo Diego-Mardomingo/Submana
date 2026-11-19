@@ -11,6 +11,7 @@ import { GroupSettingsSheet, PAGE } from "@/components/GroupDetail";
 import { HandleSetup } from "@/components/HandleSetup";
 import { CompactPageHeader } from "@/components/PageHeader";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
+import { Money } from "@/components/Money";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import { Chips, FieldGroup, FieldRow, FieldStack, FormError, RowInput, SheetButton } from "@/components/SheetFields";
 import { SwipeToReveal, SwipeToRevealGroup } from "@/components/SwipeToReveal";
@@ -48,7 +49,7 @@ export const toneClass = (cents: number) => (cents > 0 ? "sc-pos" : cents < 0 ? 
 export function NetAmount({ cents, className }: { cents: number; className?: string }) {
   return (
     <span className={cn("lp-amount", toneClass(cents), className)}>
-      <SensitiveAmount>{signedMoney(cents)}</SensitiveAmount>
+      <Money value={fromCents(cents)} signed />
     </span>
   );
 }

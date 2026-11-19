@@ -28,7 +28,7 @@ html[data-theme="light"] .sheet-overlay {
 .sheet-overlay[data-state="closed"] { animation: sheet-fade-out 0.25s ease-in forwards; }
 
 .sheet {
-  --sheet-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --sheet-ease: var(--ease-ios);
   --sheet-pad: 1rem;
   --sf-divider: color-mix(in srgb, var(--gris) 75%, transparent);
   position: fixed;
@@ -53,7 +53,7 @@ html[data-theme="light"] .sheet-overlay {
   }
 
   .sheet[data-state="open"] { animation: sheet-up 0.42s var(--sheet-ease); }
-  .sheet[data-state="closed"] { animation: sheet-down 0.28s cubic-bezier(0.4, 0, 1, 1) forwards; }
+  .sheet[data-state="closed"] { animation: sheet-down 0.28s var(--ease-exit) forwards; }
 
   .sheet-header {
     touch-action: none;
@@ -75,7 +75,7 @@ html[data-theme="light"] .sheet-overlay {
   }
 
   .sheet[data-state="open"] { animation: sheet-in-right 0.42s var(--sheet-ease); }
-  .sheet[data-state="closed"] { animation: sheet-out-right 0.26s cubic-bezier(0.4, 0, 1, 1) forwards; }
+  .sheet[data-state="closed"] { animation: sheet-out-right 0.26s var(--ease-exit) forwards; }
 
   .sheet-grabber { display: none; }
 }

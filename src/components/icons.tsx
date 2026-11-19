@@ -1,7 +1,7 @@
 type IconProps = { size?: number | string; strokeWidth?: number; className?: string; style?: React.CSSProperties };
 
 /** Submana's "Cristal de maná" mark; facets follow the theme's accent and success colors. */
-const LOGO_FACETS = [
+export const LOGO_FACETS = [
   { points: "20,12 26,25 8,25", fill: "var(--accent-light)" },
   { points: "20,12 32,12 26,25", fill: "var(--accent)" },
   { points: "32,12 38,25 26,25", fill: "var(--success)" },

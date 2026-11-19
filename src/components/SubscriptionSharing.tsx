@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
+import { Money } from "@/components/Money";
 import { Chips, FieldGroup, FieldStack, SheetButton } from "@/components/SheetFields";
 import { SplitEditor, useMemberLabel } from "@/components/SplitEditor";
 import { Sheet, SheetBody, SheetFooter } from "@/components/ui/sheet";
@@ -11,7 +11,6 @@ import { useGroups } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
 import { useProfile } from "@/hooks/useProfile";
 import type { Subscription } from "@/hooks/useSubscriptions";
-import { formatCurrency } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { draftParticipants, evaluateDraft, initialDraft, isDraftSubmittable, type SplitDraft } from "@/lib/shared/splitDraft";
 import { fromCents } from "@/lib/shared/splits";
@@ -106,7 +105,7 @@ export function SubscriptionSharingFields({ sub, state, onChange, costCents }: {
                 <div key={m.user_id} className="sf-share">
                   <ProfileAvatar name={m.display_name} url={m.avatar_url} size={28} />
                   <span className="sf-share-name">{label(m)}</span>
-                  <span className="sf-share-amount">{cents === undefined ? "—" : <SensitiveAmount>{formatCurrency(fromCents(cents))}</SensitiveAmount>}</span>
+                  <span className="sf-share-amount">{cents === undefined ? "—" : <Money value={fromCents(cents)} />}</span>
                 </div>
               );
             })}

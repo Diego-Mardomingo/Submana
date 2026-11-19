@@ -8,8 +8,8 @@ import { Bones } from "@/components/Bones";
 import { MonthPicker } from "@/components/MonthPicker";
 import { TransactionsIcon } from "@/components/icons";
 import { CompactPageHeader } from "@/components/PageHeader";
-import { SensitiveAmount } from "@/components/SensitiveAmount";
-import { signed, TransactionDayList } from "@/components/TransactionDayList";
+import { Money } from "@/components/Money";
+import { TransactionDayList } from "@/components/TransactionDayList";
 import { TransactionSheet } from "@/components/TransactionSheet";
 import { useJointAccountIds } from "@/hooks/useAccounts";
 import { useCategories } from "@/hooks/useCategories";
@@ -18,7 +18,7 @@ import { useLang } from "@/hooks/useLang";
 import { useSwipe } from "@/hooks/useSwipe";
 import { prefetchMonth, useTransactions } from "@/hooks/useTransactions";
 import { appNow, shiftMonth } from "@/lib/date";
-import { formatCurrency, monthName } from "@/lib/format";
+import { monthName } from "@/lib/format";
 import { useTranslations } from "@/lib/i18n/utils";
 import { metricTransactions, sumByType } from "@/lib/metricsFilters";
 
@@ -152,7 +152,7 @@ export default function TransactionsBody() {
       <span className="lp-mini-balance">
         <small>Balance</small>
         <span className={balance > 0 ? "is-income" : balance < 0 ? "is-negative" : "is-muted"}>
-          <SensitiveAmount>{balance === 0 ? formatCurrency(0) : signed(balance)}</SensitiveAmount>
+          <Money value={balance} signed roll />
         </span>
       </span>
     </div>
@@ -208,23 +208,23 @@ export default function TransactionsBody() {
           </div>
         }
       >
-        <div className="lp-stats lp-fade" key={`stats-${year}-${month}`}>
+        <div className="lp-stats">
           <div className="lp-stat">
             <span className="lp-label">{es ? "Ingresos" : "Income"}</span>
             <span className={`lp-stat-value ${income > 0 ? "is-income" : "is-muted"}`}>
-              <SensitiveAmount>{formatCurrency(income)}</SensitiveAmount>
+              <Money value={income} roll />
             </span>
           </div>
           <div className="lp-stat">
             <span className="lp-label">{es ? "Gastos" : "Expenses"}</span>
             <span className={`lp-stat-value ${expense > 0 ? "" : "is-muted"}`}>
-              <SensitiveAmount>{formatCurrency(expense)}</SensitiveAmount>
+              <Money value={expense} roll />
             </span>
           </div>
           <div className="lp-stat">
             <span className="lp-label">Balance</span>
             <span className={`lp-stat-value ${balance > 0 ? "is-income" : balance < 0 ? "is-negative" : "is-muted"}`}>
-              <SensitiveAmount>{balance === 0 ? formatCurrency(0) : signed(balance)}</SensitiveAmount>
+              <Money value={balance} signed roll />
             </span>
           </div>
         </div>

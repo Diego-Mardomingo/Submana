@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, CircleAlert, CircleHelp, SquarePen, Trash2, TrendingDown, TrendingUp, Users, XCircle } from "lucide-react";
 import IconPicker from "@/components/IconPicker";
+import { Money } from "@/components/Money";
 import { SensitiveAmount } from "@/components/SensitiveAmount";
 import {
   AmountField,
@@ -100,7 +101,7 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
           <SubscriptionTile sub={sub} />
           <h3 className="sf-hero-name">{sub.service_name}</h3>
           <span className="sf-hero-value">
-            <SensitiveAmount>{formatCurrency(Number(sub.cost))}</SensitiveAmount>
+            <Money value={Number(sub.cost)} />
             <small>/ {freqLabel(sub).toLowerCase()}</small>
           </span>
           <div className="sf-hero-badges">
@@ -156,18 +157,18 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
           </InfoRow>
           {!isMonthly && (
             <InfoRow label={es ? "Equivale a" : "Works out at"}>
-              <SensitiveAmount>{formatCurrency(monthlyCost(sub))}</SensitiveAmount>
+              <Money value={monthlyCost(sub)} />
               <span className="is-muted">/{es ? "mes" : "mo"}</span>
             </InfoRow>
           )}
           {myPart !== null && (
             <InfoRow label={t("sub.share.yourPart")}>
-              <SensitiveAmount>{formatCurrency(myPart)}</SensitiveAmount>
+              <Money value={myPart} />
               <span className="is-muted">/{freqLabel(sub).toLowerCase()}</span>
             </InfoRow>
           )}
           <InfoRow label={t("sub.totalSpent")}>
-            <SensitiveAmount>{formatCurrency(spent.total)}</SensitiveAmount>
+            <Money value={spent.total} />
           </InfoRow>
         </FieldGroup>
 

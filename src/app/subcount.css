@@ -102,7 +102,7 @@
 .sc-ratio > span {
   min-width: 8px;
   border-radius: 99px;
-  transition: flex-grow 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: flex-grow 0.5s var(--ease-ios);
 }
 
 .sc-ratio-pos { background: var(--success-text); }
@@ -549,7 +549,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  transition: width 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: width 0.5s var(--ease-ios);
 }
 
 .sc-bar-pos {

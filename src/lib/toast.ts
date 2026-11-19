@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { haptic } from "@/lib/haptics";
 
 /**
  * App-wide toasts (rendered by `<Toaster />` in providers). Rules: AGENTS.md → Toasts. Design: the
@@ -119,6 +120,8 @@ function show(type: ToastType, title: ReactNode, options: ToastOptions = {}) {
     leaving: false,
   };
   emit(existing ? toasts.map((t) => (t.id === id ? item : t)) : [...toasts, item]);
+  // Something the user did worked: a tap of the vibration motor, once per toast.
+  if (type === "success" && existing?.type !== "success") haptic();
   return id;
 }
 
