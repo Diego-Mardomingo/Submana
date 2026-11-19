@@ -2,7 +2,9 @@
 
 ## Mockups
 
-Visual changes get a mockup before they're built, and the user approves it first. New proposals go in the "Submana Mockups" artifact (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o): one hash view per proposal (`<section data-view="…">`) plus a card on its `#inicio` view. The "Rediseño de los toasts" view (`#toasts`) is the model to copy. The older mockups stay in `docs/design/`.
+Visual changes get a mockup before they're built, and the user approves it first. By default the mockup is a throwaway HTML file (in a scratch folder, not committed) shown to the user in the chat: the "now" next to the proposal, both themes, the tokens from `globals.css` and the components' real classes and styles. Use the "Submana Mockups" artifact (https://claude.ai/artifact/N3qmuq3p9dHkhTuebsYP7o) only when the user asks for it: republishing it means reading the whole file first (over 500 KB). The older mockups stay in `docs/design/`.
+
+The rest of this section is about the artifact. One hash view per proposal (`<section data-view="…">`) plus a card on its `#inicio` view; the "Rediseño de los toasts" view (`#toasts`) is the model to copy.
 
 - Each screen is a `<figure class="kit-screen">` with a `<template>` inside, drawn in an iframe of the device's width (phone 390, `data-device="desktop"` 1280) with the app's real CSS. Write the markup with the components' real classes. The page's own script explains the placeholders (`<kit-include ref>`, `<img data-logo>`, `<i data-lucide>`, `<i data-app-icon>`, `data-new`).
 - Show what changes: a "now" screen next to the proposal (`data-original` keeps the app's current CSS), a prototype people can play with when behaviour matters (a `.d-proto` with buttons `data-demo="name" [data-value]` that call `demo(name, value)` inside the iframe), and both themes (the toolbar switches them).
