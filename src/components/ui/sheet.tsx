@@ -10,6 +10,8 @@ const MOBILE_QUERY = "(max-width: 767px)";
 /** Dragging the sheet down further than this (or flicking it) dismisses it. */
 const DISMISS_DISTANCE = 120;
 const DISMISS_VELOCITY = 0.5;
+/** With detents, dragging this far (or flicking) moves the sheet between half and full height. */
+const DETENT_DISTANCE = 60;
 
 /**
  * Keeps showing the last payload while the sheet plays its closing animation, after the parent
@@ -24,14 +26,18 @@ export function useSheetPayload<T>(open: boolean, payload: T): T {
 /**
  * Modal panel for creating and editing: a bottom sheet that can be dragged down to close on
  * phones, a panel sliding in from the right from tablet up. The page behind is dimmed.
+ * With `detents`, the phone sheet opens at half height (its body scrolls) and dragging the header
+ * up takes it to full height; dragging down goes back to half, and from half it closes.
  */
-export function Sheet({ open, onOpenChange, title, description, headerAction, className, children }: {
+export function Sheet({ open, onOpenChange, title, description, headerAction, detents = false, className, children }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: React.ReactNode;
   description?: React.ReactNode;
   /** Extra button next to the close button (e.g. "Edit" on a detail view). */
   headerAction?: React.ReactNode;
+  /** Phones: open at half height and drag up for the full height, like iOS medium/large detents. */
+  detents?: boolean;
   className?: string;
   /** `SheetBody` and an optional `SheetFooter`, or a form wrapping both. */
   children: React.ReactNode;
@@ -39,18 +45,36 @@ export function Sheet({ open, onOpenChange, title, description, headerAction, cl
   const es = useLang() === "es";
   const contentRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const drag = useRef<{ y: number; time: number; dy: number } | null>(null);
+  const drag = useRef<{ y: number; time: number; dy: number; height: number } | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  // Every opening starts at half height.
+  if (!open && expanded) setExpanded(false);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0 || !matchMedia(MOBILE_QUERY).matches || (e.target as Element).closest("button, a, input")) return;
-    drag.current = { y: e.clientY, time: Date.now(), dy: 0 };
+    drag.current = { y: e.clientY, time: Date.now(), dy: 0, height: contentRef.current?.offsetHeight ?? 0 };
     e.currentTarget.setPointerCapture(e.pointerId);
     contentRef.current?.style.setProperty("transition", "none");
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    if (!drag.current || !contentRef.current) return;
-    drag.current.dy = Math.max(0, e.clientY - drag.current.y);
-    contentRef.current.style.transform = `translateY(${drag.current.dy}px)`;
+    const el = contentRef.current;
+    const state = drag.current;
+    if (!state || !el) return;
+    if (!detents) {
+      state.dy = Math.max(0, e.clientY - state.y);
+      el.style.transform = `translateY(${state.dy}px)`;
+      return;
+    }
+    state.dy = e.clientY - state.y;
+    if (expanded) {
+      // Full height: the sheet shrinks with the finger, down to half the screen.
+      el.style.height = `${Math.max(state.height - Math.max(state.dy, 0), window.innerHeight / 2)}px`;
+    } else if (state.dy < 0) {
+      // Half height: it grows with the finger, up to its max-height.
+      el.style.height = `${state.height - state.dy}px`;
+    } else {
+      el.style.transform = `translateY(${state.dy}px)`;
+    }
   };
   const onPointerUp = () => {
     const el = contentRef.current;
@@ -59,6 +83,19 @@ export function Sheet({ open, onOpenChange, title, description, headerAction, cl
     if (!el || !state) return;
     el.style.removeProperty("transition");
     const velocity = state.dy / Math.max(Date.now() - state.time, 1);
+    if (detents) {
+      // Dropping the inline height while the transition is back on: the sheet settles from where the finger left it.
+      el.style.removeProperty("height");
+      const flick = Math.abs(state.dy) > 24 && Math.abs(velocity) > DISMISS_VELOCITY;
+      if (expanded) {
+        if (state.dy > DETENT_DISTANCE || (flick && state.dy > 0)) setExpanded(false);
+        return;
+      }
+      if (state.dy < -DETENT_DISTANCE || (flick && state.dy < 0)) {
+        setExpanded(true);
+        return;
+      }
+    }
     if (state.dy > DISMISS_DISTANCE || (state.dy > 24 && velocity > DISMISS_VELOCITY)) {
       // The closing animation starts from where the finger left the sheet.
       el.style.setProperty("--sheet-drag", `${state.dy}px`);
@@ -75,7 +112,7 @@ export function Sheet({ open, onOpenChange, title, description, headerAction, cl
         <DialogPrimitive.Overlay className="sheet-overlay" />
         <DialogPrimitive.Content
           ref={contentRef}
-          className={cn("sheet", className)}
+          className={cn("sheet", detents && "sheet--detents", detents && expanded && "is-expanded", className)}
           // Focusing the first field would pop up the keyboard on phones.
           onOpenAutoFocus={(e) => {
             e.preventDefault();

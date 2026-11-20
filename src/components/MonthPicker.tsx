@@ -94,9 +94,10 @@ function MonthGrid({ value, counts, loading, onPick }: {
 
 /**
  * The month's name as a button that opens a picker of every month by year (issue #122): a sheet on
- * phones, a dropdown under the name from tablet up. Picking a month calls `onChange` and closes it.
- * The history is only fetched once it opens; `include` narrows which transactions are counted (one
- * account, or Home without the accounts its filter hides). Keep `include` stable (useCallback).
+ * phones (half height, dragged up for the full one; issue #137), a dropdown under the name from
+ * tablet up. Picking a month calls `onChange` and closes it. The history is only fetched once it
+ * opens; `include` narrows which transactions are counted (one account, or Home without the
+ * accounts its filter hides). Keep `include` stable (useCallback).
  */
 export function MonthPicker({ value, onChange, include, variant = "title" }: {
   value: Month;
@@ -170,7 +171,7 @@ export function MonthPicker({ value, onChange, include, variant = "title" }: {
       <button type="button" className={triggerClass} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
         {label}
       </button>
-      <Sheet open={open} onOpenChange={setOpen} title={t("monthPicker.title")} description={t("monthPicker.hint")}>
+      <Sheet open={open} onOpenChange={setOpen} detents title={t("monthPicker.title")} description={t("monthPicker.hint")}>
         <SheetBody>
           <FieldGroup>
             <FieldStack>{grid}</FieldStack>
