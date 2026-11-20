@@ -7,6 +7,7 @@ import { FieldGroup, Segmented, SheetButton } from "@/components/SheetFields";
 import { Sheet, SheetBody, SheetFooter, SheetForm } from "@/components/ui/sheet";
 import { useLang } from "@/hooks/useLang";
 import { api } from "@/lib/api";
+import { FEEDBACK_MESSAGE_MAX } from "@/lib/feedback";
 import { apiErrorText } from "@/lib/apiErrorText";
 import { useTranslations } from "@/lib/i18n/utils";
 
@@ -64,6 +65,7 @@ export function FeedbackSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                     : "What would you like to improve or add?"
               }
               rows={6}
+              maxLength={FEEDBACK_MESSAGE_MAX}
               aria-label={t("feedback.message")}
             />
           </FieldGroup>

@@ -48,4 +48,6 @@ export const RATE_LIMITS = {
   pushTest: { limit: 5, windowSeconds: 60 },
   /** Conexiones y sincronizaciones bancarias manuales por usuario (cada una llama al banco). */
   banking: { limit: 10, windowSeconds: 600 },
+  /** Sugerencias y errores por usuario (cada uno crea una issue en GitHub). */
+  feedback: { limit: 10, windowSeconds: 3600 },
 } as const;
