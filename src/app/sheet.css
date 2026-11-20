@@ -44,12 +44,27 @@ html[data-theme="light"] .sheet-overlay {
 /* Phone: bottom sheet */
 @media (max-width: 767px) {
   .sheet {
+    --sheet-full: calc(100dvh - max(env(safe-area-inset-top, 0px), 12px) - 1.5rem);
     left: 0;
     right: 0;
     bottom: 0;
-    max-height: calc(100dvh - max(env(safe-area-inset-top, 0px), 12px) - 1.5rem);
+    max-height: var(--sheet-full);
     border-radius: 22px 22px 0 0;
     border-top: 1px solid var(--gris);
+  }
+
+  /* Detents (Sheet `detents`): half the screen until dragged up to the full height. */
+  .sheet--detents {
+    height: calc(50dvh + env(safe-area-inset-bottom, 0px));
+    transition: transform 0.3s var(--sheet-ease), height 0.42s var(--sheet-ease);
+  }
+
+  .sheet--detents.is-expanded {
+    height: var(--sheet-full);
+  }
+
+  .sheet--detents .sheet-body {
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   .sheet[data-state="open"] { animation: sheet-up 0.42s var(--sheet-ease); }
