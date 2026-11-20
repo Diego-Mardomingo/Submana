@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest } from "next/server";
+import { syncPendingFeedbackIssues } from "@/lib/feedbackIssues";
 import { cleanupNotifications } from "@/lib/notifications/jobs/cleanup";
 import { loadImportReminderEvents } from "@/lib/notifications/jobs/importReminder";
 import { loadMissedChargeEvents } from "@/lib/notifications/jobs/missedCharges";
@@ -61,6 +62,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("[cron/notifications] sharedSubscriptions", error);
     errors.push("sharedSubscriptions");
+  }
+  try {
+    result.feedbackIssues = await syncPendingFeedbackIssues(admin);
+  } catch (error) {
+    console.error("[cron/notifications] feedbackIssues", error);
+    errors.push("feedbackIssues");
   }
   try {
     result.cleanup = { deleted: await cleanupNotifications(admin) };
