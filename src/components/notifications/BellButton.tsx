@@ -35,7 +35,18 @@ function useWave() {
  * sound waves. Entry (drop with a bounce), ring (new notification), idle tap and exit follow docs/design/bell.html.
  * Render it inside `AnimatePresence`: the exit plays while it is being removed. Reduced motion: fades only.
  */
-export function BellButton({ count, small, onClick }: { count: number; small?: boolean; onClick: () => void }) {
+export function BellButton({
+  count,
+  small,
+  onClick,
+  onPointerDown,
+}: {
+  count: number;
+  small?: boolean;
+  onClick: () => void;
+  /** Runs as soon as a finger or pointer goes down, before the click (the bell uses it to warm the inbox). */
+  onPointerDown?: () => void;
+}) {
   const t = useTranslations(useLang());
   const reduced = useReducedMotion() ?? false;
   const [scope, animate] = useAnimate();
@@ -144,7 +155,7 @@ export function BellButton({ count, small, onClick }: { count: number; small?: b
   const origin = { transformBox: "view-box" } as const;
 
   return (
-    <motion.button ref={scope} type="button" className={cn(styles.bell, small && styles.sm)} style={{ y, scale, rotate, opacity }} aria-label={label} onClick={onClick}>
+    <motion.button ref={scope} type="button" className={cn(styles.bell, small && styles.sm)} style={{ y, scale, rotate, opacity }} aria-label={label} onPointerDown={onPointerDown} onClick={onClick}>
       <span className={styles.glow} aria-hidden />
       <svg className={styles.icon} viewBox="0 0 24 24" aria-hidden>
         <motion.path className={styles.wave} d="M4 2C2.8 3.7 2 5.7 2 8" style={{ ...origin, transformOrigin: "12px 8px", ...waveLeft }} />

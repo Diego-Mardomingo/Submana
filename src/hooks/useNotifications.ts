@@ -1,6 +1,6 @@
 "use client";
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
+import { infiniteQueryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
   MuteTargetType,
@@ -21,16 +21,29 @@ export type NotificationPages = InfiniteData<NotificationsPage, string | null>;
 const PAGE_SIZE = 30;
 const keys = queryKeys.notifications;
 
-/** Inbox, newest first, 30 per page (`fetchNextPage` loads older ones). `data.pages[n].items`. */
-export function useNotifications(filter: NotificationFilter, enabled = true) {
-  return useInfiniteQuery({
+const notificationsQuery = (filter: NotificationFilter) =>
+  infiniteQueryOptions({
     queryKey: keys.list(filter),
     queryFn: ({ pageParam }) =>
       api<NotificationsPage>(`/api/notifications?filter=${filter}&limit=${PAGE_SIZE}${pageParam ? `&before=${encodeURIComponent(pageParam)}` : ""}`),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextBefore,
-    enabled,
   });
+
+/**
+ * Inbox, newest first, 30 per page (`fetchNextPage` loads older ones). `data.pages[n].items`.
+ * Opening it shows the cached page right away (the bell prefetches it) and always refreshes it behind.
+ */
+export function useNotifications(filter: NotificationFilter, enabled = true) {
+  return useInfiniteQuery({ ...notificationsQuery(filter), enabled, refetchOnMount: "always" });
+}
+
+/**
+ * Loads the first inbox page ahead of time (the bell does it while it shows), so the inbox opens with its rows.
+ * A no-op while the cached page is fresh; the realtime sync invalidates it when a notification arrives.
+ */
+export function prefetchNotifications(queryClient: QueryClient, filter: NotificationFilter) {
+  return queryClient.prefetchInfiniteQuery({ ...notificationsQuery(filter), staleTime: 60 * 1000 });
 }
 
 /** Flat list of the loaded notifications. */
