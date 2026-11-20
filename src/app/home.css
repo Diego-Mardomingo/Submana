@@ -100,6 +100,7 @@
 
 /* ── Header: the month is the page title ── */
 .home-cal {
+  container: home-cal / inline-size;
   min-width: 0;
   touch-action: pan-y;
 }
@@ -123,22 +124,21 @@
   color: var(--blanco);
 }
 
-.home-top h1::first-letter {
-  text-transform: uppercase;
-}
-
-.home-top h1 span {
+.home-month-year {
   font-weight: 500;
   letter-spacing: -0.03em;
   color: var(--gris-claro);
 }
 
-/* The heading opens the month picker (MonthPicker) */
+/* The heading opens the month picker (MonthPicker). Too long for its row, it ends in an ellipsis
+   rather than running under «Hoy» or the arrows. */
 .home-month-trigger {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  max-width: 100%;
+  /* The heading's width plus the 0.4rem the negative margin pulls it out by */
+  max-width: calc(100% + 0.4rem);
+  min-width: 0;
   margin-left: -0.4rem;
   padding: 0.1rem 0.4rem;
   border: none;
@@ -162,13 +162,25 @@
   outline-offset: 2px;
 }
 
+.home-month-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .home-month-trigger .lp-month-caret {
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
+}
+
+.home-top > .lp-chip {
+  flex-shrink: 0;
 }
 
 .home-top-actions {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.25rem;
   margin-left: auto;
@@ -176,6 +188,37 @@
 
 .home-top-actions .cal-filter-btn {
   margin-left: 0.25rem;
+}
+
+/* A narrow calendar (phones, or beside the side column on desktop) can't fit the month beside «Hoy»,
+   the arrows and the filter (issue #137): they make a toolbar and the month gets its own row under
+   it, like an iOS large title. */
+@container home-cal (max-width: 599px) {
+  .home-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      ". today actions"
+      "title title title";
+    column-gap: 0.4rem;
+    row-gap: 0.15rem;
+    min-height: 0;
+  }
+
+  .home-cal .home-top h1 {
+    grid-area: title;
+    font-size: 1.75rem;
+  }
+
+  /* «Hoy», or the spinner while the month loads */
+  .home-top > :not(h1, .home-top-actions) {
+    grid-area: today;
+  }
+
+  .home-top-actions {
+    grid-area: actions;
+    margin-left: 0;
+  }
 }
 
 /* ── Calendar ── */

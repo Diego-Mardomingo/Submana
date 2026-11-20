@@ -119,10 +119,17 @@ export function MonthPicker({ value, onChange, include, variant = "title" }: {
 
   const label = (
     <>
-      {/* Home's heading greys the year with `.home-top h1 span`, so there the month stays plain text. */}
-      {variant === "home" ? monthName(value.month, lang, "long") : <span>{monthName(value.month, lang, "long")}</span>}
-      {variant === "home" ? " " : null}
-      <span className={variant === "title" ? "lp-month-year" : undefined}>{value.year}</span>
+      {variant === "home" ? (
+        // One text box, so a heading too long for its row is cut with an ellipsis instead of running under «Hoy».
+        <span className="home-month-label">
+          {monthName(value.month, lang, "long")} <span className="home-month-year">{value.year}</span>
+        </span>
+      ) : (
+        <>
+          <span>{monthName(value.month, lang, "long")}</span>
+          <span className="lp-month-year">{value.year}</span>
+        </>
+      )}
       <ChevronDown className="lp-month-caret" strokeWidth={2.25} aria-hidden />
     </>
   );
