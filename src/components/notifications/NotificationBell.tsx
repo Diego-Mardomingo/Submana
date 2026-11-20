@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence } from "framer-motion";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { useNotificationCounts } from "@/hooks/useNotifications";
+import { prefetchNotifications, useNotificationCounts } from "@/hooks/useNotifications";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { BellButton, resetBellSession } from "./BellButton";
 import styles from "./NotificationBell.module.css";
@@ -35,6 +36,26 @@ function useBellModel(enabled: boolean) {
   return { count, announcement };
 }
 
+/**
+ * The bell opens the inbox with `router.push`, which `<Link>` would prefetch but a button does not: without this,
+ * a tap waited for the route's server payload, then its JS chunk, then the list, before anything changed.
+ * While the bell shows, the route and the first page of unread notifications load ahead of time, again when the
+ * count changes (the realtime sync marks the list stale); `prefetch` (on pointerdown) tops them up if they were
+ * evicted. Both are no-ops while cached.
+ */
+function usePrefetchInbox(count: number) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const prefetch = useCallback(() => {
+    router.prefetch(INBOX_UNREAD_URL);
+    void prefetchNotifications(queryClient, "unread");
+  }, [router, queryClient]);
+  useEffect(() => {
+    if (count > 0) prefetch();
+  }, [count, prefetch]);
+  return prefetch;
+}
+
 /** Whether the pathname is the inbox, where the bell is never shown. */
 const inInbox = (pathname: string | null) => !!pathname && (pathname === "/notifications" || pathname.startsWith("/notifications/"));
 
@@ -44,13 +65,14 @@ export function NotificationBell() {
   const pathname = usePathname();
   const isPhone = useMediaQuery("(max-width: 767px)");
   const { count, announcement } = useBellModel(isPhone && !inInbox(pathname));
+  const prefetch = usePrefetchInbox(count);
   if (!isPhone) return null;
   return (
     <div className={styles.floating}>
       <span role="status" aria-live="polite" className="sr-only">
         {announcement}
       </span>
-      <AnimatePresence>{count > 0 && <BellButton key="bell" count={count} onClick={() => router.push(INBOX_UNREAD_URL)} />}</AnimatePresence>
+      <AnimatePresence>{count > 0 && <BellButton key="bell" count={count} onPointerDown={prefetch} onClick={() => router.push(INBOX_UNREAD_URL)} />}</AnimatePresence>
     </div>
   );
 }
@@ -64,13 +86,14 @@ export function HeaderBell() {
   const pathname = usePathname();
   const isWide = useMediaQuery("(min-width: 768px)");
   const { count, announcement } = useBellModel(isWide && !inInbox(pathname));
+  const prefetch = usePrefetchInbox(count);
   if (!isWide) return null;
   return (
     <>
       <span role="status" aria-live="polite" className="sr-only">
         {announcement}
       </span>
-      <AnimatePresence>{count > 0 && <BellButton key="bell" small count={count} onClick={() => router.push(INBOX_UNREAD_URL)} />}</AnimatePresence>
+      <AnimatePresence>{count > 0 && <BellButton key="bell" small count={count} onPointerDown={prefetch} onClick={() => router.push(INBOX_UNREAD_URL)} />}</AnimatePresence>
     </>
   );
 }
