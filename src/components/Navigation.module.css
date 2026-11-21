@@ -1,90 +1,196 @@
 /* ═══════════════════════════════════════════════
    NAVIGATION
-   Phones: bottom bar (Home · Dashboard · Transactions · + · Subcount · Subscriptions · Menu). Tabs are icon-only and show
-   their label while active; the + hangs from the bar's top edge as an accent drop.
+   Phones: a floating dock (Home · Transactions · + · Subcount · More), every tab with its name, which it drops while
+   scrolling down. The + hangs from its top edge as an accent drop; More opens a sheet with the other pages in a grid.
    From 768px: sidebar with the add button, the main pages, "Manage" and settings at the bottom. The button next
    to the brand (or B) folds it to a 72px rail of icons; html[data-sidebar="collapsed"] drives every folded style,
    so the first paint is already right. While it folds nothing moves sideways: the icons sit where the rail is,
    the labels fade out, and only the fold button travels to its place under the gem.
    ═══════════════════════════════════════════════ */
 
-/* ── Mobile bar ── */
-.bar {
+/* ── Mobile dock ──
+   A floating island 10px from the edges, with the page blurred behind it. --nav-h (globals.css) is its height plus
+   that margin, which is what the pages, the bell and the + arc leave free. */
+.dock {
+  --dock-ease: var(--ease-ios);
+  --dock-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --dock-gap: 10px;
+  --dock-h: calc(var(--nav-h) - var(--dock-gap));
+  --drop-w: 64px;
+  --tab-w: calc((100% - 12px - var(--drop-w)) / 4);
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: var(--dock-gap);
+  right: var(--dock-gap);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--dock-gap));
   z-index: 2147483647;
   view-transition-name: navigation;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 56px 1fr 1fr 1fr;
-  height: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
-  padding: 0 0.25rem env(safe-area-inset-bottom, 0px);
-  background: color-mix(in srgb, var(--negro) 86%, transparent);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
-  border-top: 1px solid var(--gris);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--drop-w) minmax(0, 1fr) minmax(0, 1fr);
+  height: var(--dock-h);
+  padding: 0 6px;
+  border-radius: 26px;
+  background: color-mix(in srgb, var(--gris-oscuro) 86%, transparent);
+  backdrop-filter: blur(22px) saturate(1.6);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px color-mix(in srgb, var(--blanco) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--blanco) 7%, transparent);
+  transition: height 0.4s var(--dock-ease);
 }
 
-.tab {
+html[data-theme="light"] .dock {
+  background: color-mix(in srgb, #ffffff 84%, transparent);
+  box-shadow:
+    0 12px 32px rgba(17, 19, 24, 0.14),
+    inset 0 0 0 1px color-mix(in srgb, var(--blanco) 8%, transparent);
+}
+
+/* Scrolling down a page it shrinks to icons only; scrolling back up brings the names back. */
+.dock[data-compact="true"] {
+  --dock-h: 50px;
+}
+
+/* The pill under the active tab: it glides from one tab to the next with a short bounce. */
+.dockPill {
+  position: absolute;
+  top: 6px;
+  left: calc(6px + var(--tab-w) * var(--i, 0) + var(--drop-w) * var(--after, 0) + 3px);
+  width: calc(var(--tab-w) - 6px);
+  height: calc(var(--dock-h) - 12px);
+  border-radius: 20px;
+  background: var(--accent-soft);
+  pointer-events: none;
+  transition: left 0.55s var(--dock-spring), height 0.4s var(--dock-ease), opacity 0.2s ease;
+}
+
+html[data-theme="light"] .dockPill {
+  background: var(--accent-muted);
+}
+
+.dockPill[data-hidden="true"] {
+  opacity: 0;
+}
+
+/* While it travels it stretches a little along the way and squashes, then settles, like a drop of liquid. */
+.dockPill[data-travel] {
+  animation: dockPillTravel 0.55s var(--dock-ease);
+}
+
+@keyframes dockPillTravel {
+  35% { transform: scaleX(1.16) scaleY(0.9); }
+  70% { transform: scaleX(0.97) scaleY(1.03); }
+}
+
+.dockTab {
   position: relative;
+  z-index: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: var(--nav-h);
+  gap: 3px;
+  min-width: 0;
+  height: var(--dock-h);
   padding: 0;
   border: none;
   background: transparent;
   color: var(--gris-claro);
-  text-decoration: none;
   font: inherit;
+  text-decoration: none;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: color 0.2s ease;
+  transition: color 0.25s ease, height 0.4s var(--dock-ease);
 }
 
-.tabIcon {
+.dockIcon {
   position: relative;
   display: grid;
   place-items: center;
-  /* Narrower than 48px on small phones, where seven columns share the bar. */
-  width: min(48px, calc(100% - 4px));
-  height: 30px;
-  border-radius: 999px;
-  transition: transform 0.35s var(--ease-ios), background 0.25s ease;
+  width: 26px;
+  height: 26px;
+  transition: transform 0.45s var(--dock-spring);
 }
 
-.tabIcon svg {
-  width: 21px;
-  height: 21px;
+.dockIcon svg {
+  width: 24px;
+  height: 24px;
 }
 
-.tabLabel {
-  position: absolute;
-  /* Wider than its column: only the active tab shows it, so it may reach under its neighbours. */
-  left: -20px;
-  right: -20px;
-  bottom: 9px;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  text-align: center;
+/* The icons' tinted detail fills in on the active tab, like iOS's filled symbols. */
+.dockIcon svg [fill-opacity] {
+  transition: fill-opacity 0.3s ease;
+}
+
+.dockLabel {
+  /* "Movimientos" fills its quarter of a 390px phone; it may reach a pixel or two past it rather than be cut. */
+  font-size: 0.64rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.005em;
   white-space: nowrap;
+  transition: opacity 0.2s ease, transform 0.4s var(--dock-ease), height 0.4s var(--dock-ease);
+}
+
+/* Small phones (under 360px): a smaller name so "Movimientos" stays inside its tab. */
+@media (max-width: 359px) {
+  .dockLabel {
+    font-size: 0.56rem;
+  }
+}
+
+.dock[data-compact="true"] .dockLabel {
+  height: 0;
   opacity: 0;
   transform: translateY(4px);
-  transition: opacity 0.2s ease, transform 0.35s var(--ease-ios);
-  pointer-events: none;
 }
 
-/* Something new to look at (unseen notifications): an accent dot on the Menu tab's icon. */
-.tabDot {
+.dockTab[aria-current="page"],
+.dockTab[data-active] {
+  color: var(--accent);
+}
+
+.dockTab[aria-current="page"] svg [fill-opacity],
+.dockTab[data-active] svg [fill-opacity] {
+  fill-opacity: 1;
+}
+
+/* Pressing sinks the icon; letting go makes it hop and settle. */
+.dockTab:active .dockIcon {
+  transform: scale(0.84);
+  transition-duration: 0.12s;
+}
+
+.dockTab[data-bounce] .dockIcon {
+  animation: dockBounce 0.5s var(--dock-spring);
+}
+
+@keyframes dockBounce {
+  0% { transform: scale(0.84); }
+  55% { transform: translateY(-3px) scale(1.06); }
+  100% { transform: none; }
+}
+
+.dockTab:focus-visible {
+  outline: none;
+}
+
+.dockTab:focus-visible .dockIcon {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+/* Something new to look at (unseen notifications): an accent dot on the More tab's icon. */
+.dockDot {
   position: absolute;
-  top: 3px;
-  right: 9px;
+  top: -1px;
+  right: -3px;
   width: 9px;
   height: 9px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 2px var(--negro);
+  box-shadow: 0 0 0 2px var(--gris-oscuro);
   animation: tabDotIn 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
 }
 
@@ -93,57 +199,38 @@
   to { transform: scale(1); }
 }
 
-.tab:active .tabIcon {
-  transform: scale(0.92);
-}
-
-.tab.active {
-  color: var(--accent);
-}
-
-.tab.active .tabIcon {
-  background: var(--accent-soft);
-  transform: translateY(-8px);
-}
-
-.tab.active .tabLabel {
-  opacity: 1;
-  transform: none;
-}
-
-.tab:focus-visible {
-  outline: none;
-}
-
-.tab:focus-visible .tabIcon {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* The + drop: hangs from the top edge, its shape bleeding into the columns either side. */
-.notch {
+/* The + drop: hangs from the island's top edge, its shape bleeding into the tabs either side. */
+.dockDrop {
   position: relative;
-  height: var(--nav-h);
+  z-index: 1;
+  height: var(--dock-h);
   padding: 0;
   border: none;
   background: transparent;
+  cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: height 0.4s var(--dock-ease);
 }
 
-.notchShape {
+.dockDropShape {
   position: absolute;
   top: -1px;
   left: 50%;
-  width: 100px;
-  height: 44px;
+  width: 92px;
+  height: 42px;
   transform: translateX(-50%);
+  transform-origin: top center;
   fill: var(--accent);
-  filter: drop-shadow(0 4px 10px var(--accent-muted));
-  transition: transform 0.25s var(--ease-ios), filter 0.25s ease;
+  filter: drop-shadow(0 6px 12px var(--accent-muted));
+  transition: transform 0.35s var(--dock-spring), filter 0.25s ease;
   pointer-events: none;
 }
 
-.notchIcon {
+.dock[data-compact="true"] .dockDropShape {
+  transform: translateX(-50%) scaleY(0.82);
+}
+
+.dockDropIcon {
   position: absolute;
   top: 6px;
   left: 50%;
@@ -151,83 +238,122 @@
   height: 24px;
   margin-left: -12px;
   color: var(--negro);
-  transition: transform 0.4s var(--ease-ios);
+  transition: transform 0.45s var(--dock-spring);
 }
 
-html[data-theme="light"] .notchIcon {
+html[data-theme="light"] .dockDropIcon {
   color: #ffffff;
 }
 
-/* Small phones: a slimmer drop so it doesn't touch the tabs either side. */
-@media (max-width: 359px) {
-  .notchShape {
-    width: 84px;
-  }
+.dockDrop:active .dockDropShape {
+  transform: translateX(-50%) scaleY(0.88) scaleX(0.96);
+  transition-duration: 0.12s;
 }
 
-.notch:active .notchShape {
-  transform: translateX(-50%) scaleY(0.92);
-}
-
-.notchOpen .notchIcon {
+.dockDrop[aria-expanded="true"] .dockDropIcon {
   transform: rotate(135deg);
 }
 
-.notchOpen .notchShape {
-  filter: drop-shadow(0 4px 18px var(--accent-muted));
+.dockDrop[aria-expanded="true"] .dockDropShape {
+  filter: drop-shadow(0 6px 20px var(--accent-muted));
 }
 
-.notch:focus-visible {
+.dockDrop:focus-visible {
   outline: none;
 }
 
-.notch:focus-visible .notchShape {
+.dockDrop:focus-visible .dockDropShape {
   filter: drop-shadow(0 0 0 var(--accent)) drop-shadow(0 0 6px var(--accent));
 }
 
-/* ── Menu sheet (mobile) ── */
+/* ── More sheet (mobile): every page without a tab, in a grid ── */
 .menuBody {
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
 }
 
-.menuRow {
+.moreGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.moreTile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 12px 2px 10px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--blanco) 4%, transparent);
+  color: var(--blanco);
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  animation: moreIn 0.45s cubic-bezier(0.34, 1.45, 0.64, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 22ms);
+  transition: transform 0.3s cubic-bezier(0.34, 1.45, 0.64, 1), background 0.15s ease;
 }
 
-.menuRow > .menuIcon {
-  flex: none;
+.moreTile:active {
+  transform: scale(0.93);
+  transition-duration: 0.1s;
 }
 
-.menuIcon {
+.moreTile:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.moreIcon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 10px;
-  background: var(--gris);
-  color: var(--gris-muy-claro);
-}
-
-.menuIcon svg {
-  width: 18px;
-  height: 18px;
-}
-
-.menuRow.active {
-  color: var(--accent);
-}
-
-.menuRow.active .menuIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.menuChevron {
-  color: var(--gris-claro);
+.moreIcon svg {
+  width: 22px;
+  height: 22px;
 }
 
-/* Unread number next to "Notifications" (sidebar and menu sheet). */
+.moreLabel {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.64rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.moreTile.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.moreTile.active .moreIcon svg [fill-opacity] {
+  fill-opacity: 1;
+}
+
+.moreTile > .moreCount {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  margin: 0;
+}
+
+@keyframes moreIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+}
+
+/* Unread number next to "Notifications" (sidebar and More sheet). */
 .count {
   display: inline-grid;
   place-items: center;
@@ -251,11 +377,6 @@ html[data-theme="light"] .count {
 
 .count + .kbd {
   margin-left: 0.5rem;
-}
-
-.menuRow > .menuCount {
-  flex: none;
-  margin-left: 0;
 }
 
 /* ── Desktop sidebar ── */
@@ -716,15 +837,24 @@ html[data-theme="light"] .railTip {
     transition: none !important;
   }
 
-  .tabIcon,
-  .tabLabel,
-  .notchIcon,
-  .notchShape,
+  .dock,
+  .dockPill,
+  .dockTab,
+  .dockIcon,
+  .dockIcon svg [fill-opacity],
+  .dockLabel,
+  .dockDrop,
+  .dockDropShape,
+  .dockDropIcon,
+  .moreTile,
   .addIcon {
     transition: none;
   }
 
-  .tabDot,
+  .dockTab[data-bounce] .dockIcon,
+  .dockPill[data-travel],
+  .dockDot,
+  .moreTile,
   .count {
     animation: none;
   }

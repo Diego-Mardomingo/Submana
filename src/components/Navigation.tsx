@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import AddShortcutsOverlay from "@/components/AddShortcutsOverlay";
 import {
   AccountsIcon,
@@ -20,8 +20,8 @@ import {
   SubscriptionsIcon,
   TransactionsIcon,
 } from "@/components/icons";
-import { FieldGroup } from "@/components/SheetFields";
 import { Sheet, SheetBody } from "@/components/ui/sheet";
+import { useCompactOnScroll } from "@/hooks/useCompactOnScroll";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useNotificationCounts } from "@/hooks/useNotifications";
@@ -58,10 +58,16 @@ const NAV_GROUPS: Record<"main" | "manage" | "system", NavItem[]> = {
 };
 const NAV_ITEMS = Object.values(NAV_GROUPS).flat();
 const navItem = (href: string) => NAV_ITEMS.find((item) => item.href === href)!;
-/** Mobile bar: three tabs left of the +, three right (the last one opens the menu sheet, which lists every page). */
-const BAR_LEFT = ["/", "/dashboard", "/transactions"].map(navItem);
-const BAR_RIGHT = ["/subcount", "/subscriptions"].map(navItem);
+/** Mobile dock: two tabs either side of the +; the last one ("More") opens a sheet with every other page. */
+const BAR_LEFT = ["/", "/transactions"].map(navItem);
+const BAR_RIGHT = ["/subcount"].map(navItem);
 const BAR_HREFS = new Set([...BAR_LEFT, ...BAR_RIGHT].map((item) => item.href));
+/** The "More" sheet: the pages without a tab, in the sidebar's order. */
+const MORE_ITEMS = NAV_ITEMS.filter((item) => !BAR_HREFS.has(item.href));
+/** Shorter tab names where the page's own name doesn't fit a quarter of the dock. */
+const TAB_LABELS: Partial<Record<string, UIKey>> = { "/transactions": "nav.transactionsTab" };
+/** Position of each dock tab ("More" is the last one), and how many sit left of the +. */
+const DOCK_TABS = [...BAR_LEFT.map((item) => item.href), ...BAR_RIGHT.map((item) => item.href), "more"];
 const ADD_SHORTCUT = "w";
 /** Folds and unfolds the desktop sidebar. */
 const SIDEBAR_SHORTCUT = "b";
@@ -102,9 +108,26 @@ export default function Navigation() {
   const { tip, showTip, hideTip, hideTipNow } = useRailTip(collapsed);
   const section = sectionOf(pathname);
   const inMenuSection = NAV_ITEMS.some((item) => item.href === section) && !BAR_HREFS.has(section);
+  const moreActive = menuOpen || (inMenuSection && !showAdd);
+  const [compact, setCompact] = useCompactOnScroll({ enabled: isMobile, resetKey: pathname });
+  // The pill under the active tab: its column among the four, and whether it sits right of the +.
+  const pillAt = DOCK_TABS.indexOf(moreActive ? "more" : section);
+  const pillRef = useRef<HTMLSpanElement>(null);
+  const lastPillAt = useRef(pillAt);
+  // Moving to another tab replays the pill's stretch (not when it just appears or hides).
+  useEffect(() => {
+    const from = lastPillAt.current;
+    lastPillAt.current = pillAt;
+    const pill = pillRef.current;
+    if (!pill || from === pillAt || from < 0 || pillAt < 0) return;
+    pill.removeAttribute("data-travel");
+    void pill.offsetWidth;
+    pill.setAttribute("data-travel", "");
+  }, [pillAt]);
 
   const openAdd = () => {
     setMenuOpen(false);
+    setCompact(false);
     setAddAnchor(addBtnRef.current?.getBoundingClientRect() ?? null);
     setShowAdd(true);
   };
@@ -146,7 +169,10 @@ export default function Navigation() {
   const onLinkClick = (href: string) => (e: React.MouseEvent) => {
     closeAll();
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    if (scrollToTopIfCurrent(href)) e.preventDefault();
+    if (scrollToTopIfCurrent(href)) {
+      e.preventDefault();
+      setCompact(false);
+    }
   };
 
   const sidebarLink = ({ href, shortcut, labelKey, icon: Icon }: NavItem) => {
@@ -179,29 +205,36 @@ export default function Navigation() {
   return (
     <>
       {isMobile ? (
-        <nav className={styles.bar} id="main-nav" aria-label={t("nav.menu")}>
+        <nav
+          className={styles.dock}
+          id="main-nav"
+          aria-label={t("nav.menu")}
+          data-compact={compact}
+          style={{ "--i": Math.max(pillAt, 0), "--after": pillAt >= BAR_LEFT.length ? 1 : 0 } as React.CSSProperties}
+        >
+          <span ref={pillRef} className={styles.dockPill} data-hidden={pillAt < 0} onAnimationEnd={(e) => e.currentTarget.removeAttribute("data-travel")} aria-hidden />
           {BAR_LEFT.map(({ href, icon, labelKey }) => (
-            <BarTab key={href} href={href} icon={icon} label={t(labelKey)} active={section === href} onClick={onLinkClick(href)} />
+            <DockTab key={href} href={href} icon={icon} label={t(TAB_LABELS[href] ?? labelKey)} active={section === href} onClick={onLinkClick(href)} />
           ))}
           <button
             type="button"
-            className={cn(styles.notch, showAdd && styles.notchOpen)}
+            className={styles.dockDrop}
             onClick={() => (showAdd ? setShowAdd(false) : openAdd())}
             aria-label={t(showAdd ? "nav.close" : "nav.add")}
             aria-expanded={showAdd}
           >
-            <svg className={styles.notchShape} viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden>
+            <svg className={styles.dockDropShape} viewBox="0 0 120 44" preserveAspectRatio="none" aria-hidden>
               <path d="M0 0 C28 0 24 40 60 40 C96 40 92 0 120 0 Z" />
             </svg>
-            <Plus className={styles.notchIcon} strokeWidth={2.5} aria-hidden />
+            <Plus className={styles.dockDropIcon} strokeWidth={2.5} aria-hidden />
           </button>
           {BAR_RIGHT.map(({ href, icon, labelKey }) => (
-            <BarTab key={href} href={href} icon={icon} label={t(labelKey)} active={section === href} onClick={onLinkClick(href)} />
+            <DockTab key={href} href={href} icon={icon} label={t(TAB_LABELS[href] ?? labelKey)} active={section === href} onClick={onLinkClick(href)} />
           ))}
-          <BarTab
+          <DockTab
             icon={MenuIcon}
-            label={t("nav.menu")}
-            active={menuOpen || (inMenuSection && !showAdd)}
+            label={t("nav.more")}
+            active={moreActive}
             dot={unseen > 0}
             onClick={() => {
               setShowAdd(false);
@@ -271,32 +304,30 @@ export default function Navigation() {
       )}
 
       {isMobile && (
-        <Sheet open={menuOpen} onOpenChange={setMenuOpen} title={t("nav.menu")}>
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen} title={t("nav.more")}>
           <SheetBody className={styles.menuBody}>
-            {(["main", "manage", "system"] as const).map((group) => (
-              <FieldGroup key={group} title={group === "manage" ? t("nav.manage") : undefined}>
-                {NAV_GROUPS[group].map(({ href, labelKey, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn("sf-row sf-action", styles.menuRow, section === href && styles.active)}
-                    aria-current={section === href ? "page" : undefined}
-                    onClick={onLinkClick(href)}
-                  >
-                    <span className={styles.menuIcon}>
-                      <Icon {...iconProps} />
+            <div className={styles.moreGrid}>
+              {MORE_ITEMS.map(({ href, labelKey, icon: Icon }, i) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cn(styles.moreTile, section === href && styles.active)}
+                  style={{ "--i": i } as React.CSSProperties}
+                  aria-current={section === href ? "page" : undefined}
+                  onClick={onLinkClick(href)}
+                >
+                  <span className={styles.moreIcon}>
+                    <Icon size={22} strokeWidth={1.75} />
+                  </span>
+                  <span className={styles.moreLabel}>{t(labelKey)}</span>
+                  {href === "/notifications" && unread > 0 && (
+                    <span className={cn(styles.count, styles.moreCount)} aria-label={interpolate(t(unread === 1 ? "bell.label.one" : "bell.label.other"), { count: unread })}>
+                      {countLabel(unread)}
                     </span>
-                    <span>{t(labelKey)}</span>
-                    {href === "/notifications" && unread > 0 && (
-                      <span className={cn(styles.count, styles.menuCount)} aria-label={interpolate(t(unread === 1 ? "bell.label.one" : "bell.label.other"), { count: unread })}>
-                        {countLabel(unread)}
-                      </span>
-                    )}
-                    <ChevronRight className={styles.menuChevron} aria-hidden />
-                  </Link>
-                ))}
-              </FieldGroup>
-            ))}
+                  )}
+                </Link>
+              ))}
+            </div>
           </SheetBody>
         </Sheet>
       )}
@@ -363,24 +394,37 @@ function useRailTip(collapsed: boolean) {
   return { tip, showTip, hideTip, hideTipNow };
 }
 
-/** Mobile bar tab: icon only, with its label shown while active. A link, or a button without `href`. */
-function BarTab({ href, icon: Icon, label, active, dot, onClick }: { href?: string; icon: NavItem["icon"]; label: string; active: boolean; /** Something new to look at (an accent dot on the icon). */ dot?: boolean; onClick: (e: React.MouseEvent) => void }) {
-  const className = cn(styles.tab, active && styles.active);
+/**
+ * Mobile dock tab: icon and name, both always visible (only the icon while the dock is compact). The icon's tinted
+ * detail fills in while active, and it bounces when tapped. A link, or a button without `href`.
+ */
+function DockTab({ href, icon: Icon, label, active, dot, onClick }: { href?: string; icon: NavItem["icon"]; label: string; active: boolean; /** Something new to look at (an accent dot on the icon). */ dot?: boolean; onClick: (e: React.MouseEvent) => void }) {
+  const ref = useRef<HTMLAnchorElement & HTMLButtonElement>(null);
+  const handleClick = (e: React.MouseEvent) => {
+    const el = ref.current;
+    if (el) {
+      // Restart the bounce even when tapping the same tab twice in a row.
+      el.removeAttribute("data-bounce");
+      void el.offsetWidth;
+      el.setAttribute("data-bounce", "");
+    }
+    onClick(e);
+  };
   const content = (
     <>
-      <span className={styles.tabIcon}>
-        <Icon {...iconProps} />
-        {dot && <span className={styles.tabDot} aria-hidden />}
+      <span className={styles.dockIcon} onAnimationEnd={() => ref.current?.removeAttribute("data-bounce")}>
+        <Icon size={24} strokeWidth={1.75} />
+        {dot && <span className={styles.dockDot} aria-hidden />}
       </span>
-      <span className={styles.tabLabel}>{label}</span>
+      <span className={styles.dockLabel}>{label}</span>
     </>
   );
   return href ? (
-    <Link href={href} className={className} aria-label={label} aria-current={active ? "page" : undefined} onClick={onClick}>
+    <Link ref={ref} href={href} className={styles.dockTab} aria-current={active ? "page" : undefined} onClick={handleClick}>
       {content}
     </Link>
   ) : (
-    <button type="button" className={className} aria-label={label} aria-haspopup="dialog" onClick={onClick}>
+    <button ref={ref} type="button" className={styles.dockTab} data-active={active || undefined} aria-haspopup="dialog" onClick={handleClick}>
       {content}
     </button>
   );
