@@ -1,4 +1,5 @@
 import type { Lang } from "@/lib/i18n/ui";
+import type { ReviewMode } from "@/lib/review/classify";
 import type { NotificationParams, NotificationType, RenewalOffset } from "./catalog";
 
 /** A row of `public.notifications` as the server reads it (type and params are what `notify()` wrote). */
@@ -65,6 +66,12 @@ export interface NotificationSettings {
   summary_day: number;
   push_hide_amounts: boolean;
   last_seen_at: string | null;
+  /** What the review deck shows: only what the app isn't sure about, or every new movement. */
+  review_mode: ReviewMode;
+  /** ISO weekday (1 = Monday) of the weekly "movements to review" notification. */
+  review_day: number;
+  /** Pending movements needed for that notification (see REVIEW_MIN_OPTIONS). */
+  review_min: number;
 }
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -74,9 +81,15 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   summary_day: 4,
   push_hide_amounts: false,
   last_seen_at: null,
+  review_mode: "doubt",
+  review_day: 1,
+  review_min: 1,
 };
 
-export const SETTINGS_COLUMNS = "lang, disabled_types, default_renewal_offsets, summary_day, push_hide_amounts, last_seen_at";
+/** How many pending movements the weekly review notification can wait for. */
+export const REVIEW_MIN_OPTIONS = [1, 3, 5, 10] as const;
+
+export const SETTINGS_COLUMNS = "lang, disabled_types, default_renewal_offsets, summary_day, push_hide_amounts, last_seen_at, review_mode, review_day, review_min";
 
 export type MuteTargetType = "group" | "account";
 

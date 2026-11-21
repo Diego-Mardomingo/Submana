@@ -10,7 +10,7 @@ import { Sheet, SheetBody, SheetFooter, SheetForm, useSheetPayload } from "@/com
 import { useLang } from "@/hooks/useLang";
 import { useRecordSettlement } from "@/hooks/useSharedExpenses";
 import { parseCurrencyValue } from "@/lib/currency";
-import { toDateString } from "@/lib/date";
+import { parseDateString, toDateString } from "@/lib/date";
 import { formatCurrency } from "@/lib/format";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
 import { toast } from "@/lib/toast";
@@ -19,12 +19,14 @@ import { sharedErrorText } from "@/lib/shared/errorText";
 import { fromCents, toCents } from "@/lib/shared/splits";
 import type { SharedProfile } from "@/lib/shared/types";
 
-function SettleForm({ groupId, members, meId, transfer, onDone }: {
+function SettleForm({ groupId, members, meId, transfer, date: initialDate, onDone, onSaved }: {
   groupId: string;
   members: SharedProfile[];
   meId: string;
   transfer: Transfer;
+  date?: string;
   onDone: () => void;
+  onSaved?: () => void;
 }) {
   const lang = useLang();
   const t = useTranslations(lang);
@@ -36,7 +38,7 @@ function SettleForm({ groupId, members, meId, transfer, onDone }: {
   const iPay = transfer.from === meId;
 
   const [amount, setAmount] = useState(fromCents(transfer.cents).toFixed(2).replace(".", ","));
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState(() => (initialDate ? parseDateString(initialDate) : new Date()));
   const [error, setError] = useState("");
 
   const cents = toCents(parseCurrencyValue(amount));
@@ -57,6 +59,7 @@ function SettleForm({ groupId, members, meId, transfer, onDone }: {
         date: toDateString(date),
       });
       toast.success(interpolate(t("settle.done"), { amount: formatCurrency(cents / 100) }));
+      onSaved?.();
       onDone();
     } catch (err) {
       setError(sharedErrorText(t, err instanceof Error ? err.message : undefined));
@@ -94,13 +97,17 @@ function SettleForm({ groupId, members, meId, transfer, onDone }: {
 }
 
 /** Record that a debt was paid ("settle up"). */
-export function SettleUpSheet({ open, onOpenChange, groupId, members, meId, transfer }: {
+export function SettleUpSheet({ open, onOpenChange, groupId, members, meId, transfer, date, onSaved }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: string;
   members: SharedProfile[];
   meId: string;
   transfer: Transfer | null;
+  /** Day of the payment (YYYY-MM-DD; today when absent). */
+  date?: string;
+  /** After it was recorded (before the sheet closes). */
+  onSaved?: () => void;
 }) {
   const t = useTranslations(useLang());
   const shown = useSheetPayload(open, transfer);
@@ -113,6 +120,8 @@ export function SettleUpSheet({ open, onOpenChange, groupId, members, meId, tran
           members={members}
           meId={meId}
           transfer={shown}
+          date={date}
+          onSaved={onSaved}
           onDone={() => onOpenChange(false)}
         />
       )}

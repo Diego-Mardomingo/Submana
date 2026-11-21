@@ -25,6 +25,7 @@ import { useCompactOnScroll } from "@/hooks/useCompactOnScroll";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useNotificationCounts } from "@/hooks/useNotifications";
+import { useReviewSummary } from "@/hooks/useReview";
 import { useSidebarCollapsed } from "@/hooks/useSidebarCollapsed";
 import type { UIKey } from "@/lib/i18n/ui";
 import { interpolate, useTranslations } from "@/lib/i18n/utils";
@@ -100,6 +101,7 @@ export default function Navigation() {
   const unread = counts?.unread ?? 0;
   const unseen = counts?.unseen ?? 0;
   const isMobile = useMediaQuery("(max-width: 767px)");
+  const reviewCount = useReviewSummary().data?.count ?? 0;
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [addAnchor, setAddAnchor] = useState<DOMRect | null>(null);
@@ -202,6 +204,9 @@ export default function Navigation() {
     );
   };
 
+  // The review deck is full screen: no bar, no sidebar.
+  if (section === "/review") return null;
+
   return (
     <>
       {isMobile ? (
@@ -227,6 +232,12 @@ export default function Navigation() {
               <path d="M0 0 C28 0 24 40 60 40 C96 40 92 0 120 0 Z" />
             </svg>
             <Plus className={styles.dockDropIcon} strokeWidth={2.5} aria-hidden />
+            {/* Movements waiting in the review deck: the + menu has "Review" in its centre. */}
+            {reviewCount > 0 && !showAdd && (
+              <span className={styles.dockBadge} aria-label={interpolate(t(reviewCount === 1 ? "review.entry.countOne" : "review.entry.count"), { n: String(reviewCount) })}>
+                {reviewCount > 9 ? "9+" : reviewCount}
+              </span>
+            )}
           </button>
           {BAR_RIGHT.map(({ href, icon, labelKey }) => (
             <DockTab key={href} href={href} icon={icon} label={t(TAB_LABELS[href] ?? labelKey)} active={section === href} onClick={onLinkClick(href)} />

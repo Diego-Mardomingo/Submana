@@ -8,6 +8,7 @@ import "./dashboard.css";
 import "./home.css";
 import "./sheet.css";
 import "./toast.css";
+import "./review.css";
 import { Providers } from "./providers";
 
 const sora = Sora({ subsets: ["latin"], variable: "--font-sora" });

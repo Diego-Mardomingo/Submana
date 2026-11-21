@@ -266,6 +266,27 @@ html[data-theme="light"] .dockDropIcon {
   filter: drop-shadow(0 0 0 var(--accent)) drop-shadow(0 0 6px var(--accent));
 }
 
+/* Movements waiting in the review deck: a number on the drop. */
+.dockBadge {
+  position: absolute;
+  top: 1px;
+  left: calc(50% + 7px);
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--blanco);
+  color: var(--negro);
+  box-shadow: 0 0 0 2px var(--accent);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  animation: tabDotIn 0.45s var(--dock-spring);
+}
+
 /* ── More sheet (mobile): every page without a tab, in a grid ── */
 .menuBody {
   padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
@@ -854,6 +875,7 @@ html[data-theme="light"] .railTip {
   .dockTab[data-bounce] .dockIcon,
   .dockPill[data-travel],
   .dockDot,
+  .dockBadge,
   .moreTile,
   .count {
     animation: none;

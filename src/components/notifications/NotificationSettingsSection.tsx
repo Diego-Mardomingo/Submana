@@ -21,6 +21,8 @@ import {
   type RenewalOffset,
 } from "@/lib/notifications/catalog";
 import type { NotificationType } from "@/lib/notifications/catalog";
+import { REVIEW_MIN_OPTIONS } from "@/lib/notifications/types";
+import { ISO_WEEKDAYS, weekdayName } from "@/lib/review/weekdays";
 
 const SectionHead = ({ title }: { title: string }) => (
   <div className="lp-section-head">
@@ -90,7 +92,8 @@ function SummaryDayRow({ saved, onSave }: { saved: number; onSave: (day: number)
  * them (default renewal reminders, day of the monthly summary). Everything saves right away (optimistic).
  */
 function NotificationTypesSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const t = useTranslations(useLang());
+  const lang = useLang();
+  const t = useTranslations(lang);
   const { data: settings } = useNotificationSettings();
   const save = useSaveNotificationSettings();
   const loading = !settings;
@@ -123,6 +126,44 @@ function NotificationTypesSheet({ open, onOpenChange }: { open: boolean; onOpenC
       );
     }
     if (item.id === "summary.monthly") return <SummaryDayRow saved={settings.summary_day} onSave={(day) => save.mutate({ summary_day: day })} />;
+    if (item.id === "review.pending") {
+      return (
+        <>
+          <div className="lp-row lp-row--static lp-pref">
+            <span className="lp-main">
+              <span className="lp-title">
+                <span>{t("notifSettings.reviewDay")}</span>
+              </span>
+              <span className="lp-desc">{t("notifSettings.reviewDayDesc")}</span>
+            </span>
+            <div className="w-full">
+              <Chips
+                label={t("notifSettings.reviewDay")}
+                value={String(settings.review_day)}
+                onChange={(value) => save.mutate({ review_day: Number(value) })}
+                options={ISO_WEEKDAYS.map((day) => ({ value: String(day), label: weekdayName(day, lang, "short") }))}
+              />
+            </div>
+          </div>
+          <div className="lp-row lp-row--static lp-pref">
+            <span className="lp-main">
+              <span className="lp-title">
+                <span>{t("notifSettings.reviewMin")}</span>
+              </span>
+              <span className="lp-desc">{t("notifSettings.reviewMinDesc")}</span>
+            </span>
+            <div className="w-full">
+              <Chips
+                label={t("notifSettings.reviewMin")}
+                value={String(settings.review_min)}
+                onChange={(value) => save.mutate({ review_min: Number(value) })}
+                options={REVIEW_MIN_OPTIONS.map((n) => ({ value: String(n), label: n === 1 ? t("notifSettings.reviewMinAny") : `${n}+` }))}
+              />
+            </div>
+          </div>
+        </>
+      );
+    }
     return null;
   };
 

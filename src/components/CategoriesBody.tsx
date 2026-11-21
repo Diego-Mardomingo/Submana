@@ -7,6 +7,7 @@ import { Bones } from "@/components/Bones";
 import { CategorySheet, type CategoryFormState } from "@/components/CategorySheet";
 import { ConfirmDeleteSheet } from "@/components/ConfirmSheet";
 import { CompactPageHeader } from "@/components/PageHeader";
+import { CategoryRulesSection } from "@/components/review/CategoryRulesSection";
 import { SwipeToReveal, SwipeToRevealGroup, useSwipeLearned } from "@/components/SwipeToReveal";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Spinner } from "@/components/ui/spinner";
@@ -289,6 +290,8 @@ export default function CategoriesBody() {
                 </p>
               )}
             </section>
+
+            <CategoryRulesSection />
 
             {archivedCategories.length > 0 && (
               <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen} className="lp-section">
