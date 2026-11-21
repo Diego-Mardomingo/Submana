@@ -101,8 +101,8 @@ html[data-nav-direction="same"]::view-transition-new(root) {
 
 /* Paleta cohesiva: tonos desaturados y elegantes para diseño minimalista */
 :root {
-  /* Height of the mobile bottom navigation (without the safe area). */
-  --nav-h: 68px;
+  /* Height of the mobile dock plus its 10px margin above the safe area (62 + 10). */
+  --nav-h: 72px;
   /* Width of the desktop sidebar (from 768px): 240px, or a 72px rail when folded. The pre-paint script in
      layout.tsx sets html[data-sidebar] from what the user chose, so the first paint already has the right width. */
   --sidebar-w: 240px;
