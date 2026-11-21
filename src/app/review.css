@@ -1,0 +1,399 @@
+/* ═══════════════════════════════════════════════
+   REVIEW DECK (src/components/review/ReviewDeck.tsx, /review)
+   Full screen stack of cards: each bank movement the app isn't sure about. Swipe right confirms, left leaves
+   it for later. Only theme tokens from globals.css.
+   ═══════════════════════════════════════════════ */
+
+.rv-screen {
+  --rv-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --rv-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  position: fixed;
+  inset: 0;
+  /* Above the page, below the sheets and toasts it opens (both at the top of the range). */
+  z-index: 2147483000;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+  background: var(--negro);
+  color: var(--blanco);
+  overflow: hidden;
+}
+
+/* ── Header ── */
+.rv-head {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: 10px 10px 4px;
+}
+
+.rv-head-title { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.rv-head-title b { font-size: 1rem; font-weight: 800; letter-spacing: -0.02em; }
+.rv-head-title span { font-size: 0.72rem; font-weight: 600; color: var(--gris-claro); font-variant-numeric: tabular-nums; }
+
+.rv-progress { display: flex; gap: 4px; padding: 8px 18px 4px; }
+.rv-progress i { flex: 1; height: 4px; border-radius: 99px; background: var(--gris); overflow: hidden; position: relative; }
+.rv-progress i::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 0.45s var(--rv-ease); }
+.rv-progress i.is-done::after { transform: none; }
+.rv-progress i.is-later::after { transform: none; background: var(--gris-claro); }
+
+/* ── Stack ── */
+.rv-deck { position: relative; flex: 1; min-height: 0; margin: 10px 16px 0; }
+
+.rv-card {
+  --p: 0;
+  position: absolute;
+  inset: 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 16px 14px;
+  border: 1px solid var(--gris);
+  border-radius: 28px;
+  background: var(--card-subtle-gradient), var(--gris-oscuro);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  transform-origin: 50% 85%;
+  transition: transform 0.5s var(--rv-spring), opacity 0.3s ease, box-shadow 0.2s ease;
+  will-change: transform;
+}
+
+html[data-theme="light"] .rv-card { box-shadow: 0 18px 40px rgba(17, 19, 24, 0.12); }
+
+/* The ones behind peek out below, smaller. */
+.rv-card[data-depth="1"] { transform: translateY(12px) scale(0.95); opacity: 0.75; pointer-events: none; }
+.rv-card[data-depth="2"] { transform: translateY(24px) scale(0.9); opacity: 0.4; pointer-events: none; }
+.rv-card[data-depth="3"] { transform: translateY(24px) scale(0.9); opacity: 0; pointer-events: none; }
+.rv-card > * { transition: opacity 0.3s ease; }
+.rv-card[data-depth="1"] > *, .rv-card[data-depth="2"] > * { opacity: 0.5; }
+.rv-card[data-dragging="true"] { transition: none; cursor: grabbing; }
+
+/* While dragged: the edge takes the colour of the side it is heading to. */
+.rv-card[data-dir="yes"] { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 2px color-mix(in srgb, var(--success) calc(var(--p) * 100%), transparent); }
+.rv-card[data-dir="later"] { box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 2px color-mix(in srgb, var(--gris-claro) calc(var(--p) * 100%), transparent); }
+
+.rv-stamp {
+  position: absolute;
+  top: 22px;
+  z-index: 2;
+  padding: 6px 12px;
+  border: 2.5px solid currentColor;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rv-stamp--yes { left: 18px; color: var(--success-text); transform: rotate(-12deg) scale(calc(0.8 + var(--p) * 0.2)); }
+.rv-stamp--later { right: 18px; color: var(--gris-muy-claro); transform: rotate(12deg) scale(calc(0.8 + var(--p) * 0.2)); }
+.rv-card[data-dir="yes"] .rv-stamp--yes, .rv-card[data-dir="later"] .rv-stamp--later { opacity: var(--p); }
+
+.rv-card-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; }
+.rv-acct { display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-size: 0.74rem; font-weight: 600; color: var(--gris-muy-claro); white-space: nowrap; }
+
+.rv-kind { --tone: var(--warning); --tone-soft: var(--warning-soft); display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border-radius: 99px; background: var(--tone-soft); color: var(--tone); font-size: 0.66rem; font-weight: 700; white-space: nowrap; }
+.rv-kind svg { width: 12px; height: 12px; }
+.rv-card[data-kind="new"] .rv-kind { --tone: var(--info); --tone-soft: var(--info-soft); }
+.rv-card[data-kind="transfer"] .rv-kind, .rv-card[data-kind="linked"] .rv-kind { --tone: var(--accent); --tone-soft: var(--accent-soft); }
+.rv-card[data-kind="sure"] .rv-kind { --tone: var(--success-text); --tone-soft: var(--success-soft); }
+
+.rv-who { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.rv-tile { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--gris); font-size: 2rem; overflow: hidden; }
+.rv-tile img { width: 100%; height: 100%; object-fit: cover; }
+.rv-tile svg { width: 28px; height: 28px; color: var(--accent); }
+.rv-name { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1.15; }
+.rv-raw { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.68rem; color: var(--gris-claro); letter-spacing: 0.02em; }
+
+.rv-amount { text-align: center; font-size: 2.5rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.rv-amount small { font-size: 0.5em; font-weight: 700; letter-spacing: -0.01em; color: var(--gris-muy-claro); }
+.rv-amount.is-income { color: var(--success-text); }
+.rv-amount.is-income small { color: inherit; opacity: 0.75; }
+
+.rv-guess-block { display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 14px; border-top: 1px solid var(--lp-divider, var(--gris)); }
+.rv-label { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--gris-claro); }
+
+.rv-guess {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 14px 0 12px;
+  border: 1.5px solid var(--accent-muted);
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--blanco);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.35s var(--rv-spring);
+}
+
+.rv-guess:active { transform: scale(0.95); transition-duration: 0.1s; }
+.rv-guess-emoji { font-size: 1.25rem; }
+.rv-guess svg { width: 16px; height: 16px; color: var(--accent); }
+.rv-guess[data-pop] { animation: rv-pop 0.5s var(--rv-spring); }
+
+@keyframes rv-pop { 0% { transform: scale(0.8); } 60% { transform: scale(1.06); } 100% { transform: none; } }
+
+.rv-why { max-width: 30ch; text-align: center; font-size: 0.78rem; line-height: 1.45; color: var(--gris-muy-claro); text-wrap: balance; }
+
+.rv-alts { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.rv-alts .sf-chip { height: 32px; padding: 0 0.7rem; font-size: 0.78rem; }
+
+.rv-learn { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 600; color: var(--success-text); animation: rv-fade-up 0.35s var(--rv-ease); }
+.rv-learn svg { width: 14px; height: 14px; }
+@keyframes rv-fade-up { from { opacity: 0; transform: translateY(4px); } }
+
+/* A suggestion that does more than a category: share, settle, it's a transfer. */
+.rv-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--blanco);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rv-hint-icon { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; border-radius: 10px; background: var(--accent); color: var(--negro); }
+html[data-theme="light"] .rv-hint-icon { color: #ffffff; }
+.rv-hint-icon svg { width: 16px; height: 16px; }
+.rv-hint-text { flex: 1; min-width: 0; font-size: 0.8rem; line-height: 1.35; }
+.rv-hint-text b { display: block; font-size: 0.84rem; }
+.rv-hint > svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--accent); }
+
+.rv-more { display: flex; justify-content: center; gap: 6px; margin-top: auto; }
+
+.rv-more-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--gris);
+  border-radius: 99px;
+  background: transparent;
+  color: var(--gris-muy-claro);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rv-more-btn svg { width: 15px; height: 15px; }
+.rv-more-btn:active { background: var(--lp-row-hover, var(--gris)); }
+
+/* ── Buttons at the bottom ── */
+.rv-controls { display: flex; align-items: center; justify-content: center; gap: 22px; padding: 4px 0 22px; }
+
+.rv-ctl { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0; border: none; background: none; color: var(--gris-muy-claro); font: inherit; font-size: 0.68rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.rv-ctl-btn { display: grid; place-items: center; width: 60px; height: 60px; border: 1px solid var(--gris); border-radius: 50%; background: var(--gris-oscuro); color: var(--blanco); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25); transition: transform 0.4s var(--rv-spring), background 0.2s ease, opacity 0.2s ease; }
+.rv-ctl-btn svg { width: 26px; height: 26px; }
+.rv-ctl:active .rv-ctl-btn { transform: scale(0.88); transition-duration: 0.1s; }
+.rv-ctl--undo .rv-ctl-btn { width: 46px; height: 46px; }
+.rv-ctl--undo .rv-ctl-btn svg { width: 20px; height: 20px; }
+.rv-ctl--undo:disabled { opacity: 0.35; cursor: default; }
+.rv-ctl--yes .rv-ctl-btn { border-color: transparent; background: var(--accent); color: var(--negro); box-shadow: 0 10px 26px -6px var(--accent); }
+html[data-theme="light"] .rv-ctl--yes .rv-ctl-btn { color: #ffffff; }
+.rv-ctl--yes { color: var(--accent); }
+
+/* ── All done ── */
+.rv-done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0 32px 40px; text-align: center; }
+.rv-done h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; }
+.rv-done p { max-width: 32ch; font-size: 0.86rem; line-height: 1.5; color: var(--gris-muy-claro); }
+.rv-gem { width: 96px; height: 78px; margin-bottom: 6px; animation: rv-float 3.2s ease-in-out 0.9s infinite; }
+.rv-gem polygon { transform-box: fill-box; transform-origin: center; animation: rv-facet 0.55s var(--rv-spring) backwards; animation-delay: calc(var(--f) * 70ms); }
+@keyframes rv-facet { from { opacity: 0; transform: scale(0.2) translateY(-6px); } }
+@keyframes rv-float { 50% { transform: translateY(-5px); } }
+.rv-done-list { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 300px; margin: 6px 0 10px; }
+.rv-done-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--gris-oscuro); font-size: 0.78rem; text-align: left; animation: rv-fade-up 0.4s var(--rv-ease) backwards; animation-delay: calc(0.6s + var(--i) * 80ms); }
+.rv-done-row svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--success-text); }
+.rv-done-btn { height: 46px; padding: 0 22px; border: none; border-radius: 99px; background: var(--blanco); color: var(--negro); font: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+
+/* ── Entry card on Home ── */
+.rv-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--accent-muted);
+  border-radius: 18px;
+  background: linear-gradient(100deg, var(--accent-soft), transparent 80%), var(--gris-oscuro);
+  color: inherit;
+  text-decoration: none;
+}
+
+.rv-entry-deck { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
+.rv-entry-deck span { position: absolute; inset: 4px; display: grid; place-items: center; border: 1px solid var(--gris); border-radius: 11px; background: var(--negro); font-size: 1.05rem; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+.rv-entry-deck span img { width: 100%; height: 100%; object-fit: cover; }
+.rv-entry-deck span:nth-child(1) { transform: rotate(-14deg) translate(-8px, 2px); }
+.rv-entry-deck span:nth-child(2) { transform: rotate(10deg) translate(8px, 1px); }
+.rv-entry-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rv-entry-text b { font-size: 0.9rem; }
+.rv-entry-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.76rem; color: var(--gris-muy-claro); }
+.rv-entry-go { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 99px; background: var(--accent); color: var(--negro); font-size: 0.78rem; font-weight: 700; }
+html[data-theme="light"] .rv-entry-go { color: #ffffff; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-card, .rv-guess, .rv-ctl-btn { transition-duration: 0.01ms !important; }
+  .rv-gem, .rv-gem polygon, .rv-done-row, .rv-learn, .rv-guess[data-pop] { animation: none !important; }
+}
+
+/* ── Added in the app ── */
+.rv-loading {
+  flex: 1;
+  display: grid;
+  place-items: center;
+}
+
+/* Wide screens: one column in the middle, the size of a phone. */
+.rv-head,
+.rv-progress,
+.rv-controls,
+.rv-done {
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+}
+
+.rv-deck {
+  width: calc(100% - 32px);
+  max-width: 448px;
+  margin: 10px auto 0;
+}
+
+.rv-acct-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rv-card button:disabled {
+  cursor: default;
+}
+
+/* "It will apply to the next ones of X · Only this one": the learnt rule can be turned off on the card. */
+.rv-learn {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.rv-learn[data-off] {
+  color: var(--gris-muy-claro);
+}
+
+.rv-learn-toggle {
+  padding: 2px 8px;
+  border: none;
+  border-radius: 99px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.rv-entry-go svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The number on the "Review" bubble of the + arc and the flyout. */
+.add-arc-bubble {
+  position: relative;
+}
+
+.add-arc-count,
+.add-flyout-count {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--blanco);
+  color: var(--negro);
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.add-arc-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  box-shadow: 0 0 0 2px var(--negro);
+}
+
+.add-flyout-count {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  background: var(--accent);
+  color: var(--negro);
+  font-size: 0.66rem;
+}
+
+html[data-theme="light"] .add-flyout-count {
+  color: #ffffff;
+}
+
+.home-cal > .rv-entry {
+  margin: 0 0 14px;
+}
+
+/* Categories screen: a learnt rule shows the bank text it matches. */
+.rule-pattern {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+}
+
+/* Only the card being dragged shows its stamp (the ones behind dim their content, stamps included). */
+.rv-card:not([data-dir]) .rv-stamp {
+  opacity: 0 !important;
+}
+
+.rv-card {
+  overflow: hidden;
+}
+
+.rv-more {
+  flex-wrap: wrap;
+}
+
+.rv-guess-icon {
+  width: 20px !important;
+  height: 20px !important;
+}
+
+.rv-learn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.rv-learn-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rv-learn-text svg {
+  flex-shrink: 0;
+}

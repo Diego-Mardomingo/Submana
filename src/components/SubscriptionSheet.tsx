@@ -248,7 +248,10 @@ function SubscriptionDetails({ sub, onEdit, onClose }: { sub: Subscription; onEd
   );
 }
 
-function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | null; onDone: () => void; onBack?: () => void }) {
+/** A new subscription filled in from somewhere else (a bank movement in the review deck). */
+export type SubscriptionDraft = Partial<Pick<Subscription, "service_name" | "cost" | "start_date" | "account_id">>;
+
+function SubscriptionFormBody({ sub, draft, onDone, onBack, onSaved }: { sub: Subscription | null; draft?: SubscriptionDraft; onDone: () => void; onBack?: () => void; onSaved?: () => void }) {
   const lang = useLang();
   const es = lang === "es";
   const t = useTranslations(lang);
@@ -257,13 +260,13 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
   const updateSub = useUpdateSubscription({ silentError: true }); // errors show inline
 
   const [icon, setIcon] = useState(sub?.icon || "");
-  const [name, setName] = useState(sub?.service_name ?? "");
-  const [cost, setCost] = useState(sub ? Number(sub.cost).toFixed(2).replace(".", ",") : "");
-  const [startDate, setStartDate] = useState(() => (sub?.start_date ? parseDateString(sub.start_date) : new Date()));
+  const [name, setName] = useState(sub?.service_name ?? draft?.service_name ?? "");
+  const [cost, setCost] = useState(sub ? Number(sub.cost).toFixed(2).replace(".", ",") : draft?.cost ? Number(draft.cost).toFixed(2).replace(".", ",") : "");
+  const [startDate, setStartDate] = useState(() => (sub?.start_date ? parseDateString(sub.start_date) : draft?.start_date ? parseDateString(draft.start_date) : new Date()));
   const [endDate, setEndDate] = useState(() => (sub?.end_date ? parseDateString(sub.end_date) : undefined));
   const [frequency, setFrequency] = useState<Subscription["frequency"]>(sub?.frequency ?? "monthly");
   const [every, setEvery] = useState(sub?.frequency_value || 1);
-  const [accountId, setAccountId] = useState(sub?.account_id ?? "");
+  const [accountId, setAccountId] = useState(sub?.account_id ?? draft?.account_id ?? "");
   const [matchPattern, setMatchPattern] = useState(sub?.match_pattern ?? "");
   const [sharing, setSharing] = useState(() => initialSharing(sub));
   const { data: profile } = useProfile();
@@ -315,6 +318,7 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
       if (sub) await updateSub.mutateAsync({ id: sub.id, ...input });
       else await createSub.mutateAsync(input);
       toast.success(t(sub ? "sub.saved" : "sub.created"), { subject: subscriptionSubject(input) });
+      onSaved?.();
       onDone();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error";
@@ -449,12 +453,16 @@ function SubscriptionFormBody({ sub, onDone, onBack }: { sub: Subscription | nul
  * Subscription sheet: its details (with cancel / delete), the edit form, or the create form
  * when there is no `subscription`.
  */
-export function SubscriptionSheet({ open, onOpenChange, subscription, mode = "view" }: {
+export function SubscriptionSheet({ open, onOpenChange, subscription, mode = "view", draft, onSaved }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   subscription?: Subscription | null;
   /** What an existing subscription opens on. */
   mode?: Mode;
+  /** Starts a new subscription with these fields. */
+  draft?: SubscriptionDraft;
+  /** After it was saved (before the sheet closes). */
+  onSaved?: () => void;
 }) {
   const lang = useLang();
   const t = useTranslations(lang);
@@ -476,6 +484,8 @@ export function SubscriptionSheet({ open, onOpenChange, subscription, mode = "vi
         <SubscriptionFormBody
           key={current}
           sub={sub}
+          draft={draft}
+          onSaved={onSaved}
           onDone={mode === "view" && sub ? () => setCurrent("view") : close}
           onBack={mode === "view" && sub ? () => setCurrent("view") : undefined}
         />

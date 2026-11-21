@@ -20,6 +20,7 @@ import { useJointAccountIds } from "@/hooks/useAccounts";
 import { useBudgets } from "@/hooks/useBudgets";
 import { useCategories, useCategoryLookup } from "@/hooks/useCategories";
 import { useSharedBalances } from "@/hooks/useGroups";
+import { ReviewEntry } from "@/components/review/ReviewEntry";
 import { useLang } from "@/hooks/useLang";
 import { useMediaQuery, useMounted } from "@/hooks/useMediaQuery";
 import { useProfile } from "@/hooks/useProfile";
@@ -402,6 +403,7 @@ export default function CalendarBody() {
               <HeaderBell />
             </div>
           </header>
+          <ReviewEntry />
 
           <div className="home-weekdays" aria-hidden>
             {WEEK.map((date) => (

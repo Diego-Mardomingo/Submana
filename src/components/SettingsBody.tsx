@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Copy, EyeOff, Languages, LogOut, Mail, Monitor, Moon, Palette, Pencil, Sun } from "lucide-react";
+import { AtSign, Copy, EyeOff, Languages, Layers, LogOut, Mail, Monitor, Moon, Palette, Pencil, Sun } from "lucide-react";
 import { ConfirmSheet } from "@/components/ConfirmSheet";
 import { HandleSetup } from "@/components/HandleSetup";
 import { CompactPageHeader } from "@/components/PageHeader";
@@ -14,6 +14,7 @@ import { Sheet, SheetBody } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { setLang, useLang } from "@/hooks/useLang";
+import { useNotificationSettings, useSaveNotificationSettings } from "@/hooks/useNotifications";
 import { setPrivacyMode, usePrivacyMode } from "@/hooks/usePrivacyMode";
 import { useProfile } from "@/hooks/useProfile";
 import { createClientStore } from "@/lib/clientStore";
@@ -23,6 +24,7 @@ import { disablePushOnThisDevice } from "@/lib/push/client";
 import { toast } from "@/lib/toast";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { ReviewMode } from "@/lib/review/classify";
 
 type Theme = "light" | "dark" | "system";
 const THEME_KEY = "submana-theme";
@@ -155,6 +157,9 @@ function IdentityCard({ onEdit }: { onEdit: () => void }) {
 export default function SettingsBody() {
   const lang = useLang();
   const t = useTranslations(lang);
+  const { data: notificationSettings } = useNotificationSettings();
+  const saveNotificationSettings = useSaveNotificationSettings();
+  const reviewMode: ReviewMode = notificationSettings?.review_mode ?? "doubt";
   const queryClient = useQueryClient();
   const theme = themeStore.useValue();
   const privacyMode = usePrivacyMode();
@@ -245,6 +250,34 @@ export default function SettingsBody() {
                     options={[
                       { value: "en", label: "English" },
                       { value: "es", label: "Español" },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="lp-section">
+            <SectionHead title={t("review.section")} />
+            <div className="lp-card lp-group">
+              <div className="lp-row lp-row--static lp-pref lp-pref--stack">
+                <span className="lp-icon" aria-hidden>
+                  <Layers className="size-5" />
+                </span>
+                <span className="lp-main">
+                  <span className="lp-title">
+                    <span>{t("review.settings")}</span>
+                  </span>
+                  <span className="lp-desc">{t(reviewMode === "all" ? "review.settings.allHint" : "review.settings.doubtHint")}</span>
+                </span>
+                <div className="lp-pref-control">
+                  <Segmented
+                    kind="lang"
+                    value={reviewMode}
+                    onChange={(mode) => saveNotificationSettings.mutate({ review_mode: mode })}
+                    options={[
+                      { value: "doubt", label: t("review.settings.doubt") },
+                      { value: "all", label: t("review.settings.all") },
                     ]}
                   />
                 </div>

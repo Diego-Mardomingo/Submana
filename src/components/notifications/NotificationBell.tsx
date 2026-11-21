@@ -56,8 +56,8 @@ function usePrefetchInbox(count: number) {
   return prefetch;
 }
 
-/** Whether the pathname is the inbox, where the bell is never shown. */
-const inInbox = (pathname: string | null) => !!pathname && (pathname === "/notifications" || pathname.startsWith("/notifications/"));
+/** Whether the pathname is the inbox (or the full-screen review deck), where the bell is never shown. */
+const inInbox = (pathname: string | null) => !!pathname && (pathname === "/notifications" || pathname.startsWith("/notifications/") || pathname === "/review");
 
 /** Phones: the bell floats bottom-right above the bottom bar (mounted once in the authenticated layout). */
 export function NotificationBell() {

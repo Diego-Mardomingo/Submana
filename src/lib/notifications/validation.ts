@@ -1,8 +1,8 @@
 /** Validation of the notification settings payload (pure: used by the settings route and its tests). */
 import { isNotificationType, RENEWAL_OFFSETS, type RenewalOffset } from "./catalog";
-import type { NotificationSettings } from "./types";
+import { REVIEW_MIN_OPTIONS, type NotificationSettings } from "./types";
 
-export type SettingsPatch = Partial<Pick<NotificationSettings, "lang" | "disabled_types" | "default_renewal_offsets" | "summary_day" | "push_hide_amounts">>;
+export type SettingsPatch = Partial<Pick<NotificationSettings, "lang" | "disabled_types" | "default_renewal_offsets" | "summary_day" | "push_hide_amounts" | "review_mode" | "review_day" | "review_min">>;
 
 /** Validated partial update, or the error code to answer with. Unknown fields are ignored. */
 export function parseSettingsPatch(body: unknown): { patch: SettingsPatch } | { error: string } {
@@ -33,6 +33,20 @@ export function parseSettingsPatch(body: unknown): { patch: SettingsPatch } | { 
   if ("push_hide_amounts" in input) {
     if (typeof input.push_hide_amounts !== "boolean") return { error: "invalid_push_hide_amounts" };
     patch.push_hide_amounts = input.push_hide_amounts;
+  }
+  if ("review_mode" in input) {
+    if (input.review_mode !== "doubt" && input.review_mode !== "all") return { error: "invalid_review_mode" };
+    patch.review_mode = input.review_mode;
+  }
+  if ("review_day" in input) {
+    const day = input.review_day;
+    if (typeof day !== "number" || !Number.isInteger(day) || day < 1 || day > 7) return { error: "invalid_review_day" };
+    patch.review_day = day;
+  }
+  if ("review_min" in input) {
+    const allowed: readonly unknown[] = REVIEW_MIN_OPTIONS;
+    if (!allowed.includes(input.review_min)) return { error: "invalid_review_min" };
+    patch.review_min = input.review_min as number;
   }
   return { patch };
 }

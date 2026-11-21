@@ -7,6 +7,10 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.transactions.all, "detail", id] as const,
     similar: (filters: { accountId: string; amount: number; type: string; date: string; description: string }) =>
       [...queryKeys.transactions.all, "similar", filters] as const,
+    /** The review deck: under transactions, so whatever refreshes the movements refreshes it too. */
+    review: () => [...queryKeys.transactions.all, "review"] as const,
+    reviewSummary: () => [...queryKeys.transactions.all, "review", "summary"] as const,
+    reviewRules: () => [...queryKeys.transactions.all, "review", "rules"] as const,
   },
   accounts: {
     all: ["accounts"] as const,

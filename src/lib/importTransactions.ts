@@ -6,6 +6,7 @@ import { filterAlreadyImportedStatementRows } from "@/lib/importDuplicateDetecti
 import { tagInternalTransfersAfterImport } from "@/lib/importTransferTagging";
 import { reconcileEvents } from "@/lib/notifications/events/subscriptions";
 import { notifyAfter } from "@/lib/notifications/server";
+import { markTransfers, planReview, type ReviewPlan } from "@/lib/review/server";
 import { emptySummary, reconcileNewTransactions, type ReconcileSummary } from "@/lib/subscriptionAutoMatch";
 import { buildDuplicateConflictKey, buildDuplicateConflictKeyLegacy, buildImportLineId } from "@/lib/parsers/importKeys";
 import type { ImportedTransaction, ImportPreviewRow, ImportResolution, ImportRowStatus, ImportTransactionsResponse } from "@/lib/parsers/types";
@@ -276,6 +277,31 @@ export async function importTransactions(args: {
     for (const p of prior) if (!categories.has(p.description)) categories.set(p.description, p);
   }
 
+  // Review deck: every new movement gets the app's best category now, and the recent ones wait in the deck
+  // (only those it isn't sure about show by default). Joint accounts stay out: their categories are shared.
+  const plans = new Map<string, ReviewPlan>();
+  if (inheritCategories && !joint) {
+    try {
+      const planned = await planReview(
+        supabase,
+        userId,
+        toInsert.map((r) => ({
+          key: r.import_line_id,
+          description: r.tx.description || null,
+          type: r.tx.type,
+          amount: Number(r.tx.amount),
+          date: r.tx.date,
+          inherited: categories.get(r.tx.description) ?? null,
+        }))
+      );
+      for (const [key, plan] of planned) plans.set(key, plan);
+    } catch (error) {
+      // The deck is a nicety: the import goes on with the inherited categories.
+      console.error("[import] review plan", error);
+    }
+  }
+  const categoryOf = (row: PreparedRow) => plans.get(row.import_line_id)?.pair ?? categories.get(row.tx.description) ?? null;
+
   let imported = 0;
   let tagged = 0;
   let insertedIds: string[] = [];
@@ -283,7 +309,10 @@ export async function importTransactions(args: {
     const { data: inserted, error } = await supabase
       .from("transactions")
       .insert(
-        toInsert.map(({ tx, import_line_id, reviewMatchId }) => ({
+        toInsert.map((row) => {
+          const { tx, import_line_id, reviewMatchId } = row;
+          const reason = plans.get(import_line_id)?.reason ?? null;
+          return {
           user_id: userId,
           account_id: accountId,
           amount: tx.amount,
@@ -292,14 +321,16 @@ export async function importTransactions(args: {
           description: tx.description || null,
           external_hash: tx.external_hash,
           import_line_id,
-          category_id: categories.get(tx.description)?.category_id ?? null,
-          subcategory_id: categories.get(tx.description)?.subcategory_id ?? null,
+          category_id: categoryOf(row)?.category_id ?? null,
+          subcategory_id: categoryOf(row)?.subcategory_id ?? null,
           statement_balance: tx.statement_balance ?? null,
           source,
           booked_at: tx.date,
           bank_description: tx.description || null,
           ...(reviewMatchId && { review_match_id: reviewMatchId }),
-        }))
+          ...(reason && { review_state: "pending", review_reason: reason }),
+          };
+        })
       )
       .select("id");
     if (error) return { error: error.message };
@@ -307,6 +338,7 @@ export async function importTransactions(args: {
     imported = inserted.length;
     insertedIds = inserted.map((t) => t.id);
     tagged = await tagInternalTransfersAfterImport({ supabase, userId, insertedIds: inserted.map((t) => t.id), joint });
+    if (tagged > 0 && plans.size > 0) await markTransfers(supabase, userId).catch((error) => console.error("[import] review transfers", error));
   }
 
   // The statement's balance is the source of truth; otherwise apply the net change of the inserted rows

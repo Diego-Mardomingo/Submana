@@ -52,6 +52,8 @@ export interface NotificationParams {
   "import.reminder": { month: string };
   /** The daily bank sync inserted movements that may be the same as manual ones: `count` to review. */
   "bank.review": { accountId: string; accountName: string; count: number };
+  /** Weekly: movements waiting in the review deck (up to 3 merchant names). */
+  "review.pending": { count: number; names: string[] };
   /** The bank sync failed (`failed`) or the bank permission ended (`expired`). */
   "bank.error": { accountId: string; accountName: string; bankName: string; reason: "failed" | "expired" };
   /** A balance-only bank (Trade Republic) started sending descriptions or ids: movements can be synced. */
@@ -358,6 +360,23 @@ export const NOTIFICATIONS: { [T in NotificationType]: NotificationDef<T> } = {
       return { title: { key: count === 1 ? "notif.bank.review.titleOne" : "notif.bank.review.title", vars }, body: [{ key: "notif.bank.review.body", vars }] };
     },
   },
+  "review.pending": {
+    family: "bank",
+    push: true,
+    inbox: true,
+    defaultEnabled: true,
+    url: () => "/review",
+    plan: (p, { t }) => {
+      const count = Math.max(1, Number(p.count) || 1);
+      const names = (Array.isArray(p.names) ? p.names : []).map(text).filter(Boolean).slice(0, 3);
+      const rest = count - names.length;
+      const list = names.length === 0 ? "" : rest > 0 ? `${names.join(", ")} ${t("notif.review.pending.andMore").replace("{n}", String(rest))}` : names.join(", ");
+      return {
+        title: { key: count === 1 ? "notif.review.pending.titleOne" : "notif.review.pending.title", vars: { count } },
+        body: [{ key: list ? "notif.review.pending.body" : "notif.review.pending.bodyPlain", vars: { list } }],
+      };
+    },
+  },
   "bank.error": {
     family: "bank",
     push: true,
@@ -641,6 +660,7 @@ export const NOTIFICATION_TOGGLES: NotificationToggle[] = [
   { id: "budget.threshold", family: "budgets", types: ["budget.threshold"], labelKey: "notifSettings.budget.threshold.label", descKey: "notifSettings.budget.threshold.desc" },
   { id: "summary.monthly", family: "budgets", types: ["summary.monthly"], labelKey: "notifSettings.summary.monthly.label", descKey: "notifSettings.summary.monthly.desc" },
   { id: "import.reminder", family: "budgets", types: ["import.reminder"], labelKey: "notifSettings.import.reminder.label", descKey: "notifSettings.import.reminder.desc" },
+  { id: "review.pending", family: "bank", types: ["review.pending"], labelKey: "notifSettings.review.pending.label", descKey: "notifSettings.review.pending.desc" },
   { id: "bank.sync", family: "bank", types: ["bank.review", "bank.error", "bank.details", "bank.expiring"], labelKey: "notifSettings.bank.sync.label", descKey: "notifSettings.bank.sync.desc" },
   {
     id: "shared.expenses",

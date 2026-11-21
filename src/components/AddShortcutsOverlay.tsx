@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { ChevronRight, FileUp, MessageCircle } from "lucide-react";
+import { ChevronRight, FileUp, Layers, MessageCircle } from "lucide-react";
 import { AccountsIcon, BudgetsIcon, CategoriesIcon, SubcountIcon, SubscriptionsIcon, TransactionsIcon } from "@/components/icons";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ActionRow, FieldGroup } from "@/components/SheetFields";
@@ -15,6 +15,7 @@ import { useAccounts } from "@/hooks/useAccounts";
 import { useGroup, useGroups } from "@/hooks/useGroups";
 import { useLang } from "@/hooks/useLang";
 import { useProfile } from "@/hooks/useProfile";
+import { useReviewSummary } from "@/hooks/useReview";
 import { getBankProvider } from "@/lib/bankProviders";
 import type { UIKey } from "@/lib/i18n/ui";
 import { useTranslations } from "@/lib/i18n/utils";
@@ -29,6 +30,8 @@ const IMPORT: Shortcut = { icon: FileUp, labelKey: "addShortcuts.import", shortK
 const SUBCOUNT: Shortcut = { icon: SubcountIcon, labelKey: "addShortcuts.subcountExpense", shortKey: "addShortcuts.subcountShort", modal: "subcount" };
 const SUBSCRIPTION: Shortcut = { icon: SubscriptionsIcon, labelKey: "addShortcuts.newSubscription", shortKey: "addShortcuts.subscription", href: "/subscriptions?open=create" };
 const FEEDBACK: Shortcut = { icon: MessageCircle, labelKey: "addShortcuts.feedback", shortKey: "addShortcuts.feedbackShort", modal: "feedback" };
+/** Only while there are movements waiting in the review deck. */
+const REVIEW: Shortcut = { icon: Layers, labelKey: "addShortcuts.review", shortKey: "addShortcuts.reviewShort", href: "/review" };
 
 /** Desktop list: the most used actions (transaction, import, shared expense) first, feedback last. */
 const FLYOUT: Shortcut[][] = [
@@ -44,10 +47,12 @@ const FLYOUT: Shortcut[][] = [
 
 /**
  * Phones: five bubbles fan out above the + (left to right). The two most used (import, transaction)
- * sit in the middle in the accent colour; the rest of the create actions live on their pages.
+ * sit in the middle in the accent colour; the rest of the create actions live on their pages. With movements
+ * to review, "Review" takes the centre (with their number) and the transaction moves to feedback's place.
  */
 const ARC_ITEMS = [SUBSCRIPTION, IMPORT, TRANSACTION, SUBCOUNT, FEEDBACK];
-const ARC_PRIMARY = [IMPORT, TRANSACTION];
+const ARC_ITEMS_REVIEW = [SUBSCRIPTION, IMPORT, REVIEW, SUBCOUNT, TRANSACTION];
+const ARC_PRIMARY = [IMPORT, TRANSACTION, REVIEW];
 
 /** Point on the arc (degrees, left to right); the radii live in CSS so they can follow the viewport. */
 const ARC = { from: 170, to: 10 };
@@ -75,6 +80,12 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
   const [groupId, setGroupId] = useState<string>();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: groups = [], isLoading: groupsLoading } = useGroups(!!profile && open);
+  const { data: review } = useReviewSummary();
+  const reviewCount = review?.count ?? 0;
+  const arcItems = reviewCount > 0 ? ARC_ITEMS_REVIEW : ARC_ITEMS;
+  // The transaction is only in the middle (and in the accent colour) when there is nothing to review.
+  const isPrimary = (item: Shortcut) => ARC_PRIMARY.includes(item) && !(reviewCount > 0 && item === TRANSACTION);
+  const flyout = reviewCount > 0 ? [[REVIEW, ...FLYOUT[0]], ...FLYOUT.slice(1)] : FLYOUT;
   // keepPreviousData can still hold the previously picked group while the new one loads.
   const { data: groupData } = useGroup(groupId);
   const group = groupData?.group.id === groupId ? groupData : undefined;
@@ -130,7 +141,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
     >
       {anchor ? (
         <div className="add-flyout" role="menu" aria-label={t("nav.add")} style={{ top: anchor.top, left: anchor.right + 12 }}>
-          {FLYOUT.map((group, g) => (
+          {flyout.map((group, g) => (
             <div key={g} className="add-flyout-group">
               {group.map((item, i) => (
                 <button
@@ -138,7 +149,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
                   type="button"
                   role="menuitem"
                   className="add-flyout-item"
-                  style={{ "--i": FLYOUT.slice(0, g).flat().length + i } as React.CSSProperties}
+                  style={{ "--i": flyout.slice(0, g).flat().length + i } as React.CSSProperties}
                   autoFocus={g === 0 && i === 0}
                   onClick={() => pick(item)}
                 >
@@ -146,6 +157,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
                     <item.icon strokeWidth={2} />
                   </span>
                   {t(item.labelKey)}
+                  {item === REVIEW && <span className="add-flyout-count">{reviewCount}</span>}
                 </button>
               ))}
             </div>
@@ -153,7 +165,7 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
         </div>
       ) : (
         <div className="add-arc" role="menu" aria-label={t("nav.add")} onClick={closeOnBackdrop}>
-          {ARC_ITEMS.map((item, i) => {
+          {arcItems.map((item, i) => {
             const { cos, sin } = arcPoint(i);
             return (
               <button
@@ -161,13 +173,14 @@ export default function AddShortcutsOverlay({ open, anchor, onClose }: { open: b
                 type="button"
                 role="menuitem"
                 aria-label={t(item.labelKey)}
-                className={cn("add-arc-item", ARC_PRIMARY.includes(item) && "add-arc-item--primary")}
+                className={cn("add-arc-item", isPrimary(item) && "add-arc-item--primary")}
                 // Stagger from the middle out.
-                style={{ "--cos": cos, "--sin": sin, "--i": ARC_PRIMARY.includes(item) ? 0 : 1 } as React.CSSProperties}
+                style={{ "--cos": cos, "--sin": sin, "--i": isPrimary(item) ? 0 : 1 } as React.CSSProperties}
                 onClick={() => pick(item)}
               >
                 <span className="add-arc-bubble">
                   <item.icon strokeWidth={2} />
+                  {item === REVIEW && <span className="add-arc-count">{reviewCount}</span>}
                 </span>
                 <span className="add-arc-label">{t(item.shortKey ?? item.labelKey)}</span>
               </button>

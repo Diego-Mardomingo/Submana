@@ -5,6 +5,7 @@ import { cleanupNotifications } from "@/lib/notifications/jobs/cleanup";
 import { loadImportReminderEvents } from "@/lib/notifications/jobs/importReminder";
 import { loadMissedChargeEvents } from "@/lib/notifications/jobs/missedCharges";
 import { loadRenewalEvents } from "@/lib/notifications/jobs/renewals";
+import { loadReviewReminderEvents } from "@/lib/notifications/jobs/reviewReminder";
 import { loadSummaryEvents } from "@/lib/notifications/jobs/summary";
 import { isSendHour, madridClock } from "@/lib/notifications/jobs/time";
 import type { NotifyEvent } from "@/lib/notifications/core";
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
   await run("summary", () => loadSummaryEvents(admin, clock));
   await run("importReminder", () => loadImportReminderEvents(admin, clock));
   await run("missedCharges", () => loadMissedChargeEvents(admin, clock));
+  await run("reviewReminder", () => loadReviewReminderEvents(admin, clock));
   // Shared subscriptions without a bank: their charges go to the group on the expected day.
   try {
     result.sharedSubscriptions = { created: await shareUnbankedCharges(admin, clock) };

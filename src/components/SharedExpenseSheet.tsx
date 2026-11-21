@@ -32,12 +32,22 @@ function draftFromExpense(expense: SharedExpenseItem): SplitDraft {
   };
 }
 
-function ExpenseForm({ groupId, members, meId, expense, onDone }: {
+/** A new expense filled in from somewhere else (a bank movement in the review deck). */
+export interface SharedExpensePrefill {
+  title: string;
+  amount: number;
+  /** YYYY-MM-DD */
+  date: string;
+}
+
+function ExpenseForm({ groupId, members, meId, expense, prefill, onDone, onSaved }: {
   groupId: string;
   members: SharedProfile[];
   meId: string;
   expense: SharedExpenseItem | null;
+  prefill?: SharedExpensePrefill;
   onDone: () => void;
+  onSaved?: () => void;
 }) {
   const lang = useLang();
   const t = useTranslations(lang);
@@ -46,10 +56,10 @@ function ExpenseForm({ groupId, members, meId, expense, onDone }: {
   const update = useUpdateSharedExpense();
   const remove = useUndoableDeleteSharedExpense();
 
-  const [amount, setAmount] = useState(expense ? expense.total_amount.toFixed(2).replace(".", ",") : "");
-  const [date, setDate] = useState(() => (expense ? parseDateString(expense.date) : new Date()));
+  const [amount, setAmount] = useState(expense ? expense.total_amount.toFixed(2).replace(".", ",") : prefill ? prefill.amount.toFixed(2).replace(".", ",") : "");
+  const [date, setDate] = useState(() => (expense ? parseDateString(expense.date) : prefill ? parseDateString(prefill.date) : new Date()));
   const [payerId, setPayerId] = useState(expense?.paid_by ?? meId);
-  const [draft, setDraft] = useState<SplitDraft>(() => (expense ? draftFromExpense(expense) : initialDraft(members.map((m) => m.user_id))));
+  const [draft, setDraft] = useState<SplitDraft>(() => (expense ? draftFromExpense(expense) : initialDraft(members.map((m) => m.user_id), prefill?.title ?? "")));
   const [error, setError] = useState("");
   const [amountInvalid, setAmountInvalid] = useState(false);
 
@@ -85,6 +95,7 @@ function ExpenseForm({ groupId, members, meId, expense, onDone }: {
       toast.success(t(expense ? "shared.expenseSaved" : "shared.expenseCreated"), {
         subject: sharedExpenseSubject({ title: input.title, total_amount: input.total, subscription_icon: expense?.subscription_icon }),
       });
+      onSaved?.();
       onDone();
     } catch (err) {
       setError(sharedErrorText(t, err instanceof Error ? err.message : undefined));
@@ -152,20 +163,23 @@ function ExpenseForm({ groupId, members, meId, expense, onDone }: {
   );
 }
 
-/** Create or edit a shared expense from inside a group (any member may edit it). */
-export function SharedExpenseSheet({ open, onOpenChange, groupId, members, meId, expense }: {
+/** Create or edit a shared expense from inside a group (any member may edit it). `prefill` starts a new one. */
+export function SharedExpenseSheet({ open, onOpenChange, groupId, members, meId, expense, prefill, onSaved }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   groupId: string;
   members: SharedProfile[];
   meId: string;
   expense?: SharedExpenseItem | null;
+  prefill?: SharedExpensePrefill;
+  /** After it was saved (before the sheet closes). */
+  onSaved?: () => void;
 }) {
   const t = useTranslations(useLang());
   const shown = useSheetPayload(open, expense ?? null);
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={t(shown ? "shared.edit" : "shared.add")}>
-      <ExpenseForm key={shown?.id ?? "new"} groupId={groupId} members={members} meId={meId} expense={shown} onDone={() => onOpenChange(false)} />
+      <ExpenseForm key={shown?.id ?? "new"} groupId={groupId} members={members} meId={meId} expense={shown} prefill={prefill} onSaved={onSaved} onDone={() => onOpenChange(false)} />
     </Sheet>
   );
 }
